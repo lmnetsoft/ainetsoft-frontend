@@ -1,0 +1,21 @@
+:root {
+  --primary-blue: #002147; /* From Logo.jpg */
+  --accent-white: #ffffff;
+  --bg-gray: #f8f9fa;
+  --border-color: #d1d5db;
+  --button-orange: #ff9800; /* Contrast color for "Đăng Tin" */
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  background-color: var(--bg-gray);
+  color: #333;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}

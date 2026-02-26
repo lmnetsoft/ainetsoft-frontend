@@ -1,0 +1,163 @@
+.register-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 160px);
+  background-color: #f8fafc;
+  padding: 40px 20px;
+}
+
+.register-card {
+  background: #ffffff;
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.05);
+  width: 100%;
+  max-width: 460px;
+}
+
+.register-card h2 {
+  margin-top: 0;
+  margin-bottom: 8px;
+  color: #002147;
+  text-align: center;
+}
+
+.register-subtitle {
+  text-align: center;
+  color: #64748b;
+  font-size: 14px;
+  margin-bottom: 25px;
+}
+
+.error-alert {
+  background-color: #fef2f2;
+  color: #dc2626;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  border: 1px solid #fee2e2;
+  text-align: center;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #334155;
+  font-size: 14px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-sizing: border-box;
+  font-size: 15px;
+  transition: all 0.2s;
+}
+
+.form-group input:focus {
+  border-color: #5b67f1;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(91, 103, 241, 0.1);
+}
+
+/* Tab Selector Styles */
+.contact-type-selector {
+  display: flex;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 10px;
+  margin-bottom: 22px;
+}
+
+.contact-type-selector button {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  transition: all 0.2s;
+}
+
+.contact-type-selector button.active {
+  background: white;
+  color: #5b67f1;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+/* Phone Input Custom Styles */
+.custom-phone-input {
+  display: flex;
+  align-items: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0 16px;
+  background: #ffffff;
+}
+
+.custom-phone-input .PhoneInputInput {
+  border: none;
+  padding: 12px 10px;
+  flex: 1;
+  outline: none;
+  font-size: 15px;
+}
+
+/* Captcha styling remains the same as previous design */
+.captcha-section {
+  background-color: #f0f4ff;
+  padding: 15px;
+  border-radius: 10px;
+  border: 1px dashed #5b67f1;
+  margin-bottom: 25px;
+}
+
+.captcha-input-wrapper {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.auth-submit-btn {
+  width: 100%;
+  padding: 15px;
+  background-color: #5b67f1;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.auth-submit-btn:hover {
+  background-color: #4451d6;
+}
+
+.auth-footer {
+  margin-top: 25px;
+  text-align: center;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 20px;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: #5b67f1;
+  font-weight: bold;
+  cursor: pointer;
+}

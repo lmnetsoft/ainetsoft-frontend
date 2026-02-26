@@ -1,0 +1,47 @@
+.main-footer {
+  background-color: #f8fafc;
+  padding: 10px 0 50px 0; /* Extra bottom space for a clean finish */
+  width: 100%;
+}
+
+.footer-rectangle {
+  background: white;
+  border: 1px solid #000; /* Black border from your screenshot */
+  border-radius: 12px; /* Matched to the Category Section edge */
+  padding: 12px 60px; /* Slim height with wide internal spacing */
+  width: 100%; /* Force it to fill the container exactly */
+  box-sizing: border-box; /* Ensures the border doesn't shrink the box */
+  display: flex;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.footer-links-inline {
+  list-style: none;
+  display: flex;
+  width: 100%; 
+  justify-content: space-between; /* Pushes the 4 menus to the far edges */
+  padding: 0;
+  margin: 0;
+}
+
+.footer-links-inline li a {
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footer-links-inline li a:hover {
+  color: #3b82f6;
+}
+
+/* Ensure this matches exactly with your Home.css container */
+.container {
+  width: 100%;
+  max-width: 1400px; /* Same width as your category section */
+  margin: 0 auto;
+  padding: 0 20px; /* Same side padding as your category section */
+  box-sizing: border-box;
+}
