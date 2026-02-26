@@ -3,15 +3,16 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import 'react-phone-number-input/style.css'; 
 import './Auth.css';
+import { loginUser } from '../../services/authService';
 
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Capture success message from Register navigation state
   const [successMessage, setSuccessMessage] = useState(location.state?.successMessage || '');
   const [inputMode, setInputMode] = useState<'phone' | 'email'>('phone');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const [loginData, setLoginData] = useState({
     email: '',
@@ -26,24 +27,37 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setSuccessMessage(''); // Clear success message once user tries to log in
+    setSuccessMessage('');
+    setLoading(true);
 
     // 1. Validate Phone format if in phone mode
     if (inputMode === 'phone') {
       if (!loginData.phone || !isValidPhoneNumber(loginData.phone)) {
         setError("Số điện thoại không hợp lệ!");
+        setLoading(false);
         return;
       }
     }
 
-    const payload = {
-      contactInfo: inputMode === 'phone' ? loginData.phone : loginData.email,
-      password: loginData.password
-    };
+    try {
+      const payload = {
+        contactInfo: inputMode === 'phone' ? loginData.phone : loginData.email,
+        password: loginData.password
+      };
 
-    console.log("Attempting login with:", payload);
-    
-    // Future step: Implement authService.login(payload)
+      // 2. Call the new login service
+      const responseMessage = await loginUser(payload);
+      
+      // 3. Handle Success
+      alert(responseMessage);
+      navigate('/'); // Redirect to home on success
+
+    } catch (err: any) {
+      // 4. Handle Errors (e.g., Wrong password, User not found)
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -52,10 +66,19 @@ const Login = () => {
         <h2>Đăng Nhập</h2>
         <p className="auth-subtitle">Chào mừng bạn quay lại với AiNetsoft</p>
 
-        {/* Display Success Message from Registration */}
-        {successMessage && <div className="success-alert" style={{color: 'green', backgroundColor: '#e6fffa', padding: '10px', borderRadius: '4px', marginBottom: '15px', border: '1px solid #38b2ac'}}>{successMessage}</div>}
+        {/* Success Message from Registration */}
+        {successMessage && (
+          <div className="success-alert" style={{color: 'green', backgroundColor: '#e6fffa', padding: '10px', borderRadius: '4px', marginBottom: '15px', border: '1px solid #38b2ac'}}>
+            {successMessage}
+          </div>
+        )}
         
-        {error && <div className="error-alert">{error}</div>}
+        {/* Error Message from Backend */}
+        {error && (
+          <div className="error-alert" style={{color: 'red', backgroundColor: '#fff5f5', padding: '10px', borderRadius: '4px', marginBottom: '15px', border: '1px solid #feb2b2'}}>
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div className="contact-type-selector">
@@ -113,7 +136,9 @@ const Login = () => {
             />
           </div>
 
-          <button type="submit" className="auth-submit-btn">Đăng Nhập</button>
+          <button type="submit" className="auth-submit-btn" disabled={loading}>
+            {loading ? 'Đang xác thực...' : 'Đăng Nhập'}
+          </button>
         </form>
 
         <div className="auth-footer">

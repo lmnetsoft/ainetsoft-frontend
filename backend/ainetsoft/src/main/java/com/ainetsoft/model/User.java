@@ -16,18 +16,11 @@ import java.util.Set;
 @Builder
 @Document(collection = "users")
 public class User {
-    
     @Id
     private String id;
-
-    // Removed @Indexed because we are using Partial Indexes in MongoDB
     private String email;
-
-    // Removed @Indexed because we are using Partial Indexes in MongoDB
     private String phone;
-
     private String password; 
-
     private String fullName;
 
     @Builder.Default

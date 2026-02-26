@@ -1,6 +1,7 @@
 package com.ainetsoft.service;
 
 import com.ainetsoft.dto.RegisterRequest;
+import com.ainetsoft.dto.LoginRequest;
 import com.ainetsoft.model.User;
 import com.ainetsoft.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -18,22 +19,17 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
 
     public String register(RegisterRequest request) {
-        
-        // 1. Normalize inputs: Convert empty strings to NULL
         String email = (request.getEmail() == null || request.getEmail().isBlank()) ? null : request.getEmail();
         String phone = (request.getPhone() == null || request.getPhone().isBlank()) ? null : request.getPhone();
 
-        // 2. Check Email uniqueness ONLY if not null
         if (email != null && userRepository.existsByEmail(email)) {
             throw new RuntimeException("Email này đã được sử dụng!");
         }
 
-        // 3. Check Phone uniqueness ONLY if not null
         if (phone != null && userRepository.existsByPhone(phone)) {
             throw new RuntimeException("Số điện thoại này đã được sử dụng!");
         }
 
-        // 4. Build User with NULLS instead of empty strings
         User user = User.builder()
                 .email(email)
                 .phone(phone)
@@ -46,7 +42,21 @@ public class AuthService {
                 .build();
 
         userRepository.save(user);
-        
         return "Đăng ký thành công!";
+    }
+
+    public String login(LoginRequest request) {
+        User user = userRepository.findByEmailOrPhone(request.getContactInfo(), request.getContactInfo())
+                .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
+
+        if (!user.isEnabled()) {
+            throw new RuntimeException("Tài khoản của bạn đã bị khóa!");
+        }
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new RuntimeException("Mật khẩu không chính xác!");
+        }
+
+        return "Đăng nhập thành công!";
     }
 }
