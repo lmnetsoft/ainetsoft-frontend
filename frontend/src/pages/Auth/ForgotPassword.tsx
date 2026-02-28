@@ -1,51 +1,95 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import 'react-phone-number-input/style.css'; 
 import './Auth.css';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import { requestPasswordReset, resetPassword } from '../../services/authService';
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
-  const [submitted, setSubmitted] = useState(false);
+  const [step, setStep] = useState<1 | 2>(1);
   const [inputMode, setInputMode] = useState<'phone' | 'email'>('phone');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  
+  const [timer, setTimer] = useState(0);
 
   const [contactData, setContactData] = useState({
     email: '',
-    phone: ''
+    phone: '',
+    otp: '',
+    newPassword: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
+  // OTP Timer Logic: Kept this useEffect as it is required for the countdown
+  useEffect(() => {
+    let interval: any;
+    if (timer > 0) {
+      interval = setInterval(() => {
+        setTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [timer]);
 
-    // Validate Phone format if in phone mode
-    if (inputMode === 'phone') {
-      if (!contactData.phone || !isValidPhoneNumber(contactData.phone)) {
-        setError("Số điện thoại không hợp lệ. Vui lòng kiểm tra lại!");
-        return;
-      }
+  const handleRequestSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setError('');
+    
+    const finalContact = inputMode === 'phone' ? contactData.phone : contactData.email;
+
+    if (inputMode === 'phone' && (!finalContact || !isValidPhoneNumber(finalContact))) {
+      setError("Số điện thoại không hợp lệ. Vui lòng kiểm tra lại!");
+      return;
     }
 
-    const contactValue = inputMode === 'phone' ? contactData.phone : contactData.email;
-    console.log("Requesting recovery for:", contactValue);
-    
-    // Future step: Call Java 24 backend API
-    setSubmitted(true);
+    setLoading(true);
+    try {
+      await requestPasswordReset(finalContact);
+      setStep(2);
+      setTimer(60); 
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    const finalContact = inputMode === 'phone' ? contactData.phone : contactData.email;
+
+    try {
+      await resetPassword({
+        contactInfo: finalContact,
+        otp: contactData.otp,
+        newPassword: contactData.newPassword
+      });
+      alert("Mật khẩu đã được thay đổi thành công!");
+      navigate('/login');
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="auth-page">
       <div className="auth-card">
-        {!submitted ? (
+        {step === 1 ? (
           <>
             <h2>Khôi Phục Mật Khẩu</h2>
             <p className="auth-subtitle">Nhập Email hoặc Số điện thoại bạn đã đăng ký để nhận mã xác thực.</p>
             
             {error && <div className="error-alert">{error}</div>}
 
-            <form onSubmit={handleSubmit}>
-              {/* Tab Switcher */}
+            <form onSubmit={handleRequestSubmit}>
               <div className="contact-type-selector">
                 <button 
                   type="button" 
@@ -89,20 +133,74 @@ const ForgotPassword = () => {
                   </>
                 )}
               </div>
-              <button type="submit" className="auth-submit-btn">Gửi yêu cầu</button>
+              <button type="submit" className="auth-submit-btn" disabled={loading}>
+                {loading ? "Đang xử lý..." : "Gửi yêu cầu"}
+              </button>
             </form>
           </>
         ) : (
-          <div className="success-message">
-            <div className="success-icon">✓</div>
-            <h3>Yêu cầu đã được gửi!</h3>
-            <p>Vui lòng kiểm tra tin nhắn SMS hoặc Email của bạn để lấy mã khôi phục.</p>
-            <button onClick={() => navigate('/login')} className="auth-submit-btn">Quay lại Đăng nhập</button>
-          </div>
+          <>
+            <h2>Thiết Lập Mật Khẩu Mới</h2>
+            <p className="auth-subtitle">Vui lòng nhập mã OTP đã được gửi và mật khẩu mới của bạn.</p>
+            
+            {error && <div className="error-alert">{error}</div>}
+
+            <form onSubmit={handleResetSubmit}>
+              <div className="form-group">
+                <label>Mã xác thực (OTP)</label>
+                <input 
+                  type="text" 
+                  placeholder="Nhập 6 chữ số" 
+                  value={contactData.otp}
+                  onChange={(e) => setContactData({...contactData, otp: e.target.value})}
+                  required 
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Mật khẩu mới</label>
+                <div className="password-input-wrapper">
+                  <input 
+                    type={showPassword ? "text" : "password"} 
+                    placeholder="••••••••" 
+                    value={contactData.newPassword}
+                    onChange={(e) => setContactData({...contactData, newPassword: e.target.value})}
+                    required 
+                  />
+                  <button 
+                    type="button" 
+                    className="toggle-password-btn"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <FaEyeSlash /> : <FaEye />}
+                  </button>
+                </div>
+              </div>
+
+              <button type="submit" className="auth-submit-btn" disabled={loading}>
+                {loading ? "Đang cập nhật..." : "Cập nhật mật khẩu"}
+              </button>
+
+              <div className="resend-section" style={{ textAlign: 'center', marginTop: '15px' }}>
+                {timer > 0 ? (
+                  <p className="auth-subtitle">Gửi lại mã sau <b>{timer}s</b></p>
+                ) : (
+                  <button 
+                    type="button" 
+                    className="link-btn" 
+                    onClick={() => handleRequestSubmit()}
+                    style={{ color: '#5b67f1', fontWeight: 'bold' }}
+                  >
+                    Gửi lại mã xác thực
+                  </button>
+                )}
+              </div>
+            </form>
+          </>
         )}
         
         <div className="auth-footer">
-          <button className="link-btn" onClick={() => navigate('/register')}>Quay lại Đăng ký</button>
+          <button className="link-btn" onClick={() => navigate('/login')}>Quay lại Đăng nhập</button>
         </div>
       </div>
     </div>

@@ -1,0 +1,100 @@
+.not-found-container {
+  min-height: 70vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 20px;
+  background-color: #f8fafc;
+}
+
+.not-found-content {
+  max-width: 500px;
+  width: 100%;
+  text-align: center;
+  background: white;
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+}
+
+.not-found-logo {
+  height: 80px; /* Sized for the PNG with text */
+  width: auto;
+  margin-bottom: 20px;
+  object-fit: contain;
+}
+
+.error-code {
+  font-size: 80px;
+  font-weight: 800;
+  color: #002147;
+  margin: 0;
+  line-height: 1;
+}
+
+.error-message {
+  font-size: 16px;
+  color: #64748b;
+  margin: 15px 0 30px 0;
+  line-height: 1.6;
+}
+
+/* Search Box Styling */
+.search-box-404 {
+  display: flex;
+  align-items: center;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 30px;
+  padding: 5px 5px 5px 20px;
+  margin-bottom: 30px;
+  transition: border-color 0.2s;
+}
+
+.search-box-404:focus-within {
+  border-color: #5b67f1;
+}
+
+.search-box-404 input {
+  flex: 1;
+  border: none;
+  background: none;
+  outline: none;
+  font-size: 15px;
+  color: #333;
+}
+
+.search-btn-404 {
+  background-color: #5b67f1;
+  color: white;
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.search-btn-404:hover {
+  background-color: #4451d6;
+}
+
+/* Navigation Button */
+.back-home-btn {
+  background: none;
+  border: 1px solid #5b67f1;
+  color: #5b67f1;
+  padding: 10px 25px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.back-home-btn:hover {
+  background-color: #5b67f1;
+  color: white;
+}

@@ -1,16 +1,26 @@
 .main-footer {
   background-color: #f8fafc;
-  padding: 10px 0 50px 0; /* Extra bottom space for a clean finish */
+  padding: 10px 0 50px 0;
   width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.container {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 20px;
+  box-sizing: border-box;
 }
 
 .footer-rectangle {
   background: white;
-  border: 1px solid #000; /* Black border from your screenshot */
-  border-radius: 12px; /* Matched to the Category Section edge */
-  padding: 12px 60px; /* Slim height with wide internal spacing */
-  width: 100%; /* Force it to fill the container exactly */
-  box-sizing: border-box; /* Ensures the border doesn't shrink the box */
+  border: 1px solid #002147; 
+  border-radius: 12px; 
+  padding: 15px 60px; 
+  width: 100%; 
+  box-sizing: border-box; 
   display: flex;
   align-items: center;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
@@ -20,7 +30,7 @@
   list-style: none;
   display: flex;
   width: 100%; 
-  justify-content: space-between; /* Pushes the 4 menus to the far edges */
+  justify-content: space-between; 
   padding: 0;
   margin: 0;
 }
@@ -28,20 +38,44 @@
 .footer-links-inline li a {
   font-size: 14px;
   color: #64748b;
-  font-weight: 500;
+  font-weight: 600;
   text-decoration: none;
-  transition: color 0.2s;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.footer-icon {
+  font-size: 18px;
+  transition: transform 0.2s;
 }
 
 .footer-links-inline li a:hover {
-  color: #3b82f6;
+  color: #5b67f1;
+  transform: translateY(-1px);
 }
 
-/* Ensure this matches exactly with your Home.css container */
-.container {
-  width: 100%;
-  max-width: 1400px; /* Same width as your category section */
-  margin: 0 auto;
-  padding: 0 20px; /* Same side padding as your category section */
-  box-sizing: border-box;
+/* Brand colors on hover */
+.footer-links-inline li a:hover .youtube-color {
+  color: #FF0000;
+}
+
+.footer-links-inline li a:hover .facebook-color {
+  color: #1877F2;
+}
+
+/* Loading state style */
+.link-loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+@media (max-width: 600px) {
+  .footer-rectangle {
+    padding: 15px 20px;
+  }
+  .footer-links-inline li a {
+    font-size: 12px;
+  }
 }

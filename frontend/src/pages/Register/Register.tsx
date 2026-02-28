@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import 'react-phone-number-input/style.css'; 
-import './Register.css';
+import '../Auth/Auth.css'; 
 import { registerUser } from '../../services/authService';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -21,7 +22,11 @@ const Register = () => {
   const [formError, setFormError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   useEffect(() => {
+    // We only need to generate the captcha on mount now
     generateCaptcha();
   }, []);
 
@@ -70,8 +75,6 @@ const Register = () => {
       };
 
       const result = await registerUser(payload);
-      
-      // Redirect to login with the success message in state
       navigate('/login', { state: { successMessage: result } });
       
     } catch (err: any) {
@@ -83,10 +86,10 @@ const Register = () => {
   };
 
   return (
-    <div className="register-page">
-      <div className="register-card">
+    <div className="auth-page">
+      <div className="auth-card">
         <h2>Đăng Ký Tài Khoản</h2>
-        <p className="register-subtitle">Sử dụng Email hoặc Số điện thoại để tham gia AiNetsoft</p>
+        <p className="auth-subtitle">Sử dụng Email hoặc Số điện thoại để tham gia AiNetsoft</p>
         
         {formError && <div className="error-alert">{formError}</div>}
 
@@ -150,26 +153,44 @@ const Register = () => {
 
           <div className="form-group">
             <label>Mật khẩu</label>
-            <input 
-              type="password" 
-              name="password" 
-              placeholder="••••••••" 
-              value={formData.password}
-              onChange={handleInputChange} 
-              required 
-            />
+            <div className="password-input-wrapper">
+              <input 
+                type={showPassword ? "text" : "password"} 
+                name="password" 
+                placeholder="••••••••" 
+                value={formData.password}
+                onChange={handleInputChange} 
+                required 
+              />
+              <button 
+                type="button" 
+                className="toggle-password-btn"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
+            </div>
           </div>
 
           <div className="form-group">
             <label>Xác nhận mật khẩu</label>
-            <input 
-              type="password" 
-              name="confirmPassword" 
-              placeholder="••••••••" 
-              value={formData.confirmPassword}
-              onChange={handleInputChange} 
-              required 
-            />
+            <div className="password-input-wrapper">
+              <input 
+                type={showConfirmPassword ? "text" : "password"} 
+                name="confirmPassword" 
+                placeholder="••••••••" 
+                value={formData.confirmPassword}
+                onChange={handleInputChange} 
+                required 
+              />
+              <button 
+                type="button" 
+                className="toggle-password-btn"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              >
+                {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
+            </div>
           </div>
 
           <div className="captcha-section">

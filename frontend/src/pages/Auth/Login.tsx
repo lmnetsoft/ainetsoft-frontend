@@ -1,18 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState } from 'react'; // Removed useEffect
 import { useNavigate, useLocation } from 'react-router-dom';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import 'react-phone-number-input/style.css'; 
 import './Auth.css';
 import { loginUser } from '../../services/authService';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
+  // Logic: Success message passed from registration page
   const [successMessage, setSuccessMessage] = useState(location.state?.successMessage || '');
   const [inputMode, setInputMode] = useState<'phone' | 'email'>('phone');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const [loginData, setLoginData] = useState({
     email: '',
@@ -30,7 +33,6 @@ const Login = () => {
     setSuccessMessage('');
     setLoading(true);
 
-    // 1. Validate Phone format if in phone mode
     if (inputMode === 'phone') {
       if (!loginData.phone || !isValidPhoneNumber(loginData.phone)) {
         setError("Số điện thoại không hợp lệ!");
@@ -45,15 +47,16 @@ const Login = () => {
         password: loginData.password
       };
 
-      // 2. Call the new login service
-      const responseMessage = await loginUser(payload);
+      const userData = await loginUser(payload);
       
-      // 3. Handle Success
-      alert(responseMessage);
-      navigate('/'); // Redirect to home on success
+      localStorage.setItem('isAuthenticated', 'true');
+      localStorage.setItem('userName', userData.fullName); 
+      localStorage.setItem('userContact', payload.contactInfo);
+      
+      // Redirect to home upon successful login
+      window.location.href = '/';
 
     } catch (err: any) {
-      // 4. Handle Errors (e.g., Wrong password, User not found)
       setError(err.message);
     } finally {
       setLoading(false);
@@ -66,16 +69,14 @@ const Login = () => {
         <h2>Đăng Nhập</h2>
         <p className="auth-subtitle">Chào mừng bạn quay lại với AiNetsoft</p>
 
-        {/* Success Message from Registration */}
         {successMessage && (
-          <div className="success-alert" style={{color: 'green', backgroundColor: '#e6fffa', padding: '10px', borderRadius: '4px', marginBottom: '15px', border: '1px solid #38b2ac'}}>
+          <div className="success-alert">
             {successMessage}
           </div>
         )}
         
-        {/* Error Message from Backend */}
         {error && (
-          <div className="error-alert" style={{color: 'red', backgroundColor: '#fff5f5', padding: '10px', borderRadius: '4px', marginBottom: '15px', border: '1px solid #feb2b2'}}>
+          <div className="error-alert">
             {error}
           </div>
         )}
@@ -127,13 +128,23 @@ const Login = () => {
 
           <div className="form-group">
             <label>Mật khẩu</label>
-            <input 
-              type="password" 
-              name="password" 
-              placeholder="••••••••" 
-              onChange={handleInputChange} 
-              required 
-            />
+            <div className="password-input-wrapper">
+              <input 
+                type={showPassword ? "text" : "password"} 
+                name="password" 
+                placeholder="••••••••" 
+                onChange={handleInputChange} 
+                required 
+                className="password-input"
+              />
+              <button 
+                type="button" 
+                className="toggle-password-btn"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
+            </div>
           </div>
 
           <button type="submit" className="auth-submit-btn" disabled={loading}>

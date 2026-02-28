@@ -1,9 +1,10 @@
+/* ... All your existing CSS remains here ... */
+
 .home-page {
   padding: 0 0 40px 0;
   background-color: #f8fafc;
 }
 
-/* Master Alignment Container */
 .container {
   width: 100%;
   max-width: 1400px;
@@ -12,7 +13,6 @@
   box-sizing: border-box;
 }
 
-/* Banner Styling */
 .hero-banner {
   background-color: #e5d5b3; 
   height: 180px;
@@ -34,7 +34,6 @@
   font-weight: 800;
 }
 
-/* Category Section */
 .category-section {
   background: white;
   border: 1px solid #3b82f6;
@@ -105,7 +104,6 @@
   text-align: center;
 }
 
-/* Scroll Buttons */
 .scroll-btn {
   position: absolute;
   top: 50%;
@@ -128,7 +126,6 @@
 .scroll-btn.left { left: -18px; }
 .scroll-btn.right { right: -18px; }
 
-/* Info Section */
 .info-box {
   background: white;
   border: 1px solid #e2e8f0;
@@ -143,7 +140,6 @@
   font-size: 14px;
 }
 
-/* NEW: Popular Keywords Styling */
 .keywords-section {
   background: white;
   border: 1px solid #3b82f6;
@@ -185,4 +181,60 @@
   border-color: #3b82f6;
   transform: translateY(-2px);
   box-shadow: 0 4px 10px rgba(59, 130, 246, 0.15);
+}
+
+/* --- ADDITIONS FOR SEARCH & LOADING --- */
+
+.spinner-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 0;
+}
+
+.loading-spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 10px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: 14px;
+  color: #64748b;
+}
+
+.results-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.result-card {
+  border: 1px solid #f1f5f9;
+  padding: 15px;
+  border-radius: 8px;
+  text-align: left;
+}
+
+.result-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: #334155;
+  margin-bottom: 5px;
+}
+
+.result-price {
+  color: #3b82f6;
+  font-weight: bold;
+  font-size: 15px;
 }

@@ -2,7 +2,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 70vh;
+  min-height: 70vh; /* Keeps card centered vertically */
   background-color: #f8fafc;
   padding: 40px 20px;
 }
@@ -32,15 +32,27 @@
   line-height: 1.5;
 }
 
-.error-alert {
-  background-color: #fef2f2;
-  color: #dc2626;
+/* --- Alert Styling (Updated to match Login.tsx) --- */
+.error-alert, .success-alert {
   padding: 12px;
   border-radius: 8px;
   margin-bottom: 20px;
   font-size: 14px;
-  border: 1px solid #fee2e2;
+  border: 1px solid;
   text-align: center;
+}
+
+.error-alert {
+  background-color: #fef2f2;
+  color: #dc2626;
+  border-color: #fee2e2;
+}
+
+/* Added this for the Login.tsx success message */
+.success-alert {
+  background-color: #f0fdf4;
+  color: #16a34a;
+  border-color: #dcfce7;
 }
 
 .form-group {
@@ -71,7 +83,38 @@
   box-shadow: 0 0 0 3px rgba(91, 103, 241, 0.1);
 }
 
-/* Shared Tab Selector for All Auth Pages */
+/* --- Password Toggle Styling --- */
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-wrapper input {
+  padding-right: 45px; 
+}
+
+.toggle-password-btn {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  font-size: 18px;
+  padding: 4px;
+  transition: color 0.2s;
+  z-index: 2;
+}
+
+.toggle-password-btn:hover {
+  color: #5b67f1;
+}
+
+/* --- Selectors and Phone Input --- */
 .contact-type-selector {
   display: flex;
   background: #f1f5f9;
@@ -99,7 +142,6 @@
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 
-/* Phone Input Styling */
 .custom-phone-input {
   display: flex;
   align-items: center;
@@ -117,7 +159,7 @@
   font-size: 15px;
 }
 
-/* Captcha Styling (Added missing section) */
+/* --- Captcha Styling --- */
 .captcha-section {
   background-color: #f0f4ff;
   padding: 15px;
@@ -161,7 +203,7 @@
   background: #e2e8f0;
 }
 
-/* Submit Button Hover state */
+/* --- Action Buttons (Updated with Disabled state) --- */
 .auth-submit-btn {
   width: 100%;
   padding: 15px;
@@ -179,22 +221,12 @@
   background-color: #4451d6;
 }
 
-/* Success Message Styles */
-.success-message {
-  text-align: center;
+.auth-submit-btn:disabled {
+  background-color: #cbd5e1; /* Grayed out when loading */
+  cursor: not-allowed;
 }
 
-.success-icon {
-  font-size: 50px;
-  color: #28a745;
-  margin-bottom: 15px;
-}
-
-.success-message h3 {
-  color: #28a745;
-  margin-bottom: 15px;
-}
-
+/* --- Footer and Navigation --- */
 .auth-footer {
   margin-top: 25px;
   text-align: center;
@@ -205,6 +237,7 @@
 .footer-item {
   font-size: 14px;
   color: #64748b;
+  margin-bottom: 10px; /* Space between links */
 }
 
 .link-btn {
@@ -215,7 +248,6 @@
   cursor: pointer;
   font-size: 14px;
   padding: 0;
-  text-decoration: none;
   margin-left: 5px;
 }
 

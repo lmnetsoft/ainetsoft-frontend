@@ -5,13 +5,19 @@ import Home from './pages/Home/Home';
 import Register from './pages/Register/Register';
 import ForgotPassword from './pages/Auth/ForgotPassword';
 import Login from './pages/Auth/Login';
+import NotFound from './pages/NotFound/NotFound'; 
 import ChatBubble from './components/ChatBubble/ChatBubble';
+import TitleManager from './components/TitleManager'; 
+import ContentPage from './pages/Content/ContentPage';
 import './App.css';
 
 function App() {
   return (
     <Router>
       <div className="app-wrapper">
+        {/* Automatically handles tab titles for every route */}
+        <TitleManager />
+        
         <Header />
         
         <main className="content">
@@ -20,12 +26,15 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
+            
+            {/* Catch-all route for 404 */}
+            <Route path="*" element={<NotFound />} />
+            <Route path="/regulations" element={<ContentPage type="regulations" />} />
+            <Route path="/contact" element={<ContentPage type="contact" />} />            
           </Routes>
         </main>
         
         <Footer />
-
-        {/* Floating Bubble integrated globally with new offset */}
         <ChatBubble />
       </div>
     </Router>

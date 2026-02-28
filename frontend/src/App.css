@@ -1,4 +1,4 @@
-/* Reset root */
+/* Reset root for full width */
 #root {
   width: 100%;
   margin: 0;
@@ -6,7 +6,7 @@
   text-align: left;
 }
 
-/* Master Centering Container */
+/* Master Centering Container - Used inside components like Header or Home */
 .container {
   width: 100%;
   max-width: 1400px;
@@ -21,21 +21,23 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  /* Forces all main children (Header, Content, Footer) to the center */
   align-items: center; 
 }
 
-/* Ensure these containers span 100% to allow internal .container to center */
+/* These wrappers (header, main, footer) span 100% width.
+   The internal .container (1400px) does the actual centering of the text/logo.
+*/
 header, 
 .content, 
 footer {
   width: 100%;
   display: flex;
-  justify-content: center;
+  flex-direction: column; /* Stack internal items vertically */
+  align-items: center;    /* Center the internal .container */
 }
 
 .content {
-  flex: 1;
+  flex: 1; /* Pushes Footer to the bottom */
 }
 
 /* Base Styles */

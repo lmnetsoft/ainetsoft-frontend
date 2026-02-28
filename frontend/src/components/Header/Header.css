@@ -1,22 +1,26 @@
-/* Container for the entire header */
 .main-header {
   background-color: #ffffff;
-  padding: 10px 0;
-  border-bottom: 1px solid #e0e0e0;
+  padding: 15px 0;
+  border-bottom: 1px solid #e2e8f0;
 }
 
-/* Row 1: Logo and Menu Alignment */
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
 .top-bar {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  margin-bottom: 20px;
+  margin-bottom: 25px;
 }
 
 .logo-small {
-  height: 40px; 
+  height: 50px;
   width: auto;
-  margin-right: 50px; /* Space between logo and menu */
+  margin-right: 40px; 
   flex-shrink: 0;
 }
 
@@ -29,38 +33,46 @@
 .top-nav {
   display: flex;
   align-items: center;
-  gap: 15px; /* Spacing between menu items */
+  gap: 15px;
 }
 
 .blue-link {
   text-decoration: none;
   color: #5b67f1;
   font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
 }
 
 .top-nav span {
-  color: #ccc;
+  color: #cbd5e1;
   font-weight: 300;
 }
 
-/* Row 2: Wide Search Bar and Actions */
 .action-bar {
   display: flex;
   align-items: center;
+  justify-content: space-between; /* Ensures spacing between search and actions */
   width: 100%;
 }
 
-/* Centered search input */
+/* REFINED SEARCH BOX */
 .search-wrapper {
-  display: flex;
+  display: flex; 
   align-items: center;
-  flex: 1; 
-  height: 48px;
-  border: 1px solid #002147;
-  border-radius: 8px;
+  flex: 0 1 700px; /* Constrains the width to a maximum of 700px */
+  height: 44px;
+  border: 2px solid #002147;
+  border-radius: 25px; /* More rounded for a modern feel */
   background-color: #fff;
   overflow: hidden;
-  margin-right: 30px;
+  margin-right: 20px;
+  transition: all 0.2s ease;
+}
+
+.search-wrapper:focus-within {
+  box-shadow: 0 0 0 3px rgba(91, 103, 241, 0.2);
+  border-color: #5b67f1;
 }
 
 .search-wrapper input {
@@ -69,16 +81,30 @@
   padding: 0 20px;
   outline: none;
   font-size: 15px;
-  color: #333;
-  /* Centers the placeholder and the text typed by the user */
-  text-align: center; 
+  color: #1e293b;
 }
 
-/* User Action Links */
+.search-icon-btn {
+  background: none;
+  border: none;
+  color: #002147;
+  padding: 0 20px;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.search-icon-btn:hover {
+  color: #5b67f1;
+}
+
 .user-actions {
   display: flex;
   align-items: center;
-  gap: 20px; /* Reduced gap slightly to accommodate 4 items */
+  gap: 20px;
   flex-shrink: 0;
 }
 
@@ -87,42 +113,54 @@
   background: none;
   border: none;
   font-size: 15px;
-  font-weight: bold;
-  color: #333;
+  font-weight: 700;
+  color: #1e293b;
   cursor: pointer;
   white-space: nowrap;
 }
 
-/* Specific styling for the Register button */
-.register-btn {
-  background-color: #5b67f1; /* Using your signature blue color */
-  color: #ffffff;
-  padding: 8px 20px;
-  border-radius: 6px;
-  transition: background-color 0.3s ease;
-}
-
-.register-btn:hover {
-  background-color: #4451d6; /* Slightly darker on hover */
-}
-.highlight-btn {
+.register-btn, .highlight-btn {
   background-color: #5b67f1;
-  color: white !important;
-  border-radius: 6px;
-  padding: 8px 15px !important;
+  color: #ffffff !important;
+  padding: 10px 24px;
+  border-radius: 8px;
+  border: none;
+  transition: background 0.2s;
 }
 
-.highlight-btn:hover {
+.register-btn:hover, .highlight-btn:hover {
   background-color: #4451d6;
 }
 
 .logout-btn {
-  color: #dc2626 !important; /* Red for logout */
-  border: 1px solid #fee2e2;
-  border-radius: 6px;
-  padding: 8px 12px !important;
+  background: white;
+  color: #ef4444;
+  border: 1px solid #ef4444;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
 }
 
 .logout-btn:hover {
-  background-color: #fef2f2;
+  background: #fef2f2;
+}
+
+.logged-in-controls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.user-name-display {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 14px;
+}
+
+/* Responsive: Shrink search box more on tablets */
+@media (max-width: 992px) {
+  .search-wrapper {
+    flex: 1;
+    margin-right: 15px;
+  }
 }
