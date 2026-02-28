@@ -9,6 +9,11 @@ import NotFound from './pages/NotFound/NotFound';
 import ChatBubble from './components/ChatBubble/ChatBubble';
 import TitleManager from './components/TitleManager'; 
 import ContentPage from './pages/Content/ContentPage';
+
+// User Account Components
+import Profile from './pages/User/Profile';
+import ChangePassword from './pages/User/ChangePassword'; // Added this import
+
 import './App.css';
 
 function App() {
@@ -22,15 +27,27 @@ function App() {
         
         <main className="content">
           <Routes>
+            {/* Public Routes */}
             <Route path="/" element={<Home />} />
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             
-            {/* Catch-all route for 404 */}
-            <Route path="*" element={<NotFound />} />
+            {/* User Account Routes (Tài khoản của tôi) */}
+            <Route path="/user/profile" element={<Profile />} />
+            <Route path="/user/password" element={<ChangePassword />} /> {/* Updated from Profile to ChangePassword */}
+            
+            {/* Remaining Placeholder routes */}
+            <Route path="/user/bank" element={<Profile />} /> 
+            <Route path="/user/address" element={<Profile />} />
+            <Route path="/user/purchase" element={<Profile />} />
+
+            {/* Static Content Routes */}
             <Route path="/regulations" element={<ContentPage type="regulations" />} />
-            <Route path="/contact" element={<ContentPage type="contact" />} />            
+            <Route path="/contact" element={<ContentPage type="contact" />} />
+            
+            {/* Catch-all route for 404 (MUST BE LAST) */}
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </main>
         

@@ -1,10 +1,11 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import './Home.css';
 
 const Home = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   
   // Grab the search query from the URL
@@ -21,14 +22,16 @@ const Home = () => {
 
   // Update Page Title and handle simulated loading
   useEffect(() => {
+    // Check authentication status (Sync with your Auth system)
+    const isAuthenticated = localStorage.getItem('token') !== null;
+
     if (searchQuery) {
       setLoading(true);
       document.title = `Kết quả cho "${searchQuery}" | AiNetsoft`;
-      const timer = setTimeout(() => setLoading(false), 500); // 0.5s delay
+      const timer = setTimeout(() => setLoading(false), 500); 
       return () => clearTimeout(timer);
     } else {
-      const authStatus = localStorage.getItem('isAuthenticated');
-      document.title = authStatus === 'true' 
+      document.title = isAuthenticated 
         ? "AiNetsoft - IT services and products online" 
         : "AiNetsoft - Kết nối công nghệ";
     }
@@ -64,14 +67,15 @@ const Home = () => {
       {/* 1. Banner Section */}
       <div className="container">
         <div className="hero-banner">
-          <h1>Banner Quảng Cáo</h1>
+          <h1>AiNetsoft Technology Hub</h1>
+          <p>Giải pháp CNTT toàn diện cho doanh nghiệp</p>
         </div>
       </div>
 
       {/* 2. Category Section */}
       <section className="container">
         <div className="category-section">
-          <h3>Danh Mục Sản Phẩm</h3>
+          <h3 className="section-title">Danh Mục Sản Phẩm</h3>
           <div className="category-wrapper">
             <button className="scroll-btn left" onClick={() => scroll('left')}>‹</button>
             <div className="category-grid" ref={scrollRef}>
@@ -87,22 +91,22 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 3. Info Section (Updated with Search & Loading Logic) */}
+      {/* 3. Info Section */}
       <div className="container">
         <div className="info-box">
-          <h4 className="center-text" style={{ fontWeight: 'bold', color: '#002147', marginBottom: '10px' }}>
-            {searchQuery ? `Kết quả tìm kiếm cho: "${searchQuery}"` : "Tin bạn đang tìm kiếm"}
+          <h4 className="center-text info-header">
+            {searchQuery ? `Kết quả tìm kiếm cho: "${searchQuery}"` : "Gợi ý dành cho bạn"}
           </h4>
           
           <div className="search-results-container">
             {loading ? (
               <div className="spinner-container">
                 <div className="loading-spinner"></div>
-                <p className="loading-text">Đang tải dữ liệu...</p>
+                <p className="loading-text">Đang xử lý dữ liệu AiNetsoft...</p>
               </div>
             ) : searchQuery ? (
               filteredResults.length > 0 ? (
-                <div className="results-list">
+                <div className="results-grid">
                   {filteredResults.map(item => (
                     <div key={item.id} className="result-card">
                       <p className="result-name">{item.name}</p>
@@ -111,25 +115,25 @@ const Home = () => {
                   ))}
                 </div>
               ) : (
-                <p className="center-text">Không tìm thấy sản phẩm nào phù hợp.</p>
+                <p className="center-text no-results">Không tìm thấy sản phẩm nào phù hợp.</p>
               )
             ) : (
-              <p className="center-text">Show các tin liên quan đến sản phẩm người dùng đang tìm kiếm...</p>
+              <p className="center-text default-info">Khám phá các giải pháp công nghệ mới nhất từ đối tác của chúng tôi.</p>
             )}
           </div>
         </div>
       </div>
 
-      {/* 4. NEW: Popular Keywords Section */}
+      {/* 4. Popular Keywords Section */}
       <div className="container">
         <div className="keywords-section">
-          <h4 className="keywords-title">Các từ khóa tìm kiếm phổ biến</h4>
+          <h4 className="keywords-title">Xu hướng tìm kiếm</h4>
           <div className="keywords-container">
             {popularKeywords.map((keyword, index) => (
               <span 
                 key={index} 
                 className="keyword-tag"
-                onClick={() => window.location.href = `/?search=${encodeURIComponent(keyword)}`}
+                onClick={() => navigate(`/?search=${encodeURIComponent(keyword)}`)}
               >
                 {keyword}
               </span>

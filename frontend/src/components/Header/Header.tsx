@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaSearch } from 'react-icons/fa'; // Added Search Icon
+import { FaSearch, FaUserCircle, FaChevronDown } from 'react-icons/fa'; // Added icons
 import logoImg from '../../assets/images/logo.png';
 import './Header.css';
 
@@ -8,6 +8,7 @@ const Header = () => {
   const navigate = useNavigate();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userName, setUserName] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
 
   useEffect(() => {
     const authStatus = localStorage.getItem('isAuthenticated');
@@ -24,6 +25,7 @@ const Header = () => {
     localStorage.removeItem('userName');
     localStorage.removeItem('userContact');
     setIsLoggedIn(false);
+    setShowDropdown(false);
     navigate('/');
   };
 
@@ -60,7 +62,7 @@ const Header = () => {
           </nav>
         </div>
 
-        {/* Row 2: Search Bar (Refined) and Auth Actions */}
+        {/* Row 2: Search Bar and Auth Actions */}
         <div className="action-bar">
           <form className="search-wrapper" onSubmit={handleSearch}>
             <input 
@@ -75,11 +77,11 @@ const Header = () => {
           </form>
 
           <div className="user-actions">
-            <a href="#" className="nav-text-bold blue-link">Góc Chia Sẻ</a>
+            <a href="#" className="nav-text-bold blue-link share-corner">Góc Chia Sẻ</a>
             
             {!isLoggedIn ? (
-              <>
-                <button className="nav-text-bold" onClick={() => navigate('/login')}>
+              <div className="auth-buttons">
+                <button className="nav-text-bold login-btn-plain" onClick={() => navigate('/login')}>
                   Đăng Nhập
                 </button>
                 <button 
@@ -88,14 +90,31 @@ const Header = () => {
                 >
                   Đăng Ký
                 </button>
-              </>
+              </div>
             ) : (
               <div className="logged-in-controls">
-                <span className="user-name-display">Chào, {userName}</span>
+                {/* Updated: Account Dropdown Wrapper */}
+                <div 
+                  className="user-account-wrapper"
+                  onMouseEnter={() => setShowDropdown(true)}
+                  onMouseLeave={() => setShowDropdown(false)}
+                >
+                  <div className="user-profile-trigger">
+                    <FaUserCircle className="user-avatar-icon" />
+                    <span className="user-name-text">{userName}</span>
+                    <FaChevronDown className={`chevron-icon ${showDropdown ? 'rotate' : ''}`} />
+                  </div>
+
+                  {showDropdown && (
+                    <ul className="dropdown-menu">
+                      <li onClick={() => navigate('/user/profile')}>Tài khoản của tôi</li>
+                      <li onClick={() => navigate('/user/purchase')}>Đơn mua</li>
+                      <li className="logout-item" onClick={handleLogout}>Đăng xuất</li>
+                    </ul>
+                  )}
+                </div>
+
                 <button className="nav-text-bold highlight-btn" onClick={() => navigate('/post-ad')}>Đăng Tin</button>
-                <button className="nav-text-bold logout-btn" onClick={handleLogout}>
-                  Đăng Xuất
-                </button>
               </div>
             )}
           </div>
