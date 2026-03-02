@@ -1,9 +1,10 @@
 package com.ainetsoft.dto;
 
-import com.ainetsoft.model.User; // Import to access the inner classes
+import com.ainetsoft.model.User;
+import com.ainetsoft.model.CartItem; // NEW: Required for the shopping cart items
 import lombok.*;
 import java.time.LocalDate;
-import java.util.List; // Import for the dynamic lists
+import java.util.List;
 import java.util.Set;
 
 @Data
@@ -24,4 +25,7 @@ public class UserResponse {
 
     // NEW: Capability to send Bank Account list back to frontend
     private List<User.BankInfo> bankAccounts;
+
+    // NEW: Capability to send the shopping cart items back to frontend
+    private List<CartItem> cart;
 }

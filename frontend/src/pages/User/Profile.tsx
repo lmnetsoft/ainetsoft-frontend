@@ -40,7 +40,6 @@ const Profile = () => {
           avatarUrl: data.avatarUrl || ''
         });
 
-        // Dynamic Role Check: Trusting the API data over localStorage for security
         if (data.roles && data.roles.includes('SELLER')) {
           setIsSeller(true);
           localStorage.setItem('userRoles', JSON.stringify(data.roles));
@@ -61,7 +60,7 @@ const Profile = () => {
   }, [navigate]);
 
   const handleLogout = () => {
-    localStorage.clear(); // Clean sweep of all old data
+    localStorage.clear();
     navigate('/login');
   };
 
@@ -83,9 +82,18 @@ const Profile = () => {
   };
 
   const handleSave = async () => {
+    // MANDATORY FIELD CHECK: "Họ và Tên" is a must
+    if (!formData.fullName.trim()) {
+      setToastMessage("Vui lòng nhập Họ và Tên.");
+      setShowToast(true);
+      return;
+    }
+
     try {
       setIsSaving(true);
+      // We send the current state of ALL fields including the editable email/phone
       const message = await updateProfile({
+        email: formData.email, 
         fullName: formData.fullName,
         phone: formData.phone,
         gender: formData.gender,
@@ -93,17 +101,16 @@ const Profile = () => {
         avatarUrl: formData.avatarUrl
       });
       
-      // Update local storage for immediate header/sidebar sync
       localStorage.setItem('userName', formData.fullName);
       localStorage.setItem('userAvatar', formData.avatarUrl);
       
       setToastMessage(message || "Cập nhật hồ sơ thành công!");
       setShowToast(true);
 
-      // Trigger global event for Header/Sidebar to update immediately
       window.dispatchEvent(new Event('profileUpdate'));
       
     } catch (error: any) {
+      // Catch backend "Duplicate Email" or "Duplicate Phone" errors here
       setToastMessage(error.message || "Cập nhật hồ sơ thất bại.");
       setShowToast(true);
     } finally {
@@ -142,23 +149,32 @@ const Profile = () => {
 
           <div className="profile-form-container">
             <form className="profile-info-form">
+              
+              {/* EDITABLE EMAIL ROW */}
               <div className="form-row">
                 <label>Email</label>
-                <div className="form-value">
-                  {formData.email || "Chưa thiết lập"}
-                </div>
+                <input 
+                  type="email" 
+                  value={formData.email} 
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  placeholder="Thiết lập địa chỉ email"
+                  className={!formData.email ? "input-highlight" : ""}
+                />
               </div>
 
+              {/* MANDATORY FULL NAME ROW */}
               <div className="form-row">
                 <label>Họ và Tên</label>
                 <input 
                   type="text" 
                   value={formData.fullName} 
                   onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                  placeholder="Nhập họ và tên"
+                  placeholder="Nhập họ và tên (Bắt buộc)"
+                  required
                 />
               </div>
 
+              {/* EDITABLE PHONE ROW */}
               <div className="form-row">
                 <label>Số điện thoại</label>
                 <input 
@@ -169,6 +185,7 @@ const Profile = () => {
                 />
               </div>
 
+              {/* GENDER RADIOS */}
               <div className="form-row">
                 <label>Giới tính</label>
                 <div className="radio-group">
@@ -186,6 +203,7 @@ const Profile = () => {
                 </div>
               </div>
 
+              {/* BIRTHDATE */}
               <div className="form-row">
                 <label>Ngày sinh</label>
                 <input 

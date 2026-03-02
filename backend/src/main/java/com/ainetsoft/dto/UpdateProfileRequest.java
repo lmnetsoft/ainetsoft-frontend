@@ -1,21 +1,25 @@
 package com.ainetsoft.dto;
 
-import com.ainetsoft.model.User; // Required to reference the inner classes
+import com.ainetsoft.model.User;
 import lombok.Data;
 import java.time.LocalDate;
-import java.util.List; // Required for the dynamic lists
+import java.util.List;
 
 @Data
 public class UpdateProfileRequest {
     private String fullName;
+    
+    // NEW: Added to allow phone-registered users to set their email later
+    private String email; 
+    
     private String phone;
     private String gender;
     private LocalDate birthDate;
     private String avatarUrl;
 
-    // NEW: Capture dynamic list data for Address
+    // Capture dynamic list data for Address
     private List<User.AddressInfo> addresses;
 
-    // NEW: Capture dynamic list data for Bank Accounts
+    // Capture dynamic list data for Bank Accounts
     private List<User.BankInfo> bankAccounts;
 }

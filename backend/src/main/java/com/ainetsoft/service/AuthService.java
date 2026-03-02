@@ -2,6 +2,7 @@ package com.ainetsoft.service;
 
 import com.ainetsoft.dto.*;
 import com.ainetsoft.model.User;
+import com.ainetsoft.model.CartItem;
 import com.ainetsoft.model.PasswordResetToken;
 import com.ainetsoft.repository.UserRepository;
 import com.ainetsoft.repository.PasswordResetTokenRepository;
@@ -10,8 +11,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.Random;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -22,14 +22,8 @@ public class AuthService {
     private final AzureCommunicationService azureService;
     private final PasswordEncoder passwordEncoder;
 
-    private void validatePasswordStrength(String password) {
-        if (password == null || password.trim().length() < 8) {
-            throw new RuntimeException("Mật khẩu phải có ít nhất 8 ký tự!");
-        }
-    }
-
     /**
-     * UPDATED: Now includes dynamic Bank and Address lists in the response.
+     * Retrieves the full user profile for the "Tài khoản của tôi" page.
      */
     public UserResponse getUserProfile(String contactInfo) {
         User user = userRepository.findByIdentifier(contactInfo)
@@ -43,21 +37,40 @@ public class AuthService {
                 .birthDate(user.getBirthDate())
                 .avatarUrl(user.getAvatarUrl())
                 .roles(user.getRoles())
-                // NEW: Send lists back to Frontend
                 .addresses(user.getAddresses())
                 .bankAccounts(user.getBankAccounts())
+                .cart(user.getCart())
                 .build();
     }
 
     /**
-     * UPDATED: Saves dynamic Bank and Address data into MongoDB.
+     * UPDATED: Core logic for Profile Updates.
+     * Includes the Phone-to-Email Bridge and Duplicate Email Prevention.
      */
     public String updateProfile(String contactInfo, UpdateProfileRequest request) {
         User user = userRepository.findByIdentifier(contactInfo)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
 
-        // Update core fields
-        user.setFullName(request.getFullName());
+        // 1. Mandatory Name Check (The "Must" field)
+        if (request.getFullName() == null || request.getFullName().isBlank()) {
+            throw new RuntimeException("Họ và Tên không được để trống!");
+        }
+        user.setFullName(request.getFullName().trim());
+
+        // 2. Email Update Safety Logic (Fixes E11000 Duplicate Key Error)
+        if (request.getEmail() != null && !request.getEmail().isBlank()) {
+            String newEmail = request.getEmail().trim().toLowerCase();
+            
+            // Only perform check if the user is actually trying to change/add a new email
+            if (!newEmail.equals(user.getEmail())) {
+                if (userRepository.existsByEmail(newEmail)) {
+                    throw new RuntimeException("Email '" + newEmail + "' đã được sử dụng bởi tài khoản khác!");
+                }
+                user.setEmail(newEmail);
+            }
+        }
+
+        // 3. Update Profile Specifics
         user.setGender(request.getGender());
         user.setBirthDate(request.getBirthDate());
         
@@ -69,7 +82,7 @@ public class AuthService {
             user.setAvatarUrl(request.getAvatarUrl());
         }
 
-        // NEW DYNAMIC CAPABILITY: Update Embedded Bank & Address Lists
+        // 4. Update Dynamic Lists (Addresses and Banks)
         if (request.getAddresses() != null) {
             user.setAddresses(request.getAddresses());
         }
@@ -83,37 +96,65 @@ public class AuthService {
         return "Cập nhật hồ sơ thành công!";
     }
 
-    /* ... login, register, resetPassword methods remain unchanged ... */
-    
-    public String changePassword(String contactInfo, ChangePasswordRequest request) {
-        validatePasswordStrength(request.getNewPassword());
+    /**
+     * Upgrades a user from 'USER' to 'SELLER' role.
+     */
+    public String upgradeToSeller(String contactInfo) {
         User user = userRepository.findByIdentifier(contactInfo)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
 
-        boolean isMatch = passwordEncoder.matches(request.getCurrentPassword().trim(), user.getPassword());
-        if (!isMatch) throw new RuntimeException("Mật khẩu hiện tại không chính xác!");
+        Set<String> roles = user.getRoles();
+        if (roles == null) {
+            roles = new HashSet<>();
+        } else {
+            // Ensure the set is mutable (not a singletonList)
+            roles = new HashSet<>(roles);
+        }
 
-        user.setPassword(passwordEncoder.encode(request.getNewPassword().trim()));
+        if (roles.contains("SELLER")) {
+            return "Bạn đã là Người bán rồi!";
+        }
+
+        roles.add("SELLER");
+        user.setRoles(roles);
         user.setUpdatedAt(LocalDateTime.now());
+        
         userRepository.save(user);
-        return "Mật khẩu đã được thay đổi thành công!";
+        return "Chúc mừng! Bạn đã trở thành Người bán thành công.";
     }
+
+    /**
+     * Synchronizes the Shopping Cart from Frontend to MongoDB.
+     */
+    public String syncCart(String contactInfo, List<CartItem> cartItems) {
+        User user = userRepository.findByIdentifier(contactInfo)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
+        
+        user.setCart(cartItems != null ? cartItems : new ArrayList<>());
+        userRepository.save(user);
+        return "Giỏ hàng đã được đồng bộ.";
+    }
+
+    /* --- AUTHENTICATION & SECURITY METHODS --- */
 
     public String register(RegisterRequest request) {
         validatePasswordStrength(request.getPassword());
-        String email = (request.getEmail() == null || request.getEmail().isBlank()) ? null : request.getEmail();
-        String phone = (request.getPhone() == null || request.getPhone().isBlank()) ? null : request.getPhone();
+        String email = (request.getEmail() == null || request.getEmail().isBlank()) ? null : request.getEmail().trim().toLowerCase();
+        String phone = (request.getPhone() == null || request.getPhone().isBlank()) ? null : request.getPhone().trim();
 
         if (email != null && userRepository.existsByEmail(email)) throw new RuntimeException("Email đã tồn tại!");
         if (phone != null && userRepository.existsByPhone(phone)) throw new RuntimeException("SĐT đã tồn tại!");
 
         User user = User.builder()
-                .email(email).phone(phone)
+                .email(email)
+                .phone(phone)
                 .fullName(request.getFullName())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .roles(Collections.singleton("USER"))
+                .roles(new HashSet<>(Collections.singleton("USER")))
                 .enabled(true)
-                .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now())
+                .cart(new ArrayList<>())
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
                 .build();
 
         userRepository.save(user);
@@ -129,6 +170,21 @@ public class AuthService {
         }
 
         return new LoginResponse(user.getFullName(), user.getRoles(), "Đăng nhập thành công!");
+    }
+
+    public String changePassword(String contactInfo, ChangePasswordRequest request) {
+        validatePasswordStrength(request.getNewPassword());
+        User user = userRepository.findByIdentifier(contactInfo)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
+
+        if (!passwordEncoder.matches(request.getCurrentPassword().trim(), user.getPassword())) {
+            throw new RuntimeException("Mật khẩu hiện tại không chính xác!");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword().trim()));
+        user.setUpdatedAt(LocalDateTime.now());
+        userRepository.save(user);
+        return "Mật khẩu đã được thay đổi thành công!";
     }
 
     public String processForgotPassword(String contactInfo) {
@@ -163,5 +219,11 @@ public class AuthService {
         tokenRepository.delete(token);
 
         return "Mật khẩu của bạn đã được cập nhật thành công.";
+    }
+
+    private void validatePasswordStrength(String password) {
+        if (password == null || password.trim().length() < 8) {
+            throw new RuntimeException("Mật khẩu phải có ít nhất 8 ký tự!");
+        }
     }
 }

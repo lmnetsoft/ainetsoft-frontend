@@ -24,8 +24,12 @@ public class AuthController {
     private final AuthService authService;
     private final SecurityContextRepository securityContextRepository;
 
+    /**
+     * Gets current user info (including cart, addresses, and bank accounts).
+     */
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(Principal principal) {
+        if (principal == null) return ResponseEntity.status(401).body("Phiên đăng nhập hết hạn");
         try {
             return ResponseEntity.ok(authService.getUserProfile(principal.getName()));
         } catch (RuntimeException e) {
@@ -33,8 +37,12 @@ public class AuthController {
         }
     }
 
+    /**
+     * Updates profile info (Handles the Email Bridge for phone users).
+     */
     @PutMapping("/profile")
     public ResponseEntity<String> updateProfile(@RequestBody UpdateProfileRequest request, Principal principal) {
+        if (principal == null) return ResponseEntity.status(401).body("Phiên đăng nhập hết hạn");
         try {
             return ResponseEntity.ok(authService.updateProfile(principal.getName(), request));
         } catch (RuntimeException e) {
@@ -42,8 +50,36 @@ public class AuthController {
         }
     }
 
+    /**
+     * NEW: Syncs the shopping cart from React to MongoDB.
+     * Called whenever cart quantity or items change.
+     */
+    @PostMapping("/sync-cart")
+    public ResponseEntity<String> syncCart(@RequestBody CartSyncRequest request, Principal principal) {
+        if (principal == null) return ResponseEntity.status(401).body("Unauthorized");
+        try {
+            return ResponseEntity.ok(authService.syncCart(principal.getName(), request.getItems()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    /**
+     * NEW: Endpoint to handle the "Become a Seller" role upgrade.
+     */
+    @PostMapping("/upgrade-seller")
+    public ResponseEntity<String> upgradeToSeller(Principal principal) {
+        if (principal == null) return ResponseEntity.status(401).body("Unauthorized");
+        try {
+            return ResponseEntity.ok(authService.upgradeToSeller(principal.getName()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     @PostMapping("/change-password")
     public ResponseEntity<String> changePassword(@RequestBody ChangePasswordRequest request, Principal principal) {
+        if (principal == null) return ResponseEntity.status(401).body("Unauthorized");
         try {
             return ResponseEntity.ok(authService.changePassword(principal.getName(), request));
         } catch (RuntimeException e) {
@@ -66,11 +102,9 @@ public class AuthController {
             HttpServletRequest servletRequest, 
             HttpServletResponse servletResponse) {
         try {
-            // 1. Authenticate using service logic
             LoginResponse response = authService.login(request);
             
-            // 2. CREATE THE SESSION MANUALLY
-            // This links the login to the "change-password" request later by saving the user in the session
+            // Link the session context
             Authentication authentication = new UsernamePasswordAuthenticationToken(
                     request.getContactInfo(), 
                     null, 
@@ -81,7 +115,6 @@ public class AuthController {
             context.setAuthentication(authentication);
             SecurityContextHolder.setContext(context);
             
-            // Save the context into the repository so it persists in the JSESSIONID cookie
             securityContextRepository.saveContext(context, servletRequest, servletResponse);
 
             return ResponseEntity.ok(response);

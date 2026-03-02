@@ -9,6 +9,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList; // Added for initialization
 import java.util.List;
 import java.util.Set;
 
@@ -34,10 +35,14 @@ public class User {
     // Capability to store the user's photo (Base64 or URL)
     private String avatarUrl; 
 
-    // NEW: Dynamic Embedded Address List
+    // --- NEW: THE SHOPPING CART FIELD ---
+    @Builder.Default
+    private List<CartItem> cart = new ArrayList<>();
+
+    // Dynamic Embedded Address List
     private List<AddressInfo> addresses;
 
-    // NEW: Dynamic Embedded Bank Account List
+    // Dynamic Embedded Bank Account List
     private List<BankInfo> bankAccounts;
 
     @Builder.Default

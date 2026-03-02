@@ -7,7 +7,6 @@
 }
 
 /* --- Main Layout Grid --- */
-/* Expanded to 1400px to fix the "too small" issue on wide monitors */
 .profile-container {
   display: flex;
   gap: 30px;
@@ -23,7 +22,7 @@
   background-color: #ffffff;
   border-radius: 4px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-  padding: 40px 50px; /* Increased internal padding for breathing room */
+  padding: 40px 50px;
   min-height: 700px;
 }
 
@@ -51,18 +50,18 @@
 .profile-form-container {
   display: flex;
   padding-top: 20px;
-  gap: 40px; /* Wider gap between the form and the avatar upload */
+  gap: 40px;
 }
 
 .profile-info-form {
-  flex: 3; /* Form takes up roughly 75% of the wide rectangle */
+  flex: 3;
 }
 
 /* --- Form Rows --- */
 .form-row {
   display: flex;
   align-items: center;
-  margin-bottom: 35px; /* More vertical space between fields */
+  margin-bottom: 35px;
   font-size: 0.9375rem;
 }
 
@@ -74,21 +73,43 @@
 }
 
 .form-value {
+  display: flex;
+  align-items: center;
   color: #333;
   font-weight: 500;
 }
 
+/* Added specific style for newly added email field */
+.input-highlight {
+  border: 1px solid #5b67f1 !important; /* Brand Blue border to highlight required action */
+  background-color: #f8faff;
+}
+
+/* Added badge for established/verified email */
+.verified-badge {
+  font-size: 11px;
+  color: #22c55e;
+  background: #f0fdf4;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: 12px;
+  border: 1px solid #dcfce7;
+  font-weight: 600;
+}
+
 .form-row input[type="text"],
+.form-row input[type="email"], /* Added email type to original list */
 .form-row input[type="date"],
 .form-row select {
   flex: 1;
-  max-width: 600px; /* Expanded max-width so inputs look balanced in the wide box */
-  height: 45px;    /* Slightly taller for better touch/click targets */
+  max-width: 600px;
+  height: 45px;
   padding: 0 15px;
   border: 1px solid rgba(0, 0, 0, 0.14);
   border-radius: 4px;
   outline: none;
   transition: border-color 0.2s;
+  color: #333;
 }
 
 .form-row input:focus {
@@ -108,17 +129,10 @@
   gap: 10px;
   cursor: pointer;
   color: #333;
-  margin-right: 0; /* Override the default label margin */
+  margin-right: 0;
 }
 
 /* --- Buttons and Links --- */
-.change-link {
-  color: #05a;
-  text-decoration: underline;
-  margin-left: 10px;
-  font-size: 0.8125rem;
-}
-
 .button-group-profile {
   display: flex;
   gap: 15px;
@@ -141,11 +155,6 @@
 .save-btn:hover {
   background-color: #4451d6;
   transform: translateY(-1px);
-}
-
-.save-btn:disabled {
-  background-color: #cbd5e1;
-  cursor: not-allowed;
 }
 
 .become-seller-btn {
@@ -241,22 +250,10 @@
 }
 
 @media (max-width: 576px) {
-  .button-group-profile {
-    flex-direction: column;
-    width: 100%;
-    align-items: stretch;
-  }
-  
-  .save-btn, .become-seller-btn {
-    width: 100%;
-    text-align: center;
-  }
-  
   .form-row {
     flex-direction: column;
     align-items: flex-start;
   }
-  
   .form-row label {
     text-align: left;
     margin-bottom: 8px;
