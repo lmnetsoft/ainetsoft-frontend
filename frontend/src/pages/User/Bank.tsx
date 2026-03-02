@@ -21,7 +21,6 @@ const Bank = () => {
       try {
         setLoading(true);
         const data = await getUserProfile();
-        // Dynamic: Check if user already has a bank saved in MongoDB
         if (data.bankAccounts && data.bankAccounts.length > 0) {
           setBankData(data.bankAccounts[0]);
         }
@@ -36,13 +35,19 @@ const Bank = () => {
   }, []);
 
   const handleSave = async () => {
+    if (!bankData.bankName || !bankData.accountNumber || !bankData.accountHolder) {
+      setToastMessage("Vui lòng nhập đầy đủ thông tin tài khoản!");
+      setShowToast(true);
+      return;
+    }
+
     try {
       setIsSaving(true);
-      // Dynamic: Send bankAccounts as a list to the Embedded User model
-      const message = await updateProfile({
+      // Sending as a list to match the User model 'List<BankInfo>'
+      await updateProfile({
         bankAccounts: [bankData]
       });
-      setToastMessage(message || "Cập nhật ngân hàng thành công!");
+      setToastMessage("Cập nhật ngân hàng thành công!");
       setShowToast(true);
     } catch (error: any) {
       setToastMessage(error.message || "Cập nhật thất bại.");
@@ -52,7 +57,7 @@ const Bank = () => {
     }
   };
 
-  if (loading) return <div className="profile-wrapper"><div className="container" style={{padding: '100px', textAlign: 'center'}}><h3>Đang tải dữ liệu...</h3></div></div>;
+  if (loading) return <div className="profile-wrapper"><div className="loading-spinner"></div></div>;
 
   return (
     <div className="profile-wrapper">
@@ -62,11 +67,11 @@ const Bank = () => {
         <main className="profile-main-content">
           <div className="content-header">
             <h1>Tài khoản Ngân hàng</h1>
-            <p>Thông tin này dùng để nhận thanh toán và rút tiền về ví</p>
+            <p>Thông tin này giúp bạn rút doanh thu bán hàng về ví cá nhân</p>
           </div>
           <hr className="divider" />
           <div className="profile-form-container">
-            <form className="profile-info-form">
+            <form className="profile-info-form" onSubmit={(e) => e.preventDefault()}>
               <div className="form-row">
                 <label>Tên Ngân hàng</label>
                 <select 
@@ -96,13 +101,13 @@ const Bank = () => {
                   type="text" 
                   value={bankData.accountHolder} 
                   onChange={(e) => setBankData({...bankData, accountHolder: e.target.value.toUpperCase()})}
-                  placeholder="VIET DINH CONG"
+                  placeholder="Họ tên không dấu (ví dụ: NGUYEN VAN A)"
                 />
               </div>
               <div className="form-row">
                 <label></label>
                 <button type="button" className="save-btn" onClick={handleSave} disabled={isSaving}>
-                  {isSaving ? "Đang lưu..." : "Hoàn thành"}
+                  {isSaving ? "Đang lưu..." : "Lưu tài khoản"}
                 </button>
               </div>
             </form>

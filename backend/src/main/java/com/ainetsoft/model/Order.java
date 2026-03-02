@@ -1,9 +1,6 @@
 package com.ainetsoft.model;
 
-import lombok.Data;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
+import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalDateTime;
@@ -17,24 +14,16 @@ import java.util.List;
 public class Order {
     @Id
     private String id;
-    private String userId; // Links to the User's _id
+    private String userId;
+    private String sellerId;
     private List<OrderItem> items;
     private double totalAmount;
-    private String status; // e.g., "PENDING", "SHIPPING", "COMPLETED", "CANCELLED"
-    private String shippingAddress;
-    
+    private User.AddressInfo shippingAddress;
+    private String paymentMethod;
+    @Builder.Default
+    private String status = "PENDING"; 
+    private boolean isFlagged; 
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
-}
-
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-class OrderItem {
-    private String productId;
-    private String productName;
-    private int quantity;
-    private double price;
-    private String imageUrl;
+    private LocalDateTime updatedAt;
 }

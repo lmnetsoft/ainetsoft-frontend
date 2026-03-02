@@ -1,0 +1,121 @@
+.seller-products-wrapper {
+  background-color: #f5f5f5;
+  min-height: 100vh;
+  padding: 20px 0;
+}
+
+.seller-container {
+  display: flex;
+  gap: 20px;
+}
+
+.seller-main-content {
+  flex: 1;
+  background: white;
+  border-radius: 4px;
+  padding: 25px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.seller-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.seller-header h1 { font-size: 1.25rem; font-weight: 500; }
+.seller-header p { font-size: 0.875rem; color: #666; }
+
+.add-product-btn {
+  background: #5b67f1;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.product-filter-tabs {
+  display: flex;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 20px;
+}
+
+.product-filter-tabs .tab {
+  padding: 12px 25px;
+  cursor: pointer;
+  color: #555;
+  font-size: 0.9375rem;
+}
+
+.product-filter-tabs .tab.active {
+  color: #5b67f1;
+  border-bottom: 2px solid #5b67f1;
+  font-weight: 500;
+}
+
+/* Table Styles */
+.product-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.product-table th {
+  background: #fcfcfc;
+  text-align: left;
+  padding: 15px;
+  color: #888;
+  font-weight: 400;
+  font-size: 0.875rem;
+  border-bottom: 1px solid #eee;
+}
+
+.product-table td {
+  padding: 15px;
+  border-bottom: 1px solid #f5f5f5;
+  font-size: 0.875rem;
+}
+
+.product-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.product-cell img {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 2px;
+  border: 1px solid #eee;
+}
+
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-badge.active { background: #e6fffa; color: #2d3748; }
+.status-badge.pending { background: #fffaf0; color: #9c4221; }
+
+.action-links button {
+  background: none;
+  border: none;
+  color: #05a;
+  cursor: pointer;
+  margin-right: 15px;
+  font-size: 0.875rem;
+}
+
+.del-btn { color: #ee4d2d !important; }
+
+.empty-state {
+  text-align: center;
+  padding: 100px 0;
+}
+
+.empty-state img { width: 100px; margin-bottom: 20px; opacity: 0.5; }

@@ -9,10 +9,13 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList; // Added for initialization
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * Core User model representing the 'users' collection in MongoDB.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -22,28 +25,22 @@ public class User {
     @Id
     private String id;
     
-    // Auth & Identity
     private String email;
     private String phone;
     private String password; 
     private String fullName;
-
-    // Profile Fields for "Tài khoản của tôi"
-    private String gender; // Store as "male", "female", or "other"
+    private String gender;
     private LocalDate birthDate; 
-    
-    // Capability to store the user's photo (Base64 or URL)
     private String avatarUrl; 
 
-    // --- NEW: THE SHOPPING CART FIELD ---
     @Builder.Default
     private List<CartItem> cart = new ArrayList<>();
 
-    // Dynamic Embedded Address List
-    private List<AddressInfo> addresses;
+    @Builder.Default
+    private List<AddressInfo> addresses = new ArrayList<>();
 
-    // Dynamic Embedded Bank Account List
-    private List<BankInfo> bankAccounts;
+    @Builder.Default
+    private List<BankInfo> bankAccounts = new ArrayList<>();
 
     @Builder.Default
     private boolean enabled = true;
@@ -56,24 +53,27 @@ public class User {
     @Builder.Default
     private LocalDateTime updatedAt = LocalDateTime.now();
 
-    /**
-     * Helper class for Address information
-     */
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
     public static class AddressInfo {
-        private String province;
-        private String district;
-        private String ward;
-        private String detail;
+        private String receiverName;
+        private String phone;        // Standardized from 'phoneNumber'
+        private String province;     // Tỉnh / Thành phố
+        
+        // REMOVED: private String district; (Quận / Huyện)
+        
+        private String ward;         // Phường / Xã
+        private String detail;       // Standardized from 'detailAddress'
         private boolean isDefault;
+
+        // Required for logic in OrderService/Checkout filters
+        public boolean isDefault() {
+            return isDefault;
+        }
     }
 
-    /**
-     * Helper class for Bank Account information
-     */
     @Data
     @NoArgsConstructor
     @AllArgsConstructor

@@ -1,9 +1,11 @@
+/* src/styles/global.css */
+
 :root {
-  --primary-blue: #002147; /* From Logo.jpg */
+  --primary-blue: #002147;
   --accent-white: #ffffff;
   --bg-gray: #f8f9fa;
   --border-color: #d1d5db;
-  --button-orange: #ff9800; /* Contrast color for "Đăng Tin" */
+  --button-orange: #ff9800;
 }
 
 body {
@@ -12,10 +14,14 @@ body {
   font-family: 'Inter', system-ui, sans-serif;
   background-color: var(--bg-gray);
   color: #333;
+  overflow-x: hidden; /* Prevent horizontal scroll */
 }
 
+/* THE FIX: Unified container for Header, Content, and Footer */
 .container {
-  max-width: 1200px;
+  width: 100%;
+  max-width: 1400px; /* Increased width */
   margin: 0 auto;
-  padding: 0 1rem;
+  padding: 0 20px; /* Consistent side padding */
+  box-sizing: border-box;
 }

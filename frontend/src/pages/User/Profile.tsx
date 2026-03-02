@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import PhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css'; 
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import ToastNotification from '../../components/Toast/ToastNotification'; 
 import { getUserProfile, updateProfile } from '../../services/authService';
@@ -15,13 +17,14 @@ const Profile = () => {
     fullName: '',
     gender: 'other',
     birthDate: '',
-    avatarUrl: ''
+    avatarUrl: '',
+    addresses: [] as any[],
+    bankAccounts: [] as any[]
   });
 
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSeller, setIsSeller] = useState(false);
-
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
@@ -37,17 +40,17 @@ const Profile = () => {
           fullName: data.fullName || '',
           gender: data.gender || 'other',
           birthDate: data.birthDate || '',
-          avatarUrl: data.avatarUrl || ''
+          avatarUrl: data.avatarUrl || '',
+          addresses: data.addresses || [],
+          bankAccounts: data.bankAccounts || []
         });
 
         if (data.roles && data.roles.includes('SELLER')) {
           setIsSeller(true);
-          localStorage.setItem('userRoles', JSON.stringify(data.roles));
         }
-
       } catch (error: any) {
         console.error("Profile load error:", error);
-        if (error.message.includes('401') || error.message.includes('403')) {
+        if (error.message?.includes('401') || error.message?.includes('hết hạn')) {
           handleLogout();
         }
       } finally {
@@ -72,7 +75,6 @@ const Profile = () => {
         setShowToast(true);
         return;
       }
-
       const reader = new FileReader();
       reader.onloadend = () => {
         setFormData(prev => ({ ...prev, avatarUrl: reader.result as string }));
@@ -82,36 +84,51 @@ const Profile = () => {
   };
 
   const handleSave = async () => {
-    // MANDATORY FIELD CHECK: "Họ và Tên" is a must
+    // 1. Mandatory Validations
     if (!formData.fullName.trim()) {
       setToastMessage("Vui lòng nhập Họ và Tên.");
       setShowToast(true);
       return;
     }
 
+    if (!formData.phone || formData.phone.length <= 3) {
+      setToastMessage("Vui lòng nhập số điện thoại.");
+      setShowToast(true);
+      return;
+    }
+
     try {
       setIsSaving(true);
-      // We send the current state of ALL fields including the editable email/phone
-      const message = await updateProfile({
-        email: formData.email, 
-        fullName: formData.fullName,
-        phone: formData.phone,
-        gender: formData.gender,
-        birthDate: formData.birthDate,
-        avatarUrl: formData.avatarUrl
-      });
+
+      // 2. BIDIRECTIONAL SYNC LOGIC
+      // Update all saved addresses to use the new profile phone number
+      const synchronizedAddresses = formData.addresses.map(addr => ({
+        ...addr,
+        phone: formData.phone // Syncing Profile Phone -> Address Phone
+      }));
+
+      const payload = {
+        ...formData,
+        addresses: synchronizedAddresses
+      };
+
+      const message = await updateProfile(payload);
       
       localStorage.setItem('userName', formData.fullName);
       localStorage.setItem('userAvatar', formData.avatarUrl);
       
-      setToastMessage(message || "Cập nhật hồ sơ thành công!");
+      setToastMessage(message || "Cập nhật hồ sơ và địa chỉ thành công!");
       setShowToast(true);
-
       window.dispatchEvent(new Event('profileUpdate'));
       
     } catch (error: any) {
-      // Catch backend "Duplicate Email" or "Duplicate Phone" errors here
-      setToastMessage(error.message || "Cập nhật hồ sơ thất bại.");
+      // 3. FIX: Extract actual message to avoid [object Object]
+      const errorData = error.response?.data;
+      const finalMsg = typeof errorData === 'string' 
+        ? errorData 
+        : (errorData?.message || "Cập nhật hồ sơ thất bại.");
+      
+      setToastMessage(finalMsg);
       setShowToast(true);
     } finally {
       setIsSaving(false);
@@ -121,9 +138,9 @@ const Profile = () => {
   if (loading) {
     return (
       <div className="profile-wrapper">
-        <div className="container profile-container" style={{justifyContent: 'center', alignItems: 'center', height: '400px'}}>
+        <div className="container profile-container-loading">
           <div className="loading-spinner"></div>
-          <p style={{marginLeft: '15px', color: '#666'}}>Đang tải dữ liệu hồ sơ...</p>
+          <p>Đang tải dữ liệu hồ sơ...</p>
         </div>
       </div>
     );
@@ -148,9 +165,8 @@ const Profile = () => {
           <hr className="divider" />
 
           <div className="profile-form-container">
-            <form className="profile-info-form">
+            <form className="profile-info-form" onSubmit={(e) => e.preventDefault()}>
               
-              {/* EDITABLE EMAIL ROW */}
               <div className="form-row">
                 <label>Email</label>
                 <input 
@@ -162,7 +178,6 @@ const Profile = () => {
                 />
               </div>
 
-              {/* MANDATORY FULL NAME ROW */}
               <div className="form-row">
                 <label>Họ và Tên</label>
                 <input 
@@ -170,40 +185,46 @@ const Profile = () => {
                   value={formData.fullName} 
                   onChange={(e) => setFormData({...formData, fullName: e.target.value})}
                   placeholder="Nhập họ và tên (Bắt buộc)"
-                  required
                 />
               </div>
 
-              {/* EDITABLE PHONE ROW */}
+              {/* GLOBAL PHONE INPUT: DEFAULT VIETNAM */}
               <div className="form-row">
                 <label>Số điện thoại</label>
-                <input 
-                  type="text" 
-                  value={formData.phone} 
-                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                  placeholder="Nhập số điện thoại"
-                />
+                <div className="phone-input-wrapper">
+                  <PhoneInput
+                    country={'vn'} 
+                    preferredCountries={['vn']}
+                    value={formData.phone}
+                    onChange={(phone) => setFormData({...formData, phone})}
+                    placeholder="Nhập số điện thoại"
+                    inputStyle={{ width: '100%', height: '40px', fontSize: '14px' }}
+                    containerStyle={{ display: 'block' }}
+                  />
+                </div>
               </div>
 
-              {/* GENDER RADIOS */}
               <div className="form-row">
                 <label>Giới tính</label>
                 <div className="radio-group">
-                  {['male', 'female', 'other'].map((g) => (
-                    <label key={g}>
+                  {[
+                    { val: 'male', label: 'Nam' },
+                    { val: 'female', label: 'Nữ' },
+                    { val: 'other', label: 'Khác' }
+                  ].map((g) => (
+                    <label key={g.val}>
                       <input 
                         type="radio" 
                         name="gender" 
-                        value={g} 
-                        checked={formData.gender === g} 
+                        value={g.val} 
+                        checked={formData.gender === g.val} 
                         onChange={(e) => setFormData({...formData, gender: e.target.value})} 
-                      /> {g === 'male' ? 'Nam' : g === 'female' ? 'Nữ' : 'Khác'}
+                      /> {g.label}
                     </label>
                   ))}
                 </div>
               </div>
 
-              {/* BIRTHDATE */}
               <div className="form-row">
                 <label>Ngày sinh</label>
                 <input 
@@ -216,12 +237,7 @@ const Profile = () => {
               <div className="form-row">
                 <label></label>
                 <div className="button-group-profile">
-                  <button 
-                    type="button" 
-                    className="save-btn" 
-                    onClick={handleSave}
-                    disabled={isSaving}
-                  >
+                  <button type="button" className="save-btn" onClick={handleSave} disabled={isSaving}>
                     {isSaving ? "Đang lưu..." : "Lưu thay đổi"}
                   </button>
 
@@ -229,7 +245,7 @@ const Profile = () => {
                     <button 
                       type="button" 
                       className="become-seller-btn"
-                      onClick={() => navigate('/seller/register')}
+                      onClick={() => navigate('/user/seller-register')}
                     >
                       Trở thành Người bán
                     </button>
@@ -240,27 +256,10 @@ const Profile = () => {
 
             <div className="profile-avatar-section">
               <div className="avatar-preview">
-                <img 
-                  src={formData.avatarUrl || "/src/assets/images/logo_without_text.png"} 
-                  alt="Avatar" 
-                />
+                <img src={formData.avatarUrl || "/logo.svg"} alt="Avatar" />
               </div>
-              
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleImageChange} 
-                accept=".jpg,.jpeg,.png" 
-                style={{ display: 'none' }} 
-              />
-              
-              <button 
-                className="upload-btn" 
-                onClick={() => fileInputRef.current?.click()}
-              >
-                Chọn ảnh
-              </button>
-              
+              <input type="file" ref={fileInputRef} onChange={handleImageChange} accept=".jpg,.jpeg,.png" style={{ display: 'none' }} />
+              <button className="upload-btn" onClick={() => fileInputRef.current?.click()}>Chọn ảnh</button>
               <div className="upload-requirements">
                 <p>Dung lượng file tối đa 1 MB</p>
                 <p>Định dạng: .JPEG, .PNG</p>

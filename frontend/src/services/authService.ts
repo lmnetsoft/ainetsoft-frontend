@@ -1,18 +1,11 @@
-import axios from 'axios';
-
-const API_URL = 'http://localhost:8080/api/auth';
-
-/**
- * MANDATORY: This tells Axios to include the session cookie in every request.
- */
-axios.defaults.withCredentials = true;
+import api from './api'; // Import the pre-configured instance
 
 /**
  * UPDATED: Fetches profile and syncs identity data to localStorage.
  */
 export const getUserProfile = async (): Promise<any> => {
   try {
-    const response = await axios.get(`${API_URL}/me`);
+    const response = await api.get('/auth/me'); // Using relative path
     
     if (response.data) {
       localStorage.setItem('userName', response.data.fullName || 'Thành viên');
@@ -27,13 +20,14 @@ export const getUserProfile = async (): Promise<any> => {
 };
 
 /**
- * UPDATED: Handles dynamic updates for any user field, 
+ * Handles dynamic updates for any user field, 
  * including embedded Bank and Address data.
  */
 export const updateProfile = async (profileData: any): Promise<string> => {
   try {
-    const response = await axios.put(`${API_URL}/profile`, profileData);
+    const response = await api.put('/auth/profile', profileData);
     
+    // Sync UI local storage if basic info changed
     if (profileData.fullName) localStorage.setItem('userName', profileData.fullName);
     if (profileData.avatarUrl) localStorage.setItem('userAvatar', profileData.avatarUrl);
 
@@ -44,13 +38,13 @@ export const updateProfile = async (profileData: any): Promise<string> => {
 };
 
 /**
- * NEW: Request to upgrade the current user to a SELLER role.
+ * Request to upgrade the current user to a SELLER role.
  */
 export const upgradeToSeller = async (): Promise<string> => {
   try {
-    const response = await axios.post(`${API_URL}/upgrade-seller`);
+    const response = await api.post('/auth/upgrade-seller');
     
-    // On success, we should refresh the profile to get the new 'SELLER' role in localStorage
+    // Refresh the profile to get the new 'SELLER' role in localStorage
     await getUserProfile(); 
     
     return response.data;
@@ -61,7 +55,7 @@ export const upgradeToSeller = async (): Promise<string> => {
 
 export const changePasswordUser = async (passwordData: { currentPassword: string, newPassword: string }): Promise<string> => {
   try {
-    const response = await axios.post(`${API_URL}/change-password`, passwordData);
+    const response = await api.post('/auth/change-password', passwordData);
     return response.data;
   } catch (error: any) {
     throw new Error(error.response?.data || "Đổi mật khẩu thất bại.");
@@ -70,17 +64,18 @@ export const changePasswordUser = async (passwordData: { currentPassword: string
 
 export const registerUser = async (userData: any): Promise<string> => {
   try {
-    const response = await axios.post(`${API_URL}/register`, userData);
+    const response = await api.post('/auth/register', userData);
     return response.data;
   } catch (error: any) {
-    throw new Error(error.response?.data || "Máy chủ không phản hồi.");
+    throw new Error(error.response?.data || "Đăng ký thất bại.");
   }
 };
 
 export const loginUser = async (loginData: any): Promise<any> => {
   try {
-    const response = await axios.post(`${API_URL}/login`, loginData);
+    const response = await api.post('/auth/login', loginData);
     
+    // Crucial: Setup initial state
     localStorage.setItem('isAuthenticated', 'true');
     localStorage.setItem('userName', response.data.fullName);
     localStorage.setItem('userAvatar', response.data.avatarUrl || '');
@@ -94,7 +89,7 @@ export const loginUser = async (loginData: any): Promise<any> => {
 
 export const requestPasswordReset = async (contactInfo: string): Promise<string> => {
   try {
-    const response = await axios.post(`${API_URL}/forgot-password`, { contactInfo });
+    const response = await api.post('/auth/forgot-password', { contactInfo });
     return response.data;
   } catch (error: any) {
     throw new Error(error.response?.data || "Không tìm thấy tài khoản.");
@@ -103,7 +98,7 @@ export const requestPasswordReset = async (contactInfo: string): Promise<string>
 
 export const resetPassword = async (resetData: { contactInfo: string, otp: string, newPassword: string }): Promise<string> => {
   try {
-    const response = await axios.post(`${API_URL}/reset-password`, resetData);
+    const response = await api.post('/auth/reset-password', resetData);
     return response.data;
   } catch (error: any) {
     throw new Error(error.response?.data || "Mã OTP không đúng hoặc đã hết hạn.");

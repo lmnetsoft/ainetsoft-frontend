@@ -1,4 +1,4 @@
- mvn clean compile && mvn spring-boot:run
+ mvn clean compile -DskipTests && mvn spring-boot:run
 
 docker run -d \
   --name ainetsoft-mongodb \

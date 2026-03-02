@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import { getMyOrders } from '../../services/orderService';
+import { FaMapMarkerAlt, FaStore, FaTruck } from 'react-icons/fa'; // Added icons for consistency
 import './PurchaseHistory.css';
 
 const PurchaseHistory = () => {
@@ -10,7 +11,7 @@ const PurchaseHistory = () => {
 
   const tabs = [
     { id: 'ALL', label: 'Tất cả' },
-    { id: 'PENDING', label: 'Chờ thanh toán' },
+    { id: 'PENDING', label: 'Chờ xác nhận' }, // Updated label for standard workflow
     { id: 'SHIPPING', label: 'Đang giao' },
     { id: 'COMPLETED', label: 'Hoàn thành' },
     { id: 'CANCELLED', label: 'Đã hủy' }
@@ -52,28 +53,54 @@ const PurchaseHistory = () => {
 
           <div className="order-list">
             {loading ? (
-              <div className="loading-state">Đang tải đơn hàng...</div>
+              <div className="loading-state">
+                 <div className="loading-spinner"></div>
+                 <p>Đang tải đơn hàng...</p>
+              </div>
             ) : orders.length > 0 ? (
               orders.map(order => (
                 <div key={order.id} className="order-card">
                   <div className="order-card-header">
-                    <span className="order-status">{order.status}</span>
-                  </div>
-                  {order.items.map((item: any, idx: number) => (
-                    <div key={idx} className="order-item">
-                      <img src={item.imageUrl || '/src/assets/images/logo_without_text.png'} alt={item.productName} />
-                      <div className="item-info">
-                        <h3>{item.productName}</h3>
-                        <p>x{item.quantity}</p>
-                      </div>
-                      <div className="item-price">
-                        {item.price.toLocaleString()} ₫
-                      </div>
+                    <div className="shop-name">
+                      <FaStore className="icon-orange" />
+                      <span>{order.items?.[0]?.shopName || 'Cửa hàng'}</span>
                     </div>
-                  ))}
+                    <span className="order-status">
+                      <FaTruck /> {order.status}
+                    </span>
+                  </div>
+
+                  <div className="order-card-body">
+                    {order.items.map((item: any, idx: number) => (
+                      <div key={idx} className="order-item">
+                        <img src={item.imageUrl || '/logo.svg'} alt={item.productName} />
+                        <div className="item-info">
+                          <h3>{item.productName}</h3>
+                          <p>x{item.quantity}</p>
+                        </div>
+                        <div className="item-price">
+                          ₫{item.price.toLocaleString()}
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* NEW: Shipping Summary Block to match simplified address */}
+                    {order.shippingAddress && (
+                      <div className="order-shipping-summary">
+                        <FaMapMarkerAlt className="icon-orange" />
+                        <div className="shipping-text">
+                          <strong>Giao đến: {order.shippingAddress.receiverName} ({order.shippingAddress.phone})</strong>
+                          <p>{order.shippingAddress.detail}, {order.shippingAddress.ward}, {order.shippingAddress.province}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="order-card-footer">
-                    <div className="total-label">Thành tiền:</div>
-                    <div className="total-price">{order.totalAmount.toLocaleString()} ₫</div>
+                    <div className="total-row">
+                      <span className="total-label">Thành tiền:</span>
+                      <span className="total-price">₫{order.totalAmount.toLocaleString()}</span>
+                    </div>
                   </div>
                 </div>
               ))

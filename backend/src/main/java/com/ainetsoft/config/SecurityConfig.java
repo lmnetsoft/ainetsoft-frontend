@@ -2,8 +2,12 @@ package com.ainetsoft.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -26,10 +30,6 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    /**
-     * This is the secret sauce: It allows Spring to persist the login session
-     * across different API calls.
-     */
     @Bean
     public SecurityContextRepository securityContextRepository() {
         return new DelegatingSecurityContextRepository(
@@ -38,26 +38,46 @@ public class SecurityConfig {
         );
     }
 
+    /**
+     * Required to manually set authentication in the Controller's login method.
+     */
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+    }
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable()) 
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            // This tells Spring to use the session repository we defined above
+            // Ensure the session-based security context is preserved across requests
             .securityContext(context -> context.securityContextRepository(securityContextRepository()))
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(auth -> auth
+                // Allow pre-flight OPTIONS requests for CORS
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                
+                // PUBLIC ACCESS
                 .requestMatchers(
                     "/api/auth/login", 
                     "/api/auth/register", 
                     "/api/auth/forgot-password", 
                     "/api/auth/reset-password"
                 ).permitAll() 
+                
+                .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll() 
+                
+                // PROTECTED: Requires valid session cookie (JSESSIONID)
                 .requestMatchers(
                     "/api/auth/me", 
                     "/api/auth/profile", 
+                    "/api/auth/sync-cart",
                     "/api/auth/change-password",
+                    "/api/auth/upgrade-seller",
                     "/api/orders/**"
                 ).authenticated() 
+                
                 .anyRequest().authenticated()
             );
 
@@ -69,8 +89,9 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of("http://localhost:5173")); 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
-        config.setAllowCredentials(true); // REQUIRED for sessions/cookies
+        // Fixed: Allow all headers to prevent CORS blocks on custom frontend headers
+        config.setAllowedHeaders(List.of("*"));
+        config.setAllowCredentials(true); 
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

@@ -79,13 +79,13 @@
   font-weight: 500;
 }
 
-/* Added specific style for newly added email field */
+/* Highlight for empty fields that need setup */
 .input-highlight {
-  border: 1px solid #5b67f1 !important; /* Brand Blue border to highlight required action */
+  border: 1px solid #5b67f1 !important; 
   background-color: #f8faff;
 }
 
-/* Added badge for established/verified email */
+/* Badge for verified status */
 .verified-badge {
   font-size: 11px;
   color: #22c55e;
@@ -98,7 +98,7 @@
 }
 
 .form-row input[type="text"],
-.form-row input[type="email"], /* Added email type to original list */
+.form-row input[type="email"],
 .form-row input[type="date"],
 .form-row select {
   flex: 1;
@@ -133,6 +133,14 @@
 }
 
 /* --- Buttons and Links --- */
+.change-link {
+  color: #05a;
+  text-decoration: underline;
+  margin-left: 10px;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
 .button-group-profile {
   display: flex;
   gap: 15px;
@@ -155,6 +163,11 @@
 .save-btn:hover {
   background-color: #4451d6;
   transform: translateY(-1px);
+}
+
+.save-btn:disabled {
+  background-color: #cbd5e1;
+  cursor: not-allowed;
 }
 
 .become-seller-btn {
@@ -250,10 +263,22 @@
 }
 
 @media (max-width: 576px) {
+  .button-group-profile {
+    flex-direction: column;
+    width: 100%;
+    align-items: stretch;
+  }
+  
+  .save-btn, .become-seller-btn {
+    width: 100%;
+    text-align: center;
+  }
+  
   .form-row {
     flex-direction: column;
     align-items: flex-start;
   }
+  
   .form-row label {
     text-align: left;
     margin-bottom: 8px;
