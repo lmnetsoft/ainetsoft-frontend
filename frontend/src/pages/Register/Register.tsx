@@ -26,7 +26,6 @@ const Register = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
-    // We only need to generate the captcha on mount now
     generateCaptcha();
   }, []);
 
@@ -46,6 +45,13 @@ const Register = () => {
     e.preventDefault();
     setFormError('');
 
+    // 1. Password Length Validation (NEW)
+    if (formData.password.length < 8) {
+      setFormError("Mật khẩu phải có ít nhất 8 ký tự!");
+      return;
+    }
+
+    // 2. Password Match Validation
     if (formData.password !== formData.confirmPassword) {
       setFormError("Mật khẩu xác nhận không khớp!");
       return;
@@ -152,7 +158,7 @@ const Register = () => {
           </div>
 
           <div className="form-group">
-            <label>Mật khẩu</label>
+            <label>Mật khẩu (Tối thiểu 8 ký tự)</label>
             <div className="password-input-wrapper">
               <input 
                 type={showPassword ? "text" : "password"} 
@@ -214,7 +220,8 @@ const Register = () => {
         <div className="auth-footer">
           <div className="footer-item">
             Đã có tài khoản? &nbsp;
-            <button className="link-btn" onClick={() => navigate('/login')}>Đăng nhập ngay</button>
+            {/* UNIFIED: Changed from button to a text link style */}
+            <span className="blue-link-text" onClick={() => navigate('/login')}>Đăng nhập ngay</span>
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { FaUserCircle } from 'react-icons/fa'; // NEW: Added for fallback icon
 import './Home.css';
 
 const Home = () => {
@@ -8,6 +9,11 @@ const Home = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   
+  // NEW: State to track user identity
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userName, setUserName] = useState('');
+  const [userAvatar, setUserAvatar] = useState('');
+
   // Grab the search query from the URL
   const searchQuery = searchParams.get('search')?.toLowerCase() || '';
 
@@ -20,10 +26,16 @@ const Home = () => {
     { id: 5, name: "Máy giặt Inverter Samsung", price: "8.500.000đ" },
   ];
 
-  // Update Page Title and handle simulated loading
+  // Update Page Title and handle identity sync
   useEffect(() => {
-    // Check authentication status (Sync with your Auth system)
-    const isAuthenticated = localStorage.getItem('token') !== null;
+    // UPDATED: Sync with the isAuthenticated key used in Header/Profile
+    const authStatus = localStorage.getItem('isAuthenticated') === 'true';
+    setIsLoggedIn(authStatus);
+
+    if (authStatus) {
+      setUserName(localStorage.getItem('userName') || 'Thành viên');
+      setUserAvatar(localStorage.getItem('userAvatar') || '');
+    }
 
     if (searchQuery) {
       setLoading(true);
@@ -31,7 +43,7 @@ const Home = () => {
       const timer = setTimeout(() => setLoading(false), 500); 
       return () => clearTimeout(timer);
     } else {
-      document.title = isAuthenticated 
+      document.title = authStatus 
         ? "AiNetsoft - IT services and products online" 
         : "AiNetsoft - Kết nối công nghệ";
     }
@@ -69,6 +81,18 @@ const Home = () => {
         <div className="hero-banner">
           <h1>AiNetsoft Technology Hub</h1>
           <p>Giải pháp CNTT toàn diện cho doanh nghiệp</p>
+
+          {/* NEW: Personal Welcome Section for logged in users */}
+          {isLoggedIn && !searchQuery && (
+            <div className="home-welcome-box" onClick={() => navigate('/user/profile')}>
+              {userAvatar ? (
+                <img src={userAvatar} className="home-avatar-img" alt="User" />
+              ) : (
+                <FaUserCircle className="home-avatar-icon" />
+              )}
+              <span className="welcome-text">Chào mừng trở lại, <strong>{userName}</strong>!</span>
+            </div>
+          )}
         </div>
       </div>
 

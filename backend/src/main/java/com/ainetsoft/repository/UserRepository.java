@@ -2,25 +2,23 @@ package com.ainetsoft.repository;
 
 import com.ainetsoft.model.User;
 import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
+import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
+@Repository
 public interface UserRepository extends MongoRepository<User, String> {
     
-    /**
-     * Used for registration validation to check if email/phone are taken.
-     */
     Boolean existsByEmail(String email);
     Boolean existsByPhone(String phone);
-    
-    /**
-     * Used for login to find the user by either their email or phone number.
-     * The AuthService will pass the same 'contactInfo' to both parameters.
-     */
-    Optional<User> findByEmailOrPhone(String email, String phone);
 
     /**
-     * Optional: Still useful if you need to fetch a user specifically by one field later.
+     * Finds user by Email, Phone, OR their MongoDB ID.
+     * Use this in the AuthService to ensure Principal matches work correctly.
      */
+    @Query("{ '$or': [ { 'email': ?0 }, { 'phone': ?0 }, { '_id': ?0 } ] }")
+    Optional<User> findByIdentifier(String identifier);
+
     Optional<User> findByEmail(String email);
     Optional<User> findByPhone(String phone);
 }

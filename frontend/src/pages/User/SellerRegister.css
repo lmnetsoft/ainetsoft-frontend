@@ -1,0 +1,91 @@
+.seller-reg-header {
+  text-align: center;
+  padding: 20px 0 40px 0;
+}
+
+.seller-icon {
+  font-size: 3rem;
+  color: #5b67f1;
+  margin-bottom: 15px;
+}
+
+.requirements-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.requirement-item {
+  display: flex;
+  align-items: center;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #efefef;
+  background: #fafafa;
+  transition: all 0.3s ease;
+}
+
+.requirement-item.done {
+  border-left: 5px solid #22c55e;
+  background: #f0fdf4;
+}
+
+.requirement-item.pending {
+  border-left: 5px solid #eab308;
+  background: #fefce8;
+}
+
+.req-status {
+  font-size: 1.5rem;
+  margin-right: 20px;
+}
+
+.done .req-status { color: #22c55e; }
+.pending .req-status { color: #eab308; }
+
+.req-text { flex: 1; }
+.req-text h3 { font-size: 1rem; margin-bottom: 4px; color: #333; }
+.req-text p { font-size: 0.875rem; color: #666; }
+
+.req-fix-btn {
+  padding: 8px 20px;
+  background: white;
+  border: 1px solid #5b67f1;
+  color: #5b67f1;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.req-fix-btn:hover {
+  background: #5b67f1;
+  color: white;
+}
+
+.seller-action-zone {
+  margin-top: 50px;
+  text-align: center;
+  padding: 30px;
+  border-top: 1px solid #efefef;
+}
+
+.final-upgrade-btn {
+  margin-top: 15px;
+  background: #5b67f1;
+  color: white;
+  padding: 15px 60px;
+  border: none;
+  border-radius: 4px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(91, 103, 241, 0.2);
+}
+
+.final-upgrade-btn.disabled {
+  background: #cbd5e1;
+  box-shadow: none;
+  cursor: not-allowed;
+}

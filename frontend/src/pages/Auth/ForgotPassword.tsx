@@ -23,7 +23,6 @@ const ForgotPassword = () => {
     newPassword: ''
   });
 
-  // OTP Timer Logic: Kept this useEffect as it is required for the countdown
   useEffect(() => {
     let interval: any;
     if (timer > 0) {
@@ -60,6 +59,13 @@ const ForgotPassword = () => {
   const handleResetSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    // 1. VALIDATION: Check for 8-character minimum (New Requirement)
+    if (contactData.newPassword.length < 8) {
+      setError("Mật khẩu mới phải có ít nhất 8 ký tự!");
+      return;
+    }
+
     setLoading(true);
 
     const finalContact = inputMode === 'phone' ? contactData.phone : contactData.email;
@@ -158,7 +164,8 @@ const ForgotPassword = () => {
               </div>
 
               <div className="form-group">
-                <label>Mật khẩu mới</label>
+                {/* Updated Label for clarity */}
+                <label>Mật khẩu mới (Tối thiểu 8 ký tự)</label>
                 <div className="password-input-wrapper">
                   <input 
                     type={showPassword ? "text" : "password"} 
@@ -200,7 +207,8 @@ const ForgotPassword = () => {
         )}
         
         <div className="auth-footer">
-          <button className="link-btn" onClick={() => navigate('/login')}>Quay lại Đăng nhập</button>
+          {/* Unified style: Using a text link instead of a plain button */}
+          <span className="blue-link" onClick={() => navigate('/login')}>Quay lại Đăng nhập</span>
         </div>
       </div>
     </div>

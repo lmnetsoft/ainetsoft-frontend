@@ -10,9 +10,16 @@ import ChatBubble from './components/ChatBubble/ChatBubble';
 import TitleManager from './components/TitleManager'; 
 import ContentPage from './pages/Content/ContentPage';
 
-// User Account Components
+// User Account Components - Pointing directly to the files
 import Profile from './pages/User/Profile';
-import ChangePassword from './pages/User/ChangePassword'; // Added this import
+import ChangePassword from './pages/User/ChangePassword';
+import Bank from './pages/User/Bank';
+import Address from './pages/User/Address';
+import Purchase from './pages/User/Purchase';
+import SellerRegister from './pages/User/SellerRegister'; // NEW: Import for Seller Enrollment
+
+// Shop Components - Corrected to match your folder structure
+import Cart from './pages/Cart/Cart';
 
 import './App.css';
 
@@ -20,9 +27,7 @@ function App() {
   return (
     <Router>
       <div className="app-wrapper">
-        {/* Automatically handles tab titles for every route */}
         <TitleManager />
-        
         <Header />
         
         <main className="content">
@@ -33,14 +38,18 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             
-            {/* User Account Routes (Tài khoản của tôi) */}
-            <Route path="/user/profile" element={<Profile />} />
-            <Route path="/user/password" element={<ChangePassword />} /> {/* Updated from Profile to ChangePassword */}
+            {/* Shopping Routes */}
+            <Route path="/cart" element={<Cart />} />
             
-            {/* Remaining Placeholder routes */}
-            <Route path="/user/bank" element={<Profile />} /> 
-            <Route path="/user/address" element={<Profile />} />
-            <Route path="/user/purchase" element={<Profile />} />
+            {/* User Account Routes */}
+            <Route path="/user/profile" element={<Profile />} />
+            <Route path="/user/password" element={<ChangePassword />} /> 
+            <Route path="/user/bank" element={<Bank />} /> 
+            <Route path="/user/address" element={<Address />} />
+            <Route path="/user/purchase" element={<Purchase />} />
+
+            {/* Seller Enrollment Routes */}
+            <Route path="/seller/register" element={<SellerRegister />} /> {/* NEW: Route added */}
 
             {/* Static Content Routes */}
             <Route path="/regulations" element={<ContentPage type="regulations" />} />

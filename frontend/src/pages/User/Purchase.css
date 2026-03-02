@@ -1,0 +1,51 @@
+.purchase-tabs-container {
+  display: flex;
+  background: #fff;
+  border-bottom: 1px solid #efefef;
+  margin-bottom: 15px;
+  border-radius: 4px 4px 0 0;
+}
+
+.purchase-tab-item {
+  flex: 1;
+  padding: 16px 0;
+  text-align: center;
+  cursor: pointer;
+  font-size: 14px;
+  color: #555;
+  transition: all 0.2s;
+  border-bottom: 2px solid transparent;
+}
+
+.purchase-tab-item:hover {
+  color: #ee4d2d;
+}
+
+.purchase-tab-item.active {
+  color: #ee4d2d;
+  border-bottom: 2px solid #ee4d2d;
+}
+
+.purchase-list-content {
+  min-height: 500px;
+  background: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 0 0 4px 4px;
+}
+
+.purchase-empty-state {
+  text-align: center;
+}
+
+.purchase-empty-img {
+  width: 100px;
+  opacity: 0.2;
+  margin-bottom: 15px;
+}
+
+.purchase-empty-state p {
+  color: #888;
+  font-size: 15px;
+}

@@ -25,3 +25,5 @@ db.users.deleteOne({ email: "" });
 db.users.find()
 
 show collections
+
+db.users.find({email: "lmnetsoft@yahoo.com.vn"}, {bankAccounts: 1, addresses: 1}).pretty()

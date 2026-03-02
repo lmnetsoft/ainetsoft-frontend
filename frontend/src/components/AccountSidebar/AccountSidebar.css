@@ -20,6 +20,7 @@
   border-radius: 50%;
   overflow: hidden;
   border: 1px solid rgba(0,0,0,0.09);
+  background-color: #fff; /* Ensures no transparency issues */
 }
 
 .sidebar-avatar-wrapper img {
@@ -72,6 +73,7 @@
   text-decoration: none;
   cursor: pointer;
   padding: 5px 0;
+  transition: color 0.2s;
 }
 
 .menu-icon {
@@ -93,7 +95,7 @@
   text-decoration: none;
   color: rgba(0,0,0,0.65);
   font-size: 14px;
-  transition: color 0.2s;
+  transition: all 0.2s;
 }
 
 .menu-sub-items a:hover,
@@ -102,6 +104,48 @@
   font-weight: 500;
 }
 
-.single-item:hover {
+/* Standalone Items (Purchase, Seller Invite) */
+.single-item:hover, 
+.single-item.active {
   color: #f15b5b;
+}
+
+/* --- NEW: Seller Section Styles --- */
+
+/* Invitation to become a seller */
+.seller-invite {
+  margin-top: 5px;
+  transition: transform 0.2s;
+}
+
+.seller-invite:hover {
+  transform: translateX(3px); /* Subtle slide effect */
+}
+
+.seller-invite span {
+  color: #ee4d2d; /* Special orange for seller highlights */
+  font-weight: 500;
+}
+
+/* Full Seller Channel Menu Section */
+.seller-menu-section {
+  margin-top: 10px;
+  padding-top: 15px;
+  border-top: 1px dotted #ddd;
+}
+
+.seller-title {
+  color: #ee4d2d !important;
+  font-weight: bold;
+}
+
+.seller-icon {
+  color: #ee4d2d;
+}
+
+/* Sub-items specifically for the Seller Channel */
+.seller-menu-section .menu-sub-items a:hover,
+.seller-menu-section .menu-sub-items a.active {
+  color: #ee4d2d;
+  font-weight: 600;
 }

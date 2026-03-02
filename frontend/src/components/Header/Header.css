@@ -51,6 +51,7 @@
 
 .blue-link:hover {
   color: #4451d6;
+  text-decoration: underline;
 }
 
 .top-nav span {
@@ -115,15 +116,22 @@
   flex-shrink: 0;
 }
 
-.logged-in-controls {
+.auth-buttons, .logged-in-controls {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 12px;
+}
+
+/* Separator for login/register text links */
+.auth-buttons .separator {
+  color: #cbd5e1;
+  font-weight: 300;
+  font-size: 14px;
 }
 
 /* Updated User Account Trigger */
 .user-account-wrapper {
-  position: relative; /* Anchor for the absolute dropdown */
+  position: relative; 
   display: flex;
   align-items: center;
   padding: 8px 12px;
@@ -189,7 +197,7 @@
 .dropdown-menu li:hover {
   background-color: #f8fafc;
   color: #5b67f1;
-  padding-left: 25px; /* Subtle slide-in effect on hover */
+  padding-left: 25px; 
 }
 
 .dropdown-menu li.logout-item {
@@ -202,13 +210,7 @@
   background-color: #fef2f2;
 }
 
-/* Animations */
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* Global Navigation Text & Buttons */
+/* Global Navigation Text */
 .nav-text-bold {
   text-decoration: none;
   background: none;
@@ -218,19 +220,67 @@
   color: #1e293b;
   cursor: pointer;
   white-space: nowrap;
+  transition: all 0.2s;
 }
 
-.register-btn, .highlight-btn {
-  background-color: #5b67f1;
-  color: #ffffff !important;
-  padding: 10px 24px;
-  border-radius: 8px;
+/* Unified style: converted buttons to text links */
+.register-btn, .highlight-btn, .login-btn-plain {
+  background: none;
+  padding: 0;
   border: none;
-  transition: background 0.2s;
+  border-radius: 0;
+  color: #5b67f1 !important;
+  font-weight: 700;
+  cursor: pointer;
 }
 
-.register-btn:hover, .highlight-btn:hover {
-  background-color: #4451d6;
+.register-btn:hover, .highlight-btn:hover, .login-btn-plain:hover {
+  background: none;
+  color: #4451d6 !important;
+  text-decoration: underline;
+}
+
+/* Cart Icon */
+.cart-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 8px;
+  transition: transform 0.2s ease;
+}
+
+.cart-wrapper:hover {
+  transform: scale(1.1);
+}
+
+.cart-main-icon {
+  font-size: 24px;
+  color: #5b67f1;
+}
+
+.cart-badge {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  background-color: #ee4d2d;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 10px;
+  border: 2px solid #ffffff; 
+  min-width: 12px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+/* Animations */
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Responsive adjustments */
@@ -240,6 +290,62 @@
     margin-right: 15px;
   }
   .top-nav {
-    display: none; /* Hide secondary links on smaller screens */
+    display: none; 
   }
+}
+
+.user-avatar-small-header {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 5px;
+  border: 1px solid #ddd;
+}
+
+/* Notification wrapper layout */
+.notification-wrapper {
+  display: flex;
+  align-items: center;
+  position: relative;
+  cursor: pointer;
+  padding: 0 5px;
+  transition: opacity 0.2s;
+}
+
+.notification-wrapper:hover {
+  opacity: 0.8;
+}
+
+.nav-icon {
+  margin-right: 5px;
+  font-size: 14px;
+  color: #5b67f1; /* Matches your blue-link color */
+}
+
+/* The Notification Badge */
+.notification-badge {
+  position: absolute;
+  top: -8px;
+  left: 8px; /* Positioned slightly above and to the right of the Bell icon */
+  background-color: #ee4d2d; /* "Shopee" Orange-Red */
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: 1px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Re-adjusting the cart badge for consistency */
+.cart-badge {
+  background-color: #ee4d2d;
+  color: white;
+  border: 1px solid white;
 }

@@ -1,31 +1,37 @@
-/* Page Background */
+/* --- Page Background --- */
 .profile-wrapper {
   background-color: #f5f5f5; /* Light gray background like Shopee */
   min-height: calc(100vh - 150px);
-  padding: 20px 0;
+  padding: 20px 0 80px 0;
+  width: 100%;
 }
 
-/* Main Layout Grid */
+/* --- Main Layout Grid --- */
+/* Expanded to 1400px to fix the "too small" issue on wide monitors */
 .profile-container {
   display: flex;
-  gap: 27px; /* Space between sidebar and main content */
+  gap: 30px;
   align-items: flex-start;
+  max-width: 1400px; 
+  margin: 0 auto;
+  width: 98%;
 }
 
-/* Main Content Card */
+/* --- Main Content Card (The Rectangle) --- */
 .profile-main-content {
   flex: 1;
   background-color: #ffffff;
-  border-radius: 2px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  padding: 30px;
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  padding: 40px 50px; /* Increased internal padding for breathing room */
+  min-height: 700px;
 }
 
 .content-header h1 {
-  font-size: 1.125rem;
+  font-size: 1.25rem;
   font-weight: 500;
   color: #333;
-  margin: 0 0 5px 0;
+  margin: 0 0 8px 0;
   text-transform: capitalize;
 }
 
@@ -38,33 +44,33 @@
 .divider {
   border: 0;
   border-top: 1px solid #efefef;
-  margin: 20px 0;
+  margin: 25px 0;
 }
 
-/* Inner Form Layout */
+/* --- Inner Form Layout --- */
 .profile-form-container {
   display: flex;
-  padding-top: 10px;
+  padding-top: 20px;
+  gap: 40px; /* Wider gap between the form and the avatar upload */
 }
 
 .profile-info-form {
-  flex: 1;
-  padding-right: 50px;
+  flex: 3; /* Form takes up roughly 75% of the wide rectangle */
 }
 
-/* Form Rows */
+/* --- Form Rows --- */
 .form-row {
   display: flex;
   align-items: center;
-  margin-bottom: 30px;
-  font-size: 0.875rem;
+  margin-bottom: 35px; /* More vertical space between fields */
+  font-size: 0.9375rem;
 }
 
 .form-row label {
   width: 20%;
   text-align: right;
-  color: rgba(85, 85, 85, 0.8);
-  margin-right: 20px;
+  color: rgba(85, 85, 85, 0.9);
+  margin-right: 30px;
 }
 
 .form-value {
@@ -73,13 +79,14 @@
 }
 
 .form-row input[type="text"],
-.form-row input[type="date"] {
+.form-row input[type="date"],
+.form-row select {
   flex: 1;
-  max-width: 400px;
-  height: 40px;
-  padding: 0 12px;
+  max-width: 600px; /* Expanded max-width so inputs look balanced in the wide box */
+  height: 45px;    /* Slightly taller for better touch/click targets */
+  padding: 0 15px;
   border: 1px solid rgba(0, 0, 0, 0.14);
-  border-radius: 2px;
+  border-radius: 4px;
   outline: none;
   transition: border-color 0.2s;
 }
@@ -88,22 +95,23 @@
   border-color: #5b67f1;
 }
 
-/* Radio Group */
+/* --- Radio Group --- */
 .radio-group {
   display: flex;
-  gap: 20px;
+  gap: 25px;
 }
 
 .radio-group label {
   width: auto;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   cursor: pointer;
   color: #333;
+  margin-right: 0; /* Override the default label margin */
 }
 
-/* Buttons and Links */
+/* --- Buttons and Links --- */
 .change-link {
   color: #05a;
   text-decoration: underline;
@@ -111,35 +119,67 @@
   font-size: 0.8125rem;
 }
 
+.button-group-profile {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  margin-top: 10px;
+}
+
 .save-btn {
   background-color: #5b67f1;
   color: white;
-  padding: 10px 20px;
+  padding: 12px 35px;
   border: none;
-  border-radius: 2px;
-  min-width: 70px;
+  border-radius: 4px;
+  min-width: 140px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
 }
 
 .save-btn:hover {
   background-color: #4451d6;
+  transform: translateY(-1px);
 }
 
-/* Avatar Section */
+.save-btn:disabled {
+  background-color: #cbd5e1;
+  cursor: not-allowed;
+}
+
+.become-seller-btn {
+  background-color: transparent;
+  color: #5b67f1;
+  border: 1px solid #5b67f1;
+  padding: 11px 25px;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+}
+
+.become-seller-btn:hover {
+  background-color: #f8fafc;
+  color: #4451d6;
+  border-color: #4451d6;
+}
+
+/* --- Avatar Section --- */
 .profile-avatar-section {
-  width: 280px;
+  flex: 1.2; 
   border-left: 1px solid #efefef;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-left: 30px;
+  padding-left: 40px;
 }
 
 .avatar-preview {
-  width: 100px;
-  height: 100px;
-  margin: 20px 0;
+  width: 120px;
+  height: 120px;
+  margin: 30px 0;
 }
 
 .avatar-preview img {
@@ -147,6 +187,7 @@
   height: 100%;
   border-radius: 50%;
   object-fit: cover;
+  border: 1px solid #efefef;
 }
 
 .upload-btn {
@@ -154,25 +195,38 @@
   border: 1px solid rgba(0, 0, 0, 0.09);
   box-shadow: 0 1px 1px 0 rgba(0, 0, 0, 0.03);
   color: #555;
-  padding: 8px 16px;
+  padding: 10px 20px;
   cursor: pointer;
-  margin-bottom: 15px;
+  margin-bottom: 20px;
+  border-radius: 2px;
 }
 
 .upload-requirements p {
   font-size: 0.875rem;
   color: #999;
-  margin: 4px 0;
+  margin: 6px 0;
   text-align: center;
 }
 
-/* Responsive */
+/* --- Responsive Layout --- */
+@media (max-width: 1200px) {
+  .profile-container {
+    max-width: 950px;
+  }
+}
+
 @media (max-width: 992px) {
   .profile-container {
     flex-direction: column;
+    padding: 0 15px;
+    width: 100%;
   }
   .profile-form-container {
     flex-direction: column-reverse;
+  }
+  .profile-main-content {
+    padding: 25px;
+    width: 100%;
   }
   .profile-avatar-section {
     width: 100%;
@@ -183,5 +237,29 @@
   }
   .form-row label {
     width: 30%;
+  }
+}
+
+@media (max-width: 576px) {
+  .button-group-profile {
+    flex-direction: column;
+    width: 100%;
+    align-items: stretch;
+  }
+  
+  .save-btn, .become-seller-btn {
+    width: 100%;
+    text-align: center;
+  }
+  
+  .form-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .form-row label {
+    text-align: left;
+    margin-bottom: 8px;
+    width: 100%;
   }
 }
