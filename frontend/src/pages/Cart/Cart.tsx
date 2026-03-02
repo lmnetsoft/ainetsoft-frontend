@@ -8,7 +8,7 @@ const Cart = () => {
   const [cartItems, setCartItems] = useState([
     { 
       id: 'p1', 
-      name: 'Sản phẩm mẫu 01 - Công nghệ AiNetsoft AI Giải pháp tối ưu doanh nghiệp', 
+      name: 'Sản phẩm mẫu 01 - Giải pháp công nghệ cao cấp AiNetsoft 2026', 
       price: 250000, 
       quantity: 1, 
       image: '/src/assets/images/logo_without_text.png', 
@@ -16,7 +16,7 @@ const Cart = () => {
     },
     { 
       id: 'p2', 
-      name: 'Sản phẩm mẫu 02 - Phần mềm quản lý kho chuyên sâu v3.0', 
+      name: 'Sản phẩm mẫu 02 - Phần mềm quản lý doanh nghiệp thông minh', 
       price: 1200000, 
       quantity: 1, 
       image: '/src/assets/images/logo_without_text.png', 
@@ -35,7 +35,7 @@ const Cart = () => {
   };
 
   const removeItem = (id: string) => {
-    if(window.confirm("Bạn có chắc chắn muốn xóa sản phẩm này?")) {
+    if(window.confirm("Xóa sản phẩm khỏi giỏ hàng?")) {
       setCartItems(prev => prev.filter(item => item.id !== id));
     }
   };
@@ -57,7 +57,7 @@ const Cart = () => {
           </div>
         ) : (
           <div className="cart-main-content">
-            {/* Header Labels - Fixed Widths */}
+            {/* Header Labels mapped to your Grid Layout */}
             <div className="cart-header-grid">
               <div className="col-product">Sản phẩm</div>
               <div className="col-unit-price">Đơn giá</div>
@@ -69,35 +69,39 @@ const Cart = () => {
             <div className="cart-items-list">
               {cartItems.map(item => (
                 <div key={item.id} className="cart-item-row">
-                  {/* Product Column - Flexible */}
+                  {/* Product Details Column */}
                   <div className="col-product product-details">
                     <img src={item.image} alt={item.name} className="cart-item-img" />
                     <div className="product-info-text">
                       <p className="product-name">{item.name}</p>
-                      <span className="shop-name-tag"><FaStore /> {item.shopName}</span>
+                      <span className="shop-name-tag"><FaStore size={12} /> {item.shopName}</span>
                     </div>
                   </div>
 
-                  {/* Unit Price - Fixed */}
+                  {/* Unit Price Column */}
                   <div className="col-unit-price price-text">
                     ₫{item.price.toLocaleString('vi-VN')}
                   </div>
 
-                  {/* Quantity - Fixed */}
+                  {/* Quantity Fix Column */}
                   <div className="col-quantity">
                     <div className="qty-selector">
-                      <button onClick={() => updateQuantity(item.id, -1)} className="qty-btn"><FaMinus /></button>
-                      <input type="text" value={item.quantity} readOnly className="qty-input" />
-                      <button onClick={() => updateQuantity(item.id, 1)} className="qty-btn"><FaPlus /></button>
+                      <button className="qty-btn" onClick={() => updateQuantity(item.id, -1)}>
+                        <FaMinus />
+                      </button>
+                      <input type="text" className="qty-input" value={item.quantity} readOnly />
+                      <button className="qty-btn" onClick={() => updateQuantity(item.id, 1)}>
+                        <FaPlus />
+                      </button>
                     </div>
                   </div>
 
-                  {/* Total Price - Fixed */}
+                  {/* Total Price Column */}
                   <div className="col-total-price total-text">
                     ₫{(item.price * item.quantity).toLocaleString('vi-VN')}
                   </div>
 
-                  {/* Actions - Fixed */}
+                  {/* Actions Column */}
                   <div className="col-actions">
                     <button className="delete-item-btn" onClick={() => removeItem(item.id)}>
                       <FaTrashAlt />
@@ -107,7 +111,7 @@ const Cart = () => {
               ))}
             </div>
 
-            {/* Sticky Checkout Footer */}
+            {/* Sticky Footer Summary */}
             <div className="cart-checkout-footer">
               <div className="footer-left">
                 <span>Tổng số sản phẩm: <strong>{cartItems.length}</strong></span>

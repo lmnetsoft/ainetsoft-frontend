@@ -1,8 +1,11 @@
+/* ==========================================================================
+   1. GLOBAL HEADER & LAYOUT
+   ========================================================================== */
 .main-header {
   background-color: #ffffff;
   padding: 15px 0;
   border-bottom: 1px solid #e2e8f0;
-  position: sticky; /* Keep header at top during scroll */
+  position: sticky;
   top: 0;
   z-index: 1000;
 }
@@ -11,33 +14,6 @@
   max-width: 1400px;
   margin: 0 auto;
   padding: 0 20px;
-}
-
-/* Row 1: Top Bar */
-.top-bar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  margin-bottom: 25px;
-}
-
-.logo-small {
-  height: 50px;
-  width: auto;
-  margin-right: 40px; 
-  flex-shrink: 0;
-}
-
-.logo-small img {
-  height: 100%;
-  width: auto;
-  object-fit: contain;
-}
-
-.top-nav {
-  display: flex;
-  align-items: center;
-  gap: 15px;
 }
 
 .blue-link {
@@ -54,12 +30,44 @@
   text-decoration: underline;
 }
 
+/* ==========================================================================
+   2. ROW 1: TOP BAR (Logo & Secondary Nav)
+   ========================================================================== */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: 25px;
+}
+
+.logo-small {
+  height: 50px;
+  width: auto;
+  margin-right: 40px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.logo-small img {
+  height: 100%;
+  width: auto;
+  object-fit: contain;
+}
+
+.top-nav {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
 .top-nav span {
   color: #cbd5e1;
   font-weight: 300;
 }
 
-/* Row 2: Action Bar */
+/* ==========================================================================
+   3. ROW 2: ACTION BAR (Search & User Actions)
+   ========================================================================== */
 .action-bar {
   display: flex;
   align-items: center;
@@ -67,9 +75,9 @@
   width: 100%;
 }
 
-/* Search Box */
+/* --- Search Box --- */
 .search-wrapper {
-  display: flex; 
+  display: flex;
   align-items: center;
   flex: 0 1 700px;
   height: 44px;
@@ -105,10 +113,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.2s;
 }
 
-/* User Actions & Dropdown Logic */
+/* --- User Actions Container --- */
 .user-actions {
   display: flex;
   align-items: center;
@@ -122,16 +129,11 @@
   gap: 12px;
 }
 
-/* Separator for login/register text links */
-.auth-buttons .separator {
-  color: #cbd5e1;
-  font-weight: 300;
-  font-size: 14px;
-}
-
-/* Updated User Account Trigger */
+/* ==========================================================================
+   4. DROPDOWN MENU & HOVER LOGIC
+   ========================================================================== */
 .user-account-wrapper {
-  position: relative; 
+  position: relative;
   display: flex;
   align-items: center;
   padding: 8px 12px;
@@ -153,36 +155,46 @@
   font-size: 15px;
 }
 
-.user-avatar-icon {
-  font-size: 20px;
-  color: #5b67f1;
+.user-avatar-small-header {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 5px;
+  border: 1px solid #ddd;
 }
 
-.chevron-icon {
-  font-size: 12px;
-  color: #94a3b8;
-  transition: transform 0.3s ease;
-}
-
-.chevron-icon.rotate {
-  transform: rotate(180deg);
-}
-
-/* The Sub-Menu (Dropdown) */
 .dropdown-menu {
   position: absolute;
   top: calc(100% + 5px);
   right: 0;
   background-color: #ffffff;
-  min-width: 180px;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  min-width: 200px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
   border-radius: 8px;
   border: 1px solid #e2e8f0;
   list-style: none;
   padding: 8px 0;
   margin: 0;
   z-index: 1100;
+  display: none;
   animation: slideDown 0.2s ease-out;
+}
+
+/* THE INVISIBLE BRIDGE: Fills the gap to keep hover active */
+.dropdown-menu::before {
+  content: "";
+  position: absolute;
+  top: -20px;
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: transparent;
+  display: block;
+}
+
+.user-account-wrapper:hover .dropdown-menu {
+  display: block;
 }
 
 .dropdown-menu li {
@@ -197,7 +209,7 @@
 .dropdown-menu li:hover {
   background-color: #f8fafc;
   color: #5b67f1;
-  padding-left: 25px; 
+  padding-left: 25px;
 }
 
 .dropdown-menu li.logout-item {
@@ -210,142 +222,88 @@
   background-color: #fef2f2;
 }
 
-/* Global Navigation Text */
-.nav-text-bold {
-  text-decoration: none;
-  background: none;
-  border: none;
-  font-size: 15px;
-  font-weight: 700;
-  color: #1e293b;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.2s;
-}
-
-/* Unified style: converted buttons to text links */
-.register-btn, .highlight-btn, .login-btn-plain {
-  background: none;
-  padding: 0;
-  border: none;
-  border-radius: 0;
-  color: #5b67f1 !important;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.register-btn:hover, .highlight-btn:hover, .login-btn-plain:hover {
-  background: none;
-  color: #4451d6 !important;
-  text-decoration: underline;
-}
-
-/* Cart Icon */
-.cart-wrapper {
+/* ==========================================================================
+   5. ICONS & BADGES (Cart & Notifications)
+   ========================================================================== */
+.cart-wrapper, .notification-wrapper {
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
   cursor: pointer;
-  padding: 8px;
-  transition: transform 0.2s ease;
+  transition: all 0.2s;
 }
 
-.cart-wrapper:hover {
-  transform: scale(1.1);
-}
+.cart-wrapper { padding: 8px; }
+.cart-wrapper:hover { transform: scale(1.1); }
 
 .cart-main-icon {
   font-size: 24px;
   color: #5b67f1;
 }
 
-.cart-badge {
+/* Common badge style */
+.cart-badge, .notification-badge {
   position: absolute;
-  top: 0;
-  right: -2px;
   background-color: #ee4d2d;
   color: white;
-  font-size: 11px;
   font-weight: 700;
-  line-height: 1;
-  padding: 3px 6px;
-  border-radius: 10px;
-  border: 2px solid #ffffff; 
-  min-width: 12px;
-  text-align: center;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  border: 1px solid white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* Animations */
+.cart-badge {
+  top: 0;
+  right: -2px;
+  font-size: 11px;
+  padding: 3px 6px;
+  border-radius: 10px;
+  min-width: 12px;
+}
+
+.notification-badge {
+  top: -8px;
+  left: 8px;
+  font-size: 10px;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  padding: 0 4px;
+}
+
+/* ==========================================================================
+   6. MISCELLANEOUS & RESPONSIVE
+   ========================================================================== */
+.nav-text-bold {
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+  cursor: pointer;
+}
+
+/* Merged redundant button classes */
+.register-btn, .highlight-btn, .login-btn-plain {
+  background: none;
+  border: none;
+  color: #5b67f1 !important;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.register-btn:hover, .highlight-btn:hover, .login-btn-plain:hover {
+  color: #4451d6 !important;
+  text-decoration: underline;
+}
+
 @keyframes slideDown {
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Responsive adjustments */
 @media (max-width: 992px) {
-  .search-wrapper {
-    flex: 1;
-    margin-right: 15px;
-  }
-  .top-nav {
-    display: none; 
-  }
-}
-
-.user-avatar-small-header {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  object-fit: cover;
-  margin-right: 5px;
-  border: 1px solid #ddd;
-}
-
-/* Notification wrapper layout */
-.notification-wrapper {
-  display: flex;
-  align-items: center;
-  position: relative;
-  cursor: pointer;
-  padding: 0 5px;
-  transition: opacity 0.2s;
-}
-
-.notification-wrapper:hover {
-  opacity: 0.8;
-}
-
-.nav-icon {
-  margin-right: 5px;
-  font-size: 14px;
-  color: #5b67f1; /* Matches your blue-link color */
-}
-
-/* The Notification Badge */
-.notification-badge {
-  position: absolute;
-  top: -8px;
-  left: 8px; /* Positioned slightly above and to the right of the Bell icon */
-  background-color: #ee4d2d; /* "Shopee" Orange-Red */
-  color: white;
-  font-size: 10px;
-  font-weight: bold;
-  min-width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 4px;
-  border: 1px solid white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* Re-adjusting the cart badge for consistency */
-.cart-badge {
-  background-color: #ee4d2d;
-  color: white;
-  border: 1px solid white;
+  .search-wrapper { flex: 1; margin-right: 15px; }
+  .top-nav { display: none; }
 }
