@@ -1,42 +1,35 @@
 import api from './api';
 
-/**
- * Fetches orders for the current user, optionally filtered by status.
- * Session cookie is handled automatically by the 'api' instance.
- */
+const extractError = (error: any, defaultMsg: string): string => {
+  const errorData = error.response?.data;
+  if (typeof errorData === 'string') return errorData;
+  if (errorData && typeof errorData === 'object') return errorData.message || errorData.error || defaultMsg;
+  return error.message || defaultMsg;
+};
+
 export const getMyOrders = async (status: string = 'ALL'): Promise<any[]> => {
   try {
-    const response = await api.get('/orders/me', {
-      params: { status }
-    });
+    const response = await api.get('/orders/me', { params: { status } });
     return response.data;
   } catch (error: any) {
-    throw new Error(error.response?.data || "Không thể tải danh sách đơn hàng.");
+    throw new Error(extractError(error, "Không thể tải danh sách đơn hàng."));
   }
 };
 
-/**
- * NEW: The actual checkout function.
- * Connects to OrderService.placeOrder(contactInfo, paymentMethod)
- */
 export const placeOrder = async (paymentMethod: string): Promise<any> => {
   try {
     const response = await api.post('/orders/checkout', { paymentMethod });
     return response.data;
   } catch (error: any) {
-    // This will catch "Giỏ hàng trống" or "Hết hàng" errors from the backend
-    throw new Error(error.response?.data || "Đặt hàng thất bại.");
+    throw new Error(extractError(error, "Đặt hàng thất bại."));
   }
 };
 
-/**
- * SELLER FEATURE: Fetches orders containing the seller's products.
- */
 export const getSellerOrders = async (shopName: string): Promise<any[]> => {
   try {
     const response = await api.get(`/orders/seller/${shopName}`);
     return response.data;
   } catch (error: any) {
-    throw new Error(error.response?.data || "Không thể tải đơn hàng của shop.");
+    throw new Error(extractError(error, "Không thể tải đơn hàng của shop."));
   }
 };

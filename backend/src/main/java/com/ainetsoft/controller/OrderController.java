@@ -19,9 +19,9 @@ public class OrderController {
 
     /**
      * CORE: Place a new order using the items currently in the user's cart.
-     * Expected JSON: { "paymentMethod": "COD" }
+     * UPDATED MAPPING: /api/orders/checkout
      */
-    @PostMapping("/place")
+    @PostMapping("/checkout")
     public ResponseEntity<?> placeOrder(@RequestBody Map<String, String> request, Principal principal) {
         if (principal == null) return ResponseEntity.status(401).body("Phiên đăng nhập hết hạn");
         
@@ -35,10 +35,10 @@ public class OrderController {
     }
 
     /**
-     * FRONTEND SYNC: Retrieves user's purchase history for the "My Purchase" page.
-     * Supports tabs: ALL, PENDING, SHIPPING, COMPLETED, CANCELLED.
+     * FIXED MAPPING: Renamed from /my-purchase to /me
+     * Matches Postman: http://localhost:8080/api/orders/me
      */
-    @GetMapping("/my-purchase")
+    @GetMapping("/me")
     public ResponseEntity<?> getMyOrders(
             @RequestParam(required = false, defaultValue = "ALL") String status, 
             Principal principal) {
@@ -48,7 +48,8 @@ public class OrderController {
             List<Order> orders = orderService.getUserOrders(principal.getName(), status);
             return ResponseEntity.ok(orders);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            // Returns the actual error message as a string to avoid [object Object]
+            return ResponseEntity.internalServerError().body(e.getMessage());
         }
     }
 
@@ -58,7 +59,6 @@ public class OrderController {
     @GetMapping("/seller/incoming")
     public ResponseEntity<?> getSellerOrders(@RequestParam String shopName, Principal principal) {
         if (principal == null) return ResponseEntity.status(401).body("Unauthorized");
-        // Future: Check if the user actually owns this shopName for security
         return ResponseEntity.ok(orderService.getOrdersForSeller(shopName));
     }
 }
