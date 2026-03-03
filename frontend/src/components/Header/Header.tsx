@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaSearch, FaUserCircle, FaChevronDown, FaShoppingCart, FaBell } from 'react-icons/fa'; // Added FaBell
+import { FaSearch, FaUserCircle, FaChevronDown, FaShoppingCart, FaBell } from 'react-icons/fa';
 import logoImg from '../../assets/images/logo.png';
 import './Header.css';
 
@@ -12,8 +12,11 @@ const Header = () => {
   const [userAvatar, setUserAvatar] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [cartCount, setCartCount] = useState(3);
-  const [notificationCount, setNotificationCount] = useState(5); // NEW: Mock notification count
+  const [notificationCount, setNotificationCount] = useState(5);
 
+  /**
+   * Reads data from LocalStorage and updates component state.
+   */
   const loadUserData = () => {
     const authStatus = localStorage.getItem('isAuthenticated');
     const storedName = localStorage.getItem('userName');
@@ -33,6 +36,11 @@ const Header = () => {
 
   useEffect(() => {
     loadUserData();
+    
+    /**
+     * LISTENERS: Ensures the Header avatar updates immediately when 
+     * authService.ts or Profile.tsx trigger the update event.
+     */
     window.addEventListener('storage', loadUserData);
     window.addEventListener('profileUpdate', loadUserData);
 
@@ -82,7 +90,6 @@ const Header = () => {
               </>
             )}
             
-            {/* UPDATED: Notification Link with Icon and Badge */}
             <div className="notification-wrapper" onClick={() => navigate('/notifications')}>
               <FaBell className="nav-icon" />
               <span className="blue-link">Thông báo</span>
@@ -132,6 +139,7 @@ const Header = () => {
                   onMouseLeave={() => setShowDropdown(false)}
                 >
                   <div className="user-profile-trigger">
+                    {/* AVATAR FIX: This will now re-render immediately */}
                     {userAvatar ? (
                       <img 
                         src={userAvatar} 

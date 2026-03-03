@@ -1,17 +1,16 @@
-import React, { useState } from 'react'; // Removed useEffect
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
-import 'react-phone-number-input/style.css'; 
+import 'react-phone-number-input/style.css';
 import './Auth.css';
-import { loginUser } from '../../services/authService';
+import { loginUser, getUserProfile } from '../../services/authService';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  
-  // Logic: Success message passed from registration page
-  const [successMessage, setSuccessMessage] = useState(location.state?.successMessage || '');
+
+  const [successMessage] = useState(location.state?.successMessage || '');
   const [inputMode, setInputMode] = useState<'phone' | 'email'>('phone');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -27,15 +26,20 @@ const Login = () => {
     setLoginData({ ...loginData, [e.target.name]: e.target.value });
   };
 
+  /**
+   * FIXED LOGIN FLOW:
+   * 1. loginUser: Authenticates and sets the session cookie.
+   * 2. getUserProfile: Fetches the avatar immediately while still on the Login page.
+   * 3. Navigate: Move to Home only when localStorage is fully populated.
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setSuccessMessage('');
     setLoading(true);
 
     if (inputMode === 'phone') {
       if (!loginData.phone || !isValidPhoneNumber(loginData.phone)) {
-        setError("Số điện thoại không hợp lệ!");
+        setError('Số điện thoại không hợp lệ!');
         setLoading(false);
         return;
       }
@@ -47,17 +51,19 @@ const Login = () => {
         password: loginData.password
       };
 
-      const userData = await loginUser(payload);
-      
-      localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('userName', userData.fullName); 
-      localStorage.setItem('userContact', payload.contactInfo);
-      
-      // Redirect to home upon successful login
-      window.location.href = '/';
+      // Step 1: Login creates the JSESSIONID session
+      await loginUser(payload);
+
+      // Step 2: Immediately fetch full profile to get the avatar URL
+      // This function MUST dispatch the 'profileUpdate' event as we discussed.
+      await getUserProfile();
+
+      // Step 3: Navigate after profile and avatar are synced
+      navigate('/');
 
     } catch (err: any) {
-      setError(err.message);
+      // Handles [object Object] by using the standardized error message from service
+      setError(err?.message || 'Đăng nhập thất bại!');
     } finally {
       setLoading(false);
     }
@@ -69,31 +75,22 @@ const Login = () => {
         <h2>Đăng Nhập</h2>
         <p className="auth-subtitle">Chào mừng bạn quay lại với AiNetsoft</p>
 
-        {successMessage && (
-          <div className="success-alert">
-            {successMessage}
-          </div>
-        )}
-        
-        {error && (
-          <div className="error-alert">
-            {error}
-          </div>
-        )}
+        {successMessage && <div className="success-alert">{successMessage}</div>}
+        {error && <div className="error-alert">{error}</div>}
 
         <form onSubmit={handleSubmit}>
           <div className="contact-type-selector">
-            <button 
-              type="button" 
-              className={inputMode === 'phone' ? 'active' : ''} 
-              onClick={() => { setInputMode('phone'); setError(''); setSuccessMessage(''); }}
+            <button
+              type="button"
+              className={inputMode === 'phone' ? 'active' : ''}
+              onClick={() => setInputMode('phone')}
             >
               Số điện thoại
             </button>
-            <button 
-              type="button" 
-              className={inputMode === 'email' ? 'active' : ''} 
-              onClick={() => { setInputMode('email'); setError(''); setSuccessMessage(''); }}
+            <button
+              type="button"
+              className={inputMode === 'email' ? 'active' : ''}
+              onClick={() => setInputMode('email')}
             >
               Email
             </button>
@@ -107,7 +104,9 @@ const Login = () => {
                   international
                   defaultCountry="VN"
                   value={loginData.phone}
-                  onChange={(val) => setLoginData({...loginData, phone: val || ''})}
+                  onChange={(val) =>
+                    setLoginData({ ...loginData, phone: val || '' })
+                  }
                   placeholder="Nhập số điện thoại"
                   className="custom-phone-input"
                 />
@@ -115,12 +114,12 @@ const Login = () => {
             ) : (
               <>
                 <label>Địa chỉ Email</label>
-                <input 
-                  type="email" 
+                <input
+                  type="email"
                   name="email"
-                  placeholder="example@gmail.com" 
-                  onChange={handleInputChange} 
-                  required 
+                  placeholder="example@gmail.com"
+                  onChange={handleInputChange}
+                  required
                 />
               </>
             )}
@@ -129,16 +128,16 @@ const Login = () => {
           <div className="form-group">
             <label>Mật khẩu</label>
             <div className="password-input-wrapper">
-              <input 
-                type={showPassword ? "text" : "password"} 
-                name="password" 
-                placeholder="••••••••" 
-                onChange={handleInputChange} 
-                required 
+              <input
+                type={showPassword ? 'text' : 'password'}
+                name="password"
+                placeholder="••••••••"
+                onChange={handleInputChange}
+                required
                 className="password-input"
               />
-              <button 
-                type="button" 
+              <button
+                type="button"
                 className="toggle-password-btn"
                 onClick={() => setShowPassword(!showPassword)}
               >
@@ -151,20 +150,6 @@ const Login = () => {
             {loading ? 'Đang xác thực...' : 'Đăng Nhập'}
           </button>
         </form>
-
-        <div className="auth-footer">
-          <div className="footer-item">
-            Chưa có tài khoản? &nbsp; 
-            <button className="link-btn" onClick={() => navigate('/register')}>
-              Đăng ký ngay
-            </button>
-          </div>
-          <div className="footer-item" style={{ marginTop: '10px' }}>
-            <button className="link-btn" onClick={() => navigate('/forgot-password')}>
-              Quên mật khẩu?
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );
