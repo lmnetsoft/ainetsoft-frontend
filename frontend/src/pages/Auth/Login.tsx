@@ -3,8 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import 'react-phone-number-input/style.css'; 
 import './Auth.css';
-import { loginUser, getUserProfile } from '../../services/authService'; // added getUserProfile
-import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import { loginUser, getUserProfile } from '../../services/authService'; 
+import { FaEye, FaEyeSlash, FaGoogle, FaFacebook } from 'react-icons/fa';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -24,6 +24,16 @@ const Login = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setLoginData({ ...loginData, [e.target.name]: e.target.value });
+  };
+
+  // NEW: Social Login Handlers
+  // In a Monolith, we redirect the browser to the Backend's OAuth2 start URL
+  const handleGoogleLogin = () => {
+    window.location.href = 'http://localhost:8080/oauth2/authorization/google';
+  };
+
+  const handleFacebookLogin = () => {
+    window.location.href = 'http://localhost:8080/oauth2/authorization/facebook';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -52,10 +62,7 @@ const Login = () => {
       localStorage.setItem('userName', userData.fullName); 
       localStorage.setItem('userContact', payload.contactInfo);
 
-      // 🔥 FIX: Immediately fetch full profile to get avatar + roles
       await getUserProfile();
-
-      // Redirect to home upon successful login
       window.location.href = '/';
 
     } catch (err: any) {
@@ -71,17 +78,8 @@ const Login = () => {
         <h2>Đăng Nhập</h2>
         <p className="auth-subtitle">Chào mừng bạn quay lại với AiNetsoft</p>
 
-        {successMessage && (
-          <div className="success-alert">
-            {successMessage}
-          </div>
-        )}
-        
-        {error && (
-          <div className="error-alert">
-            {error}
-          </div>
-        )}
+        {successMessage && <div className="success-alert">{successMessage}</div>}
+        {error && <div className="error-alert">{error}</div>}
 
         <form onSubmit={handleSubmit}>
           <div className="contact-type-selector">
@@ -153,6 +151,20 @@ const Login = () => {
             {loading ? 'Đang xác thực...' : 'Đăng Nhập'}
           </button>
         </form>
+
+        {/* NEW: Social Login Section */}
+        <div className="social-divider">
+          <span>Hoặc đăng nhập bằng</span>
+        </div>
+
+        <div className="social-login-group">
+          <button className="social-btn google" onClick={handleGoogleLogin}>
+            <FaGoogle /> Google
+          </button>
+          <button className="social-btn facebook" onClick={handleFacebookLogin}>
+            <FaFacebook /> Facebook
+          </button>
+        </div>
 
         <div className="auth-footer">
           <div className="footer-item">

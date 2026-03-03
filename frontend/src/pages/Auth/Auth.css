@@ -254,3 +254,49 @@
 .link-btn:hover {
   text-decoration: underline;
 }
+
+.social-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 20px 0;
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.social-divider::before, .social-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #ddd;
+}
+
+.social-divider span {
+  padding: 0 10px;
+}
+
+.social-login-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.social-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-weight: 500;
+}
+
+.social-btn:hover {
+  background: #f8f8f8;
+}
+
+.social-btn.google svg { color: #DB4437; }
+.social-btn.facebook svg { color: #4267B2; }

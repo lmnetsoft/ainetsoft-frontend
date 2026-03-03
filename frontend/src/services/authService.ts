@@ -1,18 +1,14 @@
-import api from './api'; // Import the pre-configured instance
+import api from './api'; 
 
 /**
  * HELPER: Standardizes error extraction to prevent [object Object] bug.
- * Extracts the human-readable 'message' from the backend response.
  */
 const extractError = (error: any, defaultMsg: string): string => {
   const errorData = error.response?.data;
   
-  if (typeof errorData === 'string') {
-    return errorData;
-  }
+  if (typeof errorData === 'string') return errorData;
   
   if (errorData && typeof errorData === 'object') {
-    // Extracts 'message' field common in your Spring Boot backend
     return errorData.message || errorData.error || defaultMsg;
   }
 
@@ -20,43 +16,56 @@ const extractError = (error: any, defaultMsg: string): string => {
 };
 
 /**
- * UPDATED: Fetches profile and syncs identity data to localStorage.
- * Dispatches 'profileUpdate' so the Header avatar shows up on first load.
+ * UPDATED: Fetches profile and syncs identity data.
  */
 export const getUserProfile = async (): Promise<any> => {
   try {
     const response = await api.get('/auth/me'); 
     
     if (response.data) {
+      localStorage.setItem('isAuthenticated', 'true');
       localStorage.setItem('userName', response.data.fullName || 'Thành viên');
       localStorage.setItem('userAvatar', response.data.avatarUrl || '');
       localStorage.setItem('userRoles', JSON.stringify(response.data.roles || []));
 
-      // TRIGGER: Tell the Header to refresh the photo immediately
       window.dispatchEvent(new Event('profileUpdate'));
     }
     
     return response.data;
   } catch (error: any) {
+    if (error.response?.status === 401) {
+        localStorage.clear();
+        window.dispatchEvent(new Event('profileUpdate'));
+    }
     throw new Error(extractError(error, "Không thể tải thông tin cá nhân."));
   }
 };
 
 /**
- * Handles dynamic updates for any user field.
- * Dispatches 'profileUpdate' so UI components sync instantly.
+ * NEW: Informs backend to destroy the JSESSIONID and clears local state.
+ */
+export const logoutUser = async (): Promise<void> => {
+  try {
+    await api.post('/auth/logout');
+  } catch (err) {
+    console.error("Backend logout failed, clearing local state anyway.");
+  } finally {
+    localStorage.clear();
+    window.dispatchEvent(new Event('profileUpdate'));
+  }
+};
+
+/**
+ * Handles profile updates and triggers a UI refresh.
  */
 export const updateProfile = async (profileData: any): Promise<string> => {
   try {
     const response = await api.put('/auth/profile', profileData);
     
-    // Sync UI local storage if basic info changed
     if (profileData.fullName) localStorage.setItem('userName', profileData.fullName);
     if (profileData.avatarUrl) localStorage.setItem('userAvatar', profileData.avatarUrl);
 
-    // TRIGGER: Tell Header to refresh
     window.dispatchEvent(new Event('profileUpdate'));
-
     return response.data;
   } catch (error: any) {
     throw new Error(extractError(error, "Cập nhật hồ sơ thất bại."));
@@ -64,21 +73,8 @@ export const updateProfile = async (profileData: any): Promise<string> => {
 };
 
 /**
- * Request to upgrade the current user to a SELLER role.
+ * FIXED: Added back the missing changePasswordUser required by ChangePassword.tsx
  */
-export const upgradeToSeller = async (): Promise<string> => {
-  try {
-    const response = await api.post('/auth/upgrade-seller');
-    
-    // Refresh the profile to get the new 'SELLER' role in localStorage
-    await getUserProfile(); 
-    
-    return response.data;
-  } catch (error: any) {
-    throw new Error(extractError(error, "Nâng cấp tài khoản Người bán thất bại."));
-  }
-};
-
 export const changePasswordUser = async (passwordData: { currentPassword: string, newPassword: string }): Promise<string> => {
   try {
     const response = await api.post('/auth/change-password', passwordData);
@@ -88,19 +84,6 @@ export const changePasswordUser = async (passwordData: { currentPassword: string
   }
 };
 
-export const registerUser = async (userData: any): Promise<string> => {
-  try {
-    const response = await api.post('/auth/register', userData);
-    return response.data;
-  } catch (error: any) {
-    throw new Error(extractError(error, "Đăng ký thất bại."));
-  }
-};
-
-/**
- * Standardizes Login and ensures immediate UI sync.
- * This fixes the missing avatar on the Home page right after login.
- */
 export const loginUser = async (loginData: any): Promise<any> => {
   try {
     const response = await api.post('/auth/login', loginData);
@@ -110,12 +93,19 @@ export const loginUser = async (loginData: any): Promise<any> => {
     localStorage.setItem('userAvatar', response.data.avatarUrl || '');
     localStorage.setItem('userRoles', JSON.stringify(response.data.roles || []));
     
-    // TRIGGER: Force Header to show the avatar right after login
     window.dispatchEvent(new Event('profileUpdate'));
-    
     return response.data;
   } catch (error: any) {
     throw new Error(extractError(error, "Đăng nhập thất bại."));
+  }
+};
+
+export const registerUser = async (userData: any): Promise<string> => {
+  try {
+    const response = await api.post('/auth/register', userData);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(extractError(error, "Đăng ký thất bại."));
   }
 };
 
@@ -134,5 +124,15 @@ export const resetPassword = async (resetData: { contactInfo: string, otp: strin
     return response.data;
   } catch (error: any) {
     throw new Error(extractError(error, "Mã OTP không đúng hoặc đã hết hạn."));
+  }
+};
+
+export const upgradeToSeller = async (): Promise<string> => {
+  try {
+    const response = await api.post('/auth/upgrade-seller');
+    await getUserProfile(); 
+    return response.data;
+  } catch (error: any) {
+    throw new Error(extractError(error, "Nâng cấp Người bán thất bại."));
   }
 };

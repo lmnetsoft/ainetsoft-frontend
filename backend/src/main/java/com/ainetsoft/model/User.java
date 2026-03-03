@@ -15,6 +15,7 @@ import java.util.Set;
 
 /**
  * Core User model representing the 'users' collection in MongoDB.
+ * Updated to support OAuth2 Social Login providers.
  */
 @Data
 @NoArgsConstructor
@@ -27,11 +28,16 @@ public class User {
     
     private String email;
     private String phone;
-    private String password; 
+    private String password; // Will be null for social users
     private String fullName;
     private String gender;
     private LocalDate birthDate; 
     private String avatarUrl; 
+
+    // NEW: Fields to track how the user authenticated
+    @Builder.Default
+    private AuthProvider provider = AuthProvider.LOCAL; // Default for standard registration
+    private String providerId; // Unique ID from Google/Facebook
 
     @Builder.Default
     private List<CartItem> cart = new ArrayList<>();
@@ -53,22 +59,27 @@ public class User {
     @Builder.Default
     private LocalDateTime updatedAt = LocalDateTime.now();
 
+    /**
+     * Enum to identify the source of the user account.
+     */
+    public enum AuthProvider {
+        LOCAL,   // Registered via Phone/Email + Password
+        GOOGLE,  // Logged in via Google
+        FACEBOOK // Logged in via Facebook
+    }
+
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
     public static class AddressInfo {
         private String receiverName;
-        private String phone;        // Standardized from 'phoneNumber'
-        private String province;     // Tỉnh / Thành phố
-        
-        // REMOVED: private String district; (Quận / Huyện)
-        
-        private String ward;         // Phường / Xã
-        private String detail;       // Standardized from 'detailAddress'
+        private String phone;
+        private String province; 
+        private String ward;
+        private String detail;
         private boolean isDefault;
 
-        // Required for logic in OrderService/Checkout filters
         public boolean isDefault() {
             return isDefault;
         }

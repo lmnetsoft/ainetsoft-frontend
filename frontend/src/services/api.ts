@@ -17,10 +17,18 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      console.warn("Session expired or unauthorized. Redirecting to login...");
-      // Optional: Clear local storage and redirect if session is dead
-      // localStorage.clear();
-      // window.location.href = '/login';
+      console.warn("Session expired or unauthorized. Cleaning up...");
+      
+      // Clear local state so the UI stays in sync with the backend
+      localStorage.clear();
+      
+      // Trigger the profileUpdate event we set up in Header.tsx and authService.ts
+      window.dispatchEvent(new Event('profileUpdate'));
+      
+      // Optional: Redirect only if we aren't already on the login page
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

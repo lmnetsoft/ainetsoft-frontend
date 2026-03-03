@@ -4,7 +4,8 @@ import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css'; 
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import ToastNotification from '../../components/Toast/ToastNotification'; 
-import { getUserProfile, updateProfile } from '../../services/authService';
+import { getUserProfile, updateProfile, logoutUser } from '../../services/authService'; // UPDATED: Added logoutUser
+import { FaUserCircle } from 'react-icons/fa'; // NEW: For fallback icon
 import './Profile.css';
 
 const Profile = () => {
@@ -50,9 +51,9 @@ const Profile = () => {
         }
       } catch (error: any) {
         console.error("Profile load error:", error);
-        if (error.message?.includes('401') || error.message?.includes('hết hạn')) {
-          handleLogout();
-        }
+        // If session expired, the authService already clears storage, 
+        // we just need to send them to login.
+        navigate('/login');
       } finally {
         setLoading(false);
       }
@@ -62,8 +63,8 @@ const Profile = () => {
     document.title = "Hồ sơ của tôi | AiNetsoft";
   }, [navigate]);
 
-  const handleLogout = () => {
-    localStorage.clear();
+  const handleLogout = async () => {
+    await logoutUser(); // Cleanly invalidates JSESSIONID on backend
     navigate('/login');
   };
 
@@ -84,27 +85,19 @@ const Profile = () => {
   };
 
   const handleSave = async () => {
-    // 1. Mandatory Validations
     if (!formData.fullName.trim()) {
       setToastMessage("Vui lòng nhập Họ và Tên.");
       setShowToast(true);
       return;
     }
 
-    if (!formData.phone || formData.phone.length <= 3) {
-      setToastMessage("Vui lòng nhập số điện thoại.");
-      setShowToast(true);
-      return;
-    }
-
     try {
       setIsSaving(true);
-
-      // 2. BIDIRECTIONAL SYNC LOGIC
-      // Update all saved addresses to use the new profile phone number
+      
+      // Syncing Profile Phone -> Address Phone for data consistency
       const synchronizedAddresses = formData.addresses.map(addr => ({
         ...addr,
-        phone: formData.phone // Syncing Profile Phone -> Address Phone
+        phone: formData.phone 
       }));
 
       const payload = {
@@ -112,23 +105,14 @@ const Profile = () => {
         addresses: synchronizedAddresses
       };
 
+      // updateProfile in authService.ts already handles localStorage and profileUpdate event
       const message = await updateProfile(payload);
       
-      localStorage.setItem('userName', formData.fullName);
-      localStorage.setItem('userAvatar', formData.avatarUrl);
-      
-      setToastMessage(message || "Cập nhật hồ sơ và địa chỉ thành công!");
+      setToastMessage(message || "Cập nhật hồ sơ thành công!");
       setShowToast(true);
-      window.dispatchEvent(new Event('profileUpdate'));
       
     } catch (error: any) {
-      // 3. FIX: Extract actual message to avoid [object Object]
-      const errorData = error.response?.data;
-      const finalMsg = typeof errorData === 'string' 
-        ? errorData 
-        : (errorData?.message || "Cập nhật hồ sơ thất bại.");
-      
-      setToastMessage(finalMsg);
+      setToastMessage(error.message || "Cập nhật hồ sơ thất bại.");
       setShowToast(true);
     } finally {
       setIsSaving(false);
@@ -166,15 +150,13 @@ const Profile = () => {
 
           <div className="profile-form-container">
             <form className="profile-info-form" onSubmit={(e) => e.preventDefault()}>
-              
               <div className="form-row">
                 <label>Email</label>
                 <input 
                   type="email" 
                   value={formData.email} 
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  placeholder="Thiết lập địa chỉ email"
-                  className={!formData.email ? "input-highlight" : ""}
+                  disabled // Recommended: Keep email locked for social users
+                  className="input-disabled"
                 />
               </div>
 
@@ -184,11 +166,10 @@ const Profile = () => {
                   type="text" 
                   value={formData.fullName} 
                   onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                  placeholder="Nhập họ và tên (Bắt buộc)"
+                  placeholder="Nhập họ và tên"
                 />
               </div>
 
-              {/* GLOBAL PHONE INPUT: DEFAULT VIETNAM */}
               <div className="form-row">
                 <label>Số điện thoại</label>
                 <div className="phone-input-wrapper">
@@ -197,9 +178,7 @@ const Profile = () => {
                     preferredCountries={['vn']}
                     value={formData.phone}
                     onChange={(phone) => setFormData({...formData, phone})}
-                    placeholder="Nhập số điện thoại"
-                    inputStyle={{ width: '100%', height: '40px', fontSize: '14px' }}
-                    containerStyle={{ display: 'block' }}
+                    inputStyle={{ width: '100%', height: '40px' }}
                   />
                 </div>
               </div>
@@ -207,19 +186,15 @@ const Profile = () => {
               <div className="form-row">
                 <label>Giới tính</label>
                 <div className="radio-group">
-                  {[
-                    { val: 'male', label: 'Nam' },
-                    { val: 'female', label: 'Nữ' },
-                    { val: 'other', label: 'Khác' }
-                  ].map((g) => (
-                    <label key={g.val}>
+                  {['male', 'female', 'other'].map((g) => (
+                    <label key={g}>
                       <input 
                         type="radio" 
                         name="gender" 
-                        value={g.val} 
-                        checked={formData.gender === g.val} 
+                        value={g} 
+                        checked={formData.gender === g} 
                         onChange={(e) => setFormData({...formData, gender: e.target.value})} 
-                      /> {g.label}
+                      /> {g === 'male' ? 'Nam' : g === 'female' ? 'Nữ' : 'Khác'}
                     </label>
                   ))}
                 </div>
@@ -245,7 +220,7 @@ const Profile = () => {
                     <button 
                       type="button" 
                       className="become-seller-btn"
-                      onClick={() => navigate('/user/seller-register')}
+                      onClick={() => navigate('/seller/register')}
                     >
                       Trở thành Người bán
                     </button>
@@ -256,7 +231,18 @@ const Profile = () => {
 
             <div className="profile-avatar-section">
               <div className="avatar-preview">
-                <img src={formData.avatarUrl || "/logo.svg"} alt="Avatar" />
+                {formData.avatarUrl ? (
+                   <img 
+                    src={formData.avatarUrl} 
+                    alt="Avatar" 
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = ""; 
+                      setFormData(prev => ({ ...prev, avatarUrl: "" }));
+                    }}
+                   />
+                ) : (
+                  <FaUserCircle className="avatar-fallback-icon" />
+                )}
               </div>
               <input type="file" ref={fileInputRef} onChange={handleImageChange} accept=".jpg,.jpeg,.png" style={{ display: 'none' }} />
               <button className="upload-btn" onClick={() => fileInputRef.current?.click()}>Chọn ảnh</button>

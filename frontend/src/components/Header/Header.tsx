@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaSearch, FaUserCircle, FaChevronDown, FaShoppingCart, FaBell } from 'react-icons/fa';
 import logoImg from '../../assets/images/logo.png';
+import { getUserProfile, logoutUser } from '../../services/authService'; // Updated imports
 import './Header.css';
 
 const Header = () => {
@@ -11,8 +12,8 @@ const Header = () => {
   const [userName, setUserName] = useState('');
   const [userAvatar, setUserAvatar] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
-  const [cartCount, setCartCount] = useState(3);
-  const [notificationCount, setNotificationCount] = useState(5);
+  const [cartCount, setCartCount] = useState(3); // Preserved
+  const [notificationCount, setNotificationCount] = useState(5); // Preserved
 
   /**
    * Reads data from LocalStorage and updates component state.
@@ -31,16 +32,29 @@ const Header = () => {
     } else {
       setIsLoggedIn(false);
       setIsSeller(false);
+      setUserAvatar('');
     }
   };
 
   useEffect(() => {
+    // 1. Initial Load from Storage
     loadUserData();
     
-    /**
-     * LISTENERS: Ensures the Header avatar updates immediately when 
-     * authService.ts or Profile.tsx trigger the update event.
-     */
+    // 2. Verify session with backend (Important for syncing Google Avatar on startup)
+    const verifySession = async () => {
+      try {
+        const profile = await getUserProfile();
+        if (profile) {
+          loadUserData(); // Re-sync after successful backend call
+        }
+      } catch (err) {
+        console.log("No active session found.");
+      }
+    };
+
+    verifySession();
+    
+    // Listen for cross-tab storage changes and our internal profileUpdate event
     window.addEventListener('storage', loadUserData);
     window.addEventListener('profileUpdate', loadUserData);
 
@@ -50,16 +64,22 @@ const Header = () => {
     };
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('userContact');
-    localStorage.removeItem('userRoles');
-    localStorage.removeItem('userAvatar');
-    setIsLoggedIn(false);
-    setIsSeller(false);
-    setShowDropdown(false);
-    navigate('/');
+  /**
+   * Performs a clean logout by notifying the backend and clearing state.
+   */
+  const handleLogout = async () => {
+    try {
+      await logoutUser(); // NEW: Calls backend to destroy session
+    } catch (err) {
+      console.error("Logout error:", err);
+    } finally {
+      // Ensure UI is cleared even if backend call fails
+      setIsLoggedIn(false);
+      setIsSeller(false);
+      setUserAvatar('');
+      setShowDropdown(false);
+      navigate('/');
+    }
   };
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
@@ -90,7 +110,7 @@ const Header = () => {
               </>
             )}
             
-            <div className="notification-wrapper" onClick={() => navigate('/notifications')}>
+            <div className="notification-wrapper" onClick={() => navigate('/notifications')} style={{cursor: 'pointer'}}>
               <FaBell className="nav-icon" />
               <span className="blue-link">Thông báo</span>
               {notificationCount > 0 && (
@@ -118,7 +138,7 @@ const Header = () => {
           </form>
 
           <div className="user-actions">
-            <div className="cart-wrapper" onClick={() => navigate('/cart')}>
+            <div className="cart-wrapper" onClick={() => navigate('/cart')} style={{cursor: 'pointer'}}>
               <FaShoppingCart className="cart-main-icon" />
               {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
             </div>
@@ -139,12 +159,15 @@ const Header = () => {
                   onMouseLeave={() => setShowDropdown(false)}
                 >
                   <div className="user-profile-trigger">
-                    {/* AVATAR FIX: This will now re-render immediately */}
                     {userAvatar ? (
                       <img 
                         src={userAvatar} 
                         alt="User Avatar" 
-                        className="user-avatar-small-header" 
+                        className="user-avatar-small-header"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = ""; 
+                          setUserAvatar("");
+                        }}
                       />
                     ) : (
                       <FaUserCircle className="user-avatar-icon" />

@@ -1,5 +1,7 @@
 package com.ainetsoft.config;
 
+import com.ainetsoft.service.CustomOAuth2UserService; // NEW
+import lombok.RequiredArgsConstructor; // NEW
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -23,7 +25,12 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor // NEW: Automatically injects the final fields below
 public class SecurityConfig {
+
+    // NEW dependencies
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -38,9 +45,6 @@ public class SecurityConfig {
         );
     }
 
-    /**
-     * Required to manually set authentication in the Controller's login method.
-     */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
@@ -51,24 +55,24 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable()) 
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            // Ensure the session-based security context is preserved across requests
             .securityContext(context -> context.securityContextRepository(securityContextRepository()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .authorizeHttpRequests(auth -> auth
-                // Allow pre-flight OPTIONS requests for CORS
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 
-                // PUBLIC ACCESS
+                // PUBLIC ACCESS (Added OAuth2 endpoints)
                 .requestMatchers(
                     "/api/auth/login", 
                     "/api/auth/register", 
                     "/api/auth/forgot-password", 
-                    "/api/auth/reset-password"
+                    "/api/auth/reset-password",
+                    "/oauth2/**",         // NEW
+                    "/login/oauth2/**"    // NEW
                 ).permitAll() 
                 
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll() 
                 
-                // PROTECTED: Requires valid session cookie (JSESSIONID)
+                // PROTECTED
                 .requestMatchers(
                     "/api/auth/me", 
                     "/api/auth/profile", 
@@ -79,6 +83,17 @@ public class SecurityConfig {
                 ).authenticated() 
                 
                 .anyRequest().authenticated()
+            )
+            // NEW: OAuth2 Configuration block
+            .oauth2Login(oauth2 -> oauth2
+                .authorizationEndpoint(authorization -> authorization
+                    .baseUri("/oauth2/authorization")
+                )
+                .redirectionEndpoint(redirection -> redirection
+                    .baseUri("/login/oauth2/code/*")
+                )
+                .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
+                .successHandler(oAuth2AuthenticationSuccessHandler)
             );
 
         return http.build();
@@ -89,7 +104,6 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of("http://localhost:5173")); 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        // Fixed: Allow all headers to prevent CORS blocks on custom frontend headers
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true); 
         
