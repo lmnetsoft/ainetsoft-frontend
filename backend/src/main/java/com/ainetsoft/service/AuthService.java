@@ -25,12 +25,11 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
 
     /**
-     * Helper: Normalizes phone numbers to a clean numeric-only format for global consistency.
-     * Strips spaces, dashes, and the '+' symbol.
+     * Helper: Normalizes phone numbers to a clean numeric-only format.
      */
     private String normalizePhone(String phone) {
         if (phone == null || phone.isBlank()) return null;
-        return phone.replaceAll("[^0-9]", ""); // Removes anything that isn't a digit
+        return phone.replaceAll("[^0-9]", "");
     }
 
     public UserResponse getUserProfile(String contactInfo) {
@@ -51,15 +50,20 @@ public class AuthService {
                 .build();
     }
 
+    /**
+     * FIXED: Added null checks to allow partial updates.
+     * Prevents [object Object] / "Họ và Tên" errors when updating specific sections like Bank or Address.
+     */
     public String updateProfile(String contactInfo, UpdateProfileRequest request) {
         User user = userRepository.findByIdentifier(contactInfo)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
 
-        if (request.getFullName() == null || request.getFullName().isBlank()) {
-            throw new RuntimeException("Họ và Tên không được để trống!");
+        // Only update Full Name if provided and not blank
+        if (request.getFullName() != null && !request.getFullName().isBlank()) {
+            user.setFullName(request.getFullName().trim());
         }
-        user.setFullName(request.getFullName().trim());
 
+        // Only update Email if provided
         if (request.getEmail() != null && !request.getEmail().isBlank()) {
             String newEmail = request.getEmail().trim().toLowerCase();
             if (!newEmail.equals(user.getEmail())) {
@@ -70,10 +74,15 @@ public class AuthService {
             }
         }
 
-        user.setGender(request.getGender());
-        user.setBirthDate(request.getBirthDate());
+        // Only update basic fields if provided
+        if (request.getGender() != null) {
+            user.setGender(request.getGender());
+        }
         
-        // Normalize the main account phone number
+        if (request.getBirthDate() != null) {
+            user.setBirthDate(request.getBirthDate());
+        }
+        
         if (request.getPhone() != null && !request.getPhone().isBlank()) {
             user.setPhone(normalizePhone(request.getPhone()));
         }
@@ -82,7 +91,7 @@ public class AuthService {
             user.setAvatarUrl(request.getAvatarUrl());
         }
 
-        // Normalize phone numbers within the address list
+        // Only update Addresses if provided
         if (request.getAddresses() != null) {
             request.getAddresses().forEach(addr -> {
                 if (addr.getPhone() != null) {
@@ -92,6 +101,7 @@ public class AuthService {
             user.setAddresses(request.getAddresses());
         }
 
+        // Only update Bank Accounts if provided
         if (request.getBankAccounts() != null) {
             user.setBankAccounts(request.getBankAccounts());
         }
@@ -104,8 +114,6 @@ public class AuthService {
     public String register(RegisterRequest request) {
         validatePasswordStrength(request.getPassword());
         String email = (request.getEmail() == null || request.getEmail().isBlank()) ? null : request.getEmail().trim().toLowerCase();
-        
-        // Normalize phone during registration
         String phone = normalizePhone(request.getPhone());
 
         if (email != null && userRepository.existsByEmail(email)) throw new RuntimeException("Email đã tồn tại!");
@@ -135,8 +143,6 @@ public class AuthService {
 
         return "Đăng ký thành công!";
     }
-
-    /* --- KEEPING REMAINING METHODS (login, changePassword, etc.) AS IS --- */
 
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByIdentifier(request.getContactInfo())
