@@ -9,7 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority; // Added
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.SecurityContextRepository;
@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.util.Map;
-import java.util.stream.Collectors; // Added
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -68,15 +68,12 @@ public class AuthController {
             HttpServletRequest servletRequest, 
             HttpServletResponse servletResponse) {
         
-        // 1. Authenticate via service
         LoginResponse loginResponse = authService.login(request);
         
-        // 2. FIX: Convert String roles to GrantedAuthority objects
         var authorities = loginResponse.getRoles().stream()
                 .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
                 .collect(Collectors.toList());
 
-        // 3. Create full Authentication object with authorities
         Authentication authentication = new UsernamePasswordAuthenticationToken(
                 request.getContactInfo(), 
                 null, 
@@ -87,7 +84,6 @@ public class AuthController {
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);
         
-        // 4. Persist the context in the session
         securityContextRepository.saveContext(context, servletRequest, servletResponse);
 
         return ResponseEntity.ok(loginResponse);
@@ -104,5 +100,14 @@ public class AuthController {
         String otp = request.get("otp");
         String newPassword = request.get("newPassword");
         return ResponseEntity.ok(authService.resetPassword(contactInfo, otp, newPassword));
+    }
+
+    /**
+     * UPDATED: Using Map.of to avoid 'MessageResponse' compilation error.
+     * This provides a clear JSON response: {"message": "Đăng xuất thành công!"}
+     */
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(HttpServletRequest request, HttpServletResponse response) {
+        return ResponseEntity.ok(Map.of("message", "Đăng xuất thành công!"));
     }
 }

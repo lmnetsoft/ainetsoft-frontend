@@ -1,3 +1,4 @@
+/* --- Register Page Layout --- */
 .register-page {
   display: flex;
   justify-content: center;
@@ -30,6 +31,7 @@
   margin-bottom: 25px;
 }
 
+/* --- Alerts & Errors --- */
 .error-alert {
   background-color: #fef2f2;
   color: #dc2626;
@@ -41,6 +43,7 @@
   text-align: center;
 }
 
+/* --- Form Elements --- */
 .form-group {
   margin-bottom: 20px;
 }
@@ -69,7 +72,7 @@
   box-shadow: 0 0 0 3px rgba(91, 103, 241, 0.1);
 }
 
-/* Tab Selector Styles */
+/* --- Tab Selector Styles --- */
 .contact-type-selector {
   display: flex;
   background: #f1f5f9;
@@ -97,7 +100,7 @@
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 }
 
-/* Phone Input Custom Styles */
+/* --- Phone Input Custom Styles --- */
 .custom-phone-input {
   display: flex;
   align-items: center;
@@ -115,7 +118,22 @@
   font-size: 15px;
 }
 
-/* Captcha styling remains the same as previous design */
+/* --- Password & Captcha styling --- */
+.password-input-wrapper {
+  position: relative;
+}
+
+.toggle-password-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
 .captcha-section {
   background-color: #f0f4ff;
   padding: 15px;
@@ -130,6 +148,7 @@
   margin-top: 10px;
 }
 
+/* --- Submit Button --- */
 .auth-submit-btn {
   width: 100%;
   padding: 15px;
@@ -147,17 +166,25 @@
   background-color: #4451d6;
 }
 
+/* --- THE FIX: Interactive Login Link --- */
 .auth-footer {
   margin-top: 25px;
   text-align: center;
   border-top: 1px solid #f1f5f9;
   padding-top: 20px;
+  color: #64748b;
+  font-size: 14px;
 }
 
-.link-btn {
-  background: none;
-  border: none;
-  color: #5b67f1;
-  font-weight: bold;
-  cursor: pointer;
+.auth-link-highlight {
+  color: #5b67f1; /* Your blue theme color */
+  font-weight: 700;
+  cursor: pointer !important; /* Forces the hand icon on hover */
+  margin-left: 5px;
+  transition: color 0.2s ease;
+}
+
+.auth-link-highlight:hover {
+  color: #4451d6; /* Slightly darker when hovered */
+  text-decoration: underline; /* Standard visual for links */
 }

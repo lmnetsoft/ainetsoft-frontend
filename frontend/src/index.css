@@ -67,3 +67,18 @@ button:hover {
     background-color: #242424;
   }
 }
+
+.auth-link-highlight {
+    color: #5b67f1 !important;    /* Matches your branding blue */
+    font-weight: 700 !important;   /* MAKES IT BOLD BY DEFAULT to match others */
+    cursor: pointer !important;    /* Ensures the hand icon shows up */
+    margin-left: 5px;
+    transition: all 0.2s ease;
+    display: inline-block;
+}
+
+.auth-link-highlight:hover {
+    color: #4451d6 !important;    /* Darker blue on hover */
+    text-decoration: underline !important; 
+    /* The link is already bold now, so hover just adds the underline */
+}

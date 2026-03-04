@@ -1,217 +1,260 @@
-/* Container & Tabs */
-.purchase-tabs-container {
-  display: flex;
-  background: #fff;
-  border-bottom: 1px solid #efefef;
-  margin-bottom: 15px;
-  border-radius: 4px 4px 0 0;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.purchase-tab-item {
-  flex: 1;
-  padding: 16px 0;
-  text-align: center;
-  cursor: pointer;
-  font-size: 14px;
-  color: #555;
-  transition: all 0.2s;
-  border-bottom: 2px solid transparent;
-}
-
-.purchase-tab-item:hover {
-  color: #ee4d2d;
-}
-
-.purchase-tab-item.active {
-  color: #ee4d2d;
-  border-bottom: 2px solid #ee4d2d;
-}
-
-/* Main Content Area */
-.purchase-list-content {
-  min-height: 500px;
-  background: transparent; /* Changed to transparent to let cards stand out */
-  display: block; /* Changed from flex to block for card stacking */
-}
-
-/* Individual Order Cards */
-.order-card-item {
-  background: #fff;
-  margin-bottom: 12px;
-  padding: 20px;
-  border-radius: 4px;
-  box-shadow: 0 1px 1px rgba(0,0,0,0.05);
-}
-
-.order-item-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 12px;
-}
-
-.shop-name-group {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.chat-btn {
-  background: #ee4d2d;
-  color: white;
-  border: none;
-  padding: 2px 8px;
-  font-size: 12px;
-  border-radius: 2px;
-  cursor: pointer;
-}
-
-.status-tag {
-  color: #ee4d2d;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  text-transform: uppercase;
-}
-
-.order-divider {
-  border: 0;
-  border-top: 1px solid #f5f5f5;
-  margin: 0;
-}
-
-/* Product Rows */
-.item-row {
-  display: flex;
-  padding: 15px 0;
-  gap: 15px;
-  cursor: pointer;
-}
-
-.item-thumb {
-  width: 80px;
-  height: 80px;
-  object-fit: cover;
-  border: 1px solid #eeeeee;
-}
-
-.item-info {
-  flex: 1;
-}
-
-.item-title {
-  font-size: 15px;
-  color: #222;
-  margin-bottom: 5px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.item-count {
-  color: #757575;
-  font-size: 13px;
-}
-
-.item-price-info {
-  text-align: right;
-}
-
-.current-price {
-  color: #ee4d2d;
-  font-size: 15px;
-}
-
-/* NEW: Shipping Summary Block */
-.order-shipping-summary {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 12px 15px;
-  background-color: #fafafa;
-  border-left: 2px solid #ee4d2d;
-  margin-top: 10px;
-  border-radius: 2px;
-}
-
-.shipping-text {
-  font-size: 13px;
-  color: #555;
-  line-height: 1.5;
-}
-
-.shipping-text strong {
-  display: block;
-  color: #333;
-  margin-bottom: 2px;
-}
-
-.shipping-text p {
-  margin: 0;
-  color: #757575;
-}
-
-/* Footer Section */
-.order-item-footer {
-  padding-top: 15px;
-  text-align: right;
-}
-
-.total-display {
-  margin-bottom: 15px;
-}
-
-.grand-total {
-  font-size: 24px;
-  color: #ee4d2d;
-  font-weight: 500;
-  margin-left: 10px;
-}
-
-.footer-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.footer-actions button {
-  padding: 10px 20px;
-  font-size: 14px;
-  border-radius: 2px;
-  cursor: pointer;
-  border: 1px solid rgba(0,0,0,0.09);
-  background: #fff;
-}
-
-.buy-again-btn {
-  background-color: #ee4d2d !important;
-  color: #fff !important;
-  border: none !important;
-}
-
-.view-detail-btn:hover {
-  background-color: #f8f8f8;
-}
-
-/* Empty State */
-.purchase-empty-state {
-  padding: 80px 0;
-  text-align: center;
+/* --- Page Background --- */
+.profile-wrapper {
+  background-color: #f5f5f5;
+  min-height: calc(100vh - 150px);
+  padding: 20px 0 80px 0;
   width: 100%;
 }
 
-.purchase-empty-img {
-  width: 100px;
-  opacity: 0.2;
-  margin-bottom: 15px;
+/* --- Main Layout Grid --- */
+.profile-container {
+  display: flex;
+  gap: 30px;
+  align-items: flex-start;
+  max-width: 1400px; 
+  margin: 0 auto;
+  width: 98%;
 }
 
-.purchase-empty-state p {
-  color: #888;
-  font-size: 15px;
+.profile-container-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100px 0;
+  background: white;
+  border-radius: 4px;
+}
+
+/* --- Main Content Card --- */
+.profile-main-content {
+  flex: 1;
+  background-color: #ffffff;
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  padding: 40px 50px;
+  min-height: 700px;
+}
+
+.content-header h1 {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: #333;
+  margin: 0 0 8px 0;
+  text-transform: capitalize;
+}
+
+.content-header p {
+  font-size: 0.875rem;
+  color: #555;
+  margin: 0;
+}
+
+.divider {
+  border: 0;
+  border-top: 1px solid #efefef;
+  margin: 25px 0;
+}
+
+/* --- Inner Form Layout --- */
+.profile-form-container {
+  display: flex;
+  padding-top: 20px;
+  gap: 40px;
+}
+
+.profile-info-form {
+  flex: 3;
+}
+
+/* --- Form Rows --- */
+.form-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 35px;
+  font-size: 0.9375rem;
+}
+
+.form-row label {
+  width: 20%;
+  text-align: right;
+  color: rgba(85, 85, 85, 0.9);
+  margin-right: 30px;
+}
+
+/* --- Input Fields (Refined for Consistency) --- */
+.form-row input[type="text"],
+.form-row input[type="email"],
+.form-row input[type="date"],
+.form-row select,
+.input-field {
+  flex: 1;
+  max-width: 600px;
+  height: 45px !important; /* FORCED CONSISTENCY */
+  padding: 0 15px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 4px;
+  outline: none;
+  transition: all 0.2s;
+  color: #333;
+  box-sizing: border-box; /* Crucial to keep height 45px including padding */
+}
+
+.form-row input:focus {
+  border-color: #5b67f1;
+}
+
+/* --- Locked / Social User Styling --- */
+.input-group-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  max-width: 600px;
+}
+
+.input-locked {
+  background-color: #f9f9f9 !important;
+  color: #888 !important;
+  cursor: not-allowed;
+  border: 1px solid #e0e0e0 !important;
+  height: 45px !important; /* MATCHING EXACT HEIGHT */
+}
+
+.lock-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #5b67f1;
+  font-weight: 500;
+}
+
+.lock-icon-small {
+  font-size: 10px;
+}
+
+/* --- Radio Group --- */
+.radio-group {
+  display: flex;
+  gap: 25px;
+}
+
+.radio-group label {
+  width: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  color: #333;
+  margin-right: 0;
+}
+
+/* --- Buttons --- */
+.button-group-profile {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.save-btn {
+  background-color: #5b67f1;
+  color: white;
+  padding: 12px 35px;
+  border: none;
+  border-radius: 4px;
+  min-width: 140px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.save-btn:hover {
+  background-color: #4451d6;
+  transform: translateY(-1px);
+}
+
+.save-btn:disabled {
+  background-color: #cbd5e1;
+  cursor: not-allowed;
+}
+
+.become-seller-btn {
+  background-color: transparent;
+  color: #5b67f1;
+  border: 1px solid #5b67f1;
+  padding: 11px 25px;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+}
+
+/* --- Avatar Section --- */
+.profile-avatar-section {
+  flex: 1.2; 
+  border-left: 1px solid #efefef;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-left: 40px;
+}
+
+.avatar-preview {
+  width: 120px;
+  height: 120px;
+  margin: 30px 0;
+}
+
+.avatar-preview img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #efefef;
+}
+
+.avatar-fallback-icon {
+  font-size: 120px;
+  color: #e0e0e0;
+}
+
+.upload-btn {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.09);
+  box-shadow: 0 1px 1px 0 rgba(0, 0, 0, 0.03);
+  color: #555;
+  padding: 10px 20px;
+  cursor: pointer;
+  margin-bottom: 20px;
+  border-radius: 2px;
+}
+
+.upload-requirements p {
+  font-size: 0.875rem;
+  color: #999;
+  margin: 6px 0;
+  text-align: center;
+}
+
+/* --- Responsive Layout --- */
+@media (max-width: 1200px) {
+  .profile-container { max-width: 950px; }
+}
+
+@media (max-width: 992px) {
+  .profile-container { flex-direction: column; padding: 0 15px; width: 100%; }
+  .profile-form-container { flex-direction: column-reverse; }
+  .profile-main-content { padding: 25px; width: 100%; }
+  .profile-avatar-section { width: 100%; border-left: none; border-bottom: 1px solid #efefef; padding: 0 0 30px 0; margin-bottom: 30px; }
+  .form-row label { width: 30%; }
+}
+
+@media (max-width: 576px) {
+  .button-group-profile { flex-direction: column; width: 100%; align-items: stretch; }
+  .save-btn, .become-seller-btn { width: 100%; text-align: center; }
+  .form-row { flex-direction: column; align-items: flex-start; }
+  .form-row label { text-align: left; margin-bottom: 8px; width: 100%; }
 }

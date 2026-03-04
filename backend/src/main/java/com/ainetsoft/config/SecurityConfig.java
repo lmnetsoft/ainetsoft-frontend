@@ -1,7 +1,8 @@
 package com.ainetsoft.config;
 
-import com.ainetsoft.service.CustomOAuth2UserService; // NEW
-import lombok.RequiredArgsConstructor; // NEW
+import com.ainetsoft.service.CustomOAuth2UserService;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -25,10 +26,9 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
-@RequiredArgsConstructor // NEW: Automatically injects the final fields below
+@RequiredArgsConstructor
 public class SecurityConfig {
 
-    // NEW dependencies
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
 
@@ -60,14 +60,15 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 
-                // PUBLIC ACCESS (Added OAuth2 endpoints)
+                // PUBLIC ACCESS
                 .requestMatchers(
                     "/api/auth/login", 
                     "/api/auth/register", 
                     "/api/auth/forgot-password", 
                     "/api/auth/reset-password",
-                    "/oauth2/**",         // NEW
-                    "/login/oauth2/**"    // NEW
+                    "/api/auth/logout",   // FIXED: Allow public access to the logout endpoint
+                    "/oauth2/**",
+                    "/login/oauth2/**"
                 ).permitAll() 
                 
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll() 
@@ -84,7 +85,17 @@ public class SecurityConfig {
                 
                 .anyRequest().authenticated()
             )
-            // NEW: OAuth2 Configuration block
+            // NEW: Formal Logout Handling
+            .logout(logout -> logout
+                .logoutUrl("/api/auth/logout") // Path must match your AuthController
+                .invalidateHttpSession(true)
+                .clearAuthentication(true)
+                .deleteCookies("JSESSIONID")
+                .logoutSuccessHandler((request, response, authentication) -> {
+                    response.setStatus(HttpServletResponse.SC_OK);
+                    response.getWriter().write("{\"message\": \"Logout successful\"}");
+                })
+            )
             .oauth2Login(oauth2 -> oauth2
                 .authorizationEndpoint(authorization -> authorization
                     .baseUri("/oauth2/authorization")

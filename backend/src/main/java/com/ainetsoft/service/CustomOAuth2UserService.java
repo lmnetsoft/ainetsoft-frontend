@@ -32,9 +32,9 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
         processOAuth2User(registrationId, providerId, oAuth2User);
 
-        // FIX: Tell Spring to use "email" as the Principal Name instead of the ID number
+        // FIX: Consistently use "email" as the Principal name for session management
         return new DefaultOAuth2User(
-                Collections.singleton(() -> "ROLE_USER"),
+                oAuth2User.getAuthorities(),
                 oAuth2User.getAttributes(),
                 "email" 
         );
@@ -42,37 +42,53 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private void processOAuth2User(String registrationId, String providerId, OAuth2User oAuth2User) {
         String email = oAuth2User.getAttribute("email");
-        String name = oAuth2User.getAttribute("name");
-        String picture = oAuth2User.getAttribute("picture"); 
+        String nameFromSocial = oAuth2User.getAttribute("name");
+        String pictureFromSocial = oAuth2User.getAttribute("picture"); 
         
         if (registrationId.equalsIgnoreCase("facebook")) {
             Map<String, Object> pictureObj = oAuth2User.getAttribute("picture");
             if (pictureObj != null) {
                 Map<String, Object> data = (Map<String, Object>) pictureObj.get("data");
                 if (data != null) {
-                    picture = (String) data.get("url");
+                    pictureFromSocial = (String) data.get("url");
                 }
             }
         }
 
-        final String finalPicture = picture;
+        final String finalSocialPicture = pictureFromSocial;
         
         userRepository.findByEmail(email).ifPresentOrElse(
             existingUser -> {
-                existingUser.setFullName(name);
-                existingUser.setAvatarUrl(finalPicture);
+                // LOGIC CHANGE: Only update if the current data is NULL or BLANK.
+                // This stops Google from overwriting your custom "Chọn ảnh" uploads.
+                if (existingUser.getFullName() == null || existingUser.getFullName().isBlank()) {
+                    existingUser.setFullName(nameFromSocial);
+                }
+                
+                if (existingUser.getAvatarUrl() == null || existingUser.getAvatarUrl().isBlank()) {
+                    existingUser.setAvatarUrl(finalSocialPicture);
+                }
+
+                // Ensure the provider is marked if it wasn't already (Account Linking)
+                if (existingUser.getProvider() == null) {
+                    existingUser.setProvider(User.AuthProvider.valueOf(registrationId.toUpperCase()));
+                    existingUser.setProviderId(providerId);
+                }
+
                 existingUser.setUpdatedAt(LocalDateTime.now());
                 userRepository.save(existingUser);
             },
             () -> {
+                // Create new account if email doesn't exist
                 User newUser = User.builder()
                         .email(email)
-                        .fullName(name)
-                        .avatarUrl(finalPicture)
+                        .fullName(nameFromSocial)
+                        .avatarUrl(finalSocialPicture)
                         .provider(User.AuthProvider.valueOf(registrationId.toUpperCase()))
                         .providerId(providerId)
-                        .roles(Set.of("USER"))
+                        .roles(new java.util.HashSet<>(Set.of("USER")))
                         .enabled(true)
+                        .cart(new java.util.ArrayList<>())
                         .createdAt(LocalDateTime.now())
                         .updatedAt(LocalDateTime.now())
                         .build();

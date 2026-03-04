@@ -1,8 +1,12 @@
 package com.ainetsoft.dto;
 
 import com.ainetsoft.model.User;
-import com.ainetsoft.model.CartItem; // NEW: Required for the shopping cart items
-import lombok.*;
+import com.ainetsoft.model.CartItem;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
@@ -19,13 +23,9 @@ public class UserResponse {
     private LocalDate birthDate;
     private String avatarUrl;
     private Set<String> roles;
+    private String provider; // Essential for the Frontend "Read-Only" check
 
-    // NEW: Capability to send Address list back to frontend
     private List<User.AddressInfo> addresses;
-
-    // NEW: Capability to send Bank Account list back to frontend
     private List<User.BankInfo> bankAccounts;
-
-    // NEW: Capability to send the shopping cart items back to frontend
     private List<CartItem> cart;
 }

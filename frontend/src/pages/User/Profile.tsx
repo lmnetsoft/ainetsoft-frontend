@@ -4,8 +4,8 @@ import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css'; 
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import ToastNotification from '../../components/Toast/ToastNotification'; 
-import { getUserProfile, updateProfile, logoutUser } from '../../services/authService'; // UPDATED: Added logoutUser
-import { FaUserCircle } from 'react-icons/fa'; // NEW: For fallback icon
+import { getUserProfile, updateProfile, logoutUser } from '../../services/authService';
+import { FaUserCircle, FaLock } from 'react-icons/fa'; // Added FaLock
 import './Profile.css';
 
 const Profile = () => {
@@ -19,6 +19,7 @@ const Profile = () => {
     gender: 'other',
     birthDate: '',
     avatarUrl: '',
+    provider: 'LOCAL', // Stores 'GOOGLE', 'FACEBOOK', or 'LOCAL'
     addresses: [] as any[],
     bankAccounts: [] as any[]
   });
@@ -28,6 +29,9 @@ const Profile = () => {
   const [isSeller, setIsSeller] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+
+  // Determine if the user is logged in via a Social Provider
+  const isSocialUser = formData.provider !== 'LOCAL';
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -42,6 +46,7 @@ const Profile = () => {
           gender: data.gender || 'other',
           birthDate: data.birthDate || '',
           avatarUrl: data.avatarUrl || '',
+          provider: data.provider || 'LOCAL', // Captured from the backend update we made
           addresses: data.addresses || [],
           bankAccounts: data.bankAccounts || []
         });
@@ -51,8 +56,6 @@ const Profile = () => {
         }
       } catch (error: any) {
         console.error("Profile load error:", error);
-        // If session expired, the authService already clears storage, 
-        // we just need to send them to login.
         navigate('/login');
       } finally {
         setLoading(false);
@@ -64,7 +67,7 @@ const Profile = () => {
   }, [navigate]);
 
   const handleLogout = async () => {
-    await logoutUser(); // Cleanly invalidates JSESSIONID on backend
+    await logoutUser();
     navigate('/login');
   };
 
@@ -94,7 +97,7 @@ const Profile = () => {
     try {
       setIsSaving(true);
       
-      // Syncing Profile Phone -> Address Phone for data consistency
+      // Syncing Profile Phone -> Address Phone for consistency
       const synchronizedAddresses = formData.addresses.map(addr => ({
         ...addr,
         phone: formData.phone 
@@ -105,7 +108,6 @@ const Profile = () => {
         addresses: synchronizedAddresses
       };
 
-      // updateProfile in authService.ts already handles localStorage and profileUpdate event
       const message = await updateProfile(payload);
       
       setToastMessage(message || "Cập nhật hồ sơ thành công!");
@@ -152,12 +154,21 @@ const Profile = () => {
             <form className="profile-info-form" onSubmit={(e) => e.preventDefault()}>
               <div className="form-row">
                 <label>Email</label>
-                <input 
-                  type="email" 
-                  value={formData.email} 
-                  disabled // Recommended: Keep email locked for social users
-                  className="input-disabled"
-                />
+                <div className="input-group-container">
+                  <input 
+                    type="email" 
+                    value={formData.email} 
+                    onChange={(e) => !isSocialUser && setFormData({...formData, email: e.target.value})}
+                    readOnly={isSocialUser} // Locks the field for social users
+                    className={isSocialUser ? "input-field input-locked" : "input-field"}
+                  />
+                  {isSocialUser && (
+                    <div className="lock-badge">
+                      <FaLock className="lock-icon-small" />
+                      <span>Liên kết với {formData.provider}</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="form-row">

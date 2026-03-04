@@ -45,13 +45,21 @@ const Register = () => {
     e.preventDefault();
     setFormError('');
 
-    // 1. Password Length Validation (NEW)
+    // 1. Password Length Validation
     if (formData.password.length < 8) {
       setFormError("Mật khẩu phải có ít nhất 8 ký tự!");
       return;
     }
 
-    // 2. Password Match Validation
+    // 2. NEW: Password Complexity Validation (Must contain at least one letter)
+    // Matches backend: !password.matches(".*[a-zA-Z].*")
+    const hasLetter = /[a-zA-Z]/.test(formData.password);
+    if (!hasLetter) {
+      setFormError("Mật khẩu phải chứa ít nhất một chữ cái!");
+      return;
+    }
+
+    // 3. Password Match Validation
     if (formData.password !== formData.confirmPassword) {
       setFormError("Mật khẩu xác nhận không khớp!");
       return;
@@ -158,7 +166,7 @@ const Register = () => {
           </div>
 
           <div className="form-group">
-            <label>Mật khẩu (Tối thiểu 8 ký tự)</label>
+            <label>Mật khẩu (Tối thiểu 8 ký tự, ít nhất 1 chữ cái)</label>
             <div className="password-input-wrapper">
               <input 
                 type={showPassword ? "text" : "password"} 
@@ -220,8 +228,9 @@ const Register = () => {
         <div className="auth-footer">
           <div className="footer-item">
             Đã có tài khoản? &nbsp;
-            {/* UNIFIED: Changed from button to a text link style */}
-            <span className="blue-link-text" onClick={() => navigate('/login')}>Đăng nhập ngay</span>
+            <span className="auth-link-highlight" onClick={() => navigate('/login')}>
+                Đăng nhập ngay
+            </span>
           </div>
         </div>
       </div>

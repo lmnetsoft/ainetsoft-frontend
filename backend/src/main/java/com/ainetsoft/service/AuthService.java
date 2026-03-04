@@ -32,8 +32,23 @@ public class AuthService {
         return phone.replaceAll("[^0-9]", "");
     }
 
+    /**
+     * Helper: Centralized logic to normalize the contact info (Email or Phone).
+     * This ensures +84987... becomes 84987... to match your DB record.
+     */
+    private String normalizeIdentifier(String identifier) {
+        if (identifier == null) return null;
+        String trimmed = identifier.trim();
+        // If it contains digits, treat as a phone number
+        if (trimmed.matches(".*\\d.*")) {
+            return normalizePhone(trimmed);
+        }
+        return trimmed.toLowerCase();
+    }
+
     public UserResponse getUserProfile(String contactInfo) {
-        User user = userRepository.findByIdentifier(contactInfo)
+        String identifier = normalizeIdentifier(contactInfo);
+        User user = userRepository.findByIdentifier(identifier)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
 
         return UserResponse.builder()
@@ -44,67 +59,56 @@ public class AuthService {
                 .birthDate(user.getBirthDate())
                 .avatarUrl(user.getAvatarUrl())
                 .roles(user.getRoles())
+                .provider(user.getProvider() != null ? user.getProvider().toString() : "LOCAL")
                 .addresses(user.getAddresses() != null ? user.getAddresses() : new ArrayList<>())
                 .bankAccounts(user.getBankAccounts() != null ? user.getBankAccounts() : new ArrayList<>())
                 .cart(user.getCart() != null ? user.getCart() : new ArrayList<>())
                 .build();
     }
 
-    /**
-     * FIXED: Added null checks to allow partial updates.
-     * Prevents [object Object] / "Họ và Tên" errors when updating specific sections like Bank or Address.
-     */
     public String updateProfile(String contactInfo, UpdateProfileRequest request) {
-        User user = userRepository.findByIdentifier(contactInfo)
+        String identifier = normalizeIdentifier(contactInfo);
+        User user = userRepository.findByIdentifier(identifier)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
 
-        // Only update Full Name if provided and not blank
         if (request.getFullName() != null && !request.getFullName().isBlank()) {
             user.setFullName(request.getFullName().trim());
         }
 
-        // Only update Email if provided
         if (request.getEmail() != null && !request.getEmail().isBlank()) {
-            String newEmail = request.getEmail().trim().toLowerCase();
-            if (!newEmail.equals(user.getEmail())) {
-                if (userRepository.existsByEmail(newEmail)) {
-                    throw new RuntimeException("Email '" + newEmail + "' đã được sử dụng bởi tài khoản khác!");
+            boolean isSocialUser = user.getProvider() != null && 
+                                  !user.getProvider().toString().equalsIgnoreCase("LOCAL");
+
+            if (!isSocialUser) {
+                String newEmail = request.getEmail().trim().toLowerCase();
+                if (!newEmail.equals(user.getEmail())) {
+                    if (userRepository.existsByEmail(newEmail)) {
+                        throw new RuntimeException("Email '" + newEmail + "' đã được sử dụng bởi tài khoản khác!");
+                    }
+                    user.setEmail(newEmail);
                 }
-                user.setEmail(newEmail);
+            } else {
+                log.info("Blocking email update for social account: {}", user.getEmail());
             }
         }
 
-        // Only update basic fields if provided
-        if (request.getGender() != null) {
-            user.setGender(request.getGender());
-        }
-        
-        if (request.getBirthDate() != null) {
-            user.setBirthDate(request.getBirthDate());
-        }
+        if (request.getGender() != null) user.setGender(request.getGender());
+        if (request.getBirthDate() != null) user.setBirthDate(request.getBirthDate());
         
         if (request.getPhone() != null && !request.getPhone().isBlank()) {
             user.setPhone(normalizePhone(request.getPhone()));
         }
 
-        if (request.getAvatarUrl() != null) {
-            user.setAvatarUrl(request.getAvatarUrl());
-        }
+        if (request.getAvatarUrl() != null) user.setAvatarUrl(request.getAvatarUrl());
 
-        // Only update Addresses if provided
         if (request.getAddresses() != null) {
             request.getAddresses().forEach(addr -> {
-                if (addr.getPhone() != null) {
-                    addr.setPhone(normalizePhone(addr.getPhone()));
-                }
+                if (addr.getPhone() != null) addr.setPhone(normalizePhone(addr.getPhone()));
             });
             user.setAddresses(request.getAddresses());
         }
 
-        // Only update Bank Accounts if provided
-        if (request.getBankAccounts() != null) {
-            user.setBankAccounts(request.getBankAccounts());
-        }
+        if (request.getBankAccounts() != null) user.setBankAccounts(request.getBankAccounts());
 
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
@@ -140,12 +144,13 @@ public class AuthService {
                 log.error("Welcome email failed for {}: {}", email, e.getMessage());
             }
         }
-
         return "Đăng ký thành công!";
     }
 
     public LoginResponse login(LoginRequest request) {
-        User user = userRepository.findByIdentifier(request.getContactInfo())
+        String identifier = normalizeIdentifier(request.getContactInfo());
+
+        User user = userRepository.findByIdentifier(identifier)
                 .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
@@ -157,7 +162,8 @@ public class AuthService {
 
     public String changePassword(String contactInfo, ChangePasswordRequest request) {
         validatePasswordStrength(request.getNewPassword());
-        User user = userRepository.findByIdentifier(contactInfo)
+        String identifier = normalizeIdentifier(contactInfo);
+        User user = userRepository.findByIdentifier(identifier)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
 
         if (!passwordEncoder.matches(request.getCurrentPassword().trim(), user.getPassword())) {
@@ -171,21 +177,22 @@ public class AuthService {
     }
 
     public String processForgotPassword(String contactInfo) {
-        userRepository.findByIdentifier(contactInfo)
+        String identifier = normalizeIdentifier(contactInfo);
+        userRepository.findByIdentifier(identifier)
             .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
 
         String otp = String.format("%06d", new Random().nextInt(999999));
-        tokenRepository.deleteByContactInfo(contactInfo);
+        tokenRepository.deleteByContactInfo(identifier);
 
         PasswordResetToken token = PasswordResetToken.builder()
-            .contactInfo(contactInfo)
+            .contactInfo(identifier)
             .otpCode(otp)
             .expiryDate(LocalDateTime.now().plusMinutes(10))
             .build();
         tokenRepository.save(token);
 
         try {
-            azureService.sendResetEmail(contactInfo, otp);
+            azureService.sendResetEmail(identifier, otp);
             return "Mã OTP đã được gửi đến email của bạn.";
         } catch (Exception e) {
             throw new RuntimeException("Lỗi hệ thống khi gửi email. Vui lòng thử lại sau.");
@@ -194,10 +201,11 @@ public class AuthService {
 
     public String resetPassword(String contactInfo, String otp, String newPassword) {
         validatePasswordStrength(newPassword);
-        PasswordResetToken token = tokenRepository.findByContactInfoAndOtpCode(contactInfo, otp)
+        String identifier = normalizeIdentifier(contactInfo);
+        PasswordResetToken token = tokenRepository.findByContactInfoAndOtpCode(identifier, otp)
             .orElseThrow(() -> new RuntimeException("Mã xác thực không chính xác hoặc đã hết hạn!"));
 
-        User user = userRepository.findByIdentifier(contactInfo)
+        User user = userRepository.findByIdentifier(identifier)
             .orElseThrow(() -> new RuntimeException("Lỗi hệ thống!"));
 
         user.setPassword(passwordEncoder.encode(newPassword));
@@ -208,14 +216,26 @@ public class AuthService {
         return "Mật khẩu của bạn đã được cập nhật thành công.";
     }
 
+    /**
+     * UPDATED: Enhanced Password Validation
+     * Requirements: 
+     * 1. At least 8 characters long.
+     * 2. Must contain at least one letter (a-z, A-Z).
+     */
     private void validatePasswordStrength(String password) {
         if (password == null || password.trim().length() < 8) {
             throw new RuntimeException("Mật khẩu phải có ít nhất 8 ký tự!");
         }
+        
+        // Regex: Check if the string contains at least one letter
+        if (!password.matches(".*[a-zA-Z].*")) {
+            throw new RuntimeException("Mật khẩu phải chứa ít nhất một chữ cái!");
+        }
     }
 
     public String syncCart(String contactInfo, List<CartItem> cartItems) {
-        User user = userRepository.findByIdentifier(contactInfo)
+        String identifier = normalizeIdentifier(contactInfo);
+        User user = userRepository.findByIdentifier(identifier)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
         
         user.setCart(cartItems != null ? cartItems : new ArrayList<>());
@@ -224,24 +244,19 @@ public class AuthService {
     }
 
     public String upgradeToSeller(String contactInfo) {
-        User user = userRepository.findByIdentifier(contactInfo)
+        String identifier = normalizeIdentifier(contactInfo);
+        User user = userRepository.findByIdentifier(identifier)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
 
         Set<String> roles = user.getRoles();
-        if (roles == null) {
-            roles = new HashSet<>();
-        } else {
-            roles = new HashSet<>(roles);
-        }
+        if (roles == null) roles = new HashSet<>();
+        else roles = new HashSet<>(roles);
 
-        if (roles.contains("SELLER")) {
-            return "Bạn đã là Người bán rồi!";
-        }
+        if (roles.contains("SELLER")) return "Bạn đã là Người bán rồi!";
 
         roles.add("SELLER");
         user.setRoles(roles);
         user.setUpdatedAt(LocalDateTime.now());
-        
         userRepository.save(user);
         return "Chúc mừng! Bạn đã trở thành Người bán thành công.";
     }

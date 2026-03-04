@@ -13,10 +13,12 @@ public interface UserRepository extends MongoRepository<User, String> {
     Boolean existsByPhone(String phone);
 
     /**
-     * Finds user by Email, Phone, OR their MongoDB ID.
-     * Use this in the AuthService to ensure Principal matches work correctly.
+     * THE FIX: This query ensures that the normalized string hit 
+     * either the email or the phone field. 
+     * * Note: Searching by '_id' inside a String-based $or query usually 
+     * requires the input to be a valid hex string for MongoDB's ObjectId.
      */
-    @Query("{ '$or': [ { 'email': ?0 }, { 'phone': ?0 }, { '_id': ?0 } ] }")
+    @Query("{ '$or': [ { 'email': ?0 }, { 'phone': ?0 } ] }")
     Optional<User> findByIdentifier(String identifier);
 
     Optional<User> findByEmail(String email);
