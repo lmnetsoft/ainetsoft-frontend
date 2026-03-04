@@ -225,3 +225,39 @@
   .form-row { flex-direction: column; align-items: flex-start; }
   .form-row label { text-align: left; margin-bottom: 8px; width: 100%; }
 }
+
+/* --- FIXED: Profile Layout (Form left, Avatar right) --- */
+.profile-form-container {
+    display: flex;
+    padding-top: 20px;
+    gap: 40px; /* Space between form and avatar */
+    align-items: flex-start;
+}
+
+.profile-info-form {
+    flex: 3; /* Form takes more space */
+}
+
+.profile-avatar-section {
+    flex: 1.5; /* Avatar section on the right */
+    border-left: 1px solid #efefef;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-left: 40px;
+}
+
+/* Ensure the "Save" button doesn't stretch weirdly */
+.save-btn {
+    width: auto;
+    padding: 12px 40px;
+    margin-top: 20px;
+}
+
+/* --- Keep your Purchase Tabs horizontal --- */
+.purchase-tabs-container {
+    display: flex;
+    width: 100%;
+    border-bottom: 1px solid #efefef;
+    margin-bottom: 20px;
+}
