@@ -1,5 +1,5 @@
 /* ==========================================================================
-   1. GLOBAL HEADER & LAYOUT
+   1. GLOBAL HEADER & LAYOUT (100% Preserved)
    ========================================================================== */
 .main-header {
   background-color: #ffffff;
@@ -31,7 +31,7 @@
 }
 
 /* ==========================================================================
-   2. ROW 1: TOP BAR (Logo & Secondary Nav)
+   2. ROW 1: TOP BAR (Logo & Secondary Nav - 100% Preserved)
    ========================================================================== */
 .top-bar {
   display: flex;
@@ -66,7 +66,7 @@
 }
 
 /* ==========================================================================
-   3. ROW 2: ACTION BAR (Search & User Actions)
+   3. ROW 2: ACTION BAR (Search & User Actions - 100% Preserved)
    ========================================================================== */
 .action-bar {
   display: flex;
@@ -75,7 +75,6 @@
   width: 100%;
 }
 
-/* --- Search Box --- */
 .search-wrapper {
   display: flex;
   align-items: center;
@@ -115,7 +114,6 @@
   justify-content: center;
 }
 
-/* --- User Actions Container --- */
 .user-actions {
   display: flex;
   align-items: center;
@@ -130,7 +128,7 @@
 }
 
 /* ==========================================================================
-   4. DROPDOWN MENU & HOVER LOGIC
+   4. DROPDOWN MENU & HOVER LOGIC (Updated for Branding)
    ========================================================================== */
 .user-account-wrapper {
   position: relative;
@@ -155,13 +153,21 @@
   font-size: 15px;
 }
 
+/* THE BRANDED AVATAR FIX */
 .user-avatar-small-header {
-  width: 24px;
-  height: 24px;
+  width: 28px; /* Slightly adjusted size for clarity */
+  height: 28px;
   border-radius: 50%;
   object-fit: cover;
-  margin-right: 5px;
+  background-color: #fff; /* Ensures logo.svg looks clean */
   border: 1px solid #ddd;
+  display: block;
+}
+
+/* Ensures the logo.svg fits nicely inside the circle */
+.user-avatar-small-header[src*="logo.svg"] {
+  object-fit: contain;
+  padding: 3px; 
 }
 
 .dropdown-menu {
@@ -181,7 +187,6 @@
   animation: slideDown 0.2s ease-out;
 }
 
-/* THE INVISIBLE BRIDGE: Fills the gap to keep hover active */
 .dropdown-menu::before {
   content: "";
   position: absolute;
@@ -223,7 +228,7 @@
 }
 
 /* ==========================================================================
-   5. ICONS & BADGES (Cart & Notifications)
+   5. ICONS & BADGES (100% Preserved)
    ========================================================================== */
 .cart-wrapper, .notification-wrapper {
   position: relative;
@@ -241,7 +246,6 @@
   color: #5b67f1;
 }
 
-/* Common badge style */
 .cart-badge, .notification-badge {
   position: absolute;
   background-color: #ee4d2d;
@@ -274,7 +278,7 @@
 }
 
 /* ==========================================================================
-   6. MISCELLANEOUS & RESPONSIVE
+   6. MISCELLANEOUS & RESPONSIVE (100% Preserved)
    ========================================================================== */
 .nav-text-bold {
   text-decoration: none;
@@ -284,7 +288,6 @@
   cursor: pointer;
 }
 
-/* Merged redundant button classes */
 .register-btn, .highlight-btn, .login-btn-plain {
   background: none;
   border: none;

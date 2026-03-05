@@ -5,28 +5,38 @@ import api from './api';
  */
 const extractError = (error: any, defaultMsg: string): string => {
   const errorData = error.response?.data;
-  
   if (typeof errorData === 'string') return errorData;
-  
   if (errorData && typeof errorData === 'object') {
     return errorData.message || errorData.error || defaultMsg;
   }
-
   return error.message || defaultMsg;
 };
 
 /**
  * UPDATED: Fetches profile and syncs identity data.
+ * Added strict validation to prevent ghost logins.
  */
 export const getUserProfile = async (): Promise<any> => {
   try {
     const response = await api.get('/auth/me'); 
     
     if (response.data) {
-      localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('userName', response.data.fullName || 'Thành viên');
-      localStorage.setItem('userAvatar', response.data.avatarUrl || '');
-      localStorage.setItem('userRoles', JSON.stringify(response.data.roles || []));
+      const name = response.data.fullName;
+      
+      // VALIDATION: Ensure the name is real and not a "ghost" string
+      const isValidName = name && name !== 'undefined' && name !== 'null' && name.trim() !== 'Thành viên';
+
+      if (isValidName) {
+        localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('userName', name);
+        localStorage.setItem('userAvatar', response.data.avatarUrl || '');
+        localStorage.setItem('userRoles', JSON.stringify(response.data.roles || []));
+      } else {
+        // CLEANUP: If data is invalid, clear storage to revert to Guest UI
+        localStorage.removeItem('isAuthenticated');
+        localStorage.removeItem('userName');
+        localStorage.removeItem('userAvatar');
+      }
 
       window.dispatchEvent(new Event('profileUpdate'));
     }
@@ -72,9 +82,6 @@ export const updateProfile = async (profileData: any): Promise<string> => {
   }
 };
 
-/**
- * FIXED: Added back the missing changePasswordUser required by ChangePassword.tsx
- */
 export const changePasswordUser = async (passwordData: { currentPassword: string, newPassword: string }): Promise<string> => {
   try {
     const response = await api.post('/auth/change-password', passwordData);

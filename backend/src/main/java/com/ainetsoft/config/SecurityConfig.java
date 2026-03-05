@@ -66,7 +66,7 @@ public class SecurityConfig {
                     "/api/auth/register", 
                     "/api/auth/forgot-password", 
                     "/api/auth/reset-password",
-                    "/api/auth/logout",   // FIXED: Allow public access to the logout endpoint
+                    "/api/auth/logout",
                     "/oauth2/**",
                     "/login/oauth2/**"
                 ).permitAll() 
@@ -85,15 +85,16 @@ public class SecurityConfig {
                 
                 .anyRequest().authenticated()
             )
-            // NEW: Formal Logout Handling
+            // UPDATED: Nuclear Logout Handling to prevent session bleeding
             .logout(logout -> logout
-                .logoutUrl("/api/auth/logout") // Path must match your AuthController
-                .invalidateHttpSession(true)
-                .clearAuthentication(true)
-                .deleteCookies("JSESSIONID")
+                .logoutUrl("/api/auth/logout")
+                .invalidateHttpSession(true) // Destroys session on server
+                .clearAuthentication(true)    // Wipes authentication context
+                .deleteCookies("JSESSIONID") // Purges the browser session cookie
                 .logoutSuccessHandler((request, response, authentication) -> {
                     response.setStatus(HttpServletResponse.SC_OK);
-                    response.getWriter().write("{\"message\": \"Logout successful\"}");
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"message\": \"Logged out successfully\"}");
                 })
             )
             .oauth2Login(oauth2 -> oauth2

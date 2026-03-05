@@ -11,7 +11,6 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 
@@ -43,24 +42,30 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     private void processOAuth2User(String registrationId, String providerId, OAuth2User oAuth2User) {
         String email = oAuth2User.getAttribute("email");
         String nameFromSocial = oAuth2User.getAttribute("name");
-        String pictureFromSocial = oAuth2User.getAttribute("picture"); 
         
+        // SAFE EXTRACTION: picture can be a String (Google) or a Map (Facebook)
+        Object pictureAttr = oAuth2User.getAttribute("picture");
+        String pictureFromSocial = null;
+
         if (registrationId.equalsIgnoreCase("facebook")) {
-            Map<String, Object> pictureObj = oAuth2User.getAttribute("picture");
-            if (pictureObj != null) {
+            // Facebook nesting: picture -> data -> url
+            if (pictureAttr instanceof Map) {
+                Map<String, Object> pictureObj = (Map<String, Object>) pictureAttr;
                 Map<String, Object> data = (Map<String, Object>) pictureObj.get("data");
                 if (data != null) {
                     pictureFromSocial = (String) data.get("url");
                 }
             }
+        } else {
+            // Default for Google and others where it is a direct String
+            pictureFromSocial = (pictureAttr instanceof String) ? (String) pictureAttr : null;
         }
 
         final String finalSocialPicture = pictureFromSocial;
         
         userRepository.findByEmail(email).ifPresentOrElse(
             existingUser -> {
-                // LOGIC CHANGE: Only update if the current data is NULL or BLANK.
-                // This stops Google from overwriting your custom "Chọn ảnh" uploads.
+                // LOGIC: Only update display info if the current data is NULL or BLANK.
                 if (existingUser.getFullName() == null || existingUser.getFullName().isBlank()) {
                     existingUser.setFullName(nameFromSocial);
                 }
@@ -69,11 +74,10 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                     existingUser.setAvatarUrl(finalSocialPicture);
                 }
 
-                // Ensure the provider is marked if it wasn't already (Account Linking)
-                if (existingUser.getProvider() == null) {
-                    existingUser.setProvider(User.AuthProvider.valueOf(registrationId.toUpperCase()));
-                    existingUser.setProviderId(providerId);
-                }
+                // FIXED: Force update provider and providerId to current login method.
+                // This prevents the user from being "stuck" with the Google provider identity in the UI.
+                existingUser.setProvider(User.AuthProvider.valueOf(registrationId.toUpperCase()));
+                existingUser.setProviderId(providerId);
 
                 existingUser.setUpdatedAt(LocalDateTime.now());
                 userRepository.save(existingUser);

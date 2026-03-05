@@ -44,7 +44,7 @@
   margin: 25px 0;
 }
 
-/* --- 3. THE FIX: Strict 45px Geometry (Your Refactor) --- */
+/* --- 3. THE FIX: Strict 45px Geometry (Preserved) --- */
 .form-row input[type="text"],
 .form-row input[type="email"],
 .form-row input[type="date"],
@@ -70,7 +70,7 @@
   border-color: #5b67f1;
 }
 
-/* --- 4. Social / Locked State --- */
+/* --- 4. Social / Locked State (Preserved) --- */
 .input-group-container {
   flex: 1;
   display: flex;
@@ -87,14 +87,39 @@
 .lock-badge {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 8px;
-  font-size: 12px;
-  color: #5b67f1;
-  font-weight: 500;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+  width: fit-content;
+  transition: all 0.3s ease;
 }
 
-/* --- 5. Utility Classes (Restored for Safety) --- */
+/* Brand Specific Colors */
+.badge-google {
+  color: #4285F4;
+  background-color: #4285f410;
+  border: 1px solid #4285f425;
+}
+
+.badge-facebook {
+  color: #1877F2;
+  background-color: #1877f210;
+  border: 1px solid #1877f225;
+}
+
+.provider-icon {
+  font-size: 16px;
+}
+
+.lock-icon-small {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+/* --- 5. Utility Classes (Restored) --- */
 .verified-badge {
   font-size: 11px;
   color: #22c55e;
@@ -139,7 +164,7 @@
   margin-right: 0;
 }
 
-/* --- 7. Buttons (Restored Hover Effects) --- */
+/* --- 7. Buttons (Restored) --- */
 .button-group-profile {
   display: flex;
   gap: 15px;
@@ -179,9 +204,9 @@
   background-color: #f8fafc;
 }
 
-/* --- 8. Avatar Section --- */
+/* --- 8. Avatar Section (Optimized for Logo Fallback) --- */
 .profile-avatar-section {
-  flex: 1.2; 
+  flex: 1.5; 
   border-left: 1px solid #efefef;
   display: flex;
   flex-direction: column;
@@ -193,14 +218,26 @@
   width: 120px;
   height: 120px;
   margin: 30px 0;
+  background-color: #fff; /* Ensures logo background is clean */
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1px solid #efefef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .avatar-preview img {
   width: 100%;
   height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1px solid #efefef;
+  object-fit: cover; /* Standard for profile photos */
+}
+
+/* Optional: If you find your logo is cut off by 'cover', 
+   use 'contain' with a bit of padding for placeholders */
+.avatar-preview img[src*="logo.png"] {
+  object-fit: contain;
+  padding: 15px;
 }
 
 .upload-btn {
@@ -209,9 +246,17 @@
   padding: 10px 20px;
   cursor: pointer;
   border-radius: 2px;
+  font-size: 14px;
 }
 
-/* --- 9. Responsive Layout (Restored Mobile Fixes) --- */
+.upload-requirements {
+  margin-top: 15px;
+  text-align: center;
+  color: #888;
+  font-size: 0.8125rem;
+}
+
+/* --- 9. Responsive Layout (Preserved) --- */
 @media (max-width: 992px) {
   .profile-container { flex-direction: column; padding: 0 15px; width: 100%; }
   .profile-form-container { flex-direction: column-reverse; }
@@ -226,35 +271,18 @@
   .form-row label { text-align: left; margin-bottom: 8px; width: 100%; }
 }
 
-/* --- FIXED: Profile Layout (Form left, Avatar right) --- */
+/* --- 10. Profile Layout (Preserved) --- */
 .profile-form-container {
     display: flex;
     padding-top: 20px;
-    gap: 40px; /* Space between form and avatar */
+    gap: 40px; 
     align-items: flex-start;
 }
 
 .profile-info-form {
-    flex: 3; /* Form takes more space */
+    flex: 3; 
 }
 
-.profile-avatar-section {
-    flex: 1.5; /* Avatar section on the right */
-    border-left: 1px solid #efefef;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding-left: 40px;
-}
-
-/* Ensure the "Save" button doesn't stretch weirdly */
-.save-btn {
-    width: auto;
-    padding: 12px 40px;
-    margin-top: 20px;
-}
-
-/* --- Keep your Purchase Tabs horizontal --- */
 .purchase-tabs-container {
     display: flex;
     width: 100%;

@@ -15,6 +15,9 @@ const Header: React.FC = () => {
   const [cartCount, setCartCount] = useState(3);
   const [notificationCount, setNotificationCount] = useState(5);
 
+  // Path to your branded fallback logo in the public folder
+  const avatarFallback = '/logo.svg';
+
   /**
    * Reads data from LocalStorage and updates component state.
    * STRICT VALIDATION: Ensures no "undefined", "null", or ghost fallbacks.
@@ -194,19 +197,15 @@ const Header: React.FC = () => {
                   onMouseLeave={() => setShowDropdown(false)}
                 >
                   <div className="user-profile-trigger">
-                    {userAvatar ? (
-                      <img
-                        src={userAvatar}
-                        alt="User Avatar"
-                        className="user-avatar-small-header"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = '';
-                          setUserAvatar('');
-                        }}
-                      />
-                    ) : (
-                      <FaUserCircle className="user-avatar-icon" />
-                    )}
+                    {/* FIXED: Replaced FaUserCircle with <img> using branded logo fallback */}
+                    <img
+                      src={userAvatar || avatarFallback}
+                      alt="User"
+                      className="user-avatar-small-header"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = avatarFallback;
+                      }}
+                    />
                     <span className="user-name-text">{userName}</span>
                     <FaChevronDown className={`chevron-icon ${showDropdown ? 'rotate' : ''}`} />
                   </div>

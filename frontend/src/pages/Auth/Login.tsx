@@ -12,7 +12,7 @@ const Login = () => {
   
   const [successMessage, setSuccessMessage] = useState(location.state?.successMessage || '');
   const [inputMode, setInputMode] = useState<'phone' | 'email'>('phone');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(location.state?.error || '');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -26,8 +26,10 @@ const Login = () => {
     setLoginData({ ...loginData, [e.target.name]: e.target.value });
   };
 
-  // NEW: Social Login Handlers
-  // In a Monolith, we redirect the browser to the Backend's OAuth2 start URL
+  /**
+   * SOCIAL LOGIN HANDLERS
+   * Redirects the browser to the Spring Boot OAuth2 endpoints defined in application.properties.
+   */
   const handleGoogleLogin = () => {
     window.location.href = 'http://localhost:8080/oauth2/authorization/google';
   };
@@ -62,6 +64,7 @@ const Login = () => {
       localStorage.setItem('userName', userData.fullName); 
       localStorage.setItem('userContact', payload.contactInfo);
 
+      // Sync profile to ensure name/avatar are updated in Header
       await getUserProfile();
       window.location.href = '/';
 
@@ -152,16 +155,15 @@ const Login = () => {
           </button>
         </form>
 
-        {/* NEW: Social Login Section */}
         <div className="social-divider">
           <span>Hoặc đăng nhập bằng</span>
         </div>
 
         <div className="social-login-group">
-          <button className="social-btn google" onClick={handleGoogleLogin}>
+          <button type="button" className="social-btn google" onClick={handleGoogleLogin}>
             <FaGoogle /> Google
           </button>
-          <button className="social-btn facebook" onClick={handleFacebookLogin}>
+          <button type="button" className="social-btn facebook" onClick={handleFacebookLogin}>
             <FaFacebook /> Facebook
           </button>
         </div>

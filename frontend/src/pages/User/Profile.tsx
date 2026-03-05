@@ -5,7 +5,9 @@ import 'react-phone-input-2/lib/style.css';
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import ToastNotification from '../../components/Toast/ToastNotification'; 
 import { getUserProfile, updateProfile, logoutUser } from '../../services/authService';
-import { FaUserCircle, FaLock } from 'react-icons/fa'; // Added FaLock
+import { FaUserCircle, FaLock, FaGoogle, FaFacebook } from 'react-icons/fa';
+// 1. ADDED: Your logo import for the fallback
+import logoImg from '../../assets/images/logo.png';
 import './Profile.css';
 
 const Profile = () => {
@@ -19,7 +21,7 @@ const Profile = () => {
     gender: 'other',
     birthDate: '',
     avatarUrl: '',
-    provider: 'LOCAL', // Stores 'GOOGLE', 'FACEBOOK', or 'LOCAL'
+    provider: 'LOCAL', 
     addresses: [] as any[],
     bankAccounts: [] as any[]
   });
@@ -31,7 +33,7 @@ const Profile = () => {
   const [toastMessage, setToastMessage] = useState('');
 
   // Determine if the user is logged in via a Social Provider
-  const isSocialUser = formData.provider !== 'LOCAL';
+  const isSocialUser = formData.provider !== 'LOCAL' && formData.provider !== null;
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -46,7 +48,7 @@ const Profile = () => {
           gender: data.gender || 'other',
           birthDate: data.birthDate || '',
           avatarUrl: data.avatarUrl || '',
-          provider: data.provider || 'LOCAL', // Captured from the backend update we made
+          provider: data.provider || 'LOCAL', 
           addresses: data.addresses || [],
           bankAccounts: data.bankAccounts || []
         });
@@ -141,6 +143,7 @@ const Profile = () => {
       />
 
       <div className="container profile-container">
+        {/* Preserving your Sidebar Component */}
         <AccountSidebar />
         
         <main className="profile-main-content">
@@ -152,6 +155,8 @@ const Profile = () => {
 
           <div className="profile-form-container">
             <form className="profile-info-form" onSubmit={(e) => e.preventDefault()}>
+              
+              {/* --- EMAIL FIELD WITH PROVIDER DETECTION --- */}
               <div className="form-row">
                 <label>Email</label>
                 <div className="input-group-container">
@@ -159,12 +164,16 @@ const Profile = () => {
                     type="email" 
                     value={formData.email} 
                     onChange={(e) => !isSocialUser && setFormData({...formData, email: e.target.value})}
-                    readOnly={isSocialUser} // Locks the field for social users
+                    readOnly={isSocialUser} 
                     className={isSocialUser ? "input-field input-locked" : "input-field"}
                   />
+                  
+                  {/* DYNAMIC PROVIDER BADGE */}
                   {isSocialUser && (
-                    <div className="lock-badge">
+                    <div className={`lock-badge badge-${formData.provider.toLowerCase()}`}>
                       <FaLock className="lock-icon-small" />
+                      {formData.provider === 'GOOGLE' && <FaGoogle className="provider-icon" />}
+                      {formData.provider === 'FACEBOOK' && <FaFacebook className="provider-icon" />}
                       <span>Liên kết với {formData.provider}</span>
                     </div>
                   )}
@@ -240,20 +249,17 @@ const Profile = () => {
               </div>
             </form>
 
+            {/* --- AVATAR SECTION UPDATED FOR YOUR LOGO --- */}
             <div className="profile-avatar-section">
               <div className="avatar-preview">
-                {formData.avatarUrl ? (
-                   <img 
-                    src={formData.avatarUrl} 
-                    alt="Avatar" 
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = ""; 
-                      setFormData(prev => ({ ...prev, avatarUrl: "" }));
-                    }}
-                   />
-                ) : (
-                  <FaUserCircle className="avatar-fallback-icon" />
-                )}
+                {/* 2. MODIFIED: Always use img tag with logo fallback to avoid broken icons */}
+                <img 
+                  src={formData.avatarUrl || logoImg} 
+                  alt="Avatar" 
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = logoImg; 
+                  }}
+                />
               </div>
               <input type="file" ref={fileInputRef} onChange={handleImageChange} accept=".jpg,.jpeg,.png" style={{ display: 'none' }} />
               <button className="upload-btn" onClick={() => fileInputRef.current?.click()}>Chọn ảnh</button>

@@ -8,14 +8,23 @@ const OAuth2RedirectHandler = () => {
     useEffect(() => {
         const finalizeLogin = async () => {
             try {
-                // This triggers the backend session check and syncs localStorage
-                await getUserProfile();
+                // Trigger backend profile fetch. 
+                // Because we are using cookies, the browser automatically sends JSESSIONID.
+                const profile = await getUserProfile();
                 
-                // Redirect to home page after successful sync
-                navigate('/', { replace: true });
+                if (profile && profile.fullName) {
+                    // Success: Redirect to Home
+                    navigate('/', { replace: true });
+                } else {
+                    throw new Error("Invalid session data");
+                }
             } catch (error) {
-                console.error("Social login sync failed", error);
-                navigate('/login', { state: { error: "Không thể xác thực tài khoản mạng xã hội." } });
+                console.error("OAuth2 Sync Error:", error);
+                localStorage.clear();
+                navigate('/login', { 
+                    replace: true, 
+                    state: { error: "Xác thực tài khoản thất bại. Vui lòng thử lại." } 
+                });
             }
         };
 
@@ -24,10 +33,10 @@ const OAuth2RedirectHandler = () => {
 
     return (
         <div className="auth-page">
-            <div className="auth-card" style={{ textAlign: 'center', padding: '50px' }}>
+            <div className="auth-card" style={{ textAlign: 'center', padding: '60px' }}>
                 <div className="loading-spinner"></div>
-                <p>Đang xác thực tài khoản...</p>
-                <p className="auth-subtitle">Vui lòng chờ trong giây lát</p>
+                <h3 style={{ marginTop: '20px' }}>Đang kết nối...</h3>
+                <p className="auth-subtitle">Chúng tôi đang đồng bộ hóa tài khoản của bạn</p>
             </div>
         </div>
     );
