@@ -33,24 +33,39 @@ const ForgotPassword = () => {
     return () => clearInterval(interval);
   }, [timer]);
 
+  /**
+   * UPDATED: handleRequestSubmit logic to sync with Backend Gatekeeper
+   */
   const handleRequestSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setError('');
     
     const finalContact = inputMode === 'phone' ? contactData.phone : contactData.email;
 
+    // Frontend validation before hitting the server
     if (inputMode === 'phone' && (!finalContact || !isValidPhoneNumber(finalContact))) {
       setError("Số điện thoại không hợp lệ. Vui lòng kiểm tra lại!");
       return;
     }
 
+    if (inputMode === 'email' && !finalContact.includes('@')) {
+      setError("Email không đúng định dạng!");
+      return;
+    }
+
     setLoading(true);
     try {
+      // Calls your Spring Boot API
       await requestPasswordReset(finalContact);
+      
+      // If success, move to OTP step
       setStep(2);
       setTimer(60); 
     } catch (err: any) {
-      setError(err.message);
+      // CATCHING THE GATEKEEPER ERROR:
+      // This will now correctly display "Tài khoản không tồn tại trong hệ thống!"
+      // instead of moving to Step 2 blindly.
+      setError(err.response?.data?.message || err.message || "Đã xảy ra lỗi hệ thống.");
     } finally {
       setLoading(false);
     }
@@ -60,7 +75,6 @@ const ForgotPassword = () => {
     e.preventDefault();
     setError('');
 
-    // 1. VALIDATION: Check for 8-character minimum (New Requirement)
     if (contactData.newPassword.length < 8) {
       setError("Mật khẩu mới phải có ít nhất 8 ký tự!");
       return;
@@ -79,7 +93,7 @@ const ForgotPassword = () => {
       alert("Mật khẩu đã được thay đổi thành công!");
       navigate('/login');
     } catch (err: any) {
-      setError(err.message);
+      setError(err.response?.data?.message || err.message);
     } finally {
       setLoading(false);
     }
@@ -93,6 +107,7 @@ const ForgotPassword = () => {
             <h2>Khôi Phục Mật Khẩu</h2>
             <p className="auth-subtitle">Nhập Email hoặc Số điện thoại bạn đã đăng ký để nhận mã xác thực.</p>
             
+            {/* Notification area for Backend errors */}
             {error && <div className="error-alert">{error}</div>}
 
             <form onSubmit={handleRequestSubmit}>
@@ -164,7 +179,6 @@ const ForgotPassword = () => {
               </div>
 
               <div className="form-group">
-                {/* Updated Label for clarity */}
                 <label>Mật khẩu mới (Tối thiểu 8 ký tự)</label>
                 <div className="password-input-wrapper">
                   <input 
@@ -207,7 +221,6 @@ const ForgotPassword = () => {
         )}
         
         <div className="auth-footer">
-          {/* Unified style: Using a text link instead of a plain button */}
           <span className="blue-link" onClick={() => navigate('/login')}>Quay lại Đăng nhập</span>
         </div>
       </div>

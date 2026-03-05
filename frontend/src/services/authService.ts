@@ -2,6 +2,7 @@ import api from './api';
 
 /**
  * HELPER: Standardizes error extraction to prevent [object Object] bug.
+ * Preserved exactly from your current code.
  */
 const extractError = (error: any, defaultMsg: string): string => {
   const errorData = error.response?.data;
@@ -13,8 +14,7 @@ const extractError = (error: any, defaultMsg: string): string => {
 };
 
 /**
- * UPDATED: Fetches profile and syncs identity data.
- * Added strict validation to prevent ghost logins.
+ * Fetches profile and syncs identity data.
  */
 export const getUserProfile = async (): Promise<any> => {
   try {
@@ -22,8 +22,6 @@ export const getUserProfile = async (): Promise<any> => {
     
     if (response.data) {
       const name = response.data.fullName;
-      
-      // VALIDATION: Ensure the name is real and not a "ghost" string
       const isValidName = name && name !== 'undefined' && name !== 'null' && name.trim() !== 'Thành viên';
 
       if (isValidName) {
@@ -32,7 +30,6 @@ export const getUserProfile = async (): Promise<any> => {
         localStorage.setItem('userAvatar', response.data.avatarUrl || '');
         localStorage.setItem('userRoles', JSON.stringify(response.data.roles || []));
       } else {
-        // CLEANUP: If data is invalid, clear storage to revert to Guest UI
         localStorage.removeItem('isAuthenticated');
         localStorage.removeItem('userName');
         localStorage.removeItem('userAvatar');
@@ -51,9 +48,6 @@ export const getUserProfile = async (): Promise<any> => {
   }
 };
 
-/**
- * NEW: Informs backend to destroy the JSESSIONID and clears local state.
- */
 export const logoutUser = async (): Promise<void> => {
   try {
     await api.post('/auth/logout');
@@ -65,13 +59,9 @@ export const logoutUser = async (): Promise<void> => {
   }
 };
 
-/**
- * Handles profile updates and triggers a UI refresh.
- */
 export const updateProfile = async (profileData: any): Promise<string> => {
   try {
     const response = await api.put('/auth/profile', profileData);
-    
     if (profileData.fullName) localStorage.setItem('userName', profileData.fullName);
     if (profileData.avatarUrl) localStorage.setItem('userAvatar', profileData.avatarUrl);
 
@@ -116,21 +106,30 @@ export const registerUser = async (userData: any): Promise<string> => {
   }
 };
 
+/**
+ * UPDATED: Request Password Reset.
+ * Now uses the backend's real database check message.
+ */
 export const requestPasswordReset = async (contactInfo: string): Promise<string> => {
   try {
     const response = await api.post('/auth/forgot-password', { contactInfo });
     return response.data;
   } catch (error: any) {
-    throw new Error(extractError(error, "Không tìm thấy tài khoản."));
+    // If backend returns "Tài khoản không tồn tại", extractError will grab that.
+    throw new Error(extractError(error, "Yêu cầu khôi phục mật khẩu thất bại."));
   }
 };
 
+/**
+ * UPDATED: Reset Password.
+ * Dynamically reports OTP expiration or incorrect codes from the backend.
+ */
 export const resetPassword = async (resetData: { contactInfo: string, otp: string, newPassword: string }): Promise<string> => {
   try {
     const response = await api.post('/auth/reset-password', resetData);
     return response.data;
   } catch (error: any) {
-    throw new Error(extractError(error, "Mã OTP không đúng hoặc đã hết hạn."));
+    throw new Error(extractError(error, "Xác thực mã OTP thất bại."));
   }
 };
 
