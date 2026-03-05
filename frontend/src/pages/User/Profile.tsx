@@ -5,7 +5,7 @@ import 'react-phone-input-2/lib/style.css';
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import ToastNotification from '../../components/Toast/ToastNotification'; 
 import { getUserProfile, updateProfile, logoutUser } from '../../services/authService';
-import { FaUserCircle, FaLock, FaGoogle, FaFacebook } from 'react-icons/fa';
+import { FaLock, FaGoogle, FaFacebook } from 'react-icons/fa';
 import logoImg from '../../assets/images/logo.png';
 import './Profile.css';
 
@@ -88,20 +88,35 @@ const Profile = () => {
   };
 
   /**
-   * UPDATED: handleSave with strict validation
+   * UPDATED: Global-Friendly Phone Validation
    */
+  const validatePhone = (phone: string) => {
+    if (!phone) return false;
+    
+    // 1. Strip all non-digits
+    const digitsOnly = phone.replace(/\D/g, '');
+    
+    // 2. Identify region (Vietnam)
+    if (digitsOnly.startsWith('0') || digitsOnly.startsWith('84')) {
+        const normalized = digitsOnly.startsWith('84') ? '0' + digitsOnly.slice(2) : digitsOnly;
+        const vnRegex = /^(03[2-9]|086|09[6-8]|070|07[6-9]|089|090|093|08[1-5]|088|091|094|052|05[68]|092|059|099)\d{7}$/;
+        return vnRegex.test(normalized) && normalized.length === 10;
+    }
+
+    // 3. International fallback
+    return digitsOnly.length >= 7 && digitsOnly.length <= 15;
+  };
+
   const handleSave = async () => {
-    // 1. Mandatory Name Check
     if (!formData.fullName.trim()) {
       setToastMessage("Vui lòng nhập Họ và Tên.");
       setShowToast(true);
       return;
     }
 
-    // 2. Mandatory Phone Check
-    // Ensures a phone number exists before hitting the backend gatekeeper.
-    if (!formData.phone || formData.phone.length < 5) {
-      setToastMessage("Vui lòng nhập số điện thoại hợp lệ.");
+    // UPDATED: Global logic
+    if (!formData.phone || !validatePhone(formData.phone)) {
+      setToastMessage("Số điện thoại không hợp lệ hoặc nhà mạng không hỗ trợ.");
       setShowToast(true);
       return;
     }
@@ -125,7 +140,6 @@ const Profile = () => {
       setShowToast(true);
       
     } catch (error: any) {
-      // Catching friendly errors like "Số điện thoại đã được sử dụng"
       setToastMessage(error.message || "Cập nhật hồ sơ thất bại.");
       setShowToast(true);
     } finally {
@@ -146,11 +160,7 @@ const Profile = () => {
 
   return (
     <div className="profile-wrapper">
-      <ToastNotification 
-        message={toastMessage} 
-        isVisible={showToast} 
-        onClose={() => setShowToast(false)} 
-      />
+      <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
 
       <div className="container profile-container">
         <AccountSidebar />
@@ -164,7 +174,6 @@ const Profile = () => {
 
           <div className="profile-form-container">
             <form className="profile-info-form" onSubmit={(e) => e.preventDefault()}>
-              
               <div className="form-row">
                 <label>Email <span className="required-star">*</span></label>
                 <div className="input-group-container">
@@ -175,10 +184,8 @@ const Profile = () => {
                     readOnly={isSocialUser} 
                     className={isSocialUser ? "input-field input-locked" : "input-field"}
                   />
-                  
                   {isSocialUser && (
                     <div className={`lock-badge badge-${formData.provider.toLowerCase()}`}>
-                      <FaLock className="lock-icon-small" />
                       {formData.provider === 'GOOGLE' && <FaGoogle className="provider-icon" />}
                       {formData.provider === 'FACEBOOK' && <FaFacebook className="provider-icon" />}
                       <span>Liên kết với {formData.provider}</span>
@@ -242,13 +249,8 @@ const Profile = () => {
                   <button type="button" className="save-btn" onClick={handleSave} disabled={isSaving}>
                     {isSaving ? "Đang lưu..." : "Lưu thay đổi"}
                   </button>
-
                   {!isSeller && (
-                    <button 
-                      type="button" 
-                      className="become-seller-btn"
-                      onClick={() => navigate('/seller/register')}
-                    >
+                    <button type="button" className="become-seller-btn" onClick={() => navigate('/seller/register')}>
                       Trở thành Người bán
                     </button>
                   )}
@@ -261,17 +263,11 @@ const Profile = () => {
                 <img 
                   src={formData.avatarUrl || logoImg} 
                   alt="Avatar" 
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = logoImg; 
-                  }}
+                  onError={(e) => { (e.target as HTMLImageElement).src = logoImg; }}
                 />
               </div>
               <input type="file" ref={fileInputRef} onChange={handleImageChange} accept=".jpg,.jpeg,.png" style={{ display: 'none' }} />
               <button className="upload-btn" onClick={() => fileInputRef.current?.click()}>Chọn ảnh</button>
-              <div className="upload-requirements">
-                <p>Dung lượng file tối đa 1 MB</p>
-                <p>Định dạng: .JPEG, .PNG</p>
-              </div>
             </div>
           </div>
         </main>

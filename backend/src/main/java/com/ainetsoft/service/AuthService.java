@@ -25,26 +25,44 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
 
     /**
-     * Helper: Normalizes phone numbers to a clean numeric-only format.
+     * UPDATED: Global & Vietnamese Phone Validation
+     * 1. Strips non-digits.
+     * 2. If it is a Vietnamese number (starts with 0 or 84), checks carrier prefixes.
+     * 3. If it is international, checks for a valid numeric length (7-15 digits).
      */
+    private boolean isValidPhone(String phone) {
+        if (phone == null || phone.isBlank()) return true;
+
+        String cleanPhone = phone.replaceAll("[^0-9]", "");
+        
+        // Check if it's a Vietnamese number
+        if (cleanPhone.startsWith("0") || cleanPhone.startsWith("84")) {
+            String vnNormalized = cleanPhone.startsWith("84") ? "0" + cleanPhone.substring(2) : cleanPhone;
+            
+            // Strict Regex for VN Carriers
+            String vnRegex = "^(03[2-9]|086|09[6-8]|070|07[6-9]|089|090|093|08[1-5]|088|091|094|052|05[68]|092|059|099)\\d{7}$";
+            
+            if (vnNormalized.matches(vnRegex)) return true;
+            
+            // If it starts like a VN number but doesn't match a carrier, reject it
+            throw new RuntimeException("Số điện thoại Việt Nam không thuộc nhà mạng được hỗ trợ!");
+        }
+
+        // Global Validation: Allow any numeric string between 7 and 15 digits
+        return cleanPhone.matches("^\\d{7,15}$");
+    }
+
     private String normalizePhone(String phone) {
         if (phone == null || phone.isBlank()) return null;
         return phone.replaceAll("[^0-9]", "");
     }
 
-    /**
-     * FIXED IDENTIFIER LOGIC: 
-     * Ensures emails with numbers (e.g., huan123@gmail.com) are not treated as phones.
-     * Strictly checks for '@' to identify Email vs Phone.
-     */
     private String normalizeIdentifier(String identifier) {
         if (identifier == null) return null;
         String trimmed = identifier.trim();
-        
         if (trimmed.contains("@")) {
             return trimmed.toLowerCase();
         }
-        
         return normalizePhone(trimmed);
     }
 
@@ -68,10 +86,6 @@ public class AuthService {
                 .build();
     }
 
-    /**
-     * UPDATED: Profile update with friendly uniqueness checks for both Email and Phone.
-     * Prevents technical MongoDB duplicate key errors from showing on UI.
-     */
     public String updateProfile(String contactInfo, UpdateProfileRequest request) {
         String identifier = normalizeIdentifier(contactInfo);
         User user = userRepository.findByIdentifier(identifier)
@@ -81,7 +95,6 @@ public class AuthService {
             user.setFullName(request.getFullName().trim());
         }
 
-        // 1. Email Uniqueness Check
         if (request.getEmail() != null && !request.getEmail().isBlank()) {
             boolean isSocialUser = user.getProvider() != null && 
                                   !user.getProvider().toString().equalsIgnoreCase("LOCAL");
@@ -94,21 +107,22 @@ public class AuthService {
                     }
                     user.setEmail(newEmail);
                 }
-            } else {
-                log.info("Blocking email update for social account: {}", user.getEmail());
             }
         }
 
         if (request.getGender() != null) user.setGender(request.getGender());
         if (request.getBirthDate() != null) user.setBirthDate(request.getBirthDate());
         
-        // 2. NEW: Phone Uniqueness Check
-        // This proactively stops duplicate phones before the DB throws an error.
         if (request.getPhone() != null && !request.getPhone().isBlank()) {
+            // UPDATED: Global-ready check
+            if (!isValidPhone(request.getPhone())) {
+                throw new RuntimeException("Số điện thoại không hợp lệ!");
+            }
+
             String newPhone = normalizePhone(request.getPhone());
             if (!newPhone.equals(user.getPhone())) {
                 if (userRepository.existsByPhone(newPhone)) {
-                    throw new RuntimeException("Số điện thoại '" + newPhone + "' đã được sử dụng bởi tài khoản khác!");
+                    throw new RuntimeException("Số điện thoại này đã được sử dụng!");
                 }
                 user.setPhone(newPhone);
             }
@@ -132,6 +146,13 @@ public class AuthService {
 
     public String register(RegisterRequest request) {
         validatePasswordStrength(request.getPassword());
+        
+        if (request.getPhone() != null && !request.getPhone().isBlank()) {
+            if (!isValidPhone(request.getPhone())) {
+                throw new RuntimeException("Số điện thoại không hợp lệ!");
+            }
+        }
+
         String email = (request.getEmail() == null || request.getEmail().isBlank()) ? null : request.getEmail().trim().toLowerCase();
         String phone = normalizePhone(request.getPhone());
 
@@ -164,14 +185,11 @@ public class AuthService {
 
     public LoginResponse login(LoginRequest request) {
         String identifier = normalizeIdentifier(request.getContactInfo());
-
         User user = userRepository.findByIdentifier(identifier)
                 .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
-
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new RuntimeException("Mật khẩu không chính xác!");
         }
-
         return new LoginResponse(user.getFullName(), user.getRoles(), "Đăng nhập thành công!");
     }
 
@@ -180,11 +198,9 @@ public class AuthService {
         String identifier = normalizeIdentifier(contactInfo);
         User user = userRepository.findByIdentifier(identifier)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
-
         if (!passwordEncoder.matches(request.getCurrentPassword().trim(), user.getPassword())) {
             throw new RuntimeException("Mật khẩu hiện tại không chính xác!");
         }
-
         user.setPassword(passwordEncoder.encode(request.getNewPassword().trim()));
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
@@ -193,20 +209,16 @@ public class AuthService {
 
     public String processForgotPassword(String contactInfo) {
         String identifier = normalizeIdentifier(contactInfo);
-        
         userRepository.findByIdentifier(identifier)
             .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại trong hệ thống!"));
-
         String otp = String.format("%06d", new Random().nextInt(999999));
         tokenRepository.deleteByContactInfo(identifier);
-
         PasswordResetToken token = PasswordResetToken.builder()
             .contactInfo(identifier)
             .otpCode(otp)
             .expiryDate(LocalDateTime.now().plusMinutes(10))
             .build();
         tokenRepository.save(token);
-
         try {
             if (identifier.contains("@")) {
                 azureService.sendResetEmail(identifier, otp);
@@ -226,15 +238,12 @@ public class AuthService {
         String identifier = normalizeIdentifier(contactInfo);
         PasswordResetToken token = tokenRepository.findByContactInfoAndOtpCode(identifier, otp)
             .orElseThrow(() -> new RuntimeException("Mã xác thực không chính xác hoặc đã hết hạn!"));
-
         User user = userRepository.findByIdentifier(identifier)
             .orElseThrow(() -> new RuntimeException("Lỗi hệ thống!"));
-
         user.setPassword(passwordEncoder.encode(newPassword));
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
         tokenRepository.delete(token);
-
         return "Mật khẩu của bạn đã được cập nhật thành công.";
     }
 
@@ -251,7 +260,6 @@ public class AuthService {
         String identifier = normalizeIdentifier(contactInfo);
         User user = userRepository.findByIdentifier(identifier)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
-        
         user.setCart(cartItems != null ? cartItems : new ArrayList<>());
         userRepository.save(user);
         return "Giỏ hàng đã được đồng bộ.";
@@ -261,13 +269,10 @@ public class AuthService {
         String identifier = normalizeIdentifier(contactInfo);
         User user = userRepository.findByIdentifier(identifier)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
-
         Set<String> roles = user.getRoles();
         if (roles == null) roles = new HashSet<>();
         else roles = new HashSet<>(roles);
-
         if (roles.contains("SELLER")) return "Bạn đã là Người bán rồi!";
-
         roles.add("SELLER");
         user.setRoles(roles);
         user.setUpdatedAt(LocalDateTime.now());

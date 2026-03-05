@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
+import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css'; 
 import '../Auth/Auth.css'; 
-import './Register.css'; // CRITICAL: Added this so the red star works!
+import './Register.css'; 
 import { registerUser } from '../../services/authService';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
@@ -42,6 +42,28 @@ const Register = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  /**
+   * UPDATED: Global-Friendly Phone Validation
+   * Matches the "Smart Gatekeeper" logic in the backend.
+   */
+  const validatePhone = (phone: string) => {
+    if (!phone) return false;
+    
+    // 1. Strip all non-digits
+    const digitsOnly = phone.replace(/\D/g, '');
+    
+    // 2. Identify region
+    if (digitsOnly.startsWith('0') || digitsOnly.startsWith('84')) {
+        // Normalizing for VN carrier check
+        const normalized = digitsOnly.startsWith('84') ? '0' + digitsOnly.slice(2) : digitsOnly;
+        const vnRegex = /^(03[2-9]|086|09[6-8]|070|07[6-9]|089|090|093|08[1-5]|088|091|094|052|05[68]|092|059|099)\d{7}$/;
+        return vnRegex.test(normalized) && normalized.length === 10;
+    }
+
+    // 3. Global Fallback: 7-15 digits for international users
+    return digitsOnly.length >= 7 && digitsOnly.length <= 15;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
@@ -62,9 +84,9 @@ const Register = () => {
       return;
     }
 
-    if (inputMode === 'phone' && formData.phone) {
-        if (!isValidPhoneNumber(formData.phone)) {
-            setFormError("Số điện thoại không hợp lệ!");
+    if (inputMode === 'phone') {
+        if (!formData.phone || !validatePhone(formData.phone)) {
+            setFormError("Số điện thoại không hợp lệ hoặc nhà mạng không được hỗ trợ!");
             return;
         }
     }
@@ -106,9 +128,7 @@ const Register = () => {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>
-              Tên hiển thị <span className="required-star">*</span>
-            </label>
+            <label>Tên hiển thị <span className="required-star">*</span></label>
             <input 
               type="text" 
               name="username" 
@@ -139,9 +159,7 @@ const Register = () => {
           <div className="form-group">
             {inputMode === 'phone' ? (
               <>
-                <label>
-                  Số điện thoại (Vietnam +84) <span className="required-star">*</span>
-                </label>
+                <label>Số điện thoại <span className="required-star">*</span></label>
                 <PhoneInput
                   international
                   defaultCountry="VN"
@@ -153,9 +171,7 @@ const Register = () => {
               </>
             ) : (
               <>
-                <label>
-                  Địa chỉ Email <span className="required-star">*</span>
-                </label>
+                <label>Địa chỉ Email <span className="required-star">*</span></label>
                 <input 
                   type="email" 
                   name="email" 
@@ -169,9 +185,7 @@ const Register = () => {
           </div>
 
           <div className="form-group">
-            <label>
-              Mật khẩu <span className="required-star">*</span>
-            </label>
+            <label>Mật khẩu <span className="required-star">*</span></label>
             <div className="password-input-wrapper">
               <input 
                 type={showPassword ? "text" : "password"} 
@@ -192,9 +206,7 @@ const Register = () => {
           </div>
 
           <div className="form-group">
-            <label>
-              Xác nhận mật khẩu <span className="required-star">*</span>
-            </label>
+            <label>Xác nhận mật khẩu <span className="required-star">*</span></label>
             <div className="password-input-wrapper">
               <input 
                 type={showConfirmPassword ? "text" : "password"} 
@@ -215,9 +227,7 @@ const Register = () => {
           </div>
 
           <div className="captcha-section">
-            <label>
-              Xác thực: <strong>{captcha.num1} + {captcha.num2} = ?</strong> <span className="required-star">*</span>
-            </label>
+            <label>Xác thực: <strong>{captcha.num1} + {captcha.num2} = ?</strong> <span className="required-star">*</span></label>
             <div className="captcha-input-wrapper">
               <input 
                 type="number" 
