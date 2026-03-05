@@ -6,7 +6,6 @@ import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import ToastNotification from '../../components/Toast/ToastNotification'; 
 import { getUserProfile, updateProfile, logoutUser } from '../../services/authService';
 import { FaUserCircle, FaLock, FaGoogle, FaFacebook } from 'react-icons/fa';
-// 1. ADDED: Your logo import for the fallback
 import logoImg from '../../assets/images/logo.png';
 import './Profile.css';
 
@@ -32,7 +31,6 @@ const Profile = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
-  // Determine if the user is logged in via a Social Provider
   const isSocialUser = formData.provider !== 'LOCAL' && formData.provider !== null;
 
   useEffect(() => {
@@ -99,7 +97,6 @@ const Profile = () => {
     try {
       setIsSaving(true);
       
-      // Syncing Profile Phone -> Address Phone for consistency
       const synchronizedAddresses = formData.addresses.map(addr => ({
         ...addr,
         phone: formData.phone 
@@ -143,7 +140,6 @@ const Profile = () => {
       />
 
       <div className="container profile-container">
-        {/* Preserving your Sidebar Component */}
         <AccountSidebar />
         
         <main className="profile-main-content">
@@ -156,9 +152,9 @@ const Profile = () => {
           <div className="profile-form-container">
             <form className="profile-info-form" onSubmit={(e) => e.preventDefault()}>
               
-              {/* --- EMAIL FIELD WITH PROVIDER DETECTION --- */}
               <div className="form-row">
-                <label>Email</label>
+                {/* ADDED STAR */}
+                <label>Email <span className="required-star">*</span></label>
                 <div className="input-group-container">
                   <input 
                     type="email" 
@@ -168,7 +164,6 @@ const Profile = () => {
                     className={isSocialUser ? "input-field input-locked" : "input-field"}
                   />
                   
-                  {/* DYNAMIC PROVIDER BADGE */}
                   {isSocialUser && (
                     <div className={`lock-badge badge-${formData.provider.toLowerCase()}`}>
                       <FaLock className="lock-icon-small" />
@@ -181,7 +176,8 @@ const Profile = () => {
               </div>
 
               <div className="form-row">
-                <label>Họ và Tên</label>
+                {/* ADDED STAR */}
+                <label>Họ và Tên <span className="required-star">*</span></label>
                 <input 
                   type="text" 
                   value={formData.fullName} 
@@ -191,7 +187,8 @@ const Profile = () => {
               </div>
 
               <div className="form-row">
-                <label>Số điện thoại</label>
+                {/* ADDED STAR */}
+                <label>Số điện thoại <span className="required-star">*</span></label>
                 <div className="phone-input-wrapper">
                   <PhoneInput
                     country={'vn'} 
@@ -249,10 +246,8 @@ const Profile = () => {
               </div>
             </form>
 
-            {/* --- AVATAR SECTION UPDATED FOR YOUR LOGO --- */}
             <div className="profile-avatar-section">
               <div className="avatar-preview">
-                {/* 2. MODIFIED: Always use img tag with logo fallback to avoid broken icons */}
                 <img 
                   src={formData.avatarUrl || logoImg} 
                   alt="Avatar" 

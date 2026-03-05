@@ -97,12 +97,12 @@ const Address = () => {
           <hr className="divider" />
           <form className="profile-info-form" onSubmit={(e) => e.preventDefault()}>
             <div className="form-row">
-              <label>Tên người nhận</label>
+              <label>Tên người nhận <span className="required-star">*</span></label>
               <input type="text" value={addressData.receiverName} onChange={(e) => setAddressData({...addressData, receiverName: e.target.value})} />
             </div>
 
             <div className="form-row">
-              <label>Số điện thoại nhận hàng</label>
+              <label>Số điện thoại nhận hàng <span className="required-star">*</span></label>
               <div className="phone-input-wrapper">
                 <PhoneInput
                   country={'vn'} 
@@ -114,15 +114,15 @@ const Address = () => {
             </div>
 
             <div className="form-row">
-              <label>Tỉnh / Thành phố</label>
+              <label>Tỉnh / Thành phố <span className="required-star">*</span></label>
               <input type="text" value={addressData.province} onChange={(e) => setAddressData({...addressData, province: e.target.value})} />
             </div>
             <div className="form-row">
-              <label>Phường / Xã</label>
+              <label>Phường / Xã <span className="required-star">*</span></label>
               <input type="text" value={addressData.ward} onChange={(e) => setAddressData({...addressData, ward: e.target.value})} />
             </div>
             <div className="form-row">
-              <label>Địa chỉ cụ thể</label>
+              <label>Địa chỉ cụ thể <span className="required-star">*</span></label>
               <input type="text" value={addressData.detail} onChange={(e) => setAddressData({...addressData, detail: e.target.value})} />
             </div>
 

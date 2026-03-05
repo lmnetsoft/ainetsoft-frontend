@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import 'react-phone-number-input/style.css'; 
 import '../Auth/Auth.css'; 
+import './Register.css'; // CRITICAL: Added this so the red star works!
 import { registerUser } from '../../services/authService';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
@@ -45,21 +46,17 @@ const Register = () => {
     e.preventDefault();
     setFormError('');
 
-    // 1. Password Length Validation
     if (formData.password.length < 8) {
       setFormError("Mật khẩu phải có ít nhất 8 ký tự!");
       return;
     }
 
-    // 2. NEW: Password Complexity Validation (Must contain at least one letter)
-    // Matches backend: !password.matches(".*[a-zA-Z].*")
     const hasLetter = /[a-zA-Z]/.test(formData.password);
     if (!hasLetter) {
       setFormError("Mật khẩu phải chứa ít nhất một chữ cái!");
       return;
     }
 
-    // 3. Password Match Validation
     if (formData.password !== formData.confirmPassword) {
       setFormError("Mật khẩu xác nhận không khớp!");
       return;
@@ -109,7 +106,9 @@ const Register = () => {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Tên hiển thị</label>
+            <label>
+              Tên hiển thị <span className="required-star">*</span>
+            </label>
             <input 
               type="text" 
               name="username" 
@@ -140,7 +139,9 @@ const Register = () => {
           <div className="form-group">
             {inputMode === 'phone' ? (
               <>
-                <label>Số điện thoại (Vietnam +84)</label>
+                <label>
+                  Số điện thoại (Vietnam +84) <span className="required-star">*</span>
+                </label>
                 <PhoneInput
                   international
                   defaultCountry="VN"
@@ -152,7 +153,9 @@ const Register = () => {
               </>
             ) : (
               <>
-                <label>Địa chỉ Email</label>
+                <label>
+                  Địa chỉ Email <span className="required-star">*</span>
+                </label>
                 <input 
                   type="email" 
                   name="email" 
@@ -166,12 +169,14 @@ const Register = () => {
           </div>
 
           <div className="form-group">
-            <label>Mật khẩu (Tối thiểu 8 ký tự, ít nhất 1 chữ cái)</label>
+            <label>
+              Mật khẩu <span className="required-star">*</span>
+            </label>
             <div className="password-input-wrapper">
               <input 
                 type={showPassword ? "text" : "password"} 
                 name="password" 
-                placeholder="••••••••" 
+                placeholder="Tối thiểu 8 ký tự, 1 chữ cái" 
                 value={formData.password}
                 onChange={handleInputChange} 
                 required 
@@ -187,12 +192,14 @@ const Register = () => {
           </div>
 
           <div className="form-group">
-            <label>Xác nhận mật khẩu</label>
+            <label>
+              Xác nhận mật khẩu <span className="required-star">*</span>
+            </label>
             <div className="password-input-wrapper">
               <input 
                 type={showConfirmPassword ? "text" : "password"} 
                 name="confirmPassword" 
-                placeholder="••••••••" 
+                placeholder="Nhập lại mật khẩu" 
                 value={formData.confirmPassword}
                 onChange={handleInputChange} 
                 required 
@@ -208,7 +215,9 @@ const Register = () => {
           </div>
 
           <div className="captcha-section">
-            <label>Xác thực: <strong>{captcha.num1} + {captcha.num2} = ?</strong></label>
+            <label>
+              Xác thực: <strong>{captcha.num1} + {captcha.num2} = ?</strong> <span className="required-star">*</span>
+            </label>
             <div className="captcha-input-wrapper">
               <input 
                 type="number" 

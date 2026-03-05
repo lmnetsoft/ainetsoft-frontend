@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
-import ToastNotification from '../../components/Toast/ToastNotification'; // NEW IMPORT
+import ToastNotification from '../../components/Toast/ToastNotification'; 
 import { changePasswordUser } from '../../services/authService';
 import './ChangePassword.css';
 
@@ -17,7 +17,6 @@ const ChangePassword = () => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // NEW: Toast Notification States
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
@@ -44,7 +43,6 @@ const ChangePassword = () => {
 
     setLoading(true);
     try {
-      // Sending ONLY the fields defined in the Java ChangePasswordRequest DTO
       const message = await changePasswordUser({
         currentPassword: formData.currentPassword.trim(),
         newPassword: formData.newPassword.trim()
@@ -53,10 +51,8 @@ const ChangePassword = () => {
       setToastMessage(message || "Đổi mật khẩu thành công!");
       setShowToast(true);
       
-      // Reset form on success
       setFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });
     } catch (error: any) {
-      // Catches errors like "Mật khẩu hiện tại không chính xác!" from AuthService.java
       setToastMessage(error.message || "Đổi mật khẩu thất bại.");
       setShowToast(true);
     } finally {
@@ -66,7 +62,6 @@ const ChangePassword = () => {
 
   return (
     <div className="password-page-wrapper">
-      {/* RENDER TOAST NOTIFICATION */}
       <ToastNotification 
         message={toastMessage} 
         isVisible={showToast} 
@@ -86,7 +81,8 @@ const ChangePassword = () => {
           <form className="password-change-form" onSubmit={handleSubmit}>
             
             <div className="password-form-row">
-              <label>Mật khẩu hiện tại</label>
+              {/* ADDED STAR */}
+              <label>Mật khẩu hiện tại <span className="required-star">*</span></label>
               <div className="password-input-wrapper">
                 <input 
                   type={showCurrent ? "text" : "password"} 
@@ -102,7 +98,8 @@ const ChangePassword = () => {
             </div>
 
             <div className="password-form-row">
-              <label>Mật khẩu mới (Tối thiểu 8 ký tự)</label>
+              {/* ADDED STAR */}
+              <label>Mật khẩu mới (Tối thiểu 8 ký tự) <span className="required-star">*</span></label>
               <div className="password-input-wrapper">
                 <input 
                   type={showNew ? "text" : "password"} 
@@ -118,7 +115,8 @@ const ChangePassword = () => {
             </div>
 
             <div className="password-form-row">
-              <label>Xác nhận mật khẩu</label>
+              {/* ADDED STAR */}
+              <label>Xác nhận mật khẩu <span className="required-star">*</span></label>
               <div className="password-input-wrapper">
                 <input 
                   type={showConfirm ? "text" : "password"} 

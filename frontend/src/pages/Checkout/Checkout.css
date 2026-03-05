@@ -57,3 +57,16 @@
   margin-top: 20px;
 }
 .place-order-btn:disabled { background: #ccc; }
+
+/* Mandatory field indicator */
+.required-star {
+  color: #ef4444 !important; /* High-priority red */
+  margin-left: 5px;
+  font-weight: bold;
+}
+
+/* Ensure the Section Header aligns correctly with the star */
+.section-header h3 {
+  display: flex !important;
+  align-items: center !important;
+}

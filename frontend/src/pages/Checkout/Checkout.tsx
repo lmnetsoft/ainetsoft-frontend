@@ -84,7 +84,8 @@ const Checkout = () => {
         <div className="checkout-section address-section">
           <div className="section-header">
             <FaMapMarkerAlt className="icon-orange" />
-            <h3>Địa Chỉ Nhận Hàng</h3>
+            {/* ADDED STAR */}
+            <h3>Địa Chỉ Nhận Hàng <span className="required-star">*</span></h3>
           </div>
           {selectedAddress ? (
             <div className="address-display">

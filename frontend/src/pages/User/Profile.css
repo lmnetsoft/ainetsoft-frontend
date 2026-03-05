@@ -289,3 +289,17 @@
     border-bottom: 1px solid #efefef;
     margin-bottom: 20px;
 }
+
+/* Styling for mandatory field indicators */
+.required-star {
+  color: #ef4444 !important; /* Tailwind red-500 */
+  margin-left: 4px;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+/* Ensure the label text and star are aligned horizontally */
+.form-row label {
+  display: flex !important;
+  align-items: center !important;
+}
