@@ -87,9 +87,21 @@ const Profile = () => {
     }
   };
 
+  /**
+   * UPDATED: handleSave with strict validation
+   */
   const handleSave = async () => {
+    // 1. Mandatory Name Check
     if (!formData.fullName.trim()) {
       setToastMessage("Vui lòng nhập Họ và Tên.");
+      setShowToast(true);
+      return;
+    }
+
+    // 2. Mandatory Phone Check
+    // Ensures a phone number exists before hitting the backend gatekeeper.
+    if (!formData.phone || formData.phone.length < 5) {
+      setToastMessage("Vui lòng nhập số điện thoại hợp lệ.");
       setShowToast(true);
       return;
     }
@@ -113,6 +125,7 @@ const Profile = () => {
       setShowToast(true);
       
     } catch (error: any) {
+      // Catching friendly errors like "Số điện thoại đã được sử dụng"
       setToastMessage(error.message || "Cập nhật hồ sơ thất bại.");
       setShowToast(true);
     } finally {
@@ -153,7 +166,6 @@ const Profile = () => {
             <form className="profile-info-form" onSubmit={(e) => e.preventDefault()}>
               
               <div className="form-row">
-                {/* ADDED STAR */}
                 <label>Email <span className="required-star">*</span></label>
                 <div className="input-group-container">
                   <input 
@@ -176,7 +188,6 @@ const Profile = () => {
               </div>
 
               <div className="form-row">
-                {/* ADDED STAR */}
                 <label>Họ và Tên <span className="required-star">*</span></label>
                 <input 
                   type="text" 
@@ -187,7 +198,6 @@ const Profile = () => {
               </div>
 
               <div className="form-row">
-                {/* ADDED STAR */}
                 <label>Số điện thoại <span className="required-star">*</span></label>
                 <div className="phone-input-wrapper">
                   <PhoneInput

@@ -41,12 +41,10 @@ public class AuthService {
         if (identifier == null) return null;
         String trimmed = identifier.trim();
         
-        // 1. If it has an '@', it is strictly an Email.
         if (trimmed.contains("@")) {
             return trimmed.toLowerCase();
         }
         
-        // 2. Otherwise, treat as Phone and strip non-digits.
         return normalizePhone(trimmed);
     }
 
@@ -70,6 +68,10 @@ public class AuthService {
                 .build();
     }
 
+    /**
+     * UPDATED: Profile update with friendly uniqueness checks for both Email and Phone.
+     * Prevents technical MongoDB duplicate key errors from showing on UI.
+     */
     public String updateProfile(String contactInfo, UpdateProfileRequest request) {
         String identifier = normalizeIdentifier(contactInfo);
         User user = userRepository.findByIdentifier(identifier)
@@ -79,6 +81,7 @@ public class AuthService {
             user.setFullName(request.getFullName().trim());
         }
 
+        // 1. Email Uniqueness Check
         if (request.getEmail() != null && !request.getEmail().isBlank()) {
             boolean isSocialUser = user.getProvider() != null && 
                                   !user.getProvider().toString().equalsIgnoreCase("LOCAL");
@@ -99,8 +102,16 @@ public class AuthService {
         if (request.getGender() != null) user.setGender(request.getGender());
         if (request.getBirthDate() != null) user.setBirthDate(request.getBirthDate());
         
+        // 2. NEW: Phone Uniqueness Check
+        // This proactively stops duplicate phones before the DB throws an error.
         if (request.getPhone() != null && !request.getPhone().isBlank()) {
-            user.setPhone(normalizePhone(request.getPhone()));
+            String newPhone = normalizePhone(request.getPhone());
+            if (!newPhone.equals(user.getPhone())) {
+                if (userRepository.existsByPhone(newPhone)) {
+                    throw new RuntimeException("Số điện thoại '" + newPhone + "' đã được sử dụng bởi tài khoản khác!");
+                }
+                user.setPhone(newPhone);
+            }
         }
 
         if (request.getAvatarUrl() != null) user.setAvatarUrl(request.getAvatarUrl());
@@ -115,7 +126,6 @@ public class AuthService {
         if (request.getBankAccounts() != null) user.setBankAccounts(request.getBankAccounts());
 
         user.setUpdatedAt(LocalDateTime.now());
-        // FIXED: Removed redundant user.save() call
         userRepository.save(user);
         return "Cập nhật hồ sơ thành công!";
     }
@@ -181,14 +191,9 @@ public class AuthService {
         return "Mật khẩu đã được thay đổi thành công!";
     }
 
-    /**
-     * GATEKEEPER LOGIC: Forgot Password
-     * Verifies existence in DB before any action.
-     */
     public String processForgotPassword(String contactInfo) {
         String identifier = normalizeIdentifier(contactInfo);
         
-        // 1. DATABASE CHECK: Immediately throws error if not in system
         userRepository.findByIdentifier(identifier)
             .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại trong hệ thống!"));
 
@@ -203,18 +208,15 @@ public class AuthService {
         tokenRepository.save(token);
 
         try {
-            // 2. Logic to handle Email vs Phone delivery
             if (identifier.contains("@")) {
                 azureService.sendResetEmail(identifier, otp);
                 return "Mã OTP đã được gửi đến email của bạn.";
             } else {
-                // Future implementation for SMS
                 log.info("OTP generated for phone {}: {}", identifier, otp);
                 return "Mã OTP đã được gửi đến số điện thoại của bạn.";
             }
         } catch (Exception e) {
             log.error("Azure Communication delivery error: {}", e.getMessage());
-            // Triggers the "System Error" notification in React
             throw new RuntimeException("Lỗi hệ thống khi gửi mã xác thực. Vui lòng kiểm tra lại cấu hình email.");
         }
     }
