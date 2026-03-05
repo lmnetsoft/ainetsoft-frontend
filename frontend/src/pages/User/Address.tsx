@@ -25,11 +25,9 @@ const Address = () => {
       try {
         setLoading(true);
         const data = await getUserProfile();
-        // Retrieve address from database
         if (data.addresses && data.addresses.length > 0) {
           setAddressData(data.addresses[0]);
         } else {
-          // If no address exists, seed it with Profile data for consistency
           setAddressData(prev => ({
             ...prev,
             receiverName: data.fullName || '',
@@ -46,36 +44,48 @@ const Address = () => {
     document.title = "Địa Chỉ Của Tôi | AiNetsoft";
   }, []);
 
+  /**
+   * NEW: Vietnamese Phone Format Validation
+   * Ensures the number belongs to Viettel, Mobifone, Vina, etc.
+   */
+  const validateVNPhone = (phone: string) => {
+    const cleanPhone = phone.replace(/\D/g, '');
+    // Pattern: Starts with 84 or 0, followed by 3, 5, 7, 8, 9 and 8 digits
+    const regex = /^(84|0)(3|5|7|8|9)\d{8}$/;
+    return regex.test(cleanPhone);
+  };
+
   const handleSave = async () => {
-    // Check mandatory fields
     if (!addressData.receiverName || !addressData.province || !addressData.ward || !addressData.detail) {
       setToastMessage("Vui lòng điền đầy đủ thông tin.");
       setShowToast(true);
       return;
     }
 
-    if (!addressData.phone || addressData.phone.length <= 3) {
-      setToastMessage("Vui lòng nhập số điện thoại.");
+    // UPDATED: Strict Vietnamese Format Validation
+    if (!addressData.phone || !validateVNPhone(addressData.phone)) {
+      setToastMessage("Số điện thoại không hợp lệ hoặc không thuộc nhà mạng Việt Nam.");
       setShowToast(true);
       return;
     }
 
     try {
       setIsSaving(true);
-      // SYNC LOGIC: Send phone number to both root and address list
       const payload = {
         fullName: addressData.receiverName,
-        phone: addressData.phone, // Updates Profile page
-        addresses: [{ ...addressData, isDefault: true }] // Updates Address page
+        phone: addressData.phone,
+        addresses: [{ ...addressData, isDefault: true }]
       };
       
-      await updateProfile(payload);
-      setToastMessage("Cập nhật địa chỉ và hồ sơ thành công!");
+      const result = await updateProfile(payload);
+      setToastMessage(result || "Cập nhật địa chỉ thành công!");
       setShowToast(true);
     } catch (error: any) {
-      // FIX: Standardized error extraction
-      const errorData = error.response?.data;
-      setToastMessage(typeof errorData === 'string' ? errorData : (errorData?.message || "Lỗi cập nhật."));
+      /**
+       * FIXED: Friendly Error Notification
+       * This now displays the real backend message if the phone is a duplicate.
+       */
+      setToastMessage(error.message || "Cập nhật địa chỉ thất bại.");
       setShowToast(true);
     } finally {
       setIsSaving(false);
@@ -98,7 +108,11 @@ const Address = () => {
           <form className="profile-info-form" onSubmit={(e) => e.preventDefault()}>
             <div className="form-row">
               <label>Tên người nhận <span className="required-star">*</span></label>
-              <input type="text" value={addressData.receiverName} onChange={(e) => setAddressData({...addressData, receiverName: e.target.value})} />
+              <input 
+                type="text" 
+                value={addressData.receiverName} 
+                onChange={(e) => setAddressData({...addressData, receiverName: e.target.value})} 
+              />
             </div>
 
             <div className="form-row">
@@ -115,15 +129,27 @@ const Address = () => {
 
             <div className="form-row">
               <label>Tỉnh / Thành phố <span className="required-star">*</span></label>
-              <input type="text" value={addressData.province} onChange={(e) => setAddressData({...addressData, province: e.target.value})} />
+              <input 
+                type="text" 
+                value={addressData.province} 
+                onChange={(e) => setAddressData({...addressData, province: e.target.value})} 
+              />
             </div>
             <div className="form-row">
               <label>Phường / Xã <span className="required-star">*</span></label>
-              <input type="text" value={addressData.ward} onChange={(e) => setAddressData({...addressData, ward: e.target.value})} />
+              <input 
+                type="text" 
+                value={addressData.ward} 
+                onChange={(e) => setAddressData({...addressData, ward: e.target.value})} 
+              />
             </div>
             <div className="form-row">
               <label>Địa chỉ cụ thể <span className="required-star">*</span></label>
-              <input type="text" value={addressData.detail} onChange={(e) => setAddressData({...addressData, detail: e.target.value})} />
+              <input 
+                type="text" 
+                value={addressData.detail} 
+                onChange={(e) => setAddressData({...addressData, detail: e.target.value})} 
+              />
             </div>
 
             <div className="form-row">
