@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FaBoxOpen, FaPlus } from 'react-icons/fa';
 import api from '../../services/api'; 
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import ToastNotification from '../../components/Toast/ToastNotification';
@@ -12,7 +13,7 @@ interface Product {
   stock: number;
   category: string;
   images: string[];
-  status: string; // PENDING, APPROVED, REJECTED
+  status: string;
 }
 
 const MyProducts = () => {
@@ -25,7 +26,7 @@ const MyProducts = () => {
 
   useEffect(() => {
     fetchMyProducts();
-    document.title = "Quản lý sản phẩm | AiNetsoft Seller";
+    document.title = "Sản phẩm của tôi | AiNetsoft";
   }, []);
 
   const fetchMyProducts = async () => {
@@ -34,7 +35,7 @@ const MyProducts = () => {
       const response = await api.get('/products/seller/my-items');
       setProducts(response.data);
     } catch (error: any) {
-      setToastMessage(error.response?.data || "Không thể tải danh sách sản phẩm.");
+      setToastMessage("Không thể tải danh sách sản phẩm.");
       setShowToast(true);
     } finally {
       setLoading(false);
@@ -49,121 +50,92 @@ const MyProducts = () => {
       setShowToast(true);
       setProducts(prev => prev.filter(p => p.id !== productId));
     } catch (error: any) {
-      setToastMessage(error.response?.data || "Không thể xóa sản phẩm.");
+      setToastMessage("Không thể xóa sản phẩm.");
       setShowToast(true);
     }
   };
 
-  // --- UPDATED STATUS BADGES ---
   const getStatusBadge = (status: string) => {
     switch (status?.toUpperCase()) {
-      case 'APPROVED': 
-        return <span className="status-badge approved">Đang hiển thị</span>;
-      case 'PENDING': 
-        return <span className="status-badge pending">Đang chờ duyệt</span>;
-      case 'REJECTED': 
-        return <span className="status-badge rejected">Bị từ chối</span>;
-      default: 
-        return <span className="status-badge">{status}</span>;
+      case 'APPROVED': return <span className="badge-status approved">Đang bán</span>;
+      case 'PENDING': return <span className="badge-status pending">Chờ duyệt</span>;
+      case 'REJECTED': return <span className="badge-status rejected">Bị từ chối</span>;
+      default: return <span className="badge-status">{status}</span>;
     }
   };
 
-  // Logic to filter the list based on the selected tab
-  const filteredProducts = products.filter(p => {
-    if (filter === 'ALL') return true;
-    return p.status === filter;
-  });
+  const filteredProducts = products.filter(p => filter === 'ALL' || p.status === filter);
 
   return (
-    <div className="seller-products-wrapper">
-      <ToastNotification 
-        message={toastMessage} 
-        isVisible={showToast} 
-        onClose={() => setShowToast(false)} 
-      />
-
-      <div className="container seller-container">
+    <div className="profile-wrapper">
+      <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
+      <div className="container profile-container">
         <AccountSidebar />
         
-        <main className="seller-main-content">
-          <div className="seller-header">
+        <main className="profile-main-content">
+          <div className="content-header-seller">
             <div>
               <h1>Sản phẩm của tôi</h1>
-              <p>Theo dõi trạng thái kiểm duyệt và quản lý tồn kho</p>
+              <p>Quản lý danh sách sản phẩm và theo dõi trạng thái kiểm duyệt</p>
             </div>
-            <button className="add-product-btn" onClick={() => navigate('/seller/add-product')}>
-              + Đêm sản phẩm mới
+            <button className="save-btn" onClick={() => navigate('/seller/add-product')}>
+              <FaPlus /> Thêm sản phẩm
             </button>
           </div>
 
-          {/* --- ACTIVE FILTER TABS --- */}
-          <div className="product-filter-tabs">
-            <div 
-              className={`tab ${filter === 'ALL' ? 'active' : ''}`} 
-              onClick={() => setFilter('ALL')}
-            >
-              Tất cả ({products.length})
-            </div>
-            <div 
-              className={`tab ${filter === 'APPROVED' ? 'active' : ''}`} 
-              onClick={() => setFilter('APPROVED')}
-            >
-              Đang bán
-            </div>
-            <div 
-              className={`tab ${filter === 'PENDING' ? 'active' : ''}`} 
-              onClick={() => setFilter('PENDING')}
-            >
-              Chờ duyệt
-            </div>
-            <div 
-              className={`tab ${filter === 'REJECTED' ? 'active' : ''}`} 
-              onClick={() => setFilter('REJECTED')}
-            >
-              Bị từ chối
-            </div>
+          <hr className="divider" />
+
+          <div className="purchase-tabs-container">
+            {[
+              { id: 'ALL', label: `Tất cả (${products.length})` },
+              { id: 'APPROVED', label: 'Đang bán' },
+              { id: 'PENDING', label: 'Chờ duyệt' },
+              { id: 'REJECTED', label: 'Bị từ chối' }
+            ].map((tab) => (
+              <div 
+                key={tab.id}
+                className={`tab-item-seller ${filter === tab.id ? 'active' : ''}`}
+                onClick={() => setFilter(tab.id as any)}
+              >
+                {tab.label}
+              </div>
+            ))}
           </div>
 
-          <div className="product-table-container">
+          <div className="table-wrapper-seller">
             {loading ? (
-              <div className="loading-state">
-                <div className="loading-spinner"></div>
-                <p>Đang tải dữ liệu từ hệ thống...</p>
-              </div>
+              <div className="loading-placeholder-seller">Đang tải dữ liệu...</div>
             ) : filteredProducts.length === 0 ? (
-              <div className="empty-state">
-                <p>Không có sản phẩm nào trong danh mục này.</p>
-                {filter === 'ALL' && <button onClick={() => navigate('/seller/add-product')}>Đăng bán ngay</button>}
-              </div>
+              <div className="empty-placeholder-seller">Không tìm thấy sản phẩm nào.</div>
             ) : (
-              <table className="product-table">
+              <table className="seller-data-table">
                 <thead>
                   <tr>
                     <th>Sản phẩm</th>
                     <th>Danh mục</th>
-                    <th>Giá bán</th>
+                    <th>Giá</th>
                     <th>Kho</th>
                     <th>Trạng thái</th>
-                    <th>Thao tác</th>
+                    <th style={{ textAlign: 'right' }}>Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredProducts.map((product) => (
-                    <tr key={product.id}>
+                  {filteredProducts.map(p => (
+                    <tr key={p.id}>
                       <td>
-                        <div className="product-cell">
-                          <img src={product.images[0] || "/placeholder.png"} alt="" />
-                          <span className="product-name-text">{product.name}</span>
+                        <div className="table-prod-info">
+                          <img src={p.images[0] || "/placeholder.png"} alt={p.name} />
+                          <span>{p.name}</span>
                         </div>
                       </td>
-                      <td>{product.category}</td>
-                      <td>₫{product.price.toLocaleString()}</td>
-                      <td className={product.stock < 5 ? "low-stock" : ""}>{product.stock}</td>
-                      <td>{getStatusBadge(product.status)}</td>
-                      <td>
-                        <div className="action-links">
-                          <button onClick={() => navigate(`/seller/edit-product/${product.id}`)}>Sửa</button>
-                          <button onClick={() => handleDelete(product.id)} className="del-text">Xóa</button>
+                      <td>{p.category}</td>
+                      <td>₫{p.price.toLocaleString()}</td>
+                      <td className={p.stock < 5 ? "low-stock" : ""}>{p.stock}</td>
+                      <td>{getStatusBadge(p.status)}</td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div className="action-btns">
+                           <button className="edit-text-btn" onClick={() => navigate(`/seller/edit-product/${p.id}`)}>Sửa</button>
+                           <button className="del-text-btn" onClick={() => handleDelete(p.id)}>Xóa</button>
                         </div>
                       </td>
                     </tr>

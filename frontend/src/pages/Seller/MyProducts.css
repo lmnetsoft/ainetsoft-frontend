@@ -1,121 +1,214 @@
+/* 1. MAIN LAYOUT - Matches Dashboard */
 .seller-products-wrapper {
   background-color: #f5f5f5;
   min-height: 100vh;
-  padding: 20px 0;
 }
 
 .seller-container {
   display: flex;
-  gap: 20px;
+  gap: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px;
 }
 
 .seller-main-content {
   flex: 1;
-  background: white;
-  border-radius: 4px;
-  padding: 25px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  background: #f5f5f5; /* Gray background, white cards go inside */
+  min-width: 0;
 }
 
+/* 2. HEADER */
 .seller-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 25px;
+  margin-bottom: 24px;
 }
 
-.seller-header h1 { font-size: 1.25rem; font-weight: 500; }
-.seller-header p { font-size: 0.875rem; color: #666; }
+.seller-header h1 { font-size: 1.5rem; font-weight: 600; }
 
 .add-product-btn {
-  background: #5b67f1;
+  background: #ee4d2d;
   color: white;
   border: none;
-  padding: 10px 20px;
+  padding: 10px 24px;
   border-radius: 4px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
 }
 
+/* 3. HORIZONTAL TABS */
 .product-filter-tabs {
   display: flex;
-  border-bottom: 1px solid #eee;
-  margin-bottom: 20px;
+  background: white;
+  margin-bottom: 16px;
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 
 .product-filter-tabs .tab {
-  padding: 12px 25px;
+  flex: 1;
+  text-align: center;
+  padding: 16px 0;
   cursor: pointer;
   color: #555;
-  font-size: 0.9375rem;
+  border-bottom: 3px solid transparent;
 }
 
 .product-filter-tabs .tab.active {
-  color: #5b67f1;
-  border-bottom: 2px solid #5b67f1;
-  font-weight: 500;
+  color: #ee4d2d;
+  border-bottom-color: #ee4d2d;
+  font-weight: 600;
 }
 
-/* Table Styles */
+/* 4. TABLE SECTION - White Card */
+.product-table-container {
+  background: white;
+  padding: 24px;
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
 .product-table {
   width: 100%;
   border-collapse: collapse;
 }
 
 .product-table th {
-  background: #fcfcfc;
   text-align: left;
-  padding: 15px;
+  padding: 16px;
   color: #888;
-  font-weight: 400;
-  font-size: 0.875rem;
-  border-bottom: 1px solid #eee;
+  font-size: 0.85rem;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .product-table td {
-  padding: 15px;
-  border-bottom: 1px solid #f5f5f5;
-  font-size: 0.875rem;
-}
-
-.product-cell {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  padding: 20px 16px;
+  border-bottom: 1px solid #f9f9f9;
+  font-size: 0.95rem;
 }
 
 .product-cell img {
-  width: 50px;
-  height: 50px;
+  width: 56px;
+  height: 56px;
   object-fit: cover;
-  border-radius: 2px;
-  border: 1px solid #eee;
+  border-radius: 4px;
 }
 
 .status-badge {
   padding: 4px 10px;
-  border-radius: 12px;
+  border-radius: 4px;
   font-size: 0.75rem;
-  font-weight: 500;
+  font-weight: 600;
 }
 
-.status-badge.active { background: #e6fffa; color: #2d3748; }
-.status-badge.pending { background: #fffaf0; color: #9c4221; }
+.status-badge.approved { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
+.status-badge.pending { background: #fff7e6; color: #fa8c16; border: 1px solid #ffd591; }
 
 .action-links button {
   background: none;
   border: none;
-  color: #05a;
+  color: #0055aa;
   cursor: pointer;
   margin-right: 15px;
-  font-size: 0.875rem;
 }
-
-.del-btn { color: #ee4d2d !important; }
 
 .empty-state {
   text-align: center;
-  padding: 100px 0;
+  padding: 100px;
+  color: #999;
 }
 
-.empty-state img { width: 100px; margin-bottom: 20px; opacity: 0.5; }
+/* Inherits global profile structure from your Profile.css */
+
+.content-header-seller {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* HORIZONTAL TABS STYLE (Match your expected horizontal list) */
+.purchase-tabs-container {
+  display: flex;
+  border-bottom: 1px solid #efefef;
+  margin-bottom: 25px;
+}
+
+.tab-item-seller {
+  padding: 15px 30px;
+  cursor: pointer;
+  color: #555;
+  font-size: 0.9375rem;
+  border-bottom: 2px solid transparent;
+  transition: 0.2s;
+}
+
+.tab-item-seller.active {
+  color: #5b67f1;
+  border-bottom-color: #5b67f1;
+  font-weight: 600;
+}
+
+/* Order/Product Item Cards inside Main Content */
+.seller-order-item-card {
+  border: 1px solid #efefef;
+  padding: 20px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+.order-item-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+
+.seller-cust-info {
+  display: flex;
+  gap: 20px;
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 15px;
+}
+
+.prod-row {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 10px 0;
+  border-bottom: 1px solid #fafafa;
+}
+
+.prod-row img { width: 50px; height: 50px; object-fit: cover; }
+.prod-meta { flex: 1; }
+
+.order-item-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 15px;
+}
+
+.revenue-total span {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #ee4d2d;
+}
+
+.confirm-btn-seller {
+  background: #5b67f1;
+  color: white;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Table styling for Products */
+.seller-data-table { width: 100%; border-collapse: collapse; }
+.seller-data-table th { text-align: left; padding: 15px 10px; color: #888; border-bottom: 1px solid #eee; }
+.seller-data-table td { padding: 15px 10px; border-bottom: 1px solid #fafafa; font-size: 0.9rem; }
+.table-prod-info { display: flex; align-items: center; gap: 10px; }
+.table-prod-info img { width: 40px; height: 40px; object-fit: cover; }
+.edit-text-btn { color: #5b67f1; background: none; border: none; cursor: pointer; }

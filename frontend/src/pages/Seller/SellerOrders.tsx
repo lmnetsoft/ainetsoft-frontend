@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaBox, FaTruck, FaRegClock, FaUser, FaPhoneAlt } from 'react-icons/fa';
+import { FaBox, FaTruck, FaUser, FaPhoneAlt, FaClipboardList } from 'react-icons/fa';
 import api from '../../services/api'; 
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import ToastNotification from '../../components/Toast/ToastNotification';
@@ -29,7 +29,6 @@ const SellerOrders = () => {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      // Backend: Calls a filtered list of orders belonging to THIS seller
       const res = await api.get(`/orders/seller?status=${activeTab}`);
       setOrders(res.data);
     } catch (err: any) {
@@ -43,9 +42,9 @@ const SellerOrders = () => {
   const handleUpdateStatus = async (orderId: string, nextStatus: string) => {
     try {
       await api.put(`/orders/seller/update-status/${orderId}`, { status: nextStatus });
-      setToastMessage(`Đã cập nhật trạng thái: ${nextStatus}`);
+      setToastMessage(`Đã cập nhật trạng thái thành công!`);
       setShowToast(true);
-      fetchOrders(); // Refresh
+      fetchOrders(); 
     } catch (err: any) {
       setToastMessage("Lỗi khi cập nhật trạng thái.");
       setShowToast(true);
@@ -53,24 +52,26 @@ const SellerOrders = () => {
   };
 
   return (
-    <div className="seller-orders-wrapper">
+    <div className="profile-wrapper">
       <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
 
-      <div className="container seller-container">
+      <div className="container profile-container">
         <AccountSidebar />
         
-        <main className="seller-main-content">
-          <div className="seller-header">
-            <h1>Quản lý Đơn hàng</h1>
+        <main className="profile-main-content">
+          <div className="content-header">
+            <h1><FaClipboardList /> Quản lý Đơn hàng</h1>
             <p>Xử lý và vận chuyển các đơn hàng từ khách hàng của bạn.</p>
           </div>
 
-          {/* STATUS TABS */}
-          <div className="order-tabs">
+          <hr className="divider" />
+
+          {/* Tab bar matching the horizontal Profile style */}
+          <div className="purchase-tabs-container">
             {tabs.map(tab => (
               <div 
                 key={tab.id}
-                className={`tab-item ${activeTab === tab.id ? 'active' : ''}`}
+                className={`tab-item-seller ${activeTab === tab.id ? 'active' : ''}`}
                 onClick={() => setActiveTab(tab.id)}
               >
                 {tab.label}
@@ -78,40 +79,34 @@ const SellerOrders = () => {
             ))}
           </div>
 
-          <div className="order-list-section">
+          <div className="order-list-content">
             {loading ? (
-              <div className="loading-box">Đang tải đơn hàng...</div>
+              <div className="loading-state-placeholder">Đang tải đơn hàng...</div>
             ) : orders.length === 0 ? (
-              <div className="empty-orders-box">
+              <div className="empty-state-seller">
                 <FaBox className="empty-icon" />
                 <p>Chưa có đơn hàng nào trong mục này.</p>
               </div>
             ) : (
               orders.map(order => (
-                <div key={order.id} className="seller-order-card">
-                  <div className="card-header">
+                <div key={order.id} className="seller-order-item-card">
+                  <div className="order-item-header">
                     <span className="order-id">Mã đơn: #{order.id.slice(-8).toUpperCase()}</span>
-                    <span className={`status-pill ${order.status.toLowerCase()}`}>
-                      {order.status === 'PENDING' ? 'Chờ xác nhận' : order.status}
+                    <span className={`status-tag ${order.status.toLowerCase()}`}>
+                       {order.status === 'PENDING' ? 'Chờ xác nhận' : order.status}
                     </span>
                   </div>
 
-                  {/* CUSTOMER INFO */}
-                  <div className="customer-info-row">
-                    <div className="info-block">
-                      <FaUser /> <span>{order.shippingAddress.receiverName}</span>
-                    </div>
-                    <div className="info-block">
-                      <FaPhoneAlt /> <span>{order.shippingAddress.phone}</span>
-                    </div>
+                  <div className="seller-cust-info">
+                    <span><FaUser /> {order.shippingAddress?.receiverName}</span>
+                    <span><FaPhoneAlt /> {order.shippingAddress?.phone}</span>
                   </div>
 
-                  {/* ITEMS LIST */}
-                  <div className="order-items">
+                  <div className="order-product-list">
                     {order.items.map((item: any, idx: number) => (
-                      <div key={idx} className="order-item-detail">
-                        <img src={item.productImage} alt="" />
-                        <div className="item-meta">
+                      <div key={idx} className="prod-row">
+                        <img src={item.productImage || "/placeholder.png"} alt={item.productName} />
+                        <div className="prod-meta">
                           <p className="name">{item.productName}</p>
                           <p className="qty">Số lượng: x{item.quantity}</p>
                         </div>
@@ -120,22 +115,17 @@ const SellerOrders = () => {
                     ))}
                   </div>
 
-                  <div className="card-footer">
-                    <div className="total-box">
-                      <span>Tổng doanh thu:</span>
-                      <span className="total-amount">₫{order.totalAmount.toLocaleString()}</span>
+                  <div className="order-item-footer">
+                    <div className="revenue-total">
+                      Tổng thu: <span>₫{order.totalAmount.toLocaleString()}</span>
                     </div>
-                    
-                    <div className="action-buttons">
+                    <div className="btn-group">
                       {order.status === 'PENDING' && (
-                        <button 
-                          className="btn-confirm"
-                          onClick={() => handleUpdateStatus(order.id, 'SHIPPING')}
-                        >
-                          <FaTruck /> Xác nhận & Giao hàng
+                        <button className="confirm-btn-seller" onClick={() => handleUpdateStatus(order.id, 'SHIPPING')}>
+                          Xác nhận giao hàng
                         </button>
                       )}
-                      <button className="btn-detail" onClick={() => navigate(`/seller/order/${order.id}`)}>
+                      <button className="detail-btn-seller" onClick={() => navigate(`/seller/order/${order.id}`)}>
                         Chi tiết
                       </button>
                     </div>
