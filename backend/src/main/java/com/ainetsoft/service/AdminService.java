@@ -1,5 +1,6 @@
 package com.ainetsoft.service;
 
+import com.ainetsoft.dto.AdminStatsSummary;
 import com.ainetsoft.dto.SellerApprovalRequest;
 import com.ainetsoft.model.User;
 import com.ainetsoft.model.Product;
@@ -7,14 +8,16 @@ import com.ainetsoft.model.Order;
 import com.ainetsoft.repository.UserRepository;
 import com.ainetsoft.repository.ProductRepository;
 import com.ainetsoft.repository.AdminRepository;
-import com.ainetsoft.repository.OrderRepository; // NEW: Added for revenue stats
+import com.ainetsoft.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -24,40 +27,58 @@ public class AdminService {
     private final UserRepository userRepository;
     private final AdminRepository adminRepository;
     private final ProductRepository productRepository;
-    private final OrderRepository orderRepository; // NEW: Added dependency
+    private final OrderRepository orderRepository;
     private final NotificationService notificationService;
 
     /**
-     * NEW: Aggregates Master Stats for the Global Admin Dashboard.
-     * Provides a bird's-eye view of the entire marketplace.
+     * Aggregates Master Stats for the Global Admin Dashboard.
+     * Provides the data for the Recharts graph and KPI cards.
      */
-    public Map<String, Object> getGlobalStats() {
-        Map<String, Object> stats = new HashMap<>();
-
-        // 1. User Metrics
-        stats.put("totalUsers", userRepository.count());
-        stats.put("totalSellers", userRepository.findAll().stream()
-                .filter(u -> u.getRoles() != null && u.getRoles().contains("SELLER"))
-                .count());
-
-        // 2. Product Metrics
-        stats.put("totalProducts", productRepository.count());
-        stats.put("pendingProductsCount", productRepository.findByStatus("PENDING").size());
-
-        // 3. Order & Revenue Metrics (Site-wide)
+    public AdminStatsSummary getGlobalStats() {
+        // 1. Order & Revenue Metrics
         List<Order> allOrders = orderRepository.findAll();
-        double totalRevenue = allOrders.stream()
+        List<Order> completedOrders = allOrders.stream()
                 .filter(o -> "COMPLETED".equals(o.getStatus()))
+                .collect(Collectors.toList());
+
+        double totalRevenue = completedOrders.stream()
                 .mapToDouble(Order::getTotalAmount)
                 .sum();
+
+        // 2. Build and Return the DTO
+        return AdminStatsSummary.builder()
+                .totalUsers(userRepository.count())
+                .totalSellers(userRepository.countByRolesContaining("SELLER"))
+                .totalProducts(productRepository.count())
+                .totalOrders((long) allOrders.size())
+                .totalRevenue(totalRevenue)
+                .pendingProducts((long) productRepository.findByStatus("PENDING").size())
+                .pendingSellers((long) adminRepository.findBySellerVerification("PENDING").size())
+                .revenueHistory(generateRevenueHistory(completedOrders))
+                .build();
+    }
+
+    /**
+     * Helper to group completed orders by month for the React AreaChart.
+     */
+    private List<Map<String, Object>> generateRevenueHistory(List<Order> completedOrders) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("Tháng MM");
         
-        stats.put("totalOrders", allOrders.size());
-        stats.put("totalRevenue", totalRevenue);
+        Map<String, Double> monthlyData = completedOrders.stream()
+            .collect(Collectors.groupingBy(
+                o -> o.getCreatedAt().format(formatter),
+                Collectors.summingDouble(Order::getTotalAmount)
+            ));
 
-        // 4. Moderation Queue Counts
-        stats.put("pendingSellersCount", adminRepository.findBySellerVerification("PENDING").size());
-
-        return stats;
+        return monthlyData.entrySet().stream()
+            .map(entry -> {
+                Map<String, Object> point = new HashMap<>();
+                point.put("name", entry.getKey());
+                point.put("revenue", entry.getValue());
+                return point;
+            })
+            .sorted(Comparator.comparing(m -> (String) m.get("name")))
+            .collect(Collectors.toList());
     }
 
     // --- SELLER MODERATION ---
@@ -86,7 +107,6 @@ public class AdminService {
             user.setUpdatedAt(LocalDateTime.now());
             userRepository.save(user);
 
-            // NOTIFY SELLER
             notificationService.createNotification(
                 user.getId(),
                 "Yêu cầu nâng cấp Shop thành công",
@@ -102,7 +122,6 @@ public class AdminService {
             user.setUpdatedAt(LocalDateTime.now());
             userRepository.save(user);
 
-            // NOTIFY USER OF REJECTION
             notificationService.createNotification(
                 user.getId(),
                 "Yêu cầu nâng cấp Shop bị từ chối",
@@ -130,7 +149,6 @@ public class AdminService {
         product.setUpdatedAt(LocalDateTime.now());
         productRepository.save(product);
 
-        // NOTIFY SELLER
         notificationService.createNotification(
             product.getSellerId(),
             "Sản phẩm đã được duyệt",
@@ -151,7 +169,6 @@ public class AdminService {
         product.setUpdatedAt(LocalDateTime.now());
         productRepository.save(product);
 
-        // NOTIFY SELLER
         notificationService.createNotification(
             product.getSellerId(),
             "Sản phẩm bị từ chối",

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { FaStore, FaStar, FaBox, FaMapMarkerAlt } from 'react-icons/fa';
+import { useParams, useNavigate } from 'react-router-dom';
+import { FaStore, FaStar, FaBox, FaMapMarkerAlt, FaCommentDots } from 'react-icons/fa';
 import api from '../../services/api';
 import './PublicShop.css';
 
 const PublicShop = () => {
-  const { id } = useParams(); // Extract seller ID from URL for /shop/:id
+  const { id } = useParams(); 
+  const navigate = useNavigate();
   const [shopInfo, setShopInfo] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -14,10 +15,8 @@ const PublicShop = () => {
     const fetchShopData = async () => {
       try {
         setLoading(true);
-        // If 'id' is missing, it's the current user's shop (/my-shop)
         const targetId = id || 'me'; 
         
-        // Fetch both shop profile details and their public products
         const [infoRes, prodRes] = await Promise.all([
           api.get(`/auth/shop-info/${targetId}`),
           api.get(`/products/public/seller/${targetId}`)
@@ -52,7 +51,16 @@ const PublicShop = () => {
               />
             </div>
             <div className="shop-details-main">
-              <h1>{shopInfo?.shopName || "Tên Cửa Hàng"}</h1>
+              <div className="shop-title-row">
+                <h1>{shopInfo?.shopName || "Tên Cửa Hàng"}</h1>
+                {/* NEW: Chat with Shop Button */}
+                <button 
+                  className="btn-chat-shop" 
+                  onClick={() => navigate(`/chat/${shopInfo?.id || id}`)}
+                >
+                  <FaCommentDots /> Chat với Shop
+                </button>
+              </div>
               <p className="shop-bio">{shopInfo?.shopDescription || "Chào mừng bạn đến với gian hàng chính hãng của chúng tôi."}</p>
               
               <div className="shop-stats-badges">
@@ -82,7 +90,7 @@ const PublicShop = () => {
         ) : (
           <div className="shop-products-grid">
             {products.map(product => (
-              <div key={product.id} className="shop-product-card" onClick={() => window.location.href = `/product/${product.id}`}>
+              <div key={product.id} className="shop-product-card" onClick={() => navigate(`/product/${product.id}`)}>
                 <div className="prod-img-box">
                   <img src={product.images[0]} alt={product.name} />
                 </div>

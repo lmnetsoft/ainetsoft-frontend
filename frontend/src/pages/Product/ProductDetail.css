@@ -33,6 +33,11 @@
   object-fit: contain;
 }
 
+.main-video {
+  width: 100%;
+  height: 100%;
+}
+
 .thumbnail-list {
   display: flex;
   gap: 10px;
@@ -69,7 +74,7 @@
   color: #333;
 }
 
-/* NEW: Rating & Stats Header */
+/* Rating & Stats Header */
 .product-stats {
   display: flex;
   align-items: center;
@@ -78,33 +83,10 @@
   margin-bottom: 25px;
 }
 
-.rating-summary {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  border-bottom: 1px solid #ee4d2d;
-}
-
-.rating-summary .avg {
-  color: #ee4d2d;
-  font-weight: 600;
-  font-size: 1.1rem;
-}
-
-.rating-summary .stars {
-  display: flex;
-  color: #ee4d2d;
-  font-size: 0.8rem;
-}
-
-.product-stats .divider {
-  width: 1px;
-  height: 15px;
-  background: #dbdbdb;
-}
-
-.product-stats .review-count {
-  color: #222;
+.category-tag {
+  background: #f0f0f0;
+  padding: 4px 10px;
+  border-radius: 20px;
 }
 
 /* Price Box */
@@ -196,9 +178,64 @@
 
 .buy-now-btn:hover { background: #d73211; }
 
+.guarantee-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+  color: #757575;
+}
+
+.guarantee-box span { color: #333; font-weight: 500; }
+
 /* Description & Reviews Section (Bottom) */
 .detail-bottom {
   margin-top: 20px;
+}
+
+.shop-card {
+  background: white;
+  padding: 25px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.shop-icon {
+  font-size: 3rem;
+  color: #ee4d2d;
+  background: #fdf0ed;
+  padding: 15px;
+  border-radius: 50%;
+}
+
+.shop-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.chat-now-btn {
+  background: rgba(238, 77, 45, 0.08);
+  color: #ee4d2d;
+  border: 1px solid #ee4d2d;
+  padding: 8px 15px;
+  border-radius: 2px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.view-shop-btn {
+  background: white;
+  color: #555;
+  border: 1px solid #ddd;
+  padding: 8px 15px;
+  border-radius: 2px;
+  cursor: pointer;
 }
 
 .description-section {
@@ -218,10 +255,12 @@
   color: #333;
 }
 
-/* NEW: Review List Styles */
-.review-list {
-  display: flex;
-  flex-direction: column;
+/* Review List Styles */
+.reviews-section {
+  background: white;
+  padding: 25px;
+  border-radius: 4px;
+  margin-top: 20px;
 }
 
 .review-item {
@@ -233,45 +272,14 @@
 
 .rev-user {
   display: flex;
-  gap: 12px;
-  margin-bottom: 10px;
+  justify-content: space-between;
+  margin-bottom: 5px;
 }
 
-.user-icon {
-  font-size: 2.5rem;
-  color: #dbdbdb;
-}
+.user-stars { display: flex; color: #ee4d2d; font-size: 12px; }
 
-.user-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
+.rev-date { color: #757575; font-size: 12px; margin-bottom: 10px; }
 
-.user-meta .name {
-  font-size: 0.8rem;
-  color: #333;
-}
+.rev-comment { font-size: 0.9rem; color: #333; line-height: 1.5; }
 
-.user-meta .stars {
-  display: flex;
-  color: #ee4d2d;
-}
-
-.user-meta .date {
-  font-size: 0.75rem;
-  color: #757575;
-}
-
-.rev-comment {
-  font-size: 0.9rem;
-  color: #333;
-  margin-left: 52px; /* Align with user-meta text */
-  line-height: 1.5;
-}
-
-.no-reviews {
-  text-align: center;
-  padding: 40px;
-  color: #888;
-}
+.no-reviews { text-align: center; padding: 40px; color: #888; }

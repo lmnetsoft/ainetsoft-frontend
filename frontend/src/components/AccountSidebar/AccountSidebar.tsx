@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { FaUser, FaStore, FaShoppingBag, FaCog } from 'react-icons/fa'; 
+import { FaUser, FaStore, FaShoppingBag, FaShieldAlt, FaComments } from 'react-icons/fa'; 
 import './AccountSidebar.css';
 
 const AccountSidebar = () => {
   const [userName, setUserName] = useState(localStorage.getItem('userName') || 'Thành viên');
   const [userAvatar, setUserAvatar] = useState(localStorage.getItem('userAvatar') || '');
   const [isSeller, setIsSeller] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false); // NEW: State for Admin role
 
   useEffect(() => {
     const handleSync = () => {
@@ -15,9 +16,10 @@ const AccountSidebar = () => {
       
       const updatedRoles = JSON.parse(localStorage.getItem('userRoles') || '[]');
       setIsSeller(updatedRoles.includes('SELLER'));
+      setIsAdmin(updatedRoles.includes('ADMIN')); // NEW: Check for ADMIN role
     };
 
-    handleSync(); // Run on mount
+    handleSync();
 
     window.addEventListener('storage', handleSync);
     window.addEventListener('profileUpdate', handleSync);
@@ -30,7 +32,6 @@ const AccountSidebar = () => {
 
   return (
     <aside className="account-sidebar">
-      {/* 1. User Info Header */}
       <div className="sidebar-user-info">
         <div className="sidebar-avatar-wrapper">
           <img 
@@ -47,7 +48,7 @@ const AccountSidebar = () => {
       </div>
 
       <nav className="sidebar-menu">
-        {/* 2. Customer Section */}
+        {/* 1. Customer Section */}
         <div className="menu-section">
           <div className="menu-header">
             <FaUser className="menu-icon profile-icon" />
@@ -61,19 +62,13 @@ const AccountSidebar = () => {
           </div>
         </div>
 
-        {/* 3. Purchase History */}
         <NavLink to="/user/purchase" className={({isActive}) => `menu-header single-item ${isActive ? 'active' : ''}`}>
           <FaShoppingBag className="menu-icon purchase-icon" />
           <span>Đơn mua</span>
         </NavLink>
 
-        {/* 4. SELLER SECTION */}
-        {!isSeller ? (
-          <NavLink to="/seller/register" className={({isActive}) => `menu-header single-item seller-invite ${isActive ? 'active' : ''}`}>
-            <FaStore className="menu-icon" />
-            <span>Trở thành Người bán</span>
-          </NavLink>
-        ) : (
+        {/* 2. SELLER SECTION */}
+        {isSeller && (
           <div className="menu-section seller-menu-section">
             <div className="menu-header">
               <FaStore className="menu-icon seller-icon" />
@@ -83,10 +78,33 @@ const AccountSidebar = () => {
               <NavLink to="/seller/dashboard" className={({isActive}) => isActive ? 'active' : ''}>Quản lý shop</NavLink>
               <NavLink to="/seller/products" className={({isActive}) => isActive ? 'active' : ''}>Sản phẩm của tôi</NavLink>
               <NavLink to="/seller/orders" className={({isActive}) => isActive ? 'active' : ''}>Đơn hàng bán</NavLink>
-              {/* This link now correctly points to the new page we created */}
               <NavLink to="/seller/settings" className={({isActive}) => isActive ? 'active' : ''}>Thiết lập shop</NavLink>
             </div>
           </div>
+        )}
+
+        {/* 3. ADMIN SECTION (NEW) */}
+        {isAdmin && (
+          <div className="menu-section admin-menu-section">
+            <div className="menu-header">
+              <FaShieldAlt className="menu-icon admin-icon" />
+              <span className="admin-title">Quản trị viên</span>
+            </div>
+            <div className="menu-sub-items">
+              <NavLink to="/admin/dashboard" className={({isActive}) => isActive ? 'active' : ''}>Tổng quan Admin</NavLink>
+              <NavLink to="/admin/chat" className={({isActive}) => isActive ? 'active' : ''}>
+                <FaComments style={{marginRight: '8px', fontSize: '0.8rem'}} /> 
+                Quản lý Chat
+              </NavLink>
+            </div>
+          </div>
+        )}
+
+        {!isSeller && !isAdmin && (
+          <NavLink to="/seller/register" className={({isActive}) => `menu-header single-item seller-invite ${isActive ? 'active' : ''}`}>
+            <FaStore className="menu-icon" />
+            <span>Trở thành Người bán</span>
+          </NavLink>
         )}
       </nav>
     </aside>

@@ -1,20 +1,43 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { FaComments } from 'react-icons/fa';
+import { useChat } from '../../context/ChatContext'; // Consume our single connection context
 import './ChatBubble.css';
 
 const ChatBubble = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Access state from the Unified Chat Context
+  const { unreadCount, connected, clearUnread } = useChat();
+
+  // Hide the bubble if the user is already inside the chat interface
+  const isChatPage = location.pathname.startsWith('/chat');
+
+  // Automatically clear unread status when the user navigates to any chat route
+  useEffect(() => {
+    if (isChatPage) {
+      clearUnread();
+    }
+  }, [isChatPage, clearUnread]);
+
+  // If we are on the chat page or the WebSocket isn't connected, don't show the bubble
+  if (isChatPage || !connected) return null;
+
   return (
-    <div className="sticky-chat-bubble" onClick={() => console.log("Open Chat")}>
-      <div className="chat-icon">
-        {/* Simple Message SVG Icon */}
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-        </svg>
+    <div 
+      className={`chat-bubble-container ${unreadCount > 0 ? 'ping-animation' : ''}`}
+      onClick={() => navigate('/chat/admin')} // Default to admin support
+    >
+      {unreadCount > 0 && (
+        <span className="unread-badge">
+          {unreadCount > 9 ? '9+' : unreadCount}
+        </span>
+      )}
+      <div className="bubble-icon-wrapper">
+        <FaComments />
       </div>
-      <div className="chat-label">
-        <span>CHAT VỚI</span>
-        <strong>ADMIN</strong>
-      </div>
-      <div className="online-indicator"></div>
+      <div className="bubble-tooltip">Hỗ trợ trực tuyến</div>
     </div>
   );
 };

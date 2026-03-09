@@ -3,14 +3,24 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  define: {
+    // Fixes "global is not defined"
+    global: 'window',
+    // Some versions of sockjs-client look for process.env
+    'process.env': {},
+  },
+  optimizeDeps: {
+    // Force Vite to pre-bundle these to avoid 504 "Outdated Optimize Dep"
+    include: ['sockjs-client', 'stompjs'],
+  },
   server: {
     watch: {
-      usePolling: true, // This forces Vite to check for file updates
-      interval: 100,    // Checks every 100ms
+      usePolling: true, 
+      interval: 100,    
     },
-    host: true,         // Allows network access
+    host: true,         
     hmr: {
-      overlay: true,    // Shows errors directly in the browser
+      overlay: true,    
     }
   }
 })

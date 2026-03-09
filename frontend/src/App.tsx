@@ -12,6 +12,9 @@ import ChatBubble from './components/ChatBubble/ChatBubble';
 import TitleManager from './components/TitleManager'; 
 import ContentPage from './pages/Content/ContentPage';
 
+// Context Provider
+import { ChatProvider } from './context/ChatContext'; // NEW: Single connection manager
+
 // Services & Global Components
 import { getUserProfile } from './services/authService';
 import LoadingOverlay from './components/LoadingOverlay/LoadingOverlay';
@@ -30,7 +33,8 @@ import NotificationPage from './pages/User/NotificationPage';
 import Cart from './pages/Cart/Cart';
 import Checkout from './pages/Checkout/Checkout';
 import ProductDetail from './pages/Product/ProductDetail';
-import PublicShop from './pages/Shop/PublicShop'; // NEW: Public Storefront component
+import PublicShop from './pages/Shop/PublicShop';
+import ChatPage from './pages/Chat/ChatPage'; 
 
 // Seller Components
 import SellerDashboard from './pages/Seller/SellerDashboard';
@@ -48,18 +52,12 @@ import './App.css';
 function App() {
   const [appLoading, setAppLoading] = useState(true);
 
-  /**
-   * INITIALIZATION: 
-   * Checks for a stored JWT token. If found, it validates the identity 
-   * with the backend to sync LocalStorage (Name, Avatar, Roles).
-   */
   useEffect(() => {
     const initApp = async () => {
       const token = localStorage.getItem('jwt_token');
       
       if (token) {
         try {
-          // Sync profile only if a token exists
           await getUserProfile();
         } catch (err) {
           console.warn("Session invalid or expired. Reverting to guest mode.");
@@ -84,77 +82,84 @@ function App() {
 
   return (
     <Router>
-      <div className="app-wrapper">
-        <TitleManager />
-        <Header />
-        
-        <main className="content">
-          <Routes>
-            {/* --- PUBLIC ROUTES --- */}
-            <Route path="/" element={<Home />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
-            <Route path="/cart" element={<Cart />} />
-            <Route path="/product/:id" element={<ProductDetail />} />
-            <Route path="/regulations" element={<ContentPage type="regulations" />} />
-            <Route path="/contact" element={<ContentPage type="contact" />} />
-            
-            {/* NEW: Public Storefront Routes */}
-            <Route path="/shop/:id" element={<PublicShop />} />
-            <Route path="/my-shop" element={<PublicShop />} />
+      {/* 1. Wrap the app in ChatProvider so the WebSocket connects once globally */}
+      <ChatProvider>
+        <div className="app-wrapper">
+          <TitleManager />
+          <Header />
+          
+          <main className="content">
+            <Routes>
+              {/* --- PUBLIC ROUTES --- */}
+              <Route path="/" element={<Home />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
+              <Route path="/cart" element={<Cart />} />
+              <Route path="/product/:id" element={<ProductDetail />} />
+              <Route path="/regulations" element={<ContentPage type="regulations" />} />
+              <Route path="/contact" element={<ContentPage type="contact" />} />
+              
+              <Route path="/shop/:id" element={<PublicShop />} />
+              <Route path="/my-shop" element={<PublicShop />} />
 
-            {/* --- PROTECTED USER ROUTES --- */}
-            <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
-            <Route path="/user/notifications" element={<ProtectedRoute><NotificationPage /></ProtectedRoute>} />
-            <Route path="/user/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-            <Route path="/user/password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} /> 
-            <Route path="/user/bank" element={<ProtectedRoute><Bank /></ProtectedRoute>} /> 
-            <Route path="/user/address" element={<ProtectedRoute><Address /></ProtectedRoute>} />
-            <Route path="/user/purchase" element={<ProtectedRoute><Purchase /></ProtectedRoute>} />
-            <Route path="/seller/register" element={<ProtectedRoute><SellerRegister /></ProtectedRoute>} />
+              {/* --- PROTECTED USER ROUTES --- */}
+              <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+              <Route path="/user/notifications" element={<ProtectedRoute><NotificationPage /></ProtectedRoute>} />
+              <Route path="/user/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+              <Route path="/user/password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} /> 
+              <Route path="/user/bank" element={<ProtectedRoute><Bank /></ProtectedRoute>} /> 
+              <Route path="/user/address" element={<ProtectedRoute><Address /></ProtectedRoute>} />
+              <Route path="/user/purchase" element={<ProtectedRoute><Purchase /></ProtectedRoute>} />
+              <Route path="/seller/register" element={<ProtectedRoute><SellerRegister /></ProtectedRoute>} />
+              
+              <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
+              <Route path="/chat/:recipientId" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
 
-            {/* --- PROTECTED SELLER ROUTES --- */}
-            <Route 
-              path="/seller/dashboard" 
-              element={<ProtectedRoute allowedRoles={['SELLER']}><SellerDashboard /></ProtectedRoute>} 
-            />
-            <Route 
-              path="/seller/products" 
-              element={<ProtectedRoute allowedRoles={['SELLER']}><MyProducts /></ProtectedRoute>} 
-            />
-            <Route 
-              path="/seller/add-product" 
-              element={<ProtectedRoute allowedRoles={['SELLER']}><AddProduct /></ProtectedRoute>} 
-            />
-            <Route 
-              path="/seller/edit-product/:id" 
-              element={<ProtectedRoute allowedRoles={['SELLER']}><EditProduct /></ProtectedRoute>} 
-            />
-            <Route 
-              path="/seller/orders" 
-              element={<ProtectedRoute allowedRoles={['SELLER']}><SellerOrders /></ProtectedRoute>} 
-            />
-            <Route 
-              path="/seller/settings" 
-              element={<ProtectedRoute allowedRoles={['SELLER']}><SellerSettings /></ProtectedRoute>} 
-            />
+              {/* --- PROTECTED SELLER ROUTES --- */}
+              <Route 
+                path="/seller/dashboard" 
+                element={<ProtectedRoute allowedRoles={['SELLER']}><SellerDashboard /></ProtectedRoute>} 
+              />
+              <Route 
+                path="/seller/products" 
+                element={<ProtectedRoute allowedRoles={['SELLER']}><MyProducts /></ProtectedRoute>} 
+              />
+              <Route 
+                path="/seller/add-product" 
+                element={<ProtectedRoute allowedRoles={['SELLER']}><AddProduct /></ProtectedRoute>} 
+              />
+              <Route 
+                path="/seller/edit-product/:id" 
+                element={<ProtectedRoute allowedRoles={['SELLER']}><EditProduct /></ProtectedRoute>} 
+              />
+              <Route 
+                path="/seller/orders" 
+                element={<ProtectedRoute allowedRoles={['SELLER']}><SellerOrders /></ProtectedRoute>} 
+              />
+              <Route 
+                path="/seller/settings" 
+                element={<ProtectedRoute allowedRoles={['SELLER']}><SellerSettings /></ProtectedRoute>} 
+              />
 
-            {/* --- PROTECTED ADMIN ROUTES --- */}
-            <Route 
-              path="/admin/dashboard" 
-              element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboard /></ProtectedRoute>} 
-            />
+              {/* --- PROTECTED ADMIN ROUTES --- */}
+              <Route 
+                path="/admin/dashboard" 
+                element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboard /></ProtectedRoute>} 
+              />
 
-            {/* Catch-all route for 404 (MUST BE LAST) */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </main>
-        
-        <footer />
-        <ChatBubble />
-      </div>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </main>
+          
+          {/* 2. FIX: Replaced <footer /> with your real <Footer /> component */}
+          <Footer />
+          
+          {/* 3. The Bubble now listens to ChatProvider instead of connecting itself */}
+          <ChatBubble />
+        </div>
+      </ChatProvider>
     </Router>
   );
 }

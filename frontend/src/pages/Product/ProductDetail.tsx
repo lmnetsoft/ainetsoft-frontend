@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FaShoppingCart, FaStore, FaShieldAlt, FaTruck, FaStar } from 'react-icons/fa';
+import { 
+  FaShoppingCart, FaStore, FaShieldAlt, FaTruck, FaStar, 
+  FaCommentDots // Added for the Chat button
+} from 'react-icons/fa';
 import axios from 'axios';
 import ToastNotification from '../../components/Toast/ToastNotification';
 import './ProductDetail.css';
@@ -9,6 +12,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
 interface Product {
   id: string;
+  sellerId?: string; // Assume backend provides the owner's ID
   name: string;
   description: string;
   price: number;
@@ -17,8 +21,8 @@ interface Product {
   images: string[];
   videoUrl?: string; 
   shopName: string;
-  averageRating?: number; // NEW
-  reviewCount?: number;   // NEW
+  averageRating?: number;
+  reviewCount?: number;
 }
 
 interface Review {
@@ -34,7 +38,7 @@ const ProductDetail = () => {
   const navigate = useNavigate();
   
   const [product, setProduct] = useState<Product | null>(null);
-  const [reviews, setReviews] = useState<Review[]>([]); // NEW: State for reviews
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [activeMedia, setActiveMedia] = useState(0); 
@@ -46,15 +50,12 @@ const ProductDetail = () => {
     const fetchProductAndReviews = async () => {
       try {
         setLoading(true);
-        // Fetch Product Data
         const prodRes = await axios.get(`${API_URL}/products/${id}`);
         setProduct(prodRes.data);
         document.title = `${prodRes.data.name} | AiNetsoft`;
 
-        // Fetch Review Data for this product
         const revRes = await axios.get(`${API_URL}/reviews/product/${id}`);
         setReviews(revRes.data);
-
       } catch (error) {
         setToastMessage("Không tìm thấy sản phẩm.");
         setShowToast(true);
@@ -64,6 +65,17 @@ const ProductDetail = () => {
     };
     fetchProductAndReviews();
   }, [id]);
+
+  // NEW: Navigate to Chat Page
+  const handleChatWithSeller = () => {
+    if (!localStorage.getItem('isAuthenticated')) {
+      navigate('/login');
+      return;
+    }
+    // We use product.id or product.sellerId as the recipientId
+    const recipientId = product?.sellerId || product?.id;
+    navigate(`/chat/${recipientId}`);
+  };
 
   const handleAddToCart = async () => {
     if (!localStorage.getItem('isAuthenticated')) {
@@ -100,7 +112,7 @@ const ProductDetail = () => {
       <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
 
       <div className="container detail-container">
-        {/* LEFT: Media Gallery (Unchanged) */}
+        {/* LEFT: Media Gallery */}
         <div className="detail-media-section">
           <div className="main-display">
             {product.videoUrl && activeMedia === product.images.length ? (
@@ -131,7 +143,6 @@ const ProductDetail = () => {
         <div className="detail-info-section">
           <h1 className="product-title">{product.name}</h1>
           
-          {/* NEW: Star Rating Display */}
           <div className="product-rating-overview" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
             <div style={{ display: 'flex', color: '#ee4d2d' }}>
               {[...Array(5)].map((_, i) => (
@@ -193,7 +204,12 @@ const ProductDetail = () => {
           <FaStore className="shop-icon" />
           <div className="shop-name-box">
             <h3>{product.shopName}</h3>
-            <button className="view-shop-btn">Xem Shop</button>
+            <div className="shop-actions">
+              <button className="chat-now-btn" onClick={handleChatWithSeller}>
+                <FaCommentDots /> Chat ngay
+              </button>
+              <button className="view-shop-btn">Xem Shop</button>
+            </div>
           </div>
         </div>
 
@@ -204,29 +220,28 @@ const ProductDetail = () => {
           </div>
         </div>
 
-        {/* NEW: Reviews Section */}
-        <div className="reviews-section" style={{ marginTop: '30px', background: '#fff', padding: '20px', borderRadius: '8px' }}>
-          <h3 className="section-title" style={{ marginBottom: '20px' }}>ĐÁNH GIÁ SẢN PHẨM</h3>
+        {/* Reviews Section */}
+        <div className="reviews-section">
+          <h3 className="section-title">ĐÁNH GIÁ SẢN PHẨM</h3>
           {reviews.length === 0 ? (
-            <p style={{ color: '#767676', textAlign: 'center', padding: '20px 0' }}>Chưa có đánh giá nào cho sản phẩm này.</p>
+            <p className="no-reviews">Chưa có đánh giá nào cho sản phẩm này.</p>
           ) : (
             <div className="reviews-list">
               {reviews.map(review => (
-                <div key={review.id} style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '15px', marginBottom: '15px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '5px' }}>
-                     <strong>{review.userName}</strong>
-                     <div style={{ display: 'flex', color: '#ee4d2d', fontSize: '12px' }}>
-                        {[...Array(5)].map((_, i) => <FaStar key={i} color={i < review.rating ? "#ee4d2d" : "#e4e5e9"} />)}
-                     </div>
+                <div key={review.id} className="review-item">
+                  <div className="rev-user">
+                    <strong>{review.userName}</strong>
+                    <div className="user-stars">
+                      {[...Array(5)].map((_, i) => <FaStar key={i} color={i < review.rating ? "#ee4d2d" : "#e4e5e9"} />)}
+                    </div>
                   </div>
-                  <p style={{ color: '#767676', fontSize: '12px', marginBottom: '10px' }}>{new Date(review.createdAt).toLocaleDateString('vi-VN')}</p>
-                  <p style={{ color: '#333' }}>{review.comment}</p>
+                  <p className="rev-date">{new Date(review.createdAt).toLocaleDateString('vi-VN')}</p>
+                  <p className="rev-comment">{review.comment}</p>
                 </div>
               ))}
             </div>
           )}
         </div>
-
       </div>
     </div>
   );

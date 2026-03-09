@@ -28,7 +28,7 @@ public class SecurityConfig {
 
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
-    private final JwtAuthenticationFilter jwtAuthenticationFilter; // NEW: Injected filter
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -45,10 +45,10 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable()) 
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            // UPDATED: Move to Stateless policy for JWT support
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                // Public Endpoints
                 .requestMatchers(
                     "/api/auth/login", 
                     "/api/auth/register", 
@@ -59,17 +59,22 @@ public class SecurityConfig {
                     "/login/oauth2/**"
                 ).permitAll() 
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll() 
+                
+                // NEW: WebSocket Handshake must be permitted
+                .requestMatchers("/ws/**").permitAll() 
+
+                // Authenticated Endpoints
                 .requestMatchers(
                     "/api/auth/me", 
                     "/api/auth/profile", 
                     "/api/auth/sync-cart",
                     "/api/auth/change-password",
                     "/api/auth/upgrade-seller",
-                    "/api/orders/**"
+                    "/api/orders/**",
+                    "/api/chat/**" // NEW: Protect chat history retrieval
                 ).authenticated() 
                 .anyRequest().authenticated()
             )
-            // NEW: Add the JWT Filter before the standard authentication filter
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .logout(logout -> logout
                 .logoutUrl("/api/auth/logout")
@@ -94,7 +99,6 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of("http://localhost:5173")); 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        // UPDATED: Explicitly allow Authorization header
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         config.setAllowCredentials(true); 
         

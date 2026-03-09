@@ -13,11 +13,10 @@ public interface UserRepository extends MongoRepository<User, String> {
     Boolean existsByPhone(String phone);
 
     /**
-     * THE FIX: This query ensures that the normalized string hit 
-     * either the email or the phone field. 
-     * * Note: Searching by '_id' inside a String-based $or query usually 
-     * requires the input to be a valid hex string for MongoDB's ObjectId.
+     * Counts users who have a specific role in their roles set.
      */
+    long countByRolesContaining(String role);
+
     @Query("{ '$or': [ { 'email': ?0 }, { 'phone': ?0 } ] }")
     Optional<User> findByIdentifier(String identifier);
 
