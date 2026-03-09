@@ -1,0 +1,38 @@
+/* Reusing the Profile logic for consistency */
+.shop-textarea {
+  flex: 1;
+  max-width: 600px;
+  min-height: 100px;
+  padding: 12px 15px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 4px;
+  font-size: 0.9375rem;
+  outline: none;
+  resize: vertical;
+}
+
+.threshold-input-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.threshold-input-group input {
+  max-width: 100px !important;
+}
+
+.unit-label {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.toggle-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.toggle-desc {
+  font-size: 0.85rem;
+  color: #888;
+}

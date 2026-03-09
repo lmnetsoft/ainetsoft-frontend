@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { FaUser, FaRegAddressCard, FaStore, FaShoppingBag } from 'react-icons/fa'; // Added FaShoppingBag
+import { FaUser, FaStore, FaShoppingBag, FaCog } from 'react-icons/fa'; 
 import './AccountSidebar.css';
 
 const AccountSidebar = () => {
@@ -34,9 +34,10 @@ const AccountSidebar = () => {
       <div className="sidebar-user-info">
         <div className="sidebar-avatar-wrapper">
           <img 
-            src={userAvatar || "/src/assets/images/logo_without_text.png"} 
+            src={userAvatar || "/logo_without_text.png"} 
             alt="User Avatar" 
             className="sidebar-avatar-img"
+            onError={(e) => { e.currentTarget.src = "/logo_without_text.png"; }}
           />
         </div>
         <div className="sidebar-user-text">
@@ -66,7 +67,7 @@ const AccountSidebar = () => {
           <span>Đơn mua</span>
         </NavLink>
 
-        {/* 4. SELLER LOGIC: Show Enrollment if NOT a seller, show Dashboard if IS a seller */}
+        {/* 4. SELLER SECTION */}
         {!isSeller ? (
           <NavLink to="/seller/register" className={({isActive}) => `menu-header single-item seller-invite ${isActive ? 'active' : ''}`}>
             <FaStore className="menu-icon" />
@@ -82,6 +83,7 @@ const AccountSidebar = () => {
               <NavLink to="/seller/dashboard" className={({isActive}) => isActive ? 'active' : ''}>Quản lý shop</NavLink>
               <NavLink to="/seller/products" className={({isActive}) => isActive ? 'active' : ''}>Sản phẩm của tôi</NavLink>
               <NavLink to="/seller/orders" className={({isActive}) => isActive ? 'active' : ''}>Đơn hàng bán</NavLink>
+              {/* This link now correctly points to the new page we created */}
               <NavLink to="/seller/settings" className={({isActive}) => isActive ? 'active' : ''}>Thiết lập shop</NavLink>
             </div>
           </div>

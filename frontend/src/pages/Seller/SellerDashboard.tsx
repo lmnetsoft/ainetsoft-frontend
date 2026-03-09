@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   FaWallet, FaShoppingBag, FaBoxOpen, FaStar, 
-  FaPlusCircle, FaArrowRight, FaChartLine 
+  FaPlusCircle, FaArrowRight, FaChartLine, FaExclamationTriangle 
 } from 'react-icons/fa';
 import api from '../../services/api';
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import LoadingOverlay from '../../components/LoadingOverlay/LoadingOverlay';
+import { getUserProfile } from '../../services/authService'; //
 import './SellerDashboard.css';
 
 const SellerDashboard = () => {
@@ -16,33 +17,41 @@ const SellerDashboard = () => {
     totalOrders: 0,
     pendingOrders: 0,
     activeProducts: 0,
+    lowStockCount: 0, // NEW: Track items below threshold
     rating: 0.0,
     reviewCount: 0
   });
+  const [threshold, setThreshold] = useState(5);
   const [loading, setLoading] = useState(true);
 
   const userName = localStorage.getItem('userName') || 'Người bán';
 
   useEffect(() => {
-    const fetchStats = async () => {
+    const initDashboard = async () => {
       try {
         setLoading(true);
-        /**
-         * Matches Backend: This endpoint will aggregate data from the 
-         * Orders and Products collections for the current logged-in seller.
-         */
-        const res = await api.get('/orders/seller/stats');
-        setStats(res.data);
+        
+        // 1. Fetch Seller Stats and Shop Settings in parallel
+        const [statsRes, profile] = await Promise.all([
+          api.get('/orders/seller/stats'),
+          getUserProfile() //
+        ]);
+
+        setStats(statsRes.data);
+        
+        // 2. Sync Global Low Stock Threshold
+        if (profile?.shopProfile?.lowStockThreshold) {
+          setThreshold(profile.shopProfile.lowStockThreshold);
+        }
       } catch (err) {
-        console.error("Failed to load seller stats. Check if /api/orders/seller/stats exists.");
-        // Fallback for UI testing if endpoint is not yet deployed
+        console.error("Failed to load seller dashboard data.");
         setStats(prev => ({ ...prev, rating: 4.8 })); 
       } finally {
         setLoading(false);
       }
     };
 
-    fetchStats();
+    initDashboard();
     document.title = "Kênh Người Bán | AiNetsoft";
   }, []);
 
@@ -54,7 +63,6 @@ const SellerDashboard = () => {
         <AccountSidebar />
 
         <main className="seller-main-content">
-          {/* HEADER SECTION */}
           <div className="dashboard-header">
             <div className="welcome-text-group">
               <h1><FaChartLine className="header-icon" /> Xin chào, {userName}</h1>
@@ -65,7 +73,6 @@ const SellerDashboard = () => {
             </button>
           </div>
 
-          {/* 1. KEY PERFORMANCE INDICATORS (KPIs) */}
           <div className="stats-grid">
             <div className="stat-card">
               <div className="stat-icon rev"><FaWallet /></div>
@@ -100,7 +107,6 @@ const SellerDashboard = () => {
             </div>
           </div>
 
-          {/* 2. OPERATIONAL TASKS & INSIGHTS */}
           <div className="dashboard-sections">
             <div className="tasks-section">
               <div className="section-header-row">
@@ -111,13 +117,15 @@ const SellerDashboard = () => {
               <div className="task-list">
                 <div className="task-item" onClick={() => navigate('/seller/orders')}>
                   <div className="task-left">
-                    <span className="count highlight">{stats.pendingOrders}</span>
+                    <span className={`count ${stats.pendingOrders > 0 ? 'highlight' : ''}`}>
+                      {stats.pendingOrders}
+                    </span>
                     <span className="label">Đơn hàng chờ xác nhận</span>
                   </div>
                   <FaArrowRight className="arrow-link" />
                 </div>
 
-                <div className="task-item" onClick={() => navigate('/seller/my-products')}>
+                <div className="task-item" onClick={() => navigate('/seller/products')}>
                   <div className="task-left">
                     <span className="count">0</span>
                     <span className="label">Sản phẩm bị tạm khóa</span>
@@ -125,22 +133,29 @@ const SellerDashboard = () => {
                   <FaArrowRight className="arrow-link" />
                 </div>
 
-                <div className="task-item" onClick={() => navigate('/seller/my-products')}>
+                <div className="task-item" onClick={() => navigate('/seller/products')}>
                   <div className="task-left">
-                    <span className="count">{stats.activeProducts === 0 ? '!' : '0'}</span>
-                    <span className="label">Sản phẩm hết hàng</span>
+                    {/* UPDATED: Reflects custom threshold from settings */}
+                    <span className={`count ${stats.lowStockCount > 0 ? 'highlight-warning' : ''}`}>
+                      {stats.lowStockCount}
+                    </span>
+                    <span className="label">
+                      Sản phẩm dưới ngưỡng tồn kho ({threshold})
+                    </span>
                   </div>
+                  {stats.lowStockCount > 0 && <FaExclamationTriangle className="warning-icon-dash" />}
                   <FaArrowRight className="arrow-link" />
                 </div>
               </div>
             </div>
 
-            {/* MARKETING & GROWTH */}
             <div className="marketing-banner-card">
               <div className="banner-badge">MỚI</div>
               <h3>Tăng trưởng doanh số</h3>
               <p>Sử dụng công cụ <strong>Flash Sale</strong> để thu hút thêm 40% khách hàng mới trong tuần này.</p>
-              <button className="btn-market-action">Khám phá ngay</button>
+              <button className="btn-market-action" onClick={() => navigate('/seller/settings')}>
+                Thiết lập ngay
+              </button>
               <div className="banner-bg-decoration"></div>
             </div>
           </div>

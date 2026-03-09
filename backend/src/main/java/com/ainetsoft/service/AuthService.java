@@ -1,6 +1,6 @@
 package com.ainetsoft.service;
 
-import com.ainetsoft.config.JwtUtils; // ADDED: Required for token generation
+import com.ainetsoft.config.JwtUtils;
 import com.ainetsoft.dto.*;
 import com.ainetsoft.model.User;
 import com.ainetsoft.model.CartItem;
@@ -24,7 +24,7 @@ public class AuthService {
     private final PasswordResetTokenRepository tokenRepository;
     private final AzureCommunicationService azureService;
     private final PasswordEncoder passwordEncoder;
-    private final JwtUtils jwtUtils; // ADDED: Injected for stateless auth
+    private final JwtUtils jwtUtils;
 
     /**
      * Vietnamese & Global Phone Validation
@@ -35,11 +35,9 @@ public class AuthService {
 
         String cleanPhone = phone.replaceAll("[^0-9]", "");
         
-        // Check if it's a Vietnamese number (starts with 0 or 84)
         if (cleanPhone.startsWith("0") || cleanPhone.startsWith("84")) {
             String vnNormalized = cleanPhone.startsWith("84") ? "0" + cleanPhone.substring(2) : cleanPhone;
             
-            // Strict Regex for VN Carriers (Viettel, Mobifone, Vinaphone, etc.)
             String vnRegex = "^(03[2-9]|086|09[6-8]|070|07[6-9]|089|090|093|08[1-5]|088|091|094|052|05[68]|092|059|099)\\d{7}$";
             
             if (vnNormalized.matches(vnRegex)) return true;
@@ -47,7 +45,6 @@ public class AuthService {
             throw new RuntimeException("Số điện thoại Việt Nam không thuộc nhà mạng được hỗ trợ!");
         }
 
-        // Global Validation: 7 to 15 digits
         return cleanPhone.matches("^\\d{7,15}$");
     }
 
@@ -79,6 +76,8 @@ public class AuthService {
                 .avatarUrl(user.getAvatarUrl())
                 .roles(user.getRoles())
                 .provider(user.getProvider() != null ? user.getProvider().toString() : "LOCAL")
+                // --- NEW: Map the shop profile for the frontend ---
+                .shopProfile(user.getShopProfile()) 
                 .addresses(user.getAddresses() != null ? user.getAddresses() : new ArrayList<>())
                 .bankAccounts(user.getBankAccounts() != null ? user.getBankAccounts() : new ArrayList<>())
                 .cart(user.getCart() != null ? user.getCart() : new ArrayList<>())
@@ -127,6 +126,30 @@ public class AuthService {
         }
 
         if (request.getAvatarUrl() != null) user.setAvatarUrl(request.getAvatarUrl());
+
+        // --- NEW: SHOP SETTINGS LOGIC ---
+        if (request.getShopProfile() != null) {
+            // Check if user is actually a seller
+            if (user.getRoles() == null || !user.getRoles().contains("SELLER")) {
+                throw new RuntimeException("Chỉ người bán mới có quyền thiết lập thông tin shop!");
+            }
+            
+            if (user.getShopProfile() == null) {
+                user.setShopProfile(request.getShopProfile());
+            } else {
+                User.ShopProfile existing = user.getShopProfile();
+                User.ShopProfile incoming = request.getShopProfile();
+                
+                if (incoming.getShopName() != null) existing.setShopName(incoming.getShopName().trim());
+                if (incoming.getShopDescription() != null) existing.setShopDescription(incoming.getShopDescription());
+                if (incoming.getShopAddress() != null) existing.setShopAddress(incoming.getShopAddress());
+                if (incoming.getShopLogoUrl() != null) existing.setShopLogoUrl(incoming.getShopLogoUrl());
+                
+                // Update Stock and Availability settings
+                existing.setLowStockThreshold(incoming.getLowStockThreshold());
+                existing.setHolidayMode(incoming.isHolidayMode());
+            }
+        }
 
         if (request.getAddresses() != null) {
             request.getAddresses().forEach(addr -> {
@@ -181,9 +204,6 @@ public class AuthService {
         return "Đăng ký thành công!";
     }
 
-    /**
-     * UPDATED: Login now generates a JWT token for stateless communication.
-     */
     public LoginResponse login(LoginRequest request) {
         String identifier = normalizeIdentifier(request.getContactInfo());
         User user = userRepository.findByIdentifier(identifier)
@@ -193,7 +213,6 @@ public class AuthService {
             throw new RuntimeException("Mật khẩu không chính xác!");
         }
 
-        // GENERATE JWT TOKEN
         String token = jwtUtils.generateToken(identifier, user.getRoles()); 
 
         return new LoginResponse(

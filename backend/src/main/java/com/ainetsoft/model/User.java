@@ -28,14 +28,8 @@ public class User {
     private String fullName;
     private String gender;
     private LocalDate birthDate; 
-    
-    // Existing avatar field
     private String avatarUrl; 
 
-    /**
-     * FIX: ReviewService.java calls .getAvatar(). 
-     * We map it here so the compiler finds it.
-     */
     public String getAvatar() {
         return this.avatarUrl;
     }
@@ -44,12 +38,14 @@ public class User {
     private AuthProvider provider = AuthProvider.LOCAL;
     private String providerId; 
 
-    // --- ADMINISTRATIVE STATUS FIELDS ---
     @Builder.Default
-    private String accountStatus = "ACTIVE"; // ACTIVE, BANNED
+    private String accountStatus = "ACTIVE"; 
 
     @Builder.Default
-    private String sellerVerification = "NONE"; // NONE, PENDING, VERIFIED, REJECTED
+    private String sellerVerification = "NONE"; 
+
+    // --- NEW: NESTED SHOP PROFILE ---
+    private ShopProfile shopProfile;
 
     @Builder.Default
     private List<CartItem> cart = new ArrayList<>();
@@ -73,6 +69,24 @@ public class User {
 
     public enum AuthProvider {
         LOCAL, GOOGLE, FACEBOOK
+    }
+
+    // --- NEW: SHOP PROFILE CLASS ---
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class ShopProfile {
+        private String shopName;
+        private String shopDescription;
+        private String shopAddress;
+        private String shopLogoUrl;
+        
+        @Builder.Default
+        private int lowStockThreshold = 5; // The threshold for low-stock warnings
+        
+        @Builder.Default
+        private boolean holidayMode = false;
     }
 
     @Data

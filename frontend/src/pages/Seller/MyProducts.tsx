@@ -4,6 +4,7 @@ import { FaBoxOpen, FaPlus } from 'react-icons/fa';
 import api from '../../services/api'; 
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import ToastNotification from '../../components/Toast/ToastNotification';
+import { getUserProfile } from '../../services/authService'; // NEW: Import this to get the threshold
 import './MyProducts.css';
 
 interface Product {
@@ -23,22 +24,43 @@ const MyProducts = () => {
   const [loading, setLoading] = useState(true);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  
+  // NEW: State for dynamic low stock threshold
+  const [lowStockThreshold, setLowStockThreshold] = useState(5); 
 
   useEffect(() => {
-    fetchMyProducts();
+    const initPage = async () => {
+      setLoading(true);
+      await Promise.all([
+        fetchMyProducts(),
+        fetchThreshold() // NEW: Get the threshold on load
+      ]);
+      setLoading(false);
+    };
+
+    initPage();
     document.title = "Sản phẩm của tôi | AiNetsoft";
   }, []);
 
+  // NEW: Fetch user threshold from backend
+  const fetchThreshold = async () => {
+    try {
+      const profile = await getUserProfile();
+      if (profile?.shopProfile?.lowStockThreshold) {
+        setLowStockThreshold(profile.shopProfile.lowStockThreshold);
+      }
+    } catch (error) {
+      console.warn("Could not load shop settings, using default threshold.");
+    }
+  };
+
   const fetchMyProducts = async () => {
     try {
-      setLoading(true);
       const response = await api.get('/products/seller/my-items');
       setProducts(response.data);
     } catch (error: any) {
       setToastMessage("Không thể tải danh sách sản phẩm.");
       setShowToast(true);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -130,7 +152,11 @@ const MyProducts = () => {
                       </td>
                       <td>{p.category}</td>
                       <td>₫{p.price.toLocaleString()}</td>
-                      <td className={p.stock < 5 ? "low-stock" : ""}>{p.stock}</td>
+                      {/* UPDATED: Dynamic stock threshold logic */}
+                      <td className={p.stock < lowStockThreshold ? "low-stock" : ""}>
+                        {p.stock}
+                        {p.stock < lowStockThreshold && <span className="stock-warning"> !</span>}
+                      </td>
                       <td>{getStatusBadge(p.status)}</td>
                       <td style={{ textAlign: 'right' }}>
                         <div className="action-btns">

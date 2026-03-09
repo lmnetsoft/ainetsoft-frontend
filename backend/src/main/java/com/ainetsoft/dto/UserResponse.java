@@ -23,7 +23,10 @@ public class UserResponse {
     private LocalDate birthDate;
     private String avatarUrl;
     private Set<String> roles;
-    private String provider; // Essential for the Frontend "Read-Only" check
+    private String provider;
+
+    // --- NEW: Include Shop Profile in the response ---
+    private User.ShopProfile shopProfile;
 
     private List<User.AddressInfo> addresses;
     private List<User.BankInfo> bankAccounts;

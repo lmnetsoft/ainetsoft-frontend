@@ -37,6 +37,7 @@ import AddProduct from './pages/Seller/AddProduct';
 import EditProduct from './pages/Seller/EditProduct';
 import MyProducts from './pages/Seller/MyProducts';
 import SellerOrders from './pages/Seller/SellerOrders';
+import SellerSettings from './pages/Seller/SellerSettings'; // NEW: Added to fix 404
 
 // Admin Components
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -131,6 +132,11 @@ function App() {
             <Route 
               path="/seller/orders" 
               element={<ProtectedRoute allowedRoles={['SELLER']}><SellerOrders /></ProtectedRoute>} 
+            />
+            {/* NEW: Seller Settings Route */}
+            <Route 
+              path="/seller/settings" 
+              element={<ProtectedRoute allowedRoles={['SELLER']}><SellerSettings /></ProtectedRoute>} 
             />
 
             {/* --- PROTECTED ADMIN ROUTES --- */}
