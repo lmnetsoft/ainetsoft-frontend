@@ -28,9 +28,17 @@ public class Product {
     private String sellerId;   
     private String shopName;
     
+    // UPDATED: Standard is PENDING for review
     @Builder.Default
-    private String status = "ACTIVE"; 
+    private String status = "PENDING"; // PENDING, APPROVED, REJECTED, ARCHIVED
     
+    // NEW: Rating fields to support ReviewService and Stats Engine
+    @Builder.Default
+    private double averageRating = 0.0;
+    
+    @Builder.Default
+    private int reviewCount = 0;
+
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
     

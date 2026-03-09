@@ -5,11 +5,13 @@ import com.ainetsoft.model.User;
 import com.ainetsoft.repository.ProductRepository;
 import com.ainetsoft.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ProductService {
@@ -18,15 +20,13 @@ public class ProductService {
     private final UserRepository userRepository;
 
     /**
-     * Retrieves all active products for the marketplace home page.
+     * UPDATED: Retrieves moderated products for the marketplace.
+     * Clients only see items that the Admin has APPROVED.
      */
     public List<Product> getAllActiveProducts() {
-        return productRepository.findByStatus("ACTIVE");
+        return productRepository.findByStatus("APPROVED");
     }
 
-    /**
-     * Finds a single product by ID.
-     */
     public Product getProductById(String id) {
         return productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm!"));
@@ -34,27 +34,32 @@ public class ProductService {
 
     /**
      * Seller feature: Create a new product.
+     * Includes Shopee-style verification and PENDING status.
      */
     public Product createProduct(String contactInfo, Product product) {
         User user = userRepository.findByIdentifier(contactInfo)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
 
-        if (!user.getRoles().contains("SELLER")) {
-            throw new RuntimeException("Bạn cần đăng ký làm Người bán để đăng sản phẩm!");
+        // 1. Strict verification check
+        if (!"VERIFIED".equals(user.getSellerVerification())) {
+            throw new RuntimeException("Tài khoản Người bán của bạn chưa được Admin phê duyệt!");
         }
 
         product.setSellerId(user.getId());
-        product.setShopName(user.getFullName()); // Defaults to User's name as Shop Name
-        product.setStatus("ACTIVE");
+        product.setShopName(user.getFullName()); 
+        
+        // 2. Default to PENDING for Admin review
+        product.setStatus("PENDING"); 
         product.setCreatedAt(LocalDateTime.now());
         product.setUpdatedAt(LocalDateTime.now());
 
+        log.info("Sản phẩm '{}' từ shop '{}' đang chờ phê duyệt.", product.getName(), user.getFullName());
         return productRepository.save(product);
     }
 
     /**
      * Seller feature: Update existing product info.
-     * Includes security check to ensure the editor owns the product.
+     * Logic: If a seller changes product info, it goes back to PENDING for re-review.
      */
     public Product updateProduct(String productId, String contactInfo, Product updatedData) {
         Product existing = getProductById(productId);
@@ -71,14 +76,14 @@ public class ProductService {
         existing.setStock(updatedData.getStock());
         existing.setCategory(updatedData.getCategory());
         existing.setImages(updatedData.getImages());
+        
+        // RE-MODERATION: Edited products must be re-approved
+        existing.setStatus("PENDING"); 
         existing.setUpdatedAt(LocalDateTime.now());
 
         return productRepository.save(existing);
     }
 
-    /**
-     * Seller feature: Delete a product.
-     */
     public void deleteProduct(String productId, String contactInfo) {
         Product existing = getProductById(productId);
         User user = userRepository.findByIdentifier(contactInfo)
@@ -91,9 +96,6 @@ public class ProductService {
         productRepository.delete(existing);
     }
 
-    /**
-     * Seller feature: Get all products belonging to a specific seller.
-     */
     public List<Product> getProductsBySeller(String contactInfo) {
         User user = userRepository.findByIdentifier(contactInfo)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));

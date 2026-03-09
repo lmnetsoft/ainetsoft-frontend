@@ -1,40 +1,54 @@
+/* Container & Layout */
 .seller-reg-header {
   text-align: center;
-  padding: 20px 0 40px 0;
+  margin-bottom: 40px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .seller-icon {
   font-size: 3rem;
-  color: #5b67f1;
+  color: #ee4d2d; /* Shopee Orange */
   margin-bottom: 15px;
 }
 
+.seller-reg-header h1 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.seller-reg-header p {
+  color: #666;
+  margin-top: 5px;
+}
+
+/* Requirements List */
 .requirements-list {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  max-width: 800px;
-  margin: 0 auto;
+  gap: 15px;
+  margin-bottom: 40px;
 }
 
 .requirement-item {
   display: flex;
   align-items: center;
   padding: 20px;
-  border-radius: 8px;
-  border: 1px solid #efefef;
-  background: #fafafa;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e8e8e8;
   transition: all 0.3s ease;
 }
 
 .requirement-item.done {
-  border-left: 5px solid #22c55e;
-  background: #f0fdf4;
+  border-left: 5px solid #2ecc71; /* Green for success */
+  background: #f9fffb;
 }
 
 .requirement-item.pending {
-  border-left: 5px solid #eab308;
-  background: #fefce8;
+  border-left: 5px solid #f39c12; /* Orange for warning */
+  background: #fffdf9;
 }
 
 .req-status {
@@ -42,50 +56,113 @@
   margin-right: 20px;
 }
 
-.done .req-status { color: #22c55e; }
-.pending .req-status { color: #eab308; }
+.done .req-status { color: #2ecc71; }
+.pending .req-status { color: #f39c12; }
 
-.req-text { flex: 1; }
-.req-text h3 { font-size: 1rem; margin-bottom: 4px; color: #333; }
-.req-text p { font-size: 0.875rem; color: #666; }
+.req-text {
+  flex-grow: 1;
+}
+
+.req-text h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.req-text p {
+  font-size: 0.9rem;
+  color: #777;
+}
 
 .req-fix-btn {
-  padding: 8px 20px;
-  background: white;
-  border: 1px solid #5b67f1;
-  color: #5b67f1;
+  padding: 8px 16px;
+  border: 1px solid #ee4d2d;
+  color: #ee4d2d;
+  background: transparent;
   border-radius: 4px;
-  cursor: pointer;
   font-weight: 500;
+  cursor: pointer;
+  transition: 0.2s;
 }
 
 .req-fix-btn:hover {
-  background: #5b67f1;
-  color: white;
+  background: #fff5f2;
 }
 
+/* Action Zone */
 .seller-action-zone {
-  margin-top: 50px;
+  margin-top: 30px;
+  padding: 25px;
+  background: #fff;
+  border-radius: 12px;
   text-align: center;
-  padding: 30px;
-  border-top: 1px solid #efefef;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+.eligible-box p {
+  color: #2ecc71;
+  font-weight: 600;
+  margin-bottom: 15px;
+}
+
+.not-eligible-box p {
+  color: #e74c3c;
+  margin-bottom: 15px;
 }
 
 .final-upgrade-btn {
-  margin-top: 15px;
-  background: #5b67f1;
+  width: 100%;
+  max-width: 300px;
+  padding: 14px;
+  background: #ee4d2d;
   color: white;
-  padding: 15px 60px;
   border: none;
-  border-radius: 4px;
-  font-size: 1.1rem;
-  font-weight: 600;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 4px 6px rgba(91, 103, 241, 0.2);
+  transition: 0.3s;
 }
 
-.final-upgrade-btn.disabled {
-  background: #cbd5e1;
-  box-shadow: none;
+.final-upgrade-btn:hover:not(:disabled) {
+  background: #d73211;
+  transform: translateY(-2px);
+}
+
+.final-upgrade-btn:disabled {
+  background: #ccc;
   cursor: not-allowed;
+}
+
+/* Pending State (After Submission) */
+.seller-pending-box {
+  text-align: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 2px 20px rgba(0,0,0,0.05);
+}
+
+.pending-icon-large {
+  font-size: 5rem;
+  color: #f39c12;
+  margin-bottom: 25px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.7; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.btn-back-home {
+  margin-top: 30px;
+  padding: 12px 30px;
+  background: #333;
+  color: white;
+  border: none;
+  border-radius: 30px;
+  cursor: pointer;
+  font-weight: 500;
 }

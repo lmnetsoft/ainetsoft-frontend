@@ -1,9 +1,5 @@
 import api from './api'; 
 
-/**
- * HELPER: Standardizes error extraction to prevent [object Object] bug.
- * Preserved exactly from your current code.
- */
 const extractError = (error: any, defaultMsg: string): string => {
   const errorData = error.response?.data;
   if (typeof errorData === 'string') return errorData;
@@ -13,9 +9,6 @@ const extractError = (error: any, defaultMsg: string): string => {
   return error.message || defaultMsg;
 };
 
-/**
- * Fetches profile and syncs identity data.
- */
 export const getUserProfile = async (): Promise<any> => {
   try {
     const response = await api.get('/auth/me'); 
@@ -85,6 +78,11 @@ export const loginUser = async (loginData: any): Promise<any> => {
   try {
     const response = await api.post('/auth/login', loginData);
     
+    // CAPTURE THE TOKEN: This is the critical step to prevent the 401 loop
+    if (response.data.token) {
+      localStorage.setItem('jwt_token', response.data.token);
+    }
+    
     localStorage.setItem('isAuthenticated', 'true');
     localStorage.setItem('userName', response.data.fullName);
     localStorage.setItem('userAvatar', response.data.avatarUrl || '');
@@ -106,24 +104,15 @@ export const registerUser = async (userData: any): Promise<string> => {
   }
 };
 
-/**
- * UPDATED: Request Password Reset.
- * Now uses the backend's real database check message.
- */
 export const requestPasswordReset = async (contactInfo: string): Promise<string> => {
   try {
     const response = await api.post('/auth/forgot-password', { contactInfo });
     return response.data;
   } catch (error: any) {
-    // If backend returns "Tài khoản không tồn tại", extractError will grab that.
     throw new Error(extractError(error, "Yêu cầu khôi phục mật khẩu thất bại."));
   }
 };
 
-/**
- * UPDATED: Reset Password.
- * Dynamically reports OTP expiration or incorrect codes from the backend.
- */
 export const resetPassword = async (resetData: { contactInfo: string, otp: string, newPassword: string }): Promise<string> => {
   try {
     const response = await api.post('/auth/reset-password', resetData);

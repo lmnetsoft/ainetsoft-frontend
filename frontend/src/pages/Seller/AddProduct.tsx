@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../../services/api'; // Use our centralized API instance
+import api from '../../services/api'; 
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import ToastNotification from '../../components/Toast/ToastNotification';
 import './AddProduct.css';
@@ -16,13 +16,21 @@ const AddProduct = () => {
     stock: 0,
     category: 'Electronics',
     images: [] as string[],
-    // This is just for UI display; Backend will use the User's actual name
     shopName: localStorage.getItem('userName') || 'Cửa hàng của tôi'
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+
+  // 1. SECURITY CHECK: Only Verified Sellers
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (user.sellerVerification !== 'VERIFIED') {
+      alert("Bạn cần được Admin phê duyệt tài khoản Người bán trước khi đăng sản phẩm!");
+      navigate('/seller/register');
+    }
+  }, [navigate]);
 
   const categories = ['Electronics', 'Fashion', 'Home & Living', 'Beauty', 'Health', 'Sports', 'Other'];
 
@@ -39,7 +47,6 @@ const AddProduct = () => {
         const reader = new FileReader();
         reader.onloadend = () => {
           newImages.push(reader.result as string);
-          // Only update once all selected files are processed
           if (newImages.length === files.length) {
             setFormData(prev => ({ 
               ...prev, 
@@ -62,37 +69,25 @@ const AddProduct = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.name.trim()) {
-       setToastMessage("Vui lòng nhập tên sản phẩm");
-       setShowToast(true);
-       return;
-    }
-    if (formData.price <= 0) {
-       setToastMessage("Giá sản phẩm phải lớn hơn 0");
-       setShowToast(true);
-       return;
-    }
-    if (formData.images.length === 0) {
-       setToastMessage("Vui lòng thêm ít nhất 1 hình ảnh");
-       setShowToast(true);
-       return;
-    }
+    // Validations...
+    if (!formData.name.trim()) { setToastMessage("Vui lòng nhập tên sản phẩm"); setShowToast(true); return; }
+    if (formData.price <= 0) { setToastMessage("Giá sản phẩm phải lớn hơn 0"); setShowToast(true); return; }
+    if (formData.images.length === 0) { setToastMessage("Vui lòng thêm ít nhất 1 hình ảnh"); setShowToast(true); return; }
 
     try {
       setIsSubmitting(true);
       
-      // POST to the finalized endpoint in ProductController.java
+      // POST to backend. Note: Backend forces status to "PENDING"
       await api.post('/products/seller/add', formData);
       
-      setToastMessage("Đăng bán sản phẩm thành công!");
+      // 2. UPDATED SUCCESS MESSAGE: Be transparent about the review process
+      setToastMessage("Đã gửi sản phẩm! Vui lòng chờ Admin kiểm duyệt trước khi hiển thị.");
       setShowToast(true);
       
-      // Redirect to inventory
-      setTimeout(() => navigate('/seller/my-products'), 1500);
+      setTimeout(() => navigate('/seller/my-products'), 2000);
       
     } catch (error: any) {
-      // Catch specific backend error (e.g. "Bạn cần đăng ký làm Người bán")
-      setToastMessage(error.response?.data || "Lỗi khi đăng sản phẩm.");
+      setToastMessage(error.response?.data?.message || "Lỗi khi đăng sản phẩm.");
       setShowToast(true);
     } finally {
       setIsSubmitting(false);
@@ -113,11 +108,10 @@ const AddProduct = () => {
         <main className="add-product-main">
           <div className="form-header">
             <h1>Thêm 1 sản phẩm mới</h1>
-            <p>Vui lòng cung cấp thông tin chính xác để khách hàng dễ dàng tìm kiếm</p>
+            <p>Sản phẩm sẽ được gửi đến Admin để kiểm duyệt nội dung trước khi công khai.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="product-form">
-            
             <section className="form-section">
               <h3>Hình ảnh sản phẩm (Tối đa 5 ảnh)</h3>
               <div className="image-upload-grid">
@@ -151,7 +145,7 @@ const AddProduct = () => {
                   type="text" 
                   value={formData.name} 
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  placeholder="Nhập tên sản phẩm (Ví dụ: Apple iPhone 15 Pro Max)"
+                  placeholder="Ví dụ: Apple iPhone 15 Pro Max"
                   maxLength={120}
                 />
               </div>
@@ -161,7 +155,7 @@ const AddProduct = () => {
                 <textarea 
                   value={formData.description} 
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  placeholder="Nhập mô tả chi tiết về tính năng, công dụng..."
+                  placeholder="Mô tả chi tiết sản phẩm..."
                   rows={6}
                 />
               </div>
@@ -177,7 +171,7 @@ const AddProduct = () => {
                   </select>
                 </div>
                 <div className="input-group half">
-                  <label>Tên Shop (Cố định)</label>
+                  <label>Tên Shop</label>
                   <input type="text" value={formData.shopName} disabled className="disabled-input" />
                 </div>
               </div>
@@ -192,7 +186,6 @@ const AddProduct = () => {
                     type="number" 
                     value={formData.price} 
                     onChange={(e) => setFormData({...formData, price: Number(e.target.value)})}
-                    placeholder="0"
                   />
                 </div>
                 <div className="input-group half">
@@ -201,7 +194,6 @@ const AddProduct = () => {
                     type="number" 
                     value={formData.stock} 
                     onChange={(e) => setFormData({...formData, stock: Number(e.target.value)})}
-                    placeholder="0"
                   />
                 </div>
               </div>
@@ -209,8 +201,9 @@ const AddProduct = () => {
 
             <div className="form-actions">
               <button type="button" className="cancel-btn" onClick={() => navigate(-1)}>Hủy</button>
+              {/* 3. UPDATED BUTTON TEXT */}
               <button type="submit" className="submit-btn" disabled={isSubmitting}>
-                {isSubmitting ? "Đang lưu..." : "Lưu & Hiển thị"}
+                {isSubmitting ? "Đang gửi..." : "Gửi yêu cầu kiểm duyệt"}
               </button>
             </div>
           </form>

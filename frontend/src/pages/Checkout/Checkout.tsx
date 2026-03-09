@@ -63,7 +63,7 @@ const Checkout = () => {
       setToastMessage("Đặt hàng thành công!");
       setShowToast(true);
       
-      // Navigate to the Purchase page to view the new order
+      // Navigate to the Purchase page where they can now write reviews
       setTimeout(() => navigate('/user/purchase'), 2000);
     } catch (err: any) {
       setToastMessage(err.message || "Có lỗi xảy ra khi đặt hàng.");
@@ -79,25 +79,23 @@ const Checkout = () => {
     <div className="checkout-wrapper">
       <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
 
+      {/* Already correctly using the container class for 1600px alignment */}
       <div className="container checkout-container">
+        
         {/* ADDRESS SECTION */}
         <div className="checkout-section address-section">
           <div className="section-header">
             <FaMapMarkerAlt className="icon-orange" />
-            {/* ADDED STAR */}
             <h3>Địa Chỉ Nhận Hàng <span className="required-star">*</span></h3>
           </div>
           {selectedAddress ? (
             <div className="address-display">
               <div className="address-info">
-                {/* Standardized 'phone' field matched to backend */}
                 <strong>{selectedAddress.receiverName} ({selectedAddress.phone})</strong>
                 <p>
-                  {/* District removed; format: detail, ward, province */}
                   {selectedAddress.detail}, {selectedAddress.ward}, {selectedAddress.province}
                 </p>
               </div>
-              {/* Pointing specifically to the address update page for better UX */}
               <button className="change-btn" onClick={() => navigate('/user/address')}>Thay đổi</button>
             </div>
           ) : (
@@ -116,7 +114,8 @@ const Checkout = () => {
           {cartItems.map((item, idx) => (
             <div key={idx} className="checkout-item-row">
               <div className="col-prod item-meta">
-                <img src={item.productImage} alt={item.productName} />
+                {/* SAFETY: Added fallback to placeholder to prevent rendering errors */}
+                <img src={item.productImage || "/placeholder.png"} alt={item.productName} />
                 <span>{item.productName}</span>
               </div>
               <div className="col-price">₫{item.price.toLocaleString()}</div>

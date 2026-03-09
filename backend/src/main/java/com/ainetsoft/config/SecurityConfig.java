@@ -14,10 +14,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.context.DelegatingSecurityContextRepository;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
-import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
-import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -31,18 +28,11 @@ public class SecurityConfig {
 
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter; // NEW: Injected filter
 
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
-    }
-
-    @Bean
-    public SecurityContextRepository securityContextRepository() {
-        return new DelegatingSecurityContextRepository(
-                new RequestAttributeSecurityContextRepository(),
-                new HttpSessionSecurityContextRepository()
-        );
     }
 
     @Bean
@@ -55,12 +45,10 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable()) 
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .securityContext(context -> context.securityContextRepository(securityContextRepository()))
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+            // UPDATED: Move to Stateless policy for JWT support
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                
-                // PUBLIC ACCESS
                 .requestMatchers(
                     "/api/auth/login", 
                     "/api/auth/register", 
@@ -70,10 +58,7 @@ public class SecurityConfig {
                     "/oauth2/**",
                     "/login/oauth2/**"
                 ).permitAll() 
-                
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll() 
-                
-                // PROTECTED
                 .requestMatchers(
                     "/api/auth/me", 
                     "/api/auth/profile", 
@@ -82,15 +67,12 @@ public class SecurityConfig {
                     "/api/auth/upgrade-seller",
                     "/api/orders/**"
                 ).authenticated() 
-                
                 .anyRequest().authenticated()
             )
-            // UPDATED: Nuclear Logout Handling to prevent session bleeding
+            // NEW: Add the JWT Filter before the standard authentication filter
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .logout(logout -> logout
                 .logoutUrl("/api/auth/logout")
-                .invalidateHttpSession(true) // Destroys session on server
-                .clearAuthentication(true)    // Wipes authentication context
-                .deleteCookies("JSESSIONID") // Purges the browser session cookie
                 .logoutSuccessHandler((request, response, authentication) -> {
                     response.setStatus(HttpServletResponse.SC_OK);
                     response.setContentType("application/json");
@@ -98,12 +80,8 @@ public class SecurityConfig {
                 })
             )
             .oauth2Login(oauth2 -> oauth2
-                .authorizationEndpoint(authorization -> authorization
-                    .baseUri("/oauth2/authorization")
-                )
-                .redirectionEndpoint(redirection -> redirection
-                    .baseUri("/login/oauth2/code/*")
-                )
+                .authorizationEndpoint(authorization -> authorization.baseUri("/oauth2/authorization"))
+                .redirectionEndpoint(redirection -> redirection.baseUri("/login/oauth2/code/*"))
                 .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
                 .successHandler(oAuth2AuthenticationSuccessHandler)
             );
@@ -116,7 +94,8 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of("http://localhost:5173")); 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
+        // UPDATED: Explicitly allow Authorization header
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         config.setAllowCredentials(true); 
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

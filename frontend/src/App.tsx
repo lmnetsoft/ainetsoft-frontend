@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'; // Added hooks
+import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Header from './components/Header/Header';
 import Footer from './components/Footer/Footer';
@@ -13,8 +13,8 @@ import TitleManager from './components/TitleManager';
 import ContentPage from './pages/Content/ContentPage';
 
 // Services & Global Components
-import { getUserProfile } from './services/authService'; // To check session on startup
-import LoadingOverlay from './components/LoadingOverlay/LoadingOverlay'; // NEW: Global loader
+import { getUserProfile } from './services/authService';
+import LoadingOverlay from './components/LoadingOverlay/LoadingOverlay';
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute'; 
 
 // User Account Components
@@ -24,9 +24,22 @@ import Bank from './pages/User/Bank';
 import Address from './pages/User/Address';
 import Purchase from './pages/User/Purchase';
 import SellerRegister from './pages/User/SellerRegister';
+import NotificationPage from './pages/User/NotificationPage';
 
 // Shop Components
 import Cart from './pages/Cart/Cart';
+import Checkout from './pages/Checkout/Checkout';
+import ProductDetail from './pages/Product/ProductDetail';
+
+// Seller Components
+import SellerDashboard from './pages/Seller/SellerDashboard';
+import AddProduct from './pages/Seller/AddProduct';
+import EditProduct from './pages/Seller/EditProduct';
+import MyProducts from './pages/Seller/MyProducts';
+import SellerOrders from './pages/Seller/SellerOrders';
+
+// Admin Components
+import AdminDashboard from './pages/admin/AdminDashboard';
 
 import './App.css';
 
@@ -34,26 +47,37 @@ function App() {
   const [appLoading, setAppLoading] = useState(true);
 
   /**
-   * INITIALIZATION: Checks if a session (Cookie) exists on the backend
-   * before allowing the app to render. This syncs LocalStorage immediately.
+   * INITIALIZATION: 
+   * Checks for a stored JWT token. If found, it validates the identity 
+   * with the backend to sync LocalStorage (Name, Avatar, Roles).
    */
   useEffect(() => {
     const initApp = async () => {
-      try {
-        // This will sync localStorage if a JSESSIONID cookie exists
-        await getUserProfile();
-      } catch (err) {
-        console.log("No active session found on startup.");
-      } finally {
-        // Hide the loading screen regardless of login status
-        setAppLoading(false);
+      const token = localStorage.getItem('jwt_token');
+      
+      if (token) {
+        try {
+          // Sync profile only if a token exists
+          await getUserProfile();
+        } catch (err) {
+          console.warn("Session invalid or expired. Reverting to guest mode.");
+          // Clear storage to prevent 'isAuthenticated' being true without a valid token
+          localStorage.clear();
+          window.dispatchEvent(new Event('profileUpdate'));
+        }
+      } else {
+        // No token? Ensure we aren't showing stale 'isAuthenticated' data
+        localStorage.removeItem('isAuthenticated');
+        localStorage.removeItem('userName');
+        localStorage.removeItem('userRoles');
       }
+      
+      setAppLoading(false);
     };
 
     initApp();
   }, []);
 
-  // Show the overlay while checking the session
   if (appLoading) {
     return <LoadingOverlay />;
   }
@@ -73,30 +97,47 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
             <Route path="/cart" element={<Cart />} />
+            <Route path="/product/:id" element={<ProductDetail />} />
             <Route path="/regulations" element={<ContentPage type="regulations" />} />
             <Route path="/contact" element={<ContentPage type="contact" />} />
 
             {/* --- PROTECTED USER ROUTES --- */}
-            <Route path="/user/profile" element={
-              <ProtectedRoute><Profile /></ProtectedRoute>
-            } />
-            <Route path="/user/password" element={
-              <ProtectedRoute><ChangePassword /></ProtectedRoute>
-            } /> 
-            <Route path="/user/bank" element={
-              <ProtectedRoute><Bank /></ProtectedRoute>
-            } /> 
-            <Route path="/user/address" element={
-              <ProtectedRoute><Address /></ProtectedRoute>
-            } />
-            <Route path="/user/purchase" element={
-              <ProtectedRoute><Purchase /></ProtectedRoute>
-            } />
+            <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+            <Route path="/user/notifications" element={<ProtectedRoute><NotificationPage /></ProtectedRoute>} />
+            <Route path="/user/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/user/password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} /> 
+            <Route path="/user/bank" element={<ProtectedRoute><Bank /></ProtectedRoute>} /> 
+            <Route path="/user/address" element={<ProtectedRoute><Address /></ProtectedRoute>} />
+            <Route path="/user/purchase" element={<ProtectedRoute><Purchase /></ProtectedRoute>} />
+            <Route path="/seller/register" element={<ProtectedRoute><SellerRegister /></ProtectedRoute>} />
 
             {/* --- PROTECTED SELLER ROUTES --- */}
-            <Route path="/seller/register" element={
-              <ProtectedRoute><SellerRegister /></ProtectedRoute>
-            } />
+            <Route 
+              path="/seller/dashboard" 
+              element={<ProtectedRoute allowedRoles={['SELLER']}><SellerDashboard /></ProtectedRoute>} 
+            />
+            <Route 
+              path="/seller/products" 
+              element={<ProtectedRoute allowedRoles={['SELLER']}><MyProducts /></ProtectedRoute>} 
+            />
+            <Route 
+              path="/seller/add-product" 
+              element={<ProtectedRoute allowedRoles={['SELLER']}><AddProduct /></ProtectedRoute>} 
+            />
+            <Route 
+              path="/seller/edit-product/:id" 
+              element={<ProtectedRoute allowedRoles={['SELLER']}><EditProduct /></ProtectedRoute>} 
+            />
+            <Route 
+              path="/seller/orders" 
+              element={<ProtectedRoute allowedRoles={['SELLER']}><SellerOrders /></ProtectedRoute>} 
+            />
+
+            {/* --- PROTECTED ADMIN ROUTES --- */}
+            <Route 
+              path="/admin/dashboard" 
+              element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboard /></ProtectedRoute>} 
+            />
 
             {/* Catch-all route for 404 (MUST BE LAST) */}
             <Route path="*" element={<NotFound />} />

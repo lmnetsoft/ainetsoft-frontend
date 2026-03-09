@@ -1,5 +1,6 @@
 package com.ainetsoft.service;
 
+import com.ainetsoft.config.JwtUtils; // ADDED: Required for token generation
 import com.ainetsoft.dto.*;
 import com.ainetsoft.model.User;
 import com.ainetsoft.model.CartItem;
@@ -23,32 +24,30 @@ public class AuthService {
     private final PasswordResetTokenRepository tokenRepository;
     private final AzureCommunicationService azureService;
     private final PasswordEncoder passwordEncoder;
+    private final JwtUtils jwtUtils; // ADDED: Injected for stateless auth
 
     /**
-     * UPDATED: Global & Vietnamese Phone Validation
-     * 1. Strips non-digits.
-     * 2. If it is a Vietnamese number (starts with 0 or 84), checks carrier prefixes.
-     * 3. If it is international, checks for a valid numeric length (7-15 digits).
+     * Vietnamese & Global Phone Validation
+     * Strips non-digits and checks carrier prefixes for VN numbers.
      */
     private boolean isValidPhone(String phone) {
         if (phone == null || phone.isBlank()) return true;
 
         String cleanPhone = phone.replaceAll("[^0-9]", "");
         
-        // Check if it's a Vietnamese number
+        // Check if it's a Vietnamese number (starts with 0 or 84)
         if (cleanPhone.startsWith("0") || cleanPhone.startsWith("84")) {
             String vnNormalized = cleanPhone.startsWith("84") ? "0" + cleanPhone.substring(2) : cleanPhone;
             
-            // Strict Regex for VN Carriers
+            // Strict Regex for VN Carriers (Viettel, Mobifone, Vinaphone, etc.)
             String vnRegex = "^(03[2-9]|086|09[6-8]|070|07[6-9]|089|090|093|08[1-5]|088|091|094|052|05[68]|092|059|099)\\d{7}$";
             
             if (vnNormalized.matches(vnRegex)) return true;
             
-            // If it starts like a VN number but doesn't match a carrier, reject it
             throw new RuntimeException("Số điện thoại Việt Nam không thuộc nhà mạng được hỗ trợ!");
         }
 
-        // Global Validation: Allow any numeric string between 7 and 15 digits
+        // Global Validation: 7 to 15 digits
         return cleanPhone.matches("^\\d{7,15}$");
     }
 
@@ -114,7 +113,6 @@ public class AuthService {
         if (request.getBirthDate() != null) user.setBirthDate(request.getBirthDate());
         
         if (request.getPhone() != null && !request.getPhone().isBlank()) {
-            // UPDATED: Global-ready check
             if (!isValidPhone(request.getPhone())) {
                 throw new RuntimeException("Số điện thoại không hợp lệ!");
             }
@@ -183,14 +181,27 @@ public class AuthService {
         return "Đăng ký thành công!";
     }
 
+    /**
+     * UPDATED: Login now generates a JWT token for stateless communication.
+     */
     public LoginResponse login(LoginRequest request) {
         String identifier = normalizeIdentifier(request.getContactInfo());
         User user = userRepository.findByIdentifier(identifier)
                 .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
+        
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new RuntimeException("Mật khẩu không chính xác!");
         }
-        return new LoginResponse(user.getFullName(), user.getRoles(), "Đăng nhập thành công!");
+
+        // GENERATE JWT TOKEN
+        String token = jwtUtils.generateToken(identifier, user.getRoles()); 
+
+        return new LoginResponse(
+            token, 
+            user.getFullName(), 
+            user.getRoles(), 
+            "Đăng nhập thành công!"
+        );
     }
 
     public String changePassword(String contactInfo, ChangePasswordRequest request) {
@@ -229,7 +240,7 @@ public class AuthService {
             }
         } catch (Exception e) {
             log.error("Azure Communication delivery error: {}", e.getMessage());
-            throw new RuntimeException("Lỗi hệ thống khi gửi mã xác thực. Vui lòng kiểm tra lại cấu hình email.");
+            throw new RuntimeException("Lỗi hệ thống khi gửi mã xác thực.");
         }
     }
 

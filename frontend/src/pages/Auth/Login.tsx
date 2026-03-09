@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import 'react-phone-number-input/style.css'; 
@@ -9,7 +9,11 @@ import { FaEye, FaEyeSlash, FaGoogle, FaFacebook } from 'react-icons/fa';
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  
+
+  // --- THE FIX: Capture the requested path from the URL or Router State ---
+  const searchParams = new URLSearchParams(location.search);
+  const redirectPath = searchParams.get('redirect') || location.state?.from?.pathname || '/';
+
   const [successMessage, setSuccessMessage] = useState(location.state?.successMessage || '');
   const [inputMode, setInputMode] = useState<'phone' | 'email'>('phone');
   const [error, setError] = useState(location.state?.error || '');
@@ -22,14 +26,17 @@ const Login = () => {
     password: ''
   });
 
+  // Automatically redirect if already authenticated
+  useEffect(() => {
+    if (localStorage.getItem('isAuthenticated') === 'true') {
+      navigate(redirectPath, { replace: true });
+    }
+  }, [navigate, redirectPath]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setLoginData({ ...loginData, [e.target.name]: e.target.value });
   };
 
-  /**
-   * SOCIAL LOGIN HANDLERS
-   * Redirects the browser to the Spring Boot OAuth2 endpoints defined in application.properties.
-   */
   const handleGoogleLogin = () => {
     window.location.href = 'http://localhost:8080/oauth2/authorization/google';
   };
@@ -58,6 +65,7 @@ const Login = () => {
         password: loginData.password
       };
 
+      // authService.loginUser now handles saving the jwt_token
       const userData = await loginUser(payload);
       
       localStorage.setItem('isAuthenticated', 'true');
@@ -66,7 +74,9 @@ const Login = () => {
 
       // Sync profile to ensure name/avatar are updated in Header
       await getUserProfile();
-      window.location.href = '/';
+
+      // --- THE FIX: Navigate back to the intended page ---
+      navigate(redirectPath, { replace: true });
 
     } catch (err: any) {
       setError(err.message);

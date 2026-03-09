@@ -20,10 +20,19 @@ public class Order {
     private double totalAmount;
     private User.AddressInfo shippingAddress;
     private String paymentMethod;
+    
     @Builder.Default
     private String status = "PENDING"; 
+
+    // NEW: Review status field to prevent duplicate reviews
+    @Builder.Default
+    private boolean reviewed = false; 
+
     private boolean isFlagged; 
+    
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
-    private LocalDateTime updatedAt;
+    
+    @Builder.Default
+    private LocalDateTime updatedAt = LocalDateTime.now();
 }

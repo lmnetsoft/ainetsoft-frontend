@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaStore, FaTruck, FaMapMarkerAlt } from 'react-icons/fa';
+import { FaStore, FaTruck, FaMapMarkerAlt, FaStar } from 'react-icons/fa';
 import { getMyOrders } from '../../services/orderService';
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import ToastNotification from '../../components/Toast/ToastNotification';
@@ -30,7 +30,6 @@ const Purchase = () => {
       const data = await getMyOrders(status);
       setOrders(data);
     } catch (err: any) {
-      // If refresh happens, we ignore "Unauthorized" briefly until App.tsx syncs
       if (err.message !== "Unauthorized") {
           setToastMessage(err.message || "Không thể tải danh sách đơn hàng.");
           setShowToast(true);
@@ -41,7 +40,6 @@ const Purchase = () => {
   };
 
   useEffect(() => {
-    // Add a tiny delay to ensure App.tsx initApp() has finished its session check
     const timeoutId = setTimeout(() => {
       fetchOrders(activeTab);
     }, 100);
@@ -62,17 +60,12 @@ const Purchase = () => {
 
   return (
     <div className="profile-wrapper">
-      <ToastNotification 
-        message={toastMessage} 
-        isVisible={showToast} 
-        onClose={() => setShowToast(false)} 
-      />
+      <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
 
       <div className="container profile-container">
         <AccountSidebar />
         
         <main className="profile-main-content" style={{ padding: '0', background: 'transparent', boxShadow: 'none' }}>
-          {/* NAVIGATION TABS - Now horizontal via CSS */}
           <div className="purchase-tabs-container">
             {tabs.map(tab => (
               <div 
@@ -93,17 +86,9 @@ const Purchase = () => {
               </div>
             ) : orders.length === 0 ? (
               <div className="purchase-empty-state" style={{ background: '#fff', padding: '100px 0', textAlign: 'center' }}>
-                <img 
-                  src="/logo.svg" 
-                  alt="Empty" 
-                  style={{ opacity: 0.1, width: '100px', marginBottom: '20px' }} 
-                />
+                <img src="/logo.svg" alt="Empty" style={{ opacity: 0.1, width: '100px', marginBottom: '20px' }} />
                 <p>Chưa có đơn hàng nào trong mục này.</p>
-                <button 
-                  className="go-shopping-btn" 
-                  onClick={() => navigate('/')}
-                  style={{ marginTop: '20px', padding: '12px 30px', backgroundColor: '#ee4d2d', color: 'white', border: 'none', borderRadius: '2px', cursor: 'pointer' }}
-                >
+                <button className="go-shopping-btn" onClick={() => navigate('/')} style={{ marginTop: '20px', padding: '12px 30px', backgroundColor: '#ee4d2d', color: 'white', border: 'none', borderRadius: '2px', cursor: 'pointer' }}>
                   Mua sắm ngay
                 </button>
               </div>
@@ -154,12 +139,21 @@ const Purchase = () => {
                         </div>
                         <div className="footer-actions">
                           {order.status === 'COMPLETED' ? (
-                            <button className="buy-again-btn" style={{ background: '#ee4d2d', color: '#fff', border: 'none' }}>Mua lại</button>
+                            <>
+                              {/* NEW: Write Review Button for Completed Orders */}
+                              <button 
+                                onClick={() => navigate(`/product/${order.items[0]?.productId}?review=true&orderId=${order.id}`)}
+                                style={{ background: '#fff', color: '#ee4d2d', border: '1px solid #ee4d2d', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+                              >
+                                <FaStar /> Đánh giá sản phẩm
+                              </button>
+                              <button className="buy-again-btn" style={{ background: '#ee4d2d', color: '#fff', border: 'none' }}>Mua lại</button>
+                            </>
                           ) : (
                             <button className="contact-seller-btn">Liên hệ người bán</button>
                           )}
                           <button className="view-detail-btn" onClick={() => navigate(`/user/order/${order.id}`)}>
-                              Xem chi tiết đơn hàng
+                              Xem chi tiết
                           </button>
                         </div>
                     </div>

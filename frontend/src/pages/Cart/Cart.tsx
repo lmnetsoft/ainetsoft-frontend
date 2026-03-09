@@ -94,14 +94,14 @@ const Cart = () => {
     <div className="cart-page-wrapper">
       <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
       
-      <div className="cart-container">
+      {/* ALIGNMENT FIX: Added 'container' class to match 1600px standard */}
+      <div className="container cart-container">
         <div className="cart-title-section">
           <h2>Giỏ hàng</h2>
         </div>
         
         {cartItems.length === 0 ? (
           <div className="cart-empty-state">
-            {/* Using relative public path for logo */}
             <img src="/logo.svg" alt="Empty" /> 
             <p>Giỏ hàng của bạn còn trống</p>
             <button onClick={() => navigate('/')} className="go-shopping-btn">Mua sắm ngay</button>

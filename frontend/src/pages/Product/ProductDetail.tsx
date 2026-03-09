@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FaShoppingCart, FaStore, FaShieldAlt, FaTruck } from 'react-icons/fa';
+import { FaShoppingCart, FaStore, FaShieldAlt, FaTruck, FaStar } from 'react-icons/fa';
 import axios from 'axios';
 import ToastNotification from '../../components/Toast/ToastNotification';
 import './ProductDetail.css';
@@ -15,8 +15,18 @@ interface Product {
   stock: number;
   category: string;
   images: string[];
-  videoUrl?: string; // Supporting your new video feature
+  videoUrl?: string; 
   shopName: string;
+  averageRating?: number; // NEW
+  reviewCount?: number;   // NEW
+}
+
+interface Review {
+  id: string;
+  rating: number;
+  comment: string;
+  userName: string;
+  createdAt: string;
 }
 
 const ProductDetail = () => {
@@ -24,20 +34,27 @@ const ProductDetail = () => {
   const navigate = useNavigate();
   
   const [product, setProduct] = useState<Product | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]); // NEW: State for reviews
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
-  const [activeMedia, setActiveMedia] = useState(0); // Index for gallery
+  const [activeMedia, setActiveMedia] = useState(0); 
   
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
   useEffect(() => {
-    const fetchProduct = async () => {
+    const fetchProductAndReviews = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`${API_URL}/products/${id}`);
-        setProduct(response.data);
-        document.title = `${response.data.name} | AiNetsoft`;
+        // Fetch Product Data
+        const prodRes = await axios.get(`${API_URL}/products/${id}`);
+        setProduct(prodRes.data);
+        document.title = `${prodRes.data.name} | AiNetsoft`;
+
+        // Fetch Review Data for this product
+        const revRes = await axios.get(`${API_URL}/reviews/product/${id}`);
+        setReviews(revRes.data);
+
       } catch (error) {
         setToastMessage("Không tìm thấy sản phẩm.");
         setShowToast(true);
@@ -45,7 +62,7 @@ const ProductDetail = () => {
         setLoading(false);
       }
     };
-    fetchProduct();
+    fetchProductAndReviews();
   }, [id]);
 
   const handleAddToCart = async () => {
@@ -55,7 +72,6 @@ const ProductDetail = () => {
     }
 
     try {
-      // Reusing our Cart Sync logic
       const cartItem = {
         productId: product?.id,
         productName: product?.name,
@@ -65,8 +81,6 @@ const ProductDetail = () => {
         shopName: product?.shopName
       };
 
-      // In a real app, we'd fetch current cart, add this, then sync
-      // For now, let's assume the backend handles the addition logic or we send this item
       await axios.post(`${API_URL}/auth/sync-cart`, { items: [cartItem] }, { withCredentials: true });
       
       setToastMessage("Đã thêm vào giỏ hàng!");
@@ -86,10 +100,9 @@ const ProductDetail = () => {
       <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
 
       <div className="container detail-container">
-        {/* LEFT: Media Gallery */}
+        {/* LEFT: Media Gallery (Unchanged) */}
         <div className="detail-media-section">
           <div className="main-display">
-            {/* Logic: If video exists and is selected, show video player */}
             {product.videoUrl && activeMedia === product.images.length ? (
                <video controls className="main-video">
                  <source src={product.videoUrl} type="video/mp4" />
@@ -102,20 +115,12 @@ const ProductDetail = () => {
           
           <div className="thumbnail-list">
             {product.images.map((img, idx) => (
-              <div 
-                key={idx} 
-                className={`thumb-item ${activeMedia === idx ? 'active' : ''}`}
-                onMouseEnter={() => setActiveMedia(idx)}
-              >
+              <div key={idx} className={`thumb-item ${activeMedia === idx ? 'active' : ''}`} onMouseEnter={() => setActiveMedia(idx)}>
                 <img src={img} alt="thumb" />
               </div>
             ))}
-            {/* Show video thumbnail if exists (limited to 1:30) */}
             {product.videoUrl && (
-              <div 
-                className={`thumb-item video-thumb ${activeMedia === product.images.length ? 'active' : ''}`}
-                onMouseEnter={() => setActiveMedia(product.images.length)}
-              >
+              <div className={`thumb-item video-thumb ${activeMedia === product.images.length ? 'active' : ''}`} onMouseEnter={() => setActiveMedia(product.images.length)}>
                 <div className="play-icon-overlay">▶</div>
               </div>
             )}
@@ -125,6 +130,17 @@ const ProductDetail = () => {
         {/* RIGHT: Product Info */}
         <div className="detail-info-section">
           <h1 className="product-title">{product.name}</h1>
+          
+          {/* NEW: Star Rating Display */}
+          <div className="product-rating-overview" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
+            <div style={{ display: 'flex', color: '#ee4d2d' }}>
+              {[...Array(5)].map((_, i) => (
+                <FaStar key={i} color={i < Math.floor(product.averageRating || 0) ? "#ee4d2d" : "#e4e5e9"} />
+              ))}
+            </div>
+            <span style={{ color: '#ee4d2d', fontWeight: 'bold' }}>{product.averageRating || 0}</span>
+            <span style={{ color: '#767676', borderLeft: '1px solid #ccc', paddingLeft: '10px' }}>{product.reviewCount || 0} Đánh giá</span>
+          </div>
           
           <div className="product-stats">
             <span className="category-tag">{product.category}</span>
@@ -171,7 +187,7 @@ const ProductDetail = () => {
         </div>
       </div>
 
-      {/* BOTTOM: Description & Shop */}
+      {/* BOTTOM: Description, Shop & REVIEWS */}
       <div className="container detail-bottom">
         <div className="shop-card">
           <FaStore className="shop-icon" />
@@ -187,6 +203,30 @@ const ProductDetail = () => {
             {product.description.split('\n').map((line, i) => <p key={i}>{line}</p>)}
           </div>
         </div>
+
+        {/* NEW: Reviews Section */}
+        <div className="reviews-section" style={{ marginTop: '30px', background: '#fff', padding: '20px', borderRadius: '8px' }}>
+          <h3 className="section-title" style={{ marginBottom: '20px' }}>ĐÁNH GIÁ SẢN PHẨM</h3>
+          {reviews.length === 0 ? (
+            <p style={{ color: '#767676', textAlign: 'center', padding: '20px 0' }}>Chưa có đánh giá nào cho sản phẩm này.</p>
+          ) : (
+            <div className="reviews-list">
+              {reviews.map(review => (
+                <div key={review.id} style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '15px', marginBottom: '15px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '5px' }}>
+                     <strong>{review.userName}</strong>
+                     <div style={{ display: 'flex', color: '#ee4d2d', fontSize: '12px' }}>
+                        {[...Array(5)].map((_, i) => <FaStar key={i} color={i < review.rating ? "#ee4d2d" : "#e4e5e9"} />)}
+                     </div>
+                  </div>
+                  <p style={{ color: '#767676', fontSize: '12px', marginBottom: '10px' }}>{new Date(review.createdAt).toLocaleDateString('vi-VN')}</p>
+                  <p style={{ color: '#333' }}>{review.comment}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );

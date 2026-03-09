@@ -1,8 +1,11 @@
 package com.ainetsoft.controller;
 
 import com.ainetsoft.model.Order;
+import com.ainetsoft.model.User;
+import com.ainetsoft.repository.UserRepository;
 import com.ainetsoft.service.OrderService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,49 +19,88 @@ import java.util.Map;
 public class OrderController {
 
     private final OrderService orderService;
+    private final UserRepository userRepository; // Added to fetch user by identifier
 
     /**
-     * CORE: Place a new order using the items currently in the user's cart.
-     * UPDATED MAPPING: /api/orders/checkout
+     * Helper to get the logged-in User object from the Principal (JWT Token)
      */
-    @PostMapping("/checkout")
-    public ResponseEntity<?> placeOrder(@RequestBody Map<String, String> request, Principal principal) {
-        if (principal == null) return ResponseEntity.status(401).body("Phiên đăng nhập hết hạn");
-        
-        try {
-            String paymentMethod = request.getOrDefault("paymentMethod", "COD");
-            Order order = orderService.placeOrder(principal.getName(), paymentMethod);
-            return ResponseEntity.ok(order);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    private User getAuthenticatedUser(Principal principal) {
+        if (principal == null) return null;
+        // principal.getName() returns the identifier (email/phone) stored in the JWT
+        return userRepository.findByIdentifier(principal.getName()).orElse(null);
     }
 
     /**
-     * FIXED MAPPING: Renamed from /my-purchase to /me
-     * Matches Postman: http://localhost:8080/api/orders/me
+     * Used by Buyers to see their own purchase history.
      */
-    @GetMapping("/me")
-    public ResponseEntity<?> getMyOrders(
-            @RequestParam(required = false, defaultValue = "ALL") String status, 
+    @GetMapping("/my-orders")
+    public ResponseEntity<?> getMyOrders(@RequestParam(required = false) String status, Principal principal) {
+        User user = getAuthenticatedUser(principal);
+        
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Vui lòng đăng nhập"));
+        }
+        
+        // Use the email/identifier from the user object
+        List<Order> orders = orderService.getUserOrders(user.getEmail(), status);
+        return ResponseEntity.ok(orders);
+    }
+
+    /**
+     * Used by Sellers to see orders placed for their shop.
+     */
+    @GetMapping("/seller")
+    public ResponseEntity<?> getSellerOrders(@RequestParam(required = false) String status, Principal principal) {
+        User seller = getAuthenticatedUser(principal);
+        
+        if (seller == null || !seller.getRoles().contains("SELLER")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Chỉ dành cho Người bán"));
+        }
+        
+        List<Order> orders = orderService.getOrdersBySeller(seller.getId(), status);
+        return ResponseEntity.ok(orders);
+    }
+
+    /**
+     * Used by Sellers to update the order status.
+     */
+    @PutMapping("/seller/update-status/{orderId}")
+    public ResponseEntity<?> updateOrderStatus(
+            @PathVariable String orderId, 
+            @RequestBody Map<String, String> payload, 
             Principal principal) {
-        if (principal == null) return ResponseEntity.status(401).body("Unauthorized");
         
+        User seller = getAuthenticatedUser(principal);
+        String newStatus = payload.get("status");
+
+        if (seller == null || !seller.getRoles().contains("SELLER")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Quyền truy cập bị từ chối"));
+        }
+
         try {
-            List<Order> orders = orderService.getUserOrders(principal.getName(), status);
-            return ResponseEntity.ok(orders);
-        } catch (RuntimeException e) {
-            // Returns the actual error message as a string to avoid [object Object]
-            return ResponseEntity.internalServerError().body(e.getMessage());
+            Order updatedOrder = orderService.updateStatus(orderId, newStatus, seller.getId());
+            return ResponseEntity.ok(updatedOrder);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
 
     /**
-     * SELLER DASHBOARD: Get orders for a specific shop.
+     * Used by Buyers to cancel an order.
      */
-    @GetMapping("/seller/incoming")
-    public ResponseEntity<?> getSellerOrders(@RequestParam String shopName, Principal principal) {
-        if (principal == null) return ResponseEntity.status(401).body("Unauthorized");
-        return ResponseEntity.ok(orderService.getOrdersForSeller(shopName));
+    @PostMapping("/cancel/{orderId}")
+    public ResponseEntity<?> cancelOrder(@PathVariable String orderId, Principal principal) {
+        User user = getAuthenticatedUser(principal);
+        
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Vui lòng đăng nhập"));
+        }
+
+        try {
+            orderService.cancelOrder(orderId, user.getId());
+            return ResponseEntity.ok(Map.of("message", "Hủy đơn hàng thành công"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
     }
 }

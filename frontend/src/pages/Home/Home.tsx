@@ -1,19 +1,21 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { FaUserCircle, FaStore } from 'react-icons/fa';
-import axios from 'axios';
+import { FaUserCircle, FaStore, FaStar } from 'react-icons/fa';
+import api from '../../services/api'; 
 import './Home.css';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
 interface Product {
   id: string;
   name: string;
   price: number;
   images: string[];
+  imageUrl?: string; // Support for seeded mock data
   category: string;
   shopName: string;
   stock: number;
+  status: string; 
+  averageRating: number;
+  reviewCount: number;
 }
 
 const Home = () => {
@@ -21,23 +23,22 @@ const Home = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   
-  // Real Data State
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // User Identity State
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userName, setUserName] = useState('');
   const [userAvatar, setUserAvatar] = useState('');
 
   const searchQuery = searchParams.get('search')?.toLowerCase() || '';
+  const minRatingParam = parseFloat(searchParams.get('minRating') || '0');
 
   // 1. Fetch Real Products from Backend
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`${API_URL}/products`);
+        const response = await api.get('/products');
         setProducts(response.data);
       } catch (error) {
         console.error("Failed to fetch products:", error);
@@ -81,15 +82,18 @@ const Home = () => {
     "Máy tính xách tay", "iPhone 15", "Máy giặt Inverter", "Bàn phím cơ", "Đồng hồ thông minh"
   ];
 
-  // Real Filtering Logic
-  const displayProducts = products.filter(p => 
-    p.name.toLowerCase().includes(searchQuery) || 
-    p.category.toLowerCase().includes(searchQuery)
-  );
+  // 3. Integrated Filtering Logic (Search + Rating Filter)
+  const displayProducts = products.filter(p => {
+    const matchesSearch = p.name.toLowerCase().includes(searchQuery) || 
+                          p.category.toLowerCase().includes(searchQuery);
+    const matchesRating = (p.averageRating || 0) >= minRatingParam;
+    const isApproved = p.status === 'APPROVED' || !p.status;
+    
+    return isApproved && matchesSearch && matchesRating;
+  });
 
   return (
     <div className="home-page">
-      {/* 1. Banner Section */}
       <div className="container">
         <div className="hero-banner">
           <h1>AiNetsoft Technology Hub</h1>
@@ -108,7 +112,6 @@ const Home = () => {
         </div>
       </div>
 
-      {/* 2. Category Section */}
       <section className="container">
         <div className="category-section">
           <h3 className="section-title">Danh Mục Sản Phẩm</h3>
@@ -127,7 +130,6 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 3. Main Product Results Section */}
       <div className="container">
         <div className="info-box">
           <h4 className="info-header">
@@ -145,10 +147,29 @@ const Home = () => {
                 {displayProducts.map(product => (
                   <div key={product.id} className="result-card" onClick={() => navigate(`/product/${product.id}`)}>
                     <div className="product-image-wrapper">
-                       <img src={product.images[0] || "/placeholder.png"} alt={product.name} />
+                       {/* CRITICAL FIX: Optional chaining and hybrid fallback */}
+                       <img 
+                          src={product.images?.[0] || product.imageUrl || "/placeholder.png"} 
+                          alt={product.name} 
+                          onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder.png" }}
+                       />
                     </div>
                     <div className="product-details">
                       <p className="result-name">{product.name}</p>
+                      
+                      <div className="product-rating-row">
+                        <div className="stars-mini">
+                          {[...Array(5)].map((_, i) => (
+                            <FaStar 
+                              key={i} 
+                              size={12} 
+                              color={i < Math.floor(product.averageRating || 0) ? "#ee4d2d" : "#e4e5e9"} 
+                            />
+                          ))}
+                        </div>
+                        {(product.averageRating || 0) > 0 && <span className="rating-num">{product.averageRating}</span>}
+                      </div>
+
                       <div className="price-row">
                         <span className="result-price">₫{product.price.toLocaleString()}</span>
                         <span className="stock-label">Kho: {product.stock}</span>
@@ -165,7 +186,6 @@ const Home = () => {
         </div>
       </div>
 
-      {/* 4. Popular Keywords Section */}
       <div className="container">
         <div className="keywords-section">
           <h4 className="keywords-title">Xu hướng tìm kiếm</h4>

@@ -13,10 +13,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Core User model representing the 'users' collection in MongoDB.
- * Updated to support OAuth2 Social Login providers.
- */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -28,16 +24,32 @@ public class User {
     
     private String email;
     private String phone;
-    private String password; // Will be null for social users
+    private String password; 
     private String fullName;
     private String gender;
     private LocalDate birthDate; 
+    
+    // Existing avatar field
     private String avatarUrl; 
 
-    // NEW: Fields to track how the user authenticated
+    /**
+     * FIX: ReviewService.java calls .getAvatar(). 
+     * We map it here so the compiler finds it.
+     */
+    public String getAvatar() {
+        return this.avatarUrl;
+    }
+
     @Builder.Default
-    private AuthProvider provider = AuthProvider.LOCAL; // Default for standard registration
-    private String providerId; // Unique ID from Google/Facebook
+    private AuthProvider provider = AuthProvider.LOCAL;
+    private String providerId; 
+
+    // --- ADMINISTRATIVE STATUS FIELDS ---
+    @Builder.Default
+    private String accountStatus = "ACTIVE"; // ACTIVE, BANNED
+
+    @Builder.Default
+    private String sellerVerification = "NONE"; // NONE, PENDING, VERIFIED, REJECTED
 
     @Builder.Default
     private List<CartItem> cart = new ArrayList<>();
@@ -59,13 +71,8 @@ public class User {
     @Builder.Default
     private LocalDateTime updatedAt = LocalDateTime.now();
 
-    /**
-     * Enum to identify the source of the user account.
-     */
     public enum AuthProvider {
-        LOCAL,   // Registered via Phone/Email + Password
-        GOOGLE,  // Logged in via Google
-        FACEBOOK // Logged in via Facebook
+        LOCAL, GOOGLE, FACEBOOK
     }
 
     @Data

@@ -1,0 +1,164 @@
+/* --- Overlay & Modal Container --- */
+.review-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6); /* Slightly darker for better focus */
+  backdrop-filter: blur(2px); /* Modern blur effect */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  padding: 20px;
+}
+
+.review-form-card {
+  background: white;
+  padding: 30px;
+  border-radius: 8px; /* Softer corners */
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  animation: modalFadeIn 0.3s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.review-form-card h3 {
+  margin-top: 0;
+  color: #222;
+  font-size: 1.4rem;
+  text-align: center;
+}
+
+.product-name-label {
+  color: #666;
+  text-align: center;
+  margin-bottom: 25px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-bottom: 1px solid #f1f1f1;
+  padding-bottom: 15px;
+}
+
+/* --- Star Rating Section --- */
+.star-rating-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 30px;
+}
+
+.star-group {
+  display: flex;
+  gap: 8px;
+}
+
+.star-label {
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.star-label:hover {
+  transform: scale(1.2);
+}
+
+.rating-radio {
+  display: none; /* Keep standard radio button hidden */
+}
+
+.star-icon {
+  font-size: 2.8rem; /* Larger stars for easier clicking */
+  transition: color 0.2s;
+}
+
+.rating-text {
+  color: #ee4d2d;
+  font-weight: 600;
+  font-size: 1rem;
+  min-height: 1.2rem;
+}
+
+/* --- Textarea & Character Count --- */
+.comment-section {
+  position: relative;
+  margin-bottom: 10px;
+}
+
+.comment-section textarea {
+  width: 100%;
+  padding: 15px;
+  border: 1px solid #e1e1e1;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  resize: none;
+  background-color: #fafafa;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.comment-section textarea:focus {
+  outline: none;
+  border-color: #ee4d2d;
+  background-color: white;
+  box-shadow: 0 0 0 2px rgba(238, 77, 45, 0.1);
+}
+
+.char-count {
+  display: block;
+  text-align: right;
+  color: #999;
+  font-size: 0.75rem;
+  margin-top: 5px;
+}
+
+/* --- Form Actions --- */
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+  margin-top: 25px;
+}
+
+.btn-cancel {
+  background: white;
+  color: #555;
+  border: 1px solid #ddd;
+  padding: 12px 30px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.btn-cancel:hover {
+  background: #f8f8f8;
+  border-color: #ccc;
+}
+
+.btn-submit {
+  background: #ee4d2d; /* Shopee Orange */
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.btn-submit:hover:not(:disabled) {
+  background: #d73211;
+}
+
+.btn-submit:disabled {
+  background: #ffb5a5;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
