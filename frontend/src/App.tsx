@@ -30,6 +30,7 @@ import NotificationPage from './pages/User/NotificationPage';
 import Cart from './pages/Cart/Cart';
 import Checkout from './pages/Checkout/Checkout';
 import ProductDetail from './pages/Product/ProductDetail';
+import PublicShop from './pages/Shop/PublicShop'; // NEW: Public Storefront component
 
 // Seller Components
 import SellerDashboard from './pages/Seller/SellerDashboard';
@@ -37,7 +38,7 @@ import AddProduct from './pages/Seller/AddProduct';
 import EditProduct from './pages/Seller/EditProduct';
 import MyProducts from './pages/Seller/MyProducts';
 import SellerOrders from './pages/Seller/SellerOrders';
-import SellerSettings from './pages/Seller/SellerSettings'; // NEW: Added to fix 404
+import SellerSettings from './pages/Seller/SellerSettings';
 
 // Admin Components
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -62,12 +63,10 @@ function App() {
           await getUserProfile();
         } catch (err) {
           console.warn("Session invalid or expired. Reverting to guest mode.");
-          // Clear storage to prevent 'isAuthenticated' being true without a valid token
           localStorage.clear();
           window.dispatchEvent(new Event('profileUpdate'));
         }
       } else {
-        // No token? Ensure we aren't showing stale 'isAuthenticated' data
         localStorage.removeItem('isAuthenticated');
         localStorage.removeItem('userName');
         localStorage.removeItem('userRoles');
@@ -101,6 +100,10 @@ function App() {
             <Route path="/product/:id" element={<ProductDetail />} />
             <Route path="/regulations" element={<ContentPage type="regulations" />} />
             <Route path="/contact" element={<ContentPage type="contact" />} />
+            
+            {/* NEW: Public Storefront Routes */}
+            <Route path="/shop/:id" element={<PublicShop />} />
+            <Route path="/my-shop" element={<PublicShop />} />
 
             {/* --- PROTECTED USER ROUTES --- */}
             <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
@@ -133,7 +136,6 @@ function App() {
               path="/seller/orders" 
               element={<ProtectedRoute allowedRoles={['SELLER']}><SellerOrders /></ProtectedRoute>} 
             />
-            {/* NEW: Seller Settings Route */}
             <Route 
               path="/seller/settings" 
               element={<ProtectedRoute allowedRoles={['SELLER']}><SellerSettings /></ProtectedRoute>} 
@@ -150,7 +152,7 @@ function App() {
           </Routes>
         </main>
         
-        <Footer />
+        <footer />
         <ChatBubble />
       </div>
     </Router>
