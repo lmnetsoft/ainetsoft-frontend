@@ -3,7 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../services/api';
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import ChatPage from '../Chat/ChatPage'; 
-import { FaInbox, FaReply, FaSearch, FaSyncAlt, FaVolumeUp, FaVolumeMute, FaClock } from 'react-icons/fa';
+import { 
+  FaInbox, FaReply, FaSearch, FaSyncAlt, FaVolumeUp, 
+  FaVolumeMute, FaClock, FaBolt, FaStickyNote, 
+  FaSave, FaCheckCircle, FaPlus 
+} from 'react-icons/fa';
 import { useChat } from '../../context/ChatContext';
 
 import alarmSound from '../../assets/sounds/Alarm01.wav';
@@ -12,63 +16,140 @@ import './AdminChat.css';
 interface Conversation {
   userId: string;
   userName: string;
-  userAvatar?: string; // NEW: Added support for user photos
+  userAvatar?: string;
   lastMessageAt: string;
   lastMessageContent: string;
   unreadCount: number;
+  tags?: string[];
+  lastActiveAt: string;
 }
 
 const AdminChat = () => {
   const navigate = useNavigate();
   const { recipientId } = useParams();
-  const { isMuted, setIsMuted, setUnreadCount } = useChat(); 
+  const { sendMessage, connected, isMuted, setIsMuted, setUnreadCount } = useChat(); 
+
+  // --- States ---
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [showQuickReplies, setShowQuickReplies] = useState(false);
+  
+  const [note, setNote] = useState('');
+  const [isNoteOpen, setIsNoteOpen] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
 
   const testAudio = new Audio(alarmSound);
+  const allAvailableTags = ['VIP', 'Blacklist', 'New', 'Customer'];
+  const quickReplies = [
+    "Chào bạn! AiNetsoft có thể giúp gì cho bạn ạ?",
+    "Sản phẩm này hiện đang còn hàng, bạn có muốn đặt ngay không?",
+    "Đơn hàng của bạn đang được xử lý và sẽ giao trong 2-3 ngày tới.",
+    "Bạn vui lòng cung cấp mã đơn hàng để mình kiểm tra nhé.",
+    "Cảm ơn bạn đã quan tâm! Chúc bạn một ngày tốt lành."
+  ];
 
+  // --- Helpers ---
   const formatTimeAgo = (dateString: string) => {
+    if (!dateString) return '...';
     const now = new Date();
     const past = new Date(dateString);
     const diffInSeconds = Math.floor((now.getTime() - past.getTime()) / 1000);
     if (diffInSeconds < 60) return 'Vừa xong';
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} phút`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} giờ`;
+    if (diffInSeconds < 84000) return `${Math.floor(diffInSeconds / 3600)} giờ`;
     return past.toLocaleDateString('vi-VN');
   };
 
+  const isOnline = (lastActiveAt: string) => {
+    if (!lastActiveAt) return false;
+    const activeDate = new Date(lastActiveAt).getTime();
+    const now = new Date().getTime();
+    return (now - activeDate) / (1000 * 60) < 5;
+  };
+
+  const getHighlightedText = (text: string, highlight: string) => {
+    if (!highlight.trim()) return text;
+    const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
+    return (
+      <span>
+        {parts.map((part, i) => 
+          part.toLowerCase() === highlight.toLowerCase() 
+            ? <mark key={i} className="search-highlight">{part}</mark> 
+            : part
+        )}
+      </span>
+    );
+  };
+
+  const getTagClass = (tag: string) => {
+    const t = tag.toUpperCase();
+    if (t === 'VIP') return 'tag-vip';
+    if (t === 'BLACKLIST') return 'tag-danger';
+    if (t === 'NEW') return 'tag-success';
+    return 'tag-default';
+  };
+
+  // Helper to check if a user in the list currently has a tag
+  const userHasTag = (tag: string) => {
+    const user = conversations.find(c => c.userId === recipientId);
+    return user?.tags?.includes(tag) || false;
+  };
+
+  // --- Data Logic ---
   const fetchConversations = async (query = '') => {
     try {
       setLoading(true);
       const res = await api.get(`/chat/admin/conversations?search=${encodeURIComponent(query)}`);
-      const data = res.data;
-      setConversations(data);
-
-      const totalUnread = data.reduce((sum: number, conv: Conversation) => sum + conv.unreadCount, 0);
+      setConversations(res.data);
+      const totalUnread = res.data.reduce((sum: number, conv: Conversation) => sum + conv.unreadCount, 0);
       setUnreadCount(totalUnread);
-    } catch (err) {
-      console.error("Lỗi tải hội thoại:", err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchConversations(searchTerm);
-    }, 500);
+    if (recipientId) {
+      const initChat = async () => {
+        try {
+          await api.post(`/chat/read/${recipientId}/admin`);
+          setConversations(prev => prev.map(c => c.userId === recipientId ? { ...c, unreadCount: 0 } : c));
+          const noteRes = await api.get(`/chat/admin/notes/${recipientId}`);
+          setNote(noteRes.data.content || '');
+        } catch (err) { console.error(err); }
+      };
+      initChat();
+    }
+  }, [recipientId]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => fetchConversations(searchTerm), 500);
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const handleTestSound = () => {
-    testAudio.currentTime = 0;
-    testAudio.play().catch(() => alert("Vui lòng click vào trang web trước khi thử chuông!"));
+  // --- Handlers ---
+  const handleSaveNote = async () => {
+    if (!recipientId) return;
+    setSaveStatus('saving');
+    try {
+      await api.post(`/chat/admin/notes`, { userId: recipientId, content: note });
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    } catch { setSaveStatus('idle'); }
   };
 
-  useEffect(() => {
-    document.title = "Quản lý Chat | AiNetsoft";
-  }, []);
+  const handleToggleTag = async (tag: string) => {
+    if (!recipientId) return;
+    try {
+      const res = await api.post(`/chat/admin/tags/toggle`, { userId: recipientId, tag });
+      setConversations(prev => prev.map(c => c.userId === recipientId ? { ...c, tags: res.data.tags } : c));
+    } catch (err) { alert("Lỗi cập nhật tag"); }
+  };
+
+  const handleSendQuickReply = (text: string) => {
+    if (!connected || !recipientId) return;
+    sendMessage({ senderId: 'admin', recipientId, content: text, type: 'TEXT', timestamp: new Date().toISOString() });
+    setShowQuickReplies(false);
+  };
 
   return (
     <div className="profile-wrapper">
@@ -84,92 +165,106 @@ const AdminChat = () => {
             <div className="admin-chat-top-actions">
                <p>Quản lý và phản hồi các yêu cầu từ người dùng hệ thống AiNetsoft.</p>
                <div className="header-actions">
-                  <button 
-                    className={`mute-toggle-btn ${isMuted ? 'muted' : ''}`} 
-                    onClick={() => setIsMuted(!isMuted)}
-                  >
-                    {isMuted ? <FaVolumeMute /> : <FaVolumeUp />}
-                    <span>{isMuted ? "Đã tắt" : "Âm thanh"}</span>
+                  <button className={`mute-toggle-btn ${isMuted ? 'muted' : ''}`} onClick={() => setIsMuted(!isMuted)}>
+                    {isMuted ? <FaVolumeMute /> : <FaVolumeUp />} <span>{isMuted ? "Đã tắt" : "Âm thanh"}</span>
                   </button>
-
-                  <button className="test-sound-btn" onClick={handleTestSound}>Thử chuông</button>
-
-                  <button className="refresh-btn" onClick={() => fetchConversations(searchTerm)}>
-                    <FaSyncAlt />
-                  </button>
+                  <button className="test-sound-btn" onClick={() => testAudio.play()}>Thử chuông</button>
+                  <button className="refresh-btn" onClick={() => fetchConversations(searchTerm)}><FaSyncAlt /></button>
                </div>
             </div>
 
             <div className="admin-chat-main-grid">
+              {/* SIDEBAR */}
               <div className="admin-inbox-sidebar">
                 <div className="search-bar-wrapper">
                   <FaSearch className="search-icon" />
-                  <input 
-                    type="text" 
-                    placeholder="Tìm kiếm User ID hoặc tên..." 
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
+                  <input type="text" placeholder="Tìm ID hoặc tên..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                 </div>
 
                 <div className="conversations-list">
-                  {loading ? (
-                    <div className="admin-chat-loading">Đang tải...</div>
-                  ) : conversations.length === 0 ? (
-                    <div className="admin-chat-empty">Không tìm thấy người dùng.</div>
-                  ) : (
-                    conversations.map((conv) => (
-                      <div 
-                        key={conv.userId} 
-                        className={`admin-conv-item ${recipientId === conv.userId ? 'is-active' : ''}`}
-                        onClick={() => navigate(`/admin/chat/${conv.userId}`)}
-                      >
-                        <div className="user-avatar-circle">
-                          {/* SHOW PHOTO IF EXISTS, ELSE SHOW INITIAL */}
-                          {conv.userAvatar ? (
-                            <img src={conv.userAvatar} alt="" className="user-item-photo" />
-                          ) : (
-                            (conv.userName || conv.userId).charAt(0).toUpperCase()
-                          )}
-                          
-                          {conv.unreadCount > 0 && (
-                            <span className="admin-unread-badge">{conv.unreadCount}</span>
-                          )}
-                        </div>
-
-                        <div className="conv-details">
-                          <div className="conv-top-row">
-                            <span className="conv-user-id">{conv.userName || conv.userId}</span>
-                            <span className="conv-time">
-                              <FaClock size={10} /> {formatTimeAgo(conv.lastMessageAt)}
-                            </span>
-                          </div>
-                          <span className="conv-preview">{conv.lastMessageContent}</span>
-                        </div>
-                        <FaReply className="reply-arrow" />
+                  {loading ? <div className="admin-chat-loading">Đang tải...</div> : conversations.map((conv) => (
+                    <div key={conv.userId} className={`admin-conv-item ${recipientId === conv.userId ? 'is-active' : ''}`} onClick={() => navigate(`/admin/chat/${conv.userId}`)}>
+                      <div className="user-avatar-circle">
+                        {conv.userAvatar ? <img src={conv.userAvatar} className="user-item-photo" alt="" /> : (conv.userName || conv.userId).charAt(0).toUpperCase()}
+                        <span className={`status-indicator ${isOnline(conv.lastActiveAt) ? 'online' : 'offline'}`}></span>
+                        {conv.unreadCount > 0 && <span className="admin-unread-badge">{conv.unreadCount}</span>}
                       </div>
-                    ))
-                  )}
+
+                      <div className="conv-details">
+                        <div className="conv-top-row">
+                          <span className="conv-user-id">
+                            {getHighlightedText(conv.userName || conv.userId, searchTerm)}
+                            <div className="tag-container">
+                              {conv.tags?.map((tag, idx) => <span key={idx} className={`user-pill ${getTagClass(tag)}`}>{tag}</span>)}
+                            </div>
+                          </span>
+                          <span className="conv-status-text">
+                            {isOnline(conv.lastActiveAt) ? <span className="text-online">Online</span> : formatTimeAgo(conv.lastActiveAt)}
+                          </span>
+                        </div>
+                        <span className="conv-preview">{conv.lastMessageContent}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
+              {/* VIEW AREA */}
               <div className="admin-chat-view-area">
                 {recipientId ? (
                   <div className="admin-active-chat-wrapper">
                     <div className="chat-instructions-bar">
                       <p>Hỗ trợ cho: <strong>{recipientId}</strong></p>
-                      <button onClick={() => navigate('/admin/chat')}>Đóng</button>
+                      <div className="instruction-actions">
+                        <button className={`note-toggle-btn ${isNoteOpen ? 'active' : ''}`} onClick={() => setIsNoteOpen(!isNoteOpen)}>
+                          <FaStickyNote /> {isNoteOpen ? 'Đóng Note' : 'Note nội bộ'}
+                        </button>
+                        <button className={`quick-reply-toggle ${showQuickReplies ? 'active' : ''}`} onClick={() => setShowQuickReplies(!showQuickReplies)}>
+                          <FaBolt /> Trả lời nhanh
+                        </button>
+                        <button onClick={() => navigate('/admin/chat')}>Đóng</button>
+                      </div>
                     </div>
-                    <div className="chat-content-embedded">
-                      {/* EMBEDDED CHAT: Uses Nuclear Fix CSS to stay inside this box */}
-                      <ChatPage />
+
+                    <div className="admin-main-chat-split">
+                      <div className="chat-content-embedded">
+                        {showQuickReplies && (
+                          <div className="quick-reply-drawer">
+                            {quickReplies.map((reply, i) => <button key={i} onClick={() => handleSendQuickReply(reply)} className="quick-reply-item">{reply}</button>)}
+                          </div>
+                        )}
+                        <ChatPage />
+                      </div>
+
+                      {isNoteOpen && (
+                        <div className="admin-internal-notes">
+                          <h3><FaStickyNote /> Ghi chú & Nhãn</h3>
+                          <div className="manage-tags-section">
+                            <div className="tag-edit-row">
+                              {allAvailableTags.map(tag => (
+                                <button 
+                                  key={tag} 
+                                  className={`tag-chip-btn ${userHasTag(tag) ? 'active ' + getTagClass(tag) : ''}`} 
+                                  onClick={() => handleToggleTag(tag)}
+                                >
+                                  {tag}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <hr className="note-divider" />
+                          <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ghi chú khách hàng..." />
+                          <button className={`save-note-btn ${saveStatus}`} onClick={handleSaveNote}>
+                            {saveStatus === 'saved' ? 'Đã lưu' : 'Lưu Note'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : (
                   <div className="admin-chat-placeholder">
                     <FaInbox size={50} style={{ opacity: 0.1, marginBottom: '15px' }} />
-                    <h3>Chọn một hội thoại</h3>
-                    <p>Tin nhắn mới sẽ xuất hiện ở danh sách bên trái.</p>
+                    <h3>Chọn một hội thoại để bắt đầu</h3>
                   </div>
                 )}
               </div>

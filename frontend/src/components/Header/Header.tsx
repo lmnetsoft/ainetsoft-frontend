@@ -177,7 +177,7 @@ const Header: React.FC = () => {
               <>
                 <a onClick={() => navigate('/my-shop')} className="blue-link">Gian hàng của tôi</a>
                 <span>|</span>
-                {/* SHOPEE STYLE FIX: Opens popup instead of redirecting */}
+                {/* SHOPEE STYLE FIX: Opens popup instead of redirecting to a page */}
                 <a onClick={() => setIsChatOpen(true)} className="blue-link" style={{ cursor: 'pointer' }}>
                    Chat với khách hàng
                 </a>

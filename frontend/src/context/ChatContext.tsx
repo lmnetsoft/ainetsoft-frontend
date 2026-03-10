@@ -10,7 +10,6 @@ interface ChatContextType {
   sendMessage: (msg: ChatMessage) => void;
   clearUnread: () => void;
   setRecipientMessages: (msgs: ChatMessage[]) => void;
-  // NEW: State for the global popup
   isChatOpen: boolean;
   setIsChatOpen: (open: boolean) => void;
   resetChat: () => void;
@@ -22,12 +21,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [connected, setConnected] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [isChatOpen, setIsChatOpen] = useState(false); // Global state for Shopee popup
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [token, setToken] = useState(localStorage.getItem('jwt_token'));
   const stompClient = useRef<Stomp.Client | null>(null);
 
-  /**
-   * FIX ISSUE #3: Clear all data on logout
-   */
   const resetChat = () => {
     setMessages([]);
     setUnreadCount(0);
@@ -37,46 +34,41 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Sync token state immediately on login/logout events
   useEffect(() => {
-    const token = localStorage.getItem('jwt_token');
-    
-    // If no token, wipe everything immediately
+    const syncToken = () => setToken(localStorage.getItem('jwt_token'));
+    window.addEventListener('profileUpdate', syncToken);
+    window.addEventListener('storage', syncToken);
+    return () => {
+      window.removeEventListener('profileUpdate', syncToken);
+      window.removeEventListener('storage', syncToken);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!token) {
       resetChat();
       return;
     }
 
-    try {
-      const socket = new SockJS('http://localhost:8080/ws');
-      const client = Stomp.over(socket);
-      stompClient.current = client;
-      client.debug = () => {};
+    if (stompClient.current?.connected) return;
 
-      client.connect({}, () => {
-        setConnected(true);
-        // Subscribe to private queue
-        client.subscribe('/user/queue/messages', (message) => {
-          const receivedMsg: ChatMessage = JSON.parse(message.body);
-          setMessages((prev) => [...prev, receivedMsg]);
-          
-          // Only increment unread if chat window is closed
-          if (!isChatOpen) {
-            setUnreadCount((prev) => prev + 1);
-          }
-        });
-      }, (err) => {
-        console.error("WebSocket Connection Lost:", err);
-        setConnected(false);
+    const socket = new SockJS('http://localhost:8080/ws');
+    const client = Stomp.over(socket);
+    stompClient.current = client;
+    client.debug = () => {};
+
+    client.connect({}, () => {
+      setConnected(true);
+      client.subscribe('/user/queue/messages', (message) => {
+        const receivedMsg: ChatMessage = JSON.parse(message.body);
+        setMessages((prev) => [...prev, receivedMsg]);
+        if (!isChatOpen) setUnreadCount((prev) => prev + 1);
       });
-    } catch (err) {
-      console.error("Chat Provider failed to init:", err);
-    }
+    }, () => setConnected(false));
 
-    return () => {
-      if (stompClient.current?.connected) stompClient.current.disconnect(() => {});
-    };
-    // Re-run if token changes or open state changes to sync unread logic
-  }, [isChatOpen, localStorage.getItem('jwt_token')]); 
+    return () => { if (stompClient.current?.connected) stompClient.current.disconnect(); };
+  }, [token, isChatOpen]);
 
   const sendMessage = (msg: ChatMessage) => {
     if (stompClient.current?.connected) {
@@ -87,13 +79,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <ChatContext.Provider value={{ 
-      connected, 
-      messages, 
-      unreadCount, 
-      sendMessage, 
-      isChatOpen,
-      setIsChatOpen,
-      resetChat,
+      connected, messages, unreadCount, sendMessage, 
+      isChatOpen, setIsChatOpen, resetChat,
       clearUnread: () => setUnreadCount(0),
       setRecipientMessages: (msgs) => setMessages(msgs)
     }}>
