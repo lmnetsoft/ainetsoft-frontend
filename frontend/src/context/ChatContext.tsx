@@ -10,6 +10,10 @@ interface ChatContextType {
   sendMessage: (msg: ChatMessage) => void;
   clearUnread: () => void;
   setRecipientMessages: (msgs: ChatMessage[]) => void;
+  // NEW: State for the global popup
+  isChatOpen: boolean;
+  setIsChatOpen: (open: boolean) => void;
+  resetChat: () => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -18,11 +22,29 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [connected, setConnected] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isChatOpen, setIsChatOpen] = useState(false); // Global state for Shopee popup
   const stompClient = useRef<Stomp.Client | null>(null);
+
+  /**
+   * FIX ISSUE #3: Clear all data on logout
+   */
+  const resetChat = () => {
+    setMessages([]);
+    setUnreadCount(0);
+    setIsChatOpen(false);
+    if (stompClient.current?.connected) {
+      stompClient.current.disconnect(() => setConnected(false));
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('jwt_token');
-    if (!token) return;
+    
+    // If no token, wipe everything immediately
+    if (!token) {
+      resetChat();
+      return;
+    }
 
     try {
       const socket = new SockJS('http://localhost:8080/ws');
@@ -36,7 +58,11 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         client.subscribe('/user/queue/messages', (message) => {
           const receivedMsg: ChatMessage = JSON.parse(message.body);
           setMessages((prev) => [...prev, receivedMsg]);
-          setUnreadCount((prev) => prev + 1);
+          
+          // Only increment unread if chat window is closed
+          if (!isChatOpen) {
+            setUnreadCount((prev) => prev + 1);
+          }
         });
       }, (err) => {
         console.error("WebSocket Connection Lost:", err);
@@ -49,7 +75,8 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       if (stompClient.current?.connected) stompClient.current.disconnect(() => {});
     };
-  }, []);
+    // Re-run if token changes or open state changes to sync unread logic
+  }, [isChatOpen, localStorage.getItem('jwt_token')]); 
 
   const sendMessage = (msg: ChatMessage) => {
     if (stompClient.current?.connected) {
@@ -60,7 +87,13 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <ChatContext.Provider value={{ 
-      connected, messages, unreadCount, sendMessage, 
+      connected, 
+      messages, 
+      unreadCount, 
+      sendMessage, 
+      isChatOpen,
+      setIsChatOpen,
+      resetChat,
       clearUnread: () => setUnreadCount(0),
       setRecipientMessages: (msgs) => setMessages(msgs)
     }}>

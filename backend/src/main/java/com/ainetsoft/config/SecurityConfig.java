@@ -48,22 +48,26 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                // Public Endpoints
+                
+                // 1. PUBLIC ENDPOINTS
                 .requestMatchers(
                     "/api/auth/login", 
                     "/api/auth/register", 
                     "/api/auth/forgot-password", 
                     "/api/auth/reset-password",
-                    "/api/auth/logout",
                     "/oauth2/**",
-                    "/login/oauth2/**"
+                    "/login/oauth2/**",
+                    "/error" // FIXED: Allow error path to prevent infinite loops on 403
                 ).permitAll() 
-                .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll() 
                 
-                // NEW: WebSocket Handshake must be permitted
-                .requestMatchers("/ws/**").permitAll() 
+                .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll() 
+                .requestMatchers("/ws/**").permitAll() // WebSocket Handshake
 
-                // Authenticated Endpoints
+                // 2. ADMIN ONLY ENDPOINTS
+                // Only users with ROLE_ADMIN can see the conversation list
+                .requestMatchers("/api/chat/admin/**").hasRole("ADMIN")
+
+                // 3. AUTHENTICATED USER ENDPOINTS (General users + Admin)
                 .requestMatchers(
                     "/api/auth/me", 
                     "/api/auth/profile", 
@@ -71,8 +75,11 @@ public class SecurityConfig {
                     "/api/auth/change-password",
                     "/api/auth/upgrade-seller",
                     "/api/orders/**",
-                    "/api/chat/**" // NEW: Protect chat history retrieval
+                    "/api/chat/history/**",
+                    "/api/chat/read/**",
+                    "/api/notifications/**" // FIXED: Permit notification polling
                 ).authenticated() 
+                
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
@@ -97,6 +104,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
+        // Match your Vite port
         config.setAllowedOrigins(List.of("http://localhost:5173")); 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));

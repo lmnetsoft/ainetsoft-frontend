@@ -1,15 +1,13 @@
 package com.ainetsoft.controller;
 
 import com.ainetsoft.model.Notification;
-import com.ainetsoft.model.User;
 import com.ainetsoft.service.NotificationService;
-import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/notifications")
@@ -18,31 +16,47 @@ public class NotificationController {
 
     private final NotificationService notificationService;
 
+    /**
+     * Get all notifications for the current user.
+     */
     @GetMapping
-    public ResponseEntity<List<Notification>> getNotifications(HttpSession session) {
-        User user = (User) session.getAttribute("user");
-        if (user == null) return ResponseEntity.status(401).build();
-        return ResponseEntity.ok(notificationService.getMyNotifications(user.getId()));
+    public ResponseEntity<List<Notification>> getNotifications(Principal principal) {
+        if (principal == null) return ResponseEntity.status(401).build();
+        
+        // principal.getName() returns the unique ID (Email/Phone) from the JWT
+        return ResponseEntity.ok(notificationService.getMyNotifications(principal.getName()));
     }
 
+    /**
+     * Returns the raw number of unread notifications.
+     * Matches the 'res.data' expectation in your React NotificationContext.
+     */
     @GetMapping("/unread-count")
-    public ResponseEntity<Map<String, Long>> getUnreadCount(HttpSession session) {
-        User user = (User) session.getAttribute("user");
-        if (user == null) return ResponseEntity.ok(Map.of("count", 0L));
-        return ResponseEntity.ok(Map.of("count", notificationService.getUnreadCount(user.getId())));
+    public ResponseEntity<Long> getUnreadCount(Principal principal) {
+        if (principal == null) return ResponseEntity.ok(0L);
+        
+        long count = notificationService.getUnreadCount(principal.getName());
+        return ResponseEntity.ok(count);
     }
 
+    /**
+     * Mark a single notification as read.
+     */
     @PutMapping("/{id}/read")
-    public ResponseEntity<?> markRead(@PathVariable String id) {
+    public ResponseEntity<Void> markRead(@PathVariable String id) {
         notificationService.markAsRead(id);
         return ResponseEntity.ok().build();
     }
 
+    /**
+     * Mark ALL as read. 
+     * This is the "Clear All" logic we discussed for the Admin.
+     */
     @PutMapping("/read-all")
-    public ResponseEntity<?> markAllRead(HttpSession session) {
-        User user = (User) session.getAttribute("user");
-        if (user == null) return ResponseEntity.status(401).build();
-        notificationService.markAllAsRead(user.getId());
+    public ResponseEntity<Void> markAllRead(Principal principal) {
+        if (principal == null) return ResponseEntity.status(401).build();
+        
+        notificationService.markAllAsRead(principal.getName());
         return ResponseEntity.ok().build();
     }
 }

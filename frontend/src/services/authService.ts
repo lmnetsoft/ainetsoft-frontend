@@ -20,11 +20,18 @@ export const getUserProfile = async (): Promise<any> => {
       if (isValidName) {
         localStorage.setItem('isAuthenticated', 'true');
         localStorage.setItem('userName', name);
+        
+        // FIX: Save identity for Chat Component
+        localStorage.setItem('userEmail', response.data.email || '');
+        localStorage.setItem('userPhone', response.data.phone || '');
+
         localStorage.setItem('userAvatar', response.data.avatarUrl || '');
         localStorage.setItem('userRoles', JSON.stringify(response.data.roles || []));
       } else {
         localStorage.removeItem('isAuthenticated');
         localStorage.removeItem('userName');
+        localStorage.removeItem('userEmail');
+        localStorage.removeItem('userPhone');
         localStorage.removeItem('userAvatar');
       }
 
@@ -78,13 +85,17 @@ export const loginUser = async (loginData: any): Promise<any> => {
   try {
     const response = await api.post('/auth/login', loginData);
     
-    // CAPTURE THE TOKEN: This is the critical step to prevent the 401 loop
     if (response.data.token) {
       localStorage.setItem('jwt_token', response.data.token);
     }
     
     localStorage.setItem('isAuthenticated', 'true');
     localStorage.setItem('userName', response.data.fullName);
+
+    // FIX: Save identity for Chat Component immediately on login
+    localStorage.setItem('userEmail', response.data.email || '');
+    localStorage.setItem('userPhone', response.data.phone || '');
+
     localStorage.setItem('userAvatar', response.data.avatarUrl || '');
     localStorage.setItem('userRoles', JSON.stringify(response.data.roles || []));
     

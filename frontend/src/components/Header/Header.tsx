@@ -1,26 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaSearch, FaUserCircle, FaChevronDown, FaShoppingCart, FaBell } from 'react-icons/fa';
+import { FaSearch, FaChevronDown, FaShoppingCart, FaBell, FaUserShield } from 'react-icons/fa';
 import logoImg from '../../assets/images/logo.png';
 import { getUserProfile, logoutUser } from '../../services/authService';
+
+// Integrated Contexts for real-time counts and security
+import { useChat } from '../../context/ChatContext'; 
+import { useNotification } from '../../context/NotificationContext';
+
 import './Header.css';
 
 const Header: React.FC = () => {
   const navigate = useNavigate();
+
+  // 1. REAL-TIME DATA: Pulling counts and controls from global context
+  const { unreadCount, resetChat, setIsChatOpen } = useChat(); 
+  const { notificationCount: systemCount } = useNotification(); 
+
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isSeller, setIsSeller] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false); // State for admin check
   const [userName, setUserName] = useState('');
   const [userAvatar, setUserAvatar] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [cartCount, setCartCount] = useState(3);
-  const [notificationCount, setNotificationCount] = useState(5);
 
-  // Path to your branded fallback logo in the public folder
   const avatarFallback = '/logo.svg';
 
   /**
    * Reads data from LocalStorage and updates component state.
-   * STRICT VALIDATION: Ensures no "undefined", "null", or ghost fallbacks.
+   * STRICT VALIDATION: Prevents "undefined" or system placeholders from showing.
    */
   const loadUserData = () => {
     const authStatus = localStorage.getItem('isAuthenticated');
@@ -33,17 +42,18 @@ const Header: React.FC = () => {
       rawName !== 'undefined' &&
       rawName !== 'null' &&
       rawName.trim().length > 0 &&
-      rawName !== 'Thành viên'; // FIXED: Prevents ghost 'Thành viên' for guests
+      rawName !== 'Thành viên';
 
     if (authStatus === 'true' && isValidName) {
       setIsLoggedIn(true);
       setUserName(rawName);
       setUserAvatar(rawAvatar !== 'undefined' && rawAvatar !== 'null' ? rawAvatar : '');
       setIsSeller(Array.isArray(storedRoles) && storedRoles.includes('SELLER'));
+      setIsAdmin(Array.isArray(storedRoles) && storedRoles.includes('ADMIN')); 
     } else {
-      // RESET: Treat as guest if validation fails
       setIsLoggedIn(false);
       setIsSeller(false);
+      setIsAdmin(false);
       setUserName('');
       setUserAvatar('');
     }
@@ -55,8 +65,6 @@ const Header: React.FC = () => {
     const verifySession = async () => {
       try {
         const profile = await getUserProfile();
-
-        // Only persist data when backend returns a real profile with a real fullName
         if (profile && profile.fullName) {
           localStorage.setItem('isAuthenticated', 'true');
           localStorage.setItem('userName', profile.fullName);
@@ -64,7 +72,6 @@ const Header: React.FC = () => {
           localStorage.setItem('userRoles', JSON.stringify(profile.roles || []));
           loadUserData();
         } else {
-          // SESSION INVALID: Clear identity info
           localStorage.removeItem('isAuthenticated');
           localStorage.removeItem('userName');
           localStorage.removeItem('userAvatar');
@@ -72,7 +79,6 @@ const Header: React.FC = () => {
           loadUserData();
         }
       } catch (err) {
-        // ERROR/EXPIRED: Remove ghost data immediately
         localStorage.removeItem('isAuthenticated');
         localStorage.removeItem('userName');
         localStorage.removeItem('userAvatar');
@@ -92,19 +98,30 @@ const Header: React.FC = () => {
     };
   }, []);
 
+  /**
+   * SECURITY LOGOUT: Wipes all sensitive data and resets chat memory.
+   * FIX: Calls resetChat() to prevent info leaks between users.
+   */
   const handleLogout = async () => {
     try {
       await logoutUser();
     } catch (err) {
       console.error('Logout error:', err);
     } finally {
-      // CLEAN WIPE: Ensuring local storage is purged
+      // CLEAR CHAT DATA: Crucial for privacy
+      resetChat(); 
+
+      // CLEAR LOCAL STORAGE
       localStorage.removeItem('isAuthenticated');
       localStorage.removeItem('userName');
       localStorage.removeItem('userAvatar');
       localStorage.removeItem('userRoles');
+      localStorage.removeItem('jwt_token');
+
+      // RESET COMPONENT STATE
       setIsLoggedIn(false);
       setIsSeller(false);
+      setIsAdmin(false);
       setUserName('');
       setUserAvatar('');
       setShowDropdown(false);
@@ -120,6 +137,25 @@ const Header: React.FC = () => {
       navigate(`/?search=${encodeURIComponent(query)}`);
     }
   };
+
+  /**
+   * SMART NOTIFICATION CLICK LOGIC:
+   * Directs Admin to Chat Center if there are messages, otherwise to Dashboard.
+   */
+  const handleNotificationClick = () => {
+    if (isAdmin) {
+      if (unreadCount > 0) {
+        navigate('/admin/chat');
+      } else {
+        navigate('/admin/dashboard');
+      }
+    } else {
+      navigate('/user/notifications');
+    }
+  };
+
+  // COMBINED COUNT LOGIC: Sum of Chat Messages + System Alerts
+  const totalAlerts = unreadCount + (systemCount || 0);
 
   return (
     <header className="main-header">
@@ -141,19 +177,27 @@ const Header: React.FC = () => {
               <>
                 <a onClick={() => navigate('/my-shop')} className="blue-link">Gian hàng của tôi</a>
                 <span>|</span>
-                <a onClick={() => navigate('/chat')} className="blue-link">Chat với khách hàng</a>
+                {/* SHOPEE STYLE FIX: Opens popup instead of redirecting */}
+                <a onClick={() => setIsChatOpen(true)} className="blue-link" style={{ cursor: 'pointer' }}>
+                   Chat với khách hàng
+                </a>
                 <span>|</span>
               </>
             )}
 
+            {/* Smart Notification Bell */}
             <div
-              className="notification-wrapper"
-              onClick={() => navigate('/notifications')}
+              className={`notification-wrapper ${totalAlerts > 0 ? 'active-alerts' : ''}`}
+              onClick={handleNotificationClick}
               style={{ cursor: 'pointer' }}
             >
               <FaBell className="nav-icon" />
               <span className="blue-link">Thông báo</span>
-              {notificationCount > 0 && <span className="notification-badge">{notificationCount}</span>}
+              {totalAlerts > 0 && (
+                <span className="notification-badge">
+                  {totalAlerts > 99 ? '99+' : totalAlerts}
+                </span>
+              )}
             </div>
 
             <span>|</span>
@@ -182,7 +226,6 @@ const Header: React.FC = () => {
 
             <a href="#" className="nav-text-bold blue-link share-corner">Góc Chia Sẻ</a>
 
-            {/* GUEST VS USER UI SWITCH */}
             {!isLoggedIn ? (
               <div className="auth-buttons">
                 <a onClick={() => navigate('/login')} className="nav-text-bold blue-link">Đăng Nhập</a>
@@ -197,7 +240,6 @@ const Header: React.FC = () => {
                   onMouseLeave={() => setShowDropdown(false)}
                 >
                   <div className="user-profile-trigger">
-                    {/* FIXED: Replaced FaUserCircle with <img> using branded logo fallback */}
                     <img
                       src={userAvatar || avatarFallback}
                       alt="User"
@@ -212,6 +254,16 @@ const Header: React.FC = () => {
 
                   {showDropdown && (
                     <ul className="dropdown-menu">
+                      {isAdmin && (
+                        <>
+                          <li onClick={() => navigate('/admin/dashboard')} className="admin-menu-item">
+                            <FaUserShield /> Tổng quan Admin
+                          </li>
+                          <li onClick={() => navigate('/admin/chat')}>Quản lý Chat</li>
+                          <hr className="dropdown-divider" />
+                        </>
+                      )}
+                      
                       <li onClick={() => navigate('/user/profile')}>Tài khoản của tôi</li>
                       <li onClick={() => navigate('/user/purchase')}>Đơn mua</li>
                       <li className="logout-item" onClick={handleLogout}>Đăng xuất</li>

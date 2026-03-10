@@ -1,5 +1,6 @@
 package com.ainetsoft.controller;
 
+import com.ainetsoft.dto.ConversationDTO;
 import com.ainetsoft.model.ChatMessage;
 import com.ainetsoft.repository.ChatMessageRepository;
 import lombok.RequiredArgsConstructor;
@@ -8,9 +9,9 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequiredArgsConstructor
@@ -20,19 +21,17 @@ public class ChatController {
     private final SimpMessagingTemplate messagingTemplate;
     private final ChatMessageRepository chatRepository;
 
-    /**
-     * WebSocket Endpoint: /app/chat
-     * Handles real-time message routing and saves to MongoDB.
-     */
     @MessageMapping("/chat")
-    public void processMessage(ChatMessage chatMessage) {
+    public void processMessage(ChatMessage chatMessage, Principal principal) {
+        // SECURITY: Ensure the senderId is actually the logged-in user
+        String senderId = (principal != null) ? principal.getName() : chatMessage.getSenderId();
+        chatMessage.setSenderId(senderId);
+        
         chatMessage.setTimestamp(LocalDateTime.now());
         chatMessage.setRead(false);
 
-        // Save to Database
         ChatMessage savedMsg = chatRepository.save(chatMessage);
 
-        // Send to Recipient via WebSocket
         messagingTemplate.convertAndSendToUser(
             chatMessage.getRecipientId(), 
             "/queue/messages", 
@@ -40,9 +39,6 @@ public class ChatController {
         );
     }
 
-    /**
-     * Loads full history between two users for the ChatPage UI.
-     */
     @GetMapping("/history/{userId1}/{userId2}")
     public ResponseEntity<List<ChatMessage>> getChatHistory(
             @PathVariable String userId1, 
@@ -56,18 +52,27 @@ public class ChatController {
         return ResponseEntity.ok(history);
     }
 
-    /**
-     * NEW: Admin Discovery Endpoint.
-     * Identifies all users who have messaged the 'admin' account.
-     */
     @GetMapping("/admin/conversations")
-    public ResponseEntity<List<String>> getAdminConversations() {
-        List<String> userIds = chatRepository.findAll().stream()
-                .filter(m -> "admin".equals(m.getRecipientId()) || "admin".equals(m.getSenderId()))
-                .map(m -> "admin".equals(m.getSenderId()) ? m.getRecipientId() : m.getSenderId())
-                .distinct()
-                .collect(Collectors.toList());
+    public ResponseEntity<List<ConversationDTO>> getAdminConversations(
+            @RequestParam(required = false, defaultValue = "") String search) {
+        
+        // This now returns Name and Avatar thanks to the updated aggregation
+        List<ConversationDTO> conversationList = chatRepository.findAdminConversationsWithSearch(search);
                 
-        return ResponseEntity.ok(userIds);
+        return ResponseEntity.ok(conversationList);
+    }
+
+    @PostMapping("/read/{senderId}/{recipientId}")
+    public ResponseEntity<Void> markAsRead(
+            @PathVariable String senderId, 
+            @PathVariable String recipientId) {
+        
+        List<ChatMessage> unreadMessages = chatRepository
+            .findBySenderIdAndRecipientIdAndIsRead(senderId, recipientId, false);
+            
+        unreadMessages.forEach(m -> m.setRead(true));
+        chatRepository.saveAll(unreadMessages);
+        
+        return ResponseEntity.noContent().build();
     }
 }

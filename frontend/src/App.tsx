@@ -12,8 +12,9 @@ import ChatBubble from './components/ChatBubble/ChatBubble';
 import TitleManager from './components/TitleManager'; 
 import ContentPage from './pages/Content/ContentPage';
 
-// Context Provider
-import { ChatProvider } from './context/ChatContext'; // NEW: Single connection manager
+// Context Providers
+import { ChatProvider, useChat } from './context/ChatContext'; 
+import { NotificationProvider } from './context/NotificationContext';
 
 // Services & Global Components
 import { getUserProfile } from './services/authService';
@@ -46,8 +47,19 @@ import SellerSettings from './pages/Seller/SellerSettings';
 
 // Admin Components
 import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminChat from './pages/admin/AdminChat'; 
 
 import './App.css';
+
+/**
+ * INTERNAL COMPONENT: GlobalChatOverlay
+ * Renders the ChatPage (as a popup) globally when toggled.
+ */
+const GlobalChatOverlay = () => {
+  const { isChatOpen } = useChat();
+  // ChatPage.css (position: fixed) handles the bottom-right placement.
+  return isChatOpen ? <ChatPage /> : null;
+};
 
 function App() {
   const [appLoading, setAppLoading] = useState(true);
@@ -82,84 +94,94 @@ function App() {
 
   return (
     <Router>
-      {/* 1. Wrap the app in ChatProvider so the WebSocket connects once globally */}
-      <ChatProvider>
-        <div className="app-wrapper">
-          <TitleManager />
-          <Header />
-          
-          <main className="content">
-            <Routes>
-              {/* --- PUBLIC ROUTES --- */}
-              <Route path="/" element={<Home />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
-              <Route path="/cart" element={<Cart />} />
-              <Route path="/product/:id" element={<ProductDetail />} />
-              <Route path="/regulations" element={<ContentPage type="regulations" />} />
-              <Route path="/contact" element={<ContentPage type="contact" />} />
-              
-              <Route path="/shop/:id" element={<PublicShop />} />
-              <Route path="/my-shop" element={<PublicShop />} />
+      <NotificationProvider>
+        <ChatProvider>
+          <div className="app-wrapper">
+            <TitleManager />
+            <Header />
+            
+            <main className="content">
+              <Routes>
+                {/* --- PUBLIC ROUTES --- */}
+                <Route path="/" element={<Home />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
+                <Route path="/cart" element={<Cart />} />
+                <Route path="/product/:id" element={<ProductDetail />} />
+                <Route path="/regulations" element={<ContentPage type="regulations" />} />
+                <Route path="/contact" element={<ContentPage type="contact" />} />
+                
+                <Route path="/shop/:id" element={<PublicShop />} />
+                <Route path="/my-shop" element={<PublicShop />} />
 
-              {/* --- PROTECTED USER ROUTES --- */}
-              <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
-              <Route path="/user/notifications" element={<ProtectedRoute><NotificationPage /></ProtectedRoute>} />
-              <Route path="/user/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-              <Route path="/user/password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} /> 
-              <Route path="/user/bank" element={<ProtectedRoute><Bank /></ProtectedRoute>} /> 
-              <Route path="/user/address" element={<ProtectedRoute><Address /></ProtectedRoute>} />
-              <Route path="/user/purchase" element={<ProtectedRoute><Purchase /></ProtectedRoute>} />
-              <Route path="/seller/register" element={<ProtectedRoute><SellerRegister /></ProtectedRoute>} />
-              
-              <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
-              <Route path="/chat/:recipientId" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
+                {/* --- PROTECTED USER ROUTES --- */}
+                <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+                <Route path="/user/notifications" element={<ProtectedRoute><NotificationPage /></ProtectedRoute>} />
+                <Route path="/user/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                <Route path="/user/password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} /> 
+                <Route path="/user/bank" element={<ProtectedRoute><Bank /></ProtectedRoute>} /> 
+                <Route path="/user/address" element={<ProtectedRoute><Address /></ProtectedRoute>} />
+                <Route path="/user/purchase" element={<ProtectedRoute><Purchase /></ProtectedRoute>} />
+                <Route path="/seller/register" element={<ProtectedRoute><SellerRegister /></ProtectedRoute>} />
+                
+                {/* REMOVED: Redundant /chat routes. Chat is now a global popup. */}
 
-              {/* --- PROTECTED SELLER ROUTES --- */}
-              <Route 
-                path="/seller/dashboard" 
-                element={<ProtectedRoute allowedRoles={['SELLER']}><SellerDashboard /></ProtectedRoute>} 
-              />
-              <Route 
-                path="/seller/products" 
-                element={<ProtectedRoute allowedRoles={['SELLER']}><MyProducts /></ProtectedRoute>} 
-              />
-              <Route 
-                path="/seller/add-product" 
-                element={<ProtectedRoute allowedRoles={['SELLER']}><AddProduct /></ProtectedRoute>} 
-              />
-              <Route 
-                path="/seller/edit-product/:id" 
-                element={<ProtectedRoute allowedRoles={['SELLER']}><EditProduct /></ProtectedRoute>} 
-              />
-              <Route 
-                path="/seller/orders" 
-                element={<ProtectedRoute allowedRoles={['SELLER']}><SellerOrders /></ProtectedRoute>} 
-              />
-              <Route 
-                path="/seller/settings" 
-                element={<ProtectedRoute allowedRoles={['SELLER']}><SellerSettings /></ProtectedRoute>} 
-              />
+                {/* --- PROTECTED SELLER ROUTES --- */}
+                <Route 
+                  path="/seller/dashboard" 
+                  element={<ProtectedRoute allowedRoles={['SELLER']}><SellerDashboard /></ProtectedRoute>} 
+                />
+                <Route 
+                  path="/seller/products" 
+                  element={<ProtectedRoute allowedRoles={['SELLER']}><MyProducts /></ProtectedRoute>} 
+                />
+                <Route 
+                  path="/seller/add-product" 
+                  element={<ProtectedRoute allowedRoles={['SELLER']}><AddProduct /></ProtectedRoute>} 
+                />
+                <Route 
+                  path="/seller/edit-product/:id" 
+                  element={<ProtectedRoute allowedRoles={['SELLER']}><EditProduct /></ProtectedRoute>} 
+                />
+                <Route 
+                  path="/seller/orders" 
+                  element={<ProtectedRoute allowedRoles={['SELLER']}><SellerOrders /></ProtectedRoute>} 
+                />
+                <Route 
+                  path="/seller/settings" 
+                  element={<ProtectedRoute allowedRoles={['SELLER']}><SellerSettings /></ProtectedRoute>} 
+                />
 
-              {/* --- PROTECTED ADMIN ROUTES --- */}
-              <Route 
-                path="/admin/dashboard" 
-                element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboard /></ProtectedRoute>} 
-              />
+                {/* --- PROTECTED ADMIN ROUTES --- */}
+                <Route 
+                  path="/admin/dashboard" 
+                  element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboard /></ProtectedRoute>} 
+                />
+                <Route 
+                  path="/admin/chat" 
+                  element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminChat /></ProtectedRoute>} 
+                />
+                <Route 
+                  path="/admin/chat/:recipientId" 
+                  element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminChat /></ProtectedRoute>} 
+                />
 
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </main>
-          
-          {/* 2. FIX: Replaced <footer /> with your real <Footer /> component */}
-          <Footer />
-          
-          {/* 3. The Bubble now listens to ChatProvider instead of connecting itself */}
-          <ChatBubble />
-        </div>
-      </ChatProvider>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </main>
+            
+            <Footer />
+
+            {/* 1. PERSISTENT CHAT OVERLAY: The actual chat window popup */}
+            <GlobalChatOverlay />
+
+            {/* 2. PERSISTENT TRIGGER: The floating bubble button */}
+            <ChatBubble />
+          </div>
+        </ChatProvider>
+      </NotificationProvider>
     </Router>
   );
 }

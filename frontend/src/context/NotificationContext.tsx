@@ -2,46 +2,76 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { getUnreadCount } from '../services/notificationService';
 
 interface NotificationContextType {
-  unreadCount: number;
-  refreshUnreadCount: () => Promise<void>;
+  notificationCount: number; // Renamed to avoid conflict with Chat unreadCount
+  refreshNotificationCount: () => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [unreadCount, setUnreadCount] = useState(0);
-  const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+  const [notificationCount, setNotificationCount] = useState(0);
+  
+  // We determine auth status dynamically to handle login/logout without refresh
+  const [isAuthenticated, setIsAuthenticated] = useState(localStorage.getItem('isAuthenticated') === 'true');
 
-  const refreshUnreadCount = useCallback(async () => {
-    if (!isAuthenticated) return;
+  const refreshNotificationCount = useCallback(async () => {
+    const authStatus = localStorage.getItem('isAuthenticated') === 'true';
+    if (!authStatus) {
+      setNotificationCount(0);
+      return;
+    }
+
     try {
       const count = await getUnreadCount();
-      setUnreadCount(count);
+      setNotificationCount(count);
     } catch (error) {
       console.error("Failed to fetch notification count", error);
     }
-  }, [isAuthenticated]);
+  }, []);
 
-  // Initial fetch and Polling every 60 seconds
-  useEffect(() => {
-    if (isAuthenticated) {
-      refreshUnreadCount();
-      const interval = setInterval(refreshUnreadCount, 60000); 
-      return () => clearInterval(interval);
+  // Update auth state and fetch count when login/logout events happen
+  const handleAuthChange = useCallback(() => {
+    const status = localStorage.getItem('isAuthenticated') === 'true';
+    setIsAuthenticated(status);
+    if (status) {
+      refreshNotificationCount();
+    } else {
+      setNotificationCount(0);
     }
-  }, [isAuthenticated, refreshUnreadCount]);
+  }, [refreshNotificationCount]);
+
+  useEffect(() => {
+    // Initial check
+    handleAuthChange();
+
+    // Polling every 60 seconds
+    let interval: NodeJS.Timeout;
+    if (isAuthenticated) {
+      interval = setInterval(refreshNotificationCount, 60000);
+    }
+
+    // Listen for custom login/profile events
+    window.addEventListener('profileUpdate', handleAuthChange);
+    window.addEventListener('storage', handleAuthChange);
+
+    return () => {
+      if (interval) clearInterval(interval);
+      window.removeEventListener('profileUpdate', handleAuthChange);
+      window.removeEventListener('storage', handleAuthChange);
+    };
+  }, [isAuthenticated, refreshNotificationCount, handleAuthChange]);
 
   return (
-    <NotificationContext.Provider value={{ unreadCount, refreshUnreadCount }}>
+    <NotificationContext.Provider value={{ notificationCount, refreshNotificationCount }}>
       {children}
     </NotificationContext.Provider>
   );
 };
 
-export const useNotifications = () => {
+export const useNotification = () => {
   const context = useContext(NotificationContext);
   if (!context) {
-    throw new Error('useNotifications must be used within a NotificationProvider');
+    throw new Error('useNotification must be used within a NotificationProvider');
   }
   return context;
 };

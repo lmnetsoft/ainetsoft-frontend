@@ -6,7 +6,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -44,7 +43,6 @@ public class User {
     @Builder.Default
     private String sellerVerification = "NONE"; 
 
-    // --- NEW: NESTED SHOP PROFILE ---
     private ShopProfile shopProfile;
 
     @Builder.Default
@@ -71,7 +69,6 @@ public class User {
         LOCAL, GOOGLE, FACEBOOK
     }
 
-    // --- NEW: SHOP PROFILE CLASS ---
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
@@ -81,10 +78,8 @@ public class User {
         private String shopDescription;
         private String shopAddress;
         private String shopLogoUrl;
-        
         @Builder.Default
-        private int lowStockThreshold = 5; // The threshold for low-stock warnings
-        
+        private int lowStockThreshold = 5;
         @Builder.Default
         private boolean holidayMode = false;
     }
@@ -100,10 +95,7 @@ public class User {
         private String ward;
         private String detail;
         private boolean isDefault;
-
-        public boolean isDefault() {
-            return isDefault;
-        }
+        public boolean isDefault() { return isDefault; }
     }
 
     @Data

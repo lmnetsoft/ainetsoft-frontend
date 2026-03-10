@@ -2,7 +2,8 @@
   position: fixed;
   bottom: 30px;
   right: 30px;
-  z-index: 1000;
+  /* FIX: Ensure this is lower than .chat-box-master (10000) */
+  z-index: 9999; 
   cursor: pointer;
   transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
@@ -68,5 +69,6 @@
 }
 
 .ping-animation {
-  animation: bubble-ping 1s infinite;
+  /* Using the bubble-icon-wrapper for the actual pulse looks cleaner */
+  animation: bubble-ping 1.5s infinite;
 }
