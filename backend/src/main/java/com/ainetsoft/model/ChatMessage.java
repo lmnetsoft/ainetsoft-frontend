@@ -16,9 +16,13 @@ import java.time.LocalDateTime;
 public class ChatMessage {
     @Id
     private String id;
-    private String senderId;    // Username or Email of the sender
-    private String recipientId; // Username or Email of the receiver
+    private String senderId;    
+    private String recipientId; 
     private String content;
+    
+    // NEW: Supports TEXT, IMAGE, VIDEO, FILE, PRODUCT
+    @Builder.Default
+    private String type = "TEXT"; 
     
     @Builder.Default
     private LocalDateTime timestamp = LocalDateTime.now();

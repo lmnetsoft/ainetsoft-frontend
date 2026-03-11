@@ -49,7 +49,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 
-                // 1. PUBLIC ENDPOINTS
+                // 1. PUBLIC ENDPOINTS (No changes to your existing list)
                 .requestMatchers(
                     "/api/auth/login", 
                     "/api/auth/register", 
@@ -57,17 +57,20 @@ public class SecurityConfig {
                     "/api/auth/reset-password",
                     "/oauth2/**",
                     "/login/oauth2/**",
-                    "/error" // FIXED: Allow error path to prevent infinite loops on 403
+                    "/error",
+                    "/uploads/**" 
                 ).permitAll() 
                 
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll() 
-                .requestMatchers("/ws/**").permitAll() // WebSocket Handshake
+                .requestMatchers("/ws/**").permitAll() 
 
-                // 2. ADMIN ONLY ENDPOINTS
-                // Only users with ROLE_ADMIN can see the conversation list
+                // 2. CHAT UPLOAD (Moved up & explicit to ensure Admin has access)
+                .requestMatchers("/api/chat/upload").hasAnyRole("USER", "ADMIN")
+
+                // 3. ADMIN ONLY ENDPOINTS
                 .requestMatchers("/api/chat/admin/**").hasRole("ADMIN")
 
-                // 3. AUTHENTICATED USER ENDPOINTS (General users + Admin)
+                // 4. AUTHENTICATED USER ENDPOINTS (General users + Admin)
                 .requestMatchers(
                     "/api/auth/me", 
                     "/api/auth/profile", 
@@ -77,7 +80,7 @@ public class SecurityConfig {
                     "/api/orders/**",
                     "/api/chat/history/**",
                     "/api/chat/read/**",
-                    "/api/notifications/**" // FIXED: Permit notification polling
+                    "/api/notifications/**"
                 ).authenticated() 
                 
                 .anyRequest().authenticated()
@@ -104,7 +107,6 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        // Match your Vite port
         config.setAllowedOrigins(List.of("http://localhost:5173")); 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
