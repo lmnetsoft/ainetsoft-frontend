@@ -49,7 +49,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 
-                // 1. PUBLIC ENDPOINTS (No changes to your existing list)
+                // 1. PUBLIC ENDPOINTS
                 .requestMatchers(
                     "/api/auth/login", 
                     "/api/auth/register", 
@@ -58,19 +58,20 @@ public class SecurityConfig {
                     "/oauth2/**",
                     "/login/oauth2/**",
                     "/error",
-                    "/uploads/**" 
+                    "/uploads/**",             // Direct access to the folder (from WebConfig mapping)
+                    "/api/chat/download/**"    // ADDED: Access to the new Download Controller endpoint
                 ).permitAll() 
                 
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll() 
                 .requestMatchers("/ws/**").permitAll() 
 
-                // 2. CHAT UPLOAD (Moved up & explicit to ensure Admin has access)
+                // 2. CHAT UPLOAD (Authenticated Users & Admin)
                 .requestMatchers("/api/chat/upload").hasAnyRole("USER", "ADMIN")
 
                 // 3. ADMIN ONLY ENDPOINTS
                 .requestMatchers("/api/chat/admin/**").hasRole("ADMIN")
 
-                // 4. AUTHENTICATED USER ENDPOINTS (General users + Admin)
+                // 4. AUTHENTICATED USER ENDPOINTS
                 .requestMatchers(
                     "/api/auth/me", 
                     "/api/auth/profile", 

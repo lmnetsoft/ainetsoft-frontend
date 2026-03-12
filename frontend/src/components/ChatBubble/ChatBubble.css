@@ -1,74 +1,108 @@
+/* --- FLOATING BUBBLE CONTAINER --- */
 .chat-bubble-container {
   position: fixed;
   bottom: 30px;
   right: 30px;
-  /* FIX: Ensure this is lower than .chat-box-master (10000) */
   z-index: 9999; 
   cursor: pointer;
   transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
+.chat-bubble-container:hover {
+  transform: scale(1.1) translateY(-5px);
+}
+
+/* --- THE ICON CIRCLE --- */
 .bubble-icon-wrapper {
-  width: 60px;
-  height: 60px;
-  background: #ee4d2d; /* Matching brand color */
+  width: 65px;
+  height: 65px;
+  /* Vibrant Gradient matching your orange theme */
+  background: linear-gradient(135deg, #ee4d2d 0%, #ff783e 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 24px;
-  box-shadow: 0 4px 15px rgba(238, 77, 45, 0.4);
+  font-size: 28px;
+  box-shadow: 0 10px 25px rgba(238, 77, 45, 0.4);
+  position: relative;
+  border: 2px solid #fff;
 }
 
-.chat-bubble-container:hover {
-  transform: scale(1.1);
+/* --- STATUS INDICATOR DOT --- */
+.status-indicator {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid #fff;
 }
 
-/* Notification Badge */
+.status-indicator.online { background-color: #00ca4e; }
+.status-indicator.connecting { 
+    background-color: #ff9f43; 
+    animation: status-blink 1s infinite alternate;
+}
+
+@keyframes status-blink {
+    from { opacity: 1; }
+    to { opacity: 0.4; }
+}
+
+/* --- NOTIFICATION BADGE --- */
 .unread-badge {
   position: absolute;
-  top: -5px;
-  right: -5px;
+  top: -2px;
+  right: -2px;
   background: #ff4d4f;
   color: white;
-  font-size: 12px;
-  font-weight: bold;
-  padding: 2px 8px;
-  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 800;
+  min-width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
   border: 2px solid white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  padding: 0 4px;
+  z-index: 2;
 }
 
-/* Tooltip */
+/* --- TOOLTIP --- */
 .bubble-tooltip {
   position: absolute;
-  right: 75px;
+  right: 85px;
   top: 50%;
   transform: translateY(-50%);
-  background: rgba(0,0,0,0.8);
+  background: rgba(45, 52, 54, 0.95);
   color: white;
-  padding: 8px 15px;
-  border-radius: 4px;
+  padding: 8px 16px;
+  border-radius: 20px;
   font-size: 0.85rem;
+  font-weight: 600;
   white-space: nowrap;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
 .chat-bubble-container:hover .bubble-tooltip {
   opacity: 1;
+  right: 80px;
 }
 
-/* New Message Animation */
+/* --- PULSE ANIMATION FOR NEW MESSAGES --- */
 @keyframes bubble-ping {
   0% { box-shadow: 0 0 0 0 rgba(238, 77, 45, 0.7); }
-  70% { box-shadow: 0 0 0 15px rgba(238, 77, 45, 0); }
+  70% { box-shadow: 0 0 0 20px rgba(238, 77, 45, 0); }
   100% { box-shadow: 0 0 0 0 rgba(238, 77, 45, 0); }
 }
 
-.ping-animation {
-  /* Using the bubble-icon-wrapper for the actual pulse looks cleaner */
-  animation: bubble-ping 1.5s infinite;
+.ping-animation .bubble-icon-wrapper {
+  animation: bubble-ping 2s infinite;
 }

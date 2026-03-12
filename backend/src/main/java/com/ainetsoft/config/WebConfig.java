@@ -11,21 +11,30 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        // 1. Define the folder name
+        // 1. Target the 'uploads' folder relative to the project root
         String dirName = "uploads";
+        Path uploadDir = Paths.get(dirName).toAbsolutePath();
         
-        // 2. Get the absolute path of the 'uploads' folder relative to project root
-        Path uploadDir = Paths.get(dirName);
-        String uploadPath = uploadDir.toFile().getAbsolutePath();
+        // 2. Convert to URI string (results in something like file:/mnt/d/path/to/uploads/)
+        String uploadPath = uploadDir.toUri().toString();
 
-        // 3. Register the handler
-        // On Windows, absolute paths need an extra '/' (file:/C:/...)
-        // This logic ensures it works everywhere.
+        // 3. Ensure the location string ends with a slash
+        // Spring requires the trailing slash for directory locations to work correctly
         if (!uploadPath.endsWith("/")) {
             uploadPath += "/";
         }
 
+        // 4. Register the mapping
         registry.addResourceHandler("/" + dirName + "/**")
-                .addResourceLocations("file:" + uploadPath);
+                .addResourceLocations(uploadPath)
+                .setCachePeriod(3600) // Optional: Cache images for 1 hour to improve performance
+                .resourceChain(true);
+
+        // 5. Debug Print - Check your console when the app starts!
+        System.out.println("=================================================");
+        System.out.println("CHAT STORAGE SYSTEM");
+        System.out.println("Mapping URL: /" + dirName + "/**");
+        System.out.println("To Physical Path: " + uploadPath);
+        System.out.println("=================================================");
     }
 }

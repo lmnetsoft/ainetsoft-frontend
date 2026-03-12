@@ -2,7 +2,6 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import SockJS from 'sockjs-client';
 import Stomp from 'stompjs';
 
-// Define the interface locally to ensure all new types are supported app-wide
 export interface ChatMessage {
   senderId: string;
   recipientId: string;
@@ -15,8 +14,8 @@ interface ChatContextType {
   connected: boolean;
   messages: ChatMessage[];
   unreadCount: number;
-  setUnreadCount: React.Dispatch<React.SetStateAction<number>>; // Required for Admin Reset
-  isMuted: boolean; // Required for Sound Toggle
+  setUnreadCount: React.Dispatch<React.SetStateAction<number>>;
+  isMuted: boolean;
   setIsMuted: (muted: boolean) => void;
   sendMessage: (msg: ChatMessage) => void;
   clearUnread: () => void;
@@ -37,6 +36,9 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [token, setToken] = useState(localStorage.getItem('jwt_token'));
   const stompClient = useRef<Stomp.Client | null>(null);
 
+  // Sound notification ref
+  const notificationSound = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3'));
+
   const resetChat = () => {
     setMessages([]);
     setUnreadCount(0);
@@ -46,12 +48,10 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Persist Mute Preference
   useEffect(() => {
     localStorage.setItem('chat_muted', isMuted.toString());
   }, [isMuted]);
 
-  // Sync token state immediately on login/logout events
   useEffect(() => {
     const syncToken = () => setToken(localStorage.getItem('jwt_token'));
     window.addEventListener('profileUpdate', syncToken);
@@ -70,11 +70,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (stompClient.current?.connected) return;
 
-    // Adjust this URL to match your production/dev server
-    const socket = new SockJS('http://localhost:8080/ws');
+    // Use current location to help WSL2/Production environments resolve 'localhost' vs 'IP'
+    const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:8080' : `http://${window.location.hostname}:8080`;
+    const socket = new SockJS(`${baseUrl}/ws`);
     const client = Stomp.over(socket);
     stompClient.current = client;
-    client.debug = () => {}; // Keeps console clean
+    client.debug = () => {}; 
 
     client.connect({}, () => {
       setConnected(true);
@@ -82,9 +83,12 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const receivedMsg: ChatMessage = JSON.parse(message.body);
         setMessages((prev) => [...prev, receivedMsg]);
         
-        // Update unread count if user is not currently looking at the chat
+        // Notification Logic
         if (!isChatOpen) {
           setUnreadCount((prev) => prev + 1);
+          if (!isMuted) {
+            notificationSound.current.play().catch(e => console.log("Sound play blocked by browser"));
+          }
         }
       });
     }, () => setConnected(false));
@@ -94,14 +98,14 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         stompClient.current.disconnect(); 
       }
     };
-  }, [token, isChatOpen]);
+  }, [token, isChatOpen, isMuted]); // Added isMuted to dependency to ensure sound logic stays fresh
 
   const sendMessage = (msg: ChatMessage) => {
     if (stompClient.current?.connected) {
       stompClient.current.send("/app/chat", {}, JSON.stringify(msg));
       setMessages((prev) => [...prev, msg]);
     } else {
-      console.warn("WebSocket not connected. Message not sent.");
+      console.warn("WebSocket not connected.");
     }
   };
 
