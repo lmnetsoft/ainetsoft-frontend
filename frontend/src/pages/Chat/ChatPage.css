@@ -455,3 +455,163 @@
 .image-pre-send-overlay { position: absolute; bottom: 100%; left: 0; width: 100%; background: #fff; padding: 15px; border-top: 1px solid #eee; z-index: 10006; }
 .chat-alert-box { background: #fff9db; border: 1px solid #fab005; padding: 10px; font-size: 0.75rem; color: #f08c00; display: flex; gap: 10px; border-radius: 8px; }
 .chat-timestamp { font-size: 0.65rem; display: block; margin-top: 5px; font-weight: 600; opacity: 0.6; }
+
+/* --- CONSTRAIN MEDIA SIZE --- */
+.chat-sent-image, 
+.chat-sent-video {
+  max-width: 240px;    /* Prevents the media from overflowing the chat box */
+  max-height: 180px;   /* Keeps a nice aspect ratio */
+  width: auto;
+  height: auto;
+  border-radius: 12px;
+  display: block;
+  margin-top: 5px;
+  object-fit: cover;   /* Crops slightly if needed to look neat */
+  border: 1px solid var(--border-light);
+  cursor: pointer;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.clickable-media:hover {
+  transform: scale(1.02);
+  filter: brightness(0.9);
+}
+
+/* --- VIDEO OVERLAY SPECIFICS --- */
+.video-container {
+  position: relative;
+  width: fit-content;
+}
+
+.video-overlay-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 2.5rem;
+  opacity: 0.8;
+  pointer-events: none; /* Let the click go through to the container */
+  text-shadow: 0 0 10px rgba(0,0,0,0.5);
+}
+
+/* Adjust the bubble padding if it's an image/video to look more like a card */
+.chat-line .chat-bubble-new:has(.chat-sent-image),
+.chat-line .chat-bubble-new:has(.chat-sent-video) {
+    padding: 6px;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* --- MEDIA LIGHTBOX POPUP --- */
+.media-lightbox-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 20000; /* Over everything */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(5px);
+    cursor: zoom-out;
+}
+
+.lightbox-content {
+    position: relative;
+    max-width: 90%;
+    max-height: 90%;
+    display: flex;
+    justify-content: center;
+    cursor: default;
+}
+
+.lightbox-content img, 
+.lightbox-content video {
+    max-width: 100%;
+    max-height: 80vh;
+    border-radius: 8px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
+
+.close-lightbox {
+    position: absolute;
+    top: -40px;
+    right: 0;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 2rem;
+    cursor: pointer;
+}
+
+/* --- THUMBNAIL CONSTRAINTS --- */
+.chat-sent-image, 
+.chat-sent-video {
+    max-width: 220px;
+    max-height: 150px;
+    width: auto;
+    height: auto;
+    border-radius: 10px;
+    cursor: pointer;
+    object-fit: cover;
+    display: block;
+}
+
+.video-thumb-container {
+    position: relative;
+    width: fit-content;
+    cursor: pointer;
+}
+
+.video-play-overlay {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 2.5rem;
+    color: white;
+    opacity: 0.8;
+    pointer-events: none;
+}
+
+/* --- UPLOAD PROGRESS BAR --- */
+.upload-progress-container {
+    padding: 8px 15px 5px 15px;
+    background: #fff;
+    border-top: 1px solid #f1f2f6;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.upload-progress-track {
+    width: 100%;
+    height: 4px;
+    background-color: #f1f2f6;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.upload-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--orange), #ff7337);
+    transition: width 0.3s ease; /* Makes the bar move smoothly */
+}
+
+.upload-progress-text {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    font-weight: 700;
+    text-align: right;
+}
+
+/* Optional: Pulse effect while uploading */
+@keyframes progress-pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+.upload-progress-container {
+    animation: progress-pulse 1.5s infinite ease-in-out;
+}

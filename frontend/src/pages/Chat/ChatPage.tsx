@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { 
   FaTimes, FaMinus, FaPlus, FaExclamationCircle, FaPaperPlane,
   FaRegSmile, FaRegImage, FaRegPlayCircle, FaShoppingBag, FaClipboardList, 
-  FaTrashAlt, FaSearch, FaRegFileAlt
+  FaTrashAlt, FaSearch, FaRegFileAlt, FaCloudDownloadAlt
 } from 'react-icons/fa';
 import EmojiPicker, { Theme } from 'emoji-picker-react'; 
 import api from '../../services/api';
@@ -32,6 +32,9 @@ const ChatPage = () => {
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [userOrders, setUserOrders] = useState<any[]>([]);
 
+  // --- NEW: MEDIA POPUP STATE ---
+  const [mediaPopup, setMediaPopup] = useState<{ url: string; type: 'IMAGE' | 'VIDEO' } | null>(null);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const genericFileInputRef = useRef<HTMLInputElement>(null); 
@@ -50,6 +53,23 @@ const ChatPage = () => {
     { id: 3, url: 'https://cdn-icons-png.flaticon.com/512/2274/2274556.png' },
     { id: 4, url: 'https://cdn-icons-png.flaticon.com/512/2274/2274547.png' },
   ];
+
+  // --- NEW: DOWNLOAD ALL MEDIA HANDLER ---
+  const handleDownloadAllMedia = () => {
+    const mediaFiles = messages.filter(m => m.type === 'IMAGE' || m.type === 'VIDEO' || isImageUrl(m.content));
+    if (mediaFiles.length === 0) return alert("Không tìm thấy tệp phương tiện nào.");
+    
+    mediaFiles.forEach((msg, idx) => {
+      setTimeout(() => {
+        const link = document.createElement('a');
+        link.href = msg.content;
+        link.setAttribute('download', `chat_media_${idx}`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }, idx * 500);
+    });
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -79,7 +99,6 @@ const ChatPage = () => {
     }
   }, [messages.length, isMinimized]);
 
-  // --- PRODUCT HANDLERS ---
   const handleOpenProductModal = async () => {
     try {
       const res = await api.get('/api/products');
@@ -100,7 +119,6 @@ const ChatPage = () => {
     setShowProductModal(false);
   };
 
-  // --- ORDER HANDLERS ---
   const handleOpenOrderModal = async () => {
     try {
       const res = await api.get('/api/orders/user'); 
@@ -121,7 +139,6 @@ const ChatPage = () => {
     setShowOrderModal(false);
   };
 
-  // --- BASE HANDLERS ---
   const handleDownloadFile = (fileUrl: string) => {
     const link = document.createElement('a');
     link.href = fileUrl;
@@ -165,7 +182,7 @@ const ChatPage = () => {
       setUploading(true);
       const formData = new FormData();
       formData.append('file', selectedFile); 
-      const res = await api.post('/api/chat/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }); 
+      const res = await api.post('/chat/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }); 
       sendMessage({ senderId: myId, recipientId: targetId, content: res.data.url, type: 'IMAGE', timestamp: new Date().toISOString() });
       setPreviewImage(null);
       setSelectedFile(null);
@@ -180,7 +197,7 @@ const ChatPage = () => {
       setUploading(true);
       const formData = new FormData();
       formData.append('file', file);
-      const res = await api.post('/api/chat/upload', formData);
+      const res = await api.post('/chat/upload', formData);
       sendMessage({ senderId: myId, recipientId: targetId, content: res.data.url, type: 'VIDEO', timestamp: new Date().toISOString() });
     } catch (err) { alert("Lỗi tải video!"); } 
     finally { setUploading(false); }
@@ -205,6 +222,10 @@ const ChatPage = () => {
           </span>
         </div>
         <div className="chat-header-right">
+          {/* NEW: DOWNLOAD ALL BUTTON */}
+          <button className="chat-btn" title="Tải tất cả ảnh/video" onClick={(e) => { e.stopPropagation(); handleDownloadAllMedia(); }}>
+             <FaCloudDownloadAlt />
+          </button>
           <button className="chat-btn" onClick={(e) => { e.stopPropagation(); setIsMinimized(!isMinimized); }}>
             {isMinimized ? <FaPlus /> : <FaMinus />}
           </button>
@@ -218,6 +239,22 @@ const ChatPage = () => {
 
       {!isMinimized && (
         <div className="chat-box-body">
+          {/* --- MEDIA POPUP OVERLAY (LIGHTBOX) --- */}
+          {mediaPopup && (
+            <div className="media-lightbox-overlay" onClick={() => setMediaPopup(null)}>
+              <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
+                <button className="close-lightbox" onClick={() => setMediaPopup(null)}><FaTimes /></button>
+                {mediaPopup.type === 'IMAGE' ? (
+                  <img src={mediaPopup.url} alt="Full view" />
+                ) : (
+                  <video controls autoPlay>
+                    <source src={mediaPopup.url} type="video/mp4" />
+                  </video>
+                )}
+              </div>
+            </div>
+          )}
+
           {showProductModal && (
             <div className="product-modal-overlay">
               <div className="product-modal-content">
@@ -325,9 +362,18 @@ const ChatPage = () => {
                   <div key={index} className={`chat-line ${isMe ? 'line-me' : 'line-them'}`}>
                     <div className="chat-bubble-new">
                       {showAsImage ? (
-                        <img src={msg.content} className="chat-sent-image" alt="chat-attachment" onLoad={() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' })} />
+                        <img 
+                          src={msg.content} 
+                          className="chat-sent-image clickable-media" 
+                          alt="chat-attachment" 
+                          onClick={() => setMediaPopup({url: msg.content, type: 'IMAGE'})}
+                          onLoad={() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' })} 
+                        />
                       ) : msg.type === 'VIDEO' ? (
-                        <video controls className="chat-sent-video"><source src={msg.content} type="video/mp4" /></video>
+                        <div className="video-thumb-container" onClick={() => setMediaPopup({url: msg.content, type: 'VIDEO'})}>
+                           <video className="chat-sent-video"><source src={msg.content} type="video/mp4" /></video>
+                           <div className="video-play-overlay"><FaRegPlayCircle /></div>
+                        </div>
                       ) : (
                         <div className="chat-text-wrapper">
                           <p>{msg.content}</p>
@@ -377,7 +423,6 @@ const ChatPage = () => {
               )}
 
               <div className="chat-toolbar-horizontal">
-                {/* TOOLTIPS ADDED HERE */}
                 <button type="button" title="Cảm xúc" className={showEmojiPicker ? 'active-tool' : ''} onClick={() => setShowEmojiPicker(!showEmojiPicker)}><FaRegSmile /></button>
                 <button type="button" title="Hình ảnh" onClick={() => fileInputRef.current?.click()}><FaRegImage /></button>
                 <input type="file" ref={fileInputRef} onChange={handleFileSelect} hidden accept="image/*" />
