@@ -210,77 +210,76 @@
 
 /* --- COMPACT MINI PREVIEW --- */
 .image-pre-send-compact {
-    position: absolute;
-    bottom: 70px;
-    right: 15px;
-    width: 130px;
-    background: white;
-    padding: 6px;
-    border-radius: 12px;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-    border: 1px solid var(--orange);
-    z-index: 1001;
+  position: absolute;
+  bottom: 70px;
+  right: 15px;
+  width: 130px;
+  background: white;
+  padding: 6px;
+  border-radius: 12px;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+  border: 1px solid var(--orange);
+  z-index: 1001;
 }
 .preview-mini-card img {
-    width: 100%;
-    height: 100px;
-    border-radius: 8px;
-    object-fit: cover;
+  width: 100%;
+  height: 100px;
+  border-radius: 8px;
+  object-fit: cover;
 }
 .preview-mini-info {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 5px;
-    gap: 4px;
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+  gap: 4px;
 }
 .preview-mini-info button {
-    flex: 1;
-    height: 24px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.7rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  flex: 1;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .mini-cancel { background: #f1f2f6; color: #ff4757; }
 .mini-send { background: var(--orange); color: white; font-weight: bold; }
 
 /* --- PROFESSIONAL VIDEO THUMBNAILS --- */
 .video-preview-wrapper {
-    position: relative;
-    width: 200px;
-    height: 115px;
-    border-radius: 12px;
-    overflow: hidden;
-    background: #000;
-    border: 1px solid var(--border-light);
+  position: relative;
+  width: 200px;
+  height: 115px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--border-light);
 }
 .video-real-thumbnail {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    opacity: 0.8;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.8;
 }
 .video-overlay-play {
-    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-    display: flex; align-items: center; justify-content: center;
-    background: rgba(0,0,0,0.1); transition: 0.3s;
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.1); transition: 0.3s;
 }
 .play-icon-pro {
-    font-size: 2.5rem;
-    color: white;
-    filter: drop-shadow(0 0 8px rgba(0,0,0,0.5));
+  font-size: 2.5rem;
+  color: white;
+  filter: drop-shadow(0 0 8px rgba(0,0,0,0.5));
 }
-
 /* Style adjustments for bubbles containing media */
 .chat-line .chat-bubble-new:has(.video-preview-wrapper),
 .chat-line .chat-bubble-new:has(.chat-sent-image) {
-    padding: 2px !important;
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
+  padding: 2px !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 /* --- SHARED MEDIA STYLES --- */
@@ -298,7 +297,7 @@
 }
 .chat-sent-image:hover { transform: scale(1.02); }
 
-/* --- UPDATED: PROFESSIONAL MEDIA LIGHTBOX --- */
+/* --- MEDIA LIGHTBOX --- */
 .media-lightbox-overlay {
   position: fixed; 
   top: 0; left: 0; right: 0; bottom: 0;
@@ -311,50 +310,49 @@
 }
 
 .lightbox-content {
-  position: relative; /* CRITICAL: Anchors the "Đóng" button to the media corner */
+  position: relative; /* CRITICAL: Anchors the "Đóng" button exactly to the content corner */
   max-width: 85%; 
   max-height: 85vh;
-  display: flex;
-  justify-content: center;
+  width: fit-content; /* Ensure the container wraps tightly around the media */
 }
 
-.lightbox-content img, 
-.lightbox-content video {
+.lightbox-img, .lightbox-video {
   max-width: 100%; 
   max-height: 80vh; 
   border-radius: 8px;
   box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-  background: #000;
+  display: block;
 }
 
-/* --- NEW: PILL-SHAPED CLOSE BUTTON (ANCHORED ON MEDIA) --- */
+/* --- PILL-SHAPED CLOSE BUTTON (FIXED POSITIONING) --- */
 .close-media-btn {
   position: absolute;
-  top: 15px; 
-  right: 15px; 
-  background: rgba(45, 52, 54, 0.85); /* Dark grey pill background like screenshot */
+  top: 10px; /* Aligns neatly with the edge */
+  right: 10px; 
+  background: rgba(45, 52, 54, 0.9); /* Dark grey pill background */
   color: white;
-  border: 1px solid rgba(255,255,255,0.2);
-  padding: 6px 14px;
-  border-radius: 20px; /* Pill shape */
+  border: 1px solid rgba(255,255,255,0.3);
+  padding: 6px 12px;
+  border-radius: 20px;
   display: flex;
   align-items: center;
-  gap: 8px; /* Space between X and "Đóng" */
+  gap: 6px;
   cursor: pointer;
   z-index: 20001;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.4);
   font-weight: 600;
-  font-size: 0.9rem;
-  transition: background 0.2s ease, transform 0.1s;
+  font-size: 0.85rem;
+  transition: transform 0.1s;
 }
 
 .close-media-btn:hover {
-  background: var(--orange); /* Changes to theme color on hover */
+  background: var(--orange);
   transform: scale(1.05);
 }
 
+/* Ensure the "X" (FaTimes) icon inside the pill button is clearly visible */
 .close-media-btn svg {
-  font-size: 1rem;
+  font-size: 0.9rem;
 }
 
 /* --- UPLOAD PROGRESS & SIDEBAR --- */

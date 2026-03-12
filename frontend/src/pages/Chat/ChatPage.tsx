@@ -44,13 +44,20 @@ const ChatPage = () => {
   const videoInputRef = useRef<HTMLInputElement>(null); 
   const pickerRef = useRef<HTMLDivElement>(null);
 
-  // --- IDENTITY & ROLE LOGIC ---
+  // --- IDENTITY & ROLE LOGIC (Updated for Unique Visitor Support) ---
   const roles = JSON.parse(localStorage.getItem('userRoles') || '[]');
   const isCurrentUserAdmin = Array.isArray(roles) && (roles.includes('ADMIN') || roles.includes('ROLE_ADMIN'));
   
+  // FIX: Generate a unique ID for visitors if not logged in
+  let guestId = localStorage.getItem('chatGuestId');
+  if (!guestId) {
+      guestId = 'visitor_' + Math.random().toString(36).substring(2, 11);
+      localStorage.setItem('chatGuestId', guestId);
+  }
+
   const myId = isCurrentUserAdmin 
     ? 'admin' 
-    : (localStorage.getItem('userEmail') || localStorage.getItem('userPhone') || 'guest');
+    : (localStorage.getItem('userEmail') || localStorage.getItem('userPhone') || guestId);
     
   const targetId = isCurrentUserAdmin ? recipientId : 'admin';
 
@@ -99,7 +106,8 @@ const ChatPage = () => {
     const loadData = async () => {
       try {
         const history = await getChatHistory(myId, targetId);
-        setRecipientMessages(history);
+        // Ensure history is an array to prevent .filter crash
+        setRecipientMessages(Array.isArray(history) ? history : []);
         clearUnread();
       } catch (err) {
         console.error("History load error:", err);
@@ -113,7 +121,7 @@ const ChatPage = () => {
     if (!isMinimized) {
       scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages.length, isMinimized]);
+  }, [messages?.length, isMinimized]);
 
   // --- PRODUCT MODAL HANDLERS ---
   const handleOpenProductModal = async () => {
@@ -212,7 +220,7 @@ const ChatPage = () => {
     setInputText(prev => prev + emojiData.emoji);
   };
 
-  // --- UPLOAD HANDLERS (CRITICAL MEMORY FIX) ---
+  // --- UPLOAD HANDLERS (MEMORY FIX) ---
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -225,7 +233,6 @@ const ChatPage = () => {
         };
         reader.readAsDataURL(file);
     } else {
-        // Videos just store file ref to prevent memory crash
         setSelectedFile(file);
         setPreviewImage(null); 
     }
@@ -297,7 +304,7 @@ const ChatPage = () => {
       });
     } catch (err) {
       console.error("Video upload error", err);
-      alert("Không thể tải video. Vui lòng kiểm tra dung lượng và kết nối."); 
+      alert("Không thể tải video. Vui lòng kiểm tra server.");
     } finally {
       setUploading(false);
       setUploadProgress(0);
@@ -341,19 +348,19 @@ const ChatPage = () => {
 
       {!isMinimized && (
         <div className="chat-box-body">
-          {/* --- FIXED MEDIA LIGHTBOX POPUP --- */}
+          {/* --- MEDIA LIGHTBOX POPUP --- */}
           {mediaPopup && (
             <div className="media-lightbox-overlay" onClick={() => setMediaPopup(null)}>
-              {/* EXTERNAL OVERLAY BUTTON (Ensures user can always close) */}
-              <button className="screen-close-btn" onClick={() => setMediaPopup(null)}>
-                <FaTimes /> <span>Đóng</span>
-              </button>
-
               <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
+                {/* NICE PILL CLOSE BUTTON ANCHORED NEAR WINDOW */}
+                <button className="close-media-btn" onClick={() => setMediaPopup(null)}>
+                  <FaTimes /> <span>Đóng</span>
+                </button>
+
                 {mediaPopup.type === 'IMAGE' ? (
-                  <img src={mediaPopup.url} alt="View" />
+                  <img src={mediaPopup.url} alt="View" className="lightbox-img" />
                 ) : (
-                  <video controls autoPlay>
+                  <video controls autoPlay className="lightbox-video">
                     <source src={mediaPopup.url} type="video/mp4" />
                   </video>
                 )}
@@ -361,6 +368,7 @@ const ChatPage = () => {
             </div>
           )}
 
+          {/* --- PRODUCT MODAL (Preserved) --- */}
           {showProductModal && (
             <div className="product-modal-overlay">
               <div className="product-modal-content">
@@ -387,6 +395,7 @@ const ChatPage = () => {
             </div>
           )}
 
+          {/* --- ORDER MODAL (Preserved) --- */}
           {showOrderModal && (
             <div className="product-modal-overlay">
               <div className="product-modal-content">
@@ -418,7 +427,8 @@ const ChatPage = () => {
               <span>LƯU Ý: Không giao dịch ngoài hệ thống để tránh lừa đảo.</span>
             </div>
             
-            {messages
+            {/* SAFEGUARD: Ensure messages is an array before filtering/mapping to stop crash */}
+            {(Array.isArray(messages) ? messages : [])
               .filter(m => (m.senderId === myId && m.recipientId === targetId) || (m.senderId === targetId && m.recipientId === myId))
               .map((msg, index) => {
                 const isMe = msg.senderId === myId;
@@ -477,10 +487,8 @@ const ChatPage = () => {
                           onLoad={() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' })} 
                         />
                       ) : isVideo ? (
-                        /* SMART VIDEO THUMBNAIL LOGIC (REAL SNAPSHOT PREVIEW) */
                         <div className="video-thumb-container" onClick={() => setMediaPopup({url: msg.content, type: 'VIDEO'})}>
                            <div className="video-preview-wrapper">
-                              {/* preload metadata ensures we get a snapshot without a Broken Pipe error */}
                               <video src={`${msg.content}#t=0.1`} preload="metadata" className="video-real-thumbnail" />
                               <div className="video-overlay-play">
                                 <FaRegPlayCircle className="play-icon-pro" />
@@ -504,7 +512,6 @@ const ChatPage = () => {
           </div>
 
           <div className="chat-box-footer">
-            {/* REAL-TIME PROGRESS BAR */}
             {uploading && (
               <div className="upload-progress-container">
                 <div className="upload-progress-track">
@@ -533,7 +540,7 @@ const ChatPage = () => {
                 </div>
               )}
 
-              {/* COMPACT MINI PREVIEW (SMALLER VERSION FIX) */}
+              {/* COMPACT MINI PREVIEW (STOPS OVERFLOW) */}
               {previewImage && (
                 <div className="image-pre-send-compact">
                    <div className="preview-mini-card">
