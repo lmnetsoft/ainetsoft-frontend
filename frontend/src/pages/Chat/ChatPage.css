@@ -20,7 +20,7 @@
   bottom: 20px;
   right: 20px;
   width: 380px; 
-  height: 480px; 
+  height: 520px; 
   background: var(--chat-bg);
   z-index: 10000;
   display: flex;
@@ -65,15 +65,20 @@
   box-shadow: 0 0 0 2px #fff;
 }
 
+.chat-header-right { display: flex; align-items: center; gap: 8px; }
 .chat-btn {
   background: none;
   border: none;
   color: #b2bec3;
   cursor: pointer;
   padding: 5px;
-  font-size: 1rem;
+  display: flex;
+  align-items: center;
 }
-
+.chat-btn svg {
+  width: 16px !important;
+  height: 16px !important;
+}
 .chat-btn:hover { color: var(--orange); }
 
 /* --- BODY & SCROLL --- */
@@ -131,8 +136,8 @@
   border-radius: 18px 18px 18px 4px;
 }
 
-/* --- ORDER SHARE CARD (Chat Bubble) --- */
-.order-share-card {
+/* --- ORDER & PRODUCT CARDS (Preserved) --- */
+.order-share-card, .product-share-card {
   background: #fff;
   border: 1px solid #d1d9e6;
   border-radius: 12px;
@@ -141,262 +146,26 @@
   box-shadow: 0 4px 15px rgba(0,0,0,0.06);
   margin-bottom: 5px;
 }
-
-.order-card-header {
-  background: var(--order-blue);
-  color: white;
-  padding: 8px 12px;
-  font-size: 0.8rem;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 600;
-}
-
-.order-card-body {
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.order-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.8rem;
-  color: var(--text-dark);
-}
-
-.order-row span:first-child { color: var(--text-muted); }
-
-.status-text {
-  color: #2e7d32;
-  font-weight: 800;
-}
-
-.order-view-btn {
-  width: 100%;
-  border: none;
-  background: #f8f9fa;
-  padding: 9px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--order-blue);
-  cursor: pointer;
-  border-top: 1px solid #eee;
-}
-
-.order-view-btn:hover { background: #f0f3ff; }
-
-/* --- ORDER SELECTION MODAL --- */
-.order-list-container {
-  padding: 10px 15px;
-  overflow-y: auto;
-  flex: 1;
-}
-
-.order-selection-item {
-  padding: 12px;
-  border: 1px solid var(--border-light);
-  border-radius: 10px;
-  margin-bottom: 10px;
-  cursor: pointer;
-  background: #fff;
-  transition: all 0.2s;
-}
-
-.order-selection-item:hover {
-  border-color: var(--order-blue);
-  background: #f0f3ff;
-  transform: translateY(-2px);
-}
-
-.order-item-main {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
-}
-
-.order-id-label {
-  font-weight: 700;
-  color: var(--text-dark);
-  font-size: 0.85rem;
-}
-
-.order-status-pill {
-  font-size: 0.65rem;
-  padding: 3px 8px;
-  border-radius: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-/* Status Pill Colors */
-.order-status-pill.delivered, .order-status-pill.completed { background: #e6fffa; color: #38b2ac; }
-.order-status-pill.pending { background: #fffaf0; color: #dd6b20; }
-.order-status-pill.cancelled { background: #fff5f5; color: #e53e3e; }
-.order-status-pill.shipping { background: #ebf8ff; color: #3182ce; }
-
-.order-item-footer {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.75rem;
-  color: var(--text-muted);
-}
-
-.order-total {
-  color: var(--orange);
-  font-weight: 700;
-}
+.order-card-header { background: var(--order-blue); color: white; padding: 8px 12px; font-size: 0.8rem; display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.product-share-card img { width: 100%; height: 110px; object-fit: cover; border-bottom: 1px solid #eee; }
+.order-card-body, .product-card-body { padding: 12px; display: flex; flex-direction: column; gap: 6px; }
 
 /* --- DOWNLOAD BUTTON --- */
 .download-msg-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 12px;
-  background-color: rgba(0, 0, 0, 0.04);
-  border: 1px dashed var(--text-muted);
-  border-radius: 8px;
-  color: var(--text-dark);
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  margin-top: 8px;
-  transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 12px;
+  background-color: rgba(0, 0, 0, 0.04); border: 1px dashed var(--text-muted);
+  border-radius: 8px; color: var(--text-dark); font-size: 0.8rem; font-weight: 600;
+  cursor: pointer; margin-top: 8px; transition: all 0.2s;
 }
+.download-msg-btn:hover { background-color: var(--orange); color: white; border-style: solid; border-color: var(--orange); }
 
-.download-msg-btn:hover {
-  background-color: var(--orange);
-  color: white;
-  border-style: solid;
-  border-color: var(--orange);
-}
-
-/* --- PRODUCT SHARE CARD --- */
-.product-share-card {
-  background: white;
-  border-radius: 12px;
-  width: 200px;
-  border: 1px solid var(--border-light);
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  margin-bottom: 5px;
-}
-
-.product-share-card img {
-  width: 100%;
-  height: 110px;
-  object-fit: cover;
-  border-bottom: 1px solid #eee;
-}
-
-.product-card-body {
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.product-card-body h4 {
-  margin: 0;
-  font-size: 0.85rem;
-  color: var(--text-dark);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.product-card-body p {
-  color: var(--orange);
-  font-weight: 800;
-  font-size: 0.95rem;
-  margin: 0;
-}
-
-.product-card-body button {
-  margin-top: 6px;
-  padding: 6px;
-  background: #f8f9fa;
-  border: 1px solid var(--orange);
-  color: var(--orange);
-  border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.product-card-body button:hover { background: var(--orange); color: white; }
-
-/* --- SELECTION MODAL (General) --- */
+/* --- MODALS (Preserved) --- */
 .product-modal-overlay {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.6);
-  z-index: 10007;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 15px;
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6); z-index: 10007;
+  display: flex; align-items: center; justify-content: center; padding: 15px;
 }
-
-.product-modal-content {
-  background: white;
-  width: 100%;
-  max-height: 85%;
-  border-radius: 16px;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-}
-
-.product-modal-header {
-  padding: 15px;
-  border-bottom: 1px solid var(--border-light);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.product-modal-search {
-  padding: 8px 12px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: #f1f2f6;
-  margin: 10px 15px;
-  border-radius: 10px;
-}
-
-.product-modal-search input {
-  border: none; background: transparent; outline: none; flex: 1; font-size: 0.85rem;
-}
-
-.product-grid {
-  flex: 1;
-  overflow-y: auto;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  padding: 15px;
-}
-
-.product-item {
-  border: 1px solid var(--border-light);
-  border-radius: 10px;
-  cursor: pointer;
-  overflow: hidden;
-  background: #fff;
-  transition: transform 0.2s;
-}
-
-.product-item:hover { transform: translateY(-3px); border-color: var(--orange); }
-.product-item img { width: 100%; height: 80px; object-fit: cover; }
-.product-item-info { padding: 8px; }
-.product-item-info p { margin: 0; font-size: 0.75rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.product-item-info span { color: var(--orange); font-size: 0.8rem; font-weight: 800; }
+.product-modal-content { background: white; width: 100%; max-height: 85%; border-radius: 16px; display: flex; flex-direction: column; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
 
 /* --- FOOTER & TOOLBAR --- */
 .chat-box-footer {
@@ -424,194 +193,181 @@
 }
 
 /* Icon Colors */
-.chat-toolbar-horizontal button:nth-child(1) { color: #fbc02d; } /* Gold */
-.chat-toolbar-horizontal button:nth-child(2) { color: #4caf50; } /* Green */
-.chat-toolbar-horizontal button:nth-child(4) { color: #2196f3; } /* Blue */
-.chat-toolbar-horizontal button:nth-child(5) { color: #ee4d2d; } /* Orange */
-.chat-toolbar-horizontal button:nth-child(6) { color: #9c27b0; } /* Purple */
-
-.chat-toolbar-horizontal button:hover, .active-tool {
-  background-color: #f1f2f6;
-  transform: translateY(-2px);
-}
+.chat-toolbar-horizontal button:nth-child(1) { color: #fbc02d; }
+.chat-toolbar-horizontal button:nth-child(2) { color: #4caf50; }
+.chat-toolbar-horizontal button:nth-child(4) { color: #2196f3; }
+.chat-toolbar-horizontal button:nth-child(5) { color: #ee4d2d; }
+.chat-toolbar-horizontal button:nth-child(6) { color: #9c27b0; }
 
 /* --- INPUT AREA --- */
 .chat-input-row { display: flex; gap: 12px; align-items: center; width: 100%; }
 .chat-input-row input {
-  flex: 1;
-  border: 1px solid #e1e8ed;
-  padding: 10px 16px;
-  border-radius: 22px;
-  outline: none;
-  background: #f1f2f6;
-  font-size: 0.9rem;
+  flex: 1; border: 1px solid #e1e8ed; padding: 10px 16px;
+  border-radius: 22px; outline: none; background: #f1f2f6; font-size: 0.9rem;
 }
-
 .send-btn-active { color: var(--orange) !important; cursor: pointer; font-size: 1.3rem; border:none; background:none; display: flex; }
 .send-btn { color: #dfe6e9; border:none; background:none; display: flex;}
 
-/* --- PREVIEW & ALERT --- */
-.no-data-msg { text-align: center; color: var(--text-muted); padding: 20px; font-size: 0.85rem; }
-.image-pre-send-overlay { position: absolute; bottom: 100%; left: 0; width: 100%; background: #fff; padding: 15px; border-top: 1px solid #eee; z-index: 10006; }
-.chat-alert-box { background: #fff9db; border: 1px solid #fab005; padding: 10px; font-size: 0.75rem; color: #f08c00; display: flex; gap: 10px; border-radius: 8px; }
-.chat-timestamp { font-size: 0.65rem; display: block; margin-top: 5px; font-weight: 600; opacity: 0.6; }
-
-/* --- CONSTRAIN MEDIA SIZE --- */
-.chat-sent-image, 
-.chat-sent-video {
-  max-width: 240px;    /* Prevents the media from overflowing the chat box */
-  max-height: 180px;   /* Keeps a nice aspect ratio */
-  width: auto;
-  height: auto;
-  border-radius: 12px;
-  display: block;
-  margin-top: 5px;
-  object-fit: cover;   /* Crops slightly if needed to look neat */
-  border: 1px solid var(--border-light);
-  cursor: pointer;
-  transition: transform 0.2s ease, filter 0.2s ease;
-}
-
-.clickable-media:hover {
-  transform: scale(1.02);
-  filter: brightness(0.9);
-}
-
-/* --- VIDEO OVERLAY SPECIFICS --- */
-.video-container {
-  position: relative;
-  width: fit-content;
-}
-
-.video-overlay-icon {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: white;
-  font-size: 2.5rem;
-  opacity: 0.8;
-  pointer-events: none; /* Let the click go through to the container */
-  text-shadow: 0 0 10px rgba(0,0,0,0.5);
-}
-
-/* Adjust the bubble padding if it's an image/video to look more like a card */
-.chat-line .chat-bubble-new:has(.chat-sent-image),
-.chat-line .chat-bubble-new:has(.chat-sent-video) {
+/* --- COMPACT MINI PREVIEW --- */
+.image-pre-send-compact {
+    position: absolute;
+    bottom: 70px;
+    right: 15px;
+    width: 130px;
+    background: white;
     padding: 6px;
+    border-radius: 12px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+    border: 1px solid var(--orange);
+    z-index: 1001;
+}
+.preview-mini-card img {
+    width: 100%;
+    height: 100px;
+    border-radius: 8px;
+    object-fit: cover;
+}
+.preview-mini-info {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 5px;
+    gap: 4px;
+}
+.preview-mini-info button {
+    flex: 1;
+    height: 24px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.7rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.mini-cancel { background: #f1f2f6; color: #ff4757; }
+.mini-send { background: var(--orange); color: white; font-weight: bold; }
+
+/* --- PROFESSIONAL VIDEO THUMBNAILS --- */
+.video-preview-wrapper {
+    position: relative;
+    width: 200px;
+    height: 115px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #000;
+    border: 1px solid var(--border-light);
+}
+.video-real-thumbnail {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.8;
+}
+.video-overlay-play {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.1); transition: 0.3s;
+}
+.play-icon-pro {
+    font-size: 2.5rem;
+    color: white;
+    filter: drop-shadow(0 0 8px rgba(0,0,0,0.5));
+}
+
+/* Style adjustments for bubbles containing media */
+.chat-line .chat-bubble-new:has(.video-preview-wrapper),
+.chat-line .chat-bubble-new:has(.chat-sent-image) {
+    padding: 2px !important;
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
 }
 
-/* --- MEDIA LIGHTBOX POPUP --- */
+/* --- SHARED MEDIA STYLES --- */
+.chat-sent-image {
+  max-width: 240px;
+  max-height: 180px;
+  width: auto;
+  height: auto;
+  border-radius: 12px;
+  display: block;
+  object-fit: cover;
+  border: 1px solid var(--border-light);
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.chat-sent-image:hover { transform: scale(1.02); }
+
+/* --- UPDATED: PROFESSIONAL MEDIA LIGHTBOX --- */
 .media-lightbox-overlay {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.85);
-    z-index: 20000; /* Over everything */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    backdrop-filter: blur(5px);
-    cursor: zoom-out;
+  position: fixed; 
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.9); 
+  z-index: 20000;
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  backdrop-filter: blur(8px);
 }
 
 .lightbox-content {
-    position: relative;
-    max-width: 90%;
-    max-height: 90%;
-    display: flex;
-    justify-content: center;
-    cursor: default;
+  position: relative; /* CRITICAL: Anchors the "Đóng" button to the media corner */
+  max-width: 85%; 
+  max-height: 85vh;
+  display: flex;
+  justify-content: center;
 }
 
 .lightbox-content img, 
 .lightbox-content video {
-    max-width: 100%;
-    max-height: 80vh;
-    border-radius: 8px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  max-width: 100%; 
+  max-height: 80vh; 
+  border-radius: 8px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  background: #000;
 }
 
-.close-lightbox {
-    position: absolute;
-    top: -40px;
-    right: 0;
-    background: none;
-    border: none;
-    color: white;
-    font-size: 2rem;
-    cursor: pointer;
+/* --- NEW: PILL-SHAPED CLOSE BUTTON (ANCHORED ON MEDIA) --- */
+.close-media-btn {
+  position: absolute;
+  top: 15px; 
+  right: 15px; 
+  background: rgba(45, 52, 54, 0.85); /* Dark grey pill background like screenshot */
+  color: white;
+  border: 1px solid rgba(255,255,255,0.2);
+  padding: 6px 14px;
+  border-radius: 20px; /* Pill shape */
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Space between X and "Đóng" */
+  cursor: pointer;
+  z-index: 20001;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: background 0.2s ease, transform 0.1s;
 }
 
-/* --- THUMBNAIL CONSTRAINTS --- */
-.chat-sent-image, 
-.chat-sent-video {
-    max-width: 220px;
-    max-height: 150px;
-    width: auto;
-    height: auto;
-    border-radius: 10px;
-    cursor: pointer;
-    object-fit: cover;
-    display: block;
+.close-media-btn:hover {
+  background: var(--orange); /* Changes to theme color on hover */
+  transform: scale(1.05);
 }
 
-.video-thumb-container {
-    position: relative;
-    width: fit-content;
-    cursor: pointer;
+.close-media-btn svg {
+  font-size: 1rem;
 }
 
-.video-play-overlay {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 2.5rem;
-    color: white;
-    opacity: 0.8;
-    pointer-events: none;
-}
+/* --- UPLOAD PROGRESS & SIDEBAR --- */
+.upload-progress-container { padding: 8px 0; display: flex; flex-direction: column; gap: 4px; }
+.upload-progress-track { width: 100%; height: 4px; background-color: #f1f2f6; border-radius: 10px; overflow: hidden; }
+.upload-progress-fill { height: 100%; background: var(--orange); transition: width 0.3s ease; }
+.upload-progress-text { font-size: 0.65rem; color: var(--text-muted); font-weight: 700; text-align: right; }
 
-/* --- UPLOAD PROGRESS BAR --- */
-.upload-progress-container {
-    padding: 8px 15px 5px 15px;
-    background: #fff;
-    border-top: 1px solid #f1f2f6;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.upload-progress-track {
-    width: 100%;
-    height: 4px;
-    background-color: #f1f2f6;
-    border-radius: 10px;
-    overflow: hidden;
-}
-
-.upload-progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--orange), #ff7337);
-    transition: width 0.3s ease; /* Makes the bar move smoothly */
-}
-
-.upload-progress-text {
-    font-size: 0.65rem;
-    color: var(--text-muted);
-    font-weight: 700;
-    text-align: right;
-}
-
-/* Optional: Pulse effect while uploading */
-@keyframes progress-pulse {
-    0% { opacity: 1; }
-    50% { opacity: 0.7; }
-    100% { opacity: 1; }
-}
-
-.upload-progress-container {
-    animation: progress-pulse 1.5s infinite ease-in-out;
+.preview-media-text {
+  color: var(--orange);
+  font-weight: 600;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }

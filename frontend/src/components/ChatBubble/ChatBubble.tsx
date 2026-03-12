@@ -31,11 +31,13 @@ const ChatBubble = () => {
     };
   }, []);
 
-  // If chat is open or user is an admin/guest, don't show the bubble
-  if (!isAuthenticated || isChatOpen || isAdmin) return null;
+  /**
+   * FIX: We removed '!isAuthenticated' from the condition below.
+   * Now, Guests (no token) can see the bubble, but Admins still cannot.
+   */
+  if (isChatOpen || isAdmin) return null;
 
   const handleOpenChat = () => {
-    // We allow opening even if not connected; ChatPage will show the connecting state
     setIsChatOpen(true);
     clearUnread();
   };
@@ -56,7 +58,7 @@ const ChatBubble = () => {
       <div className="bubble-icon-wrapper">
         <FaComments />
         
-        {/* 3. NEW: Connectivity Status Dot on the bubble itself */}
+        {/* 3. Connectivity Status Dot */}
         <span className={`status-indicator ${connected ? 'online' : 'connecting'}`}></span>
       </div>
 
