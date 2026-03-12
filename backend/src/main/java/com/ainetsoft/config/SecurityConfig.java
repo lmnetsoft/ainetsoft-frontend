@@ -49,7 +49,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 
-                // 1. PUBLIC ENDPOINTS
+                // --- 1. PUBLIC ENDPOINTS (Available to Visitors) ---
                 .requestMatchers(
                     "/api/auth/login", 
                     "/api/auth/register", 
@@ -58,20 +58,22 @@ public class SecurityConfig {
                     "/oauth2/**",
                     "/login/oauth2/**",
                     "/error",
-                    "/uploads/**",             // Direct access to the folder (from WebConfig mapping)
-                    "/api/chat/download/**"    // ADDED: Access to the new Download Controller endpoint
+                    "/uploads/**",             
+                    "/api/chat/download/**",
+                    "/ws/**"                   // WebSocket connection
                 ).permitAll() 
+
+                // FIX: Allow Visitors to load history and upload images
+                .requestMatchers("/api/chat/history/**").permitAll()
+                .requestMatchers("/api/chat/read/**").permitAll()
+                .requestMatchers("/api/chat/upload").permitAll() 
                 
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll() 
-                .requestMatchers("/ws/**").permitAll() 
 
-                // 2. CHAT UPLOAD (Authenticated Users & Admin)
-                .requestMatchers("/api/chat/upload").hasAnyRole("USER", "ADMIN")
-
-                // 3. ADMIN ONLY ENDPOINTS
+                // --- 2. ADMIN ONLY ENDPOINTS ---
                 .requestMatchers("/api/chat/admin/**").hasRole("ADMIN")
 
-                // 4. AUTHENTICATED USER ENDPOINTS
+                // --- 3. AUTHENTICATED USER ENDPOINTS ---
                 .requestMatchers(
                     "/api/auth/me", 
                     "/api/auth/profile", 
@@ -79,8 +81,6 @@ public class SecurityConfig {
                     "/api/auth/change-password",
                     "/api/auth/upgrade-seller",
                     "/api/orders/**",
-                    "/api/chat/history/**",
-                    "/api/chat/read/**",
                     "/api/notifications/**"
                 ).authenticated() 
                 
@@ -108,6 +108,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
+        // Update this list if you have a production domain
         config.setAllowedOrigins(List.of("http://localhost:5173")); 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));

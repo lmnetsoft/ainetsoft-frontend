@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../services/api';
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
@@ -6,7 +6,7 @@ import ChatPage from '../Chat/ChatPage';
 import { 
   FaInbox, FaReply, FaSearch, FaSyncAlt, FaVolumeUp, 
   FaVolumeMute, FaClock, FaBolt, FaStickyNote, 
-  FaSave, FaCheckCircle, FaPlus 
+  FaSave, FaCheckCircle, FaPlus, FaUserSecret 
 } from 'react-icons/fa';
 import { useChat } from '../../context/ChatContext';
 
@@ -49,7 +49,23 @@ const AdminChat = () => {
     "Cảm ơn bạn đã quan tâm! Chúc bạn một ngày tốt lành."
   ];
 
-  // --- Helpers ---
+  // --- IDENTITY HELPERS ---
+  const getDisplayIdentity = (conv: Conversation) => {
+    if (conv.userId.startsWith('visitor_')) {
+      const shortId = conv.userId.split('_')[1] || 'Guest';
+      return {
+        name: `Khách vãng lai (${shortId})`,
+        isVisitor: true,
+        avatar: null
+      };
+    }
+    return {
+      name: conv.userName || conv.userId,
+      isVisitor: false,
+      avatar: conv.userAvatar
+    };
+  };
+
   const formatTimeAgo = (dateString: string) => {
     if (!dateString) return '...';
     const now = new Date();
@@ -90,7 +106,6 @@ const AdminChat = () => {
     return 'tag-default';
   };
 
-  // Helper to check if a user in the list currently has a tag
   const userHasTag = (tag: string) => {
     const user = conversations.find(c => c.userId === recipientId);
     return user?.tags?.includes(tag) || false;
@@ -126,7 +141,6 @@ const AdminChat = () => {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // --- Handlers ---
   const handleSaveNote = async () => {
     if (!recipientId) return;
     setSaveStatus('saving');
@@ -163,7 +177,7 @@ const AdminChat = () => {
 
           <div className="admin-chat-content-box">
             <div className="admin-chat-top-actions">
-               <p>Quản lý và phản hồi các yêu cầu từ người dùng hệ thống AiNetsoft.</p>
+               <p>Quản lý và phản hồi các yêu cầu từ người dùng và khách vãng lai.</p>
                <div className="header-actions">
                   <button className={`mute-toggle-btn ${isMuted ? 'muted' : ''}`} onClick={() => setIsMuted(!isMuted)}>
                     {isMuted ? <FaVolumeMute /> : <FaVolumeUp />} <span>{isMuted ? "Đã tắt" : "Âm thanh"}</span>
@@ -174,7 +188,6 @@ const AdminChat = () => {
             </div>
 
             <div className="admin-chat-main-grid">
-              {/* SIDEBAR */}
               <div className="admin-inbox-sidebar">
                 <div className="search-bar-wrapper">
                   <FaSearch className="search-icon" />
@@ -182,39 +195,46 @@ const AdminChat = () => {
                 </div>
 
                 <div className="conversations-list">
-                  {loading ? <div className="admin-chat-loading">Đang tải...</div> : conversations.map((conv) => (
-                    <div key={conv.userId} className={`admin-conv-item ${recipientId === conv.userId ? 'is-active' : ''}`} onClick={() => navigate(`/admin/chat/${conv.userId}`)}>
-                      <div className="user-avatar-circle">
-                        {conv.userAvatar ? <img src={conv.userAvatar} className="user-item-photo" alt="" /> : (conv.userName || conv.userId).charAt(0).toUpperCase()}
-                        <span className={`status-indicator ${isOnline(conv.lastActiveAt) ? 'online' : 'offline'}`}></span>
-                        {conv.unreadCount > 0 && <span className="admin-unread-badge">{conv.unreadCount}</span>}
-                      </div>
-
-                      <div className="conv-details">
-                        <div className="conv-top-row">
-                          <span className="conv-user-id">
-                            {getHighlightedText(conv.userName || conv.userId, searchTerm)}
-                            <div className="tag-container">
-                              {conv.tags?.map((tag, idx) => <span key={idx} className={`user-pill ${getTagClass(tag)}`}>{tag}</span>)}
-                            </div>
-                          </span>
-                          <span className="conv-status-text">
-                            {isOnline(conv.lastActiveAt) ? <span className="text-online">Online</span> : formatTimeAgo(conv.lastActiveAt)}
-                          </span>
+                  {loading ? <div className="admin-chat-loading">Đang tải...</div> : conversations.map((conv) => {
+                    const identity = getDisplayIdentity(conv);
+                    return (
+                      <div key={conv.userId} className={`admin-conv-item ${recipientId === conv.userId ? 'is-active' : ''} ${identity.isVisitor ? 'visitor-item' : ''}`} onClick={() => navigate(`/admin/chat/${conv.userId}`)}>
+                        <div className="user-avatar-circle">
+                          {identity.isVisitor ? (
+                            <div className="visitor-avatar-icon"><FaUserSecret /></div>
+                          ) : (
+                            conv.userAvatar ? <img src={conv.userAvatar} className="user-item-photo" alt="" /> : (conv.userName || conv.userId).charAt(0).toUpperCase()
+                          )}
+                          <span className={`status-indicator ${isOnline(conv.lastActiveAt) ? 'online' : 'offline'}`}></span>
+                          {conv.unreadCount > 0 && <span className="admin-unread-badge">{conv.unreadCount}</span>}
                         </div>
-                        <span className="conv-preview">{conv.lastMessageContent}</span>
+
+                        <div className="conv-details">
+                          <div className="conv-top-row">
+                            <span className="conv-user-id">
+                              {getHighlightedText(identity.name, searchTerm)}
+                              <div className="tag-container">
+                                {identity.isVisitor && <span className="user-pill tag-visitor">GUEST</span>}
+                                {conv.tags?.map((tag, idx) => <span key={idx} className={`user-pill ${getTagClass(tag)}`}>{tag}</span>)}
+                              </div>
+                            </span>
+                            <span className="conv-status-text">
+                              {isOnline(conv.lastActiveAt) ? <span className="text-online">Online</span> : formatTimeAgo(conv.lastActiveAt)}
+                            </span>
+                          </div>
+                          <span className="conv-preview">{conv.lastMessageContent}</span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* VIEW AREA */}
               <div className="admin-chat-view-area">
                 {recipientId ? (
                   <div className="admin-active-chat-wrapper">
                     <div className="chat-instructions-bar">
-                      <p>Hỗ trợ cho: <strong>{recipientId}</strong></p>
+                      <p>Hỗ trợ cho: <strong>{getDisplayIdentity(conversations.find(c => c.userId === recipientId) || {userId: recipientId, userName: recipientId} as any).name}</strong></p>
                       <div className="instruction-actions">
                         <button className={`note-toggle-btn ${isNoteOpen ? 'active' : ''}`} onClick={() => setIsNoteOpen(!isNoteOpen)}>
                           <FaStickyNote /> {isNoteOpen ? 'Đóng Note' : 'Note nội bộ'}
