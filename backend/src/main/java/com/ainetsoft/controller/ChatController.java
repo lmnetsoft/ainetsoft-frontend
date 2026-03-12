@@ -49,7 +49,7 @@ public class ChatController {
         );
     }
 
-    // --- 2. FILE UPLOAD (With Scrimage HEIC to JPG Conversion) ---
+    // --- 2. FILE UPLOAD ---
     @PostMapping("/upload")
     public ResponseEntity<Map<String, String>> uploadFile(@RequestParam("file") MultipartFile file, Principal principal) {
         try {
@@ -69,22 +69,18 @@ public class ChatController {
                 Files.createDirectories(rootLocation);
             }
 
-            // HEIC/HEIF Conversion Logic using SCRIMAGE
             if (extension.equals(".heic") || extension.equals(".heif")) {
                 fileName += ".jpg";
                 Path destination = rootLocation.resolve(fileName);
-                
-                // FIX: Changed .write() to .output() for Scrimage 4.x compatibility
                 ImmutableImage.loader()
                     .fromBytes(file.getBytes())
                     .output(JpegWriter.Default, destination);
             } else {
-                // Normal upload for JPG, PNG, MP4, etc.
                 fileName += extension;
                 Files.copy(file.getInputStream(), rootLocation.resolve(fileName), StandardCopyOption.REPLACE_EXISTING);
             }
 
-            // Return the download-specific URL
+            // Return the URL for the download endpoint
             String fileUrl = "http://localhost:8080/api/chat/download/" + fileName;
             return ResponseEntity.ok(Map.of("url", fileUrl));
 
@@ -93,7 +89,7 @@ public class ChatController {
         }
     }
 
-    // --- 3. FILE DOWNLOAD ENDPOINT ---
+    // --- 3. FILE DOWNLOAD ---
     @GetMapping("/download/{fileName:.+}")
     public ResponseEntity<Resource> downloadFile(@PathVariable String fileName) {
         try {
@@ -102,9 +98,9 @@ public class ChatController {
 
             if (resource.exists() || resource.isReadable()) {
                 return ResponseEntity.ok()
-                        .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
-                        .body(resource);
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+                    .body(resource);
             } else {
                 return ResponseEntity.notFound().build();
             }
@@ -123,6 +119,21 @@ public class ChatController {
     @GetMapping("/admin/conversations")
     public ResponseEntity<List<ConversationDTO>> getAdminConversations(@RequestParam(required = false, defaultValue = "") String search) {
         return ResponseEntity.ok(chatRepository.findAdminConversationsWithSearch(search));
+    }
+
+    // --- NEW: FIX FOR THE "NOTES" 404 ERROR ---
+    /**
+     * This endpoint handles the request that was failing with a 404 in your logs.
+     * It allows admins (or regular users if needed) to fetch/satisfy the frontend request.
+     */
+    @GetMapping("/admin/notes/{email}")
+    public ResponseEntity<Map<String, Object>> getUserNotes(@PathVariable String email) {
+        // Satisfaction for the frontend request
+        // You can later add a NotesRepository to actually store and fetch user-specific notes here
+        Map<String, Object> response = new HashMap<>();
+        response.put("email", email);
+        response.put("notes", ""); // Return empty string or dummy data for now
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/read/{senderId}/{recipientId}")
