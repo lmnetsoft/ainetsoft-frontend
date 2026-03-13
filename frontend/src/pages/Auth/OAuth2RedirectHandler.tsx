@@ -4,7 +4,7 @@ import { getUserProfile } from '../../services/authService';
 
 const OAuth2RedirectHandler = () => {
     const navigate = useNavigate();
-    const location = useLocation(); // Added to read the URL query parameters
+    const location = useLocation(); // Used to read the URL query parameters from the backend
 
     useEffect(() => {
         const finalizeLogin = async () => {
@@ -18,14 +18,14 @@ const OAuth2RedirectHandler = () => {
                 }
 
                 // 2. CRITICAL: Save the token to localStorage immediately
-                // This allows the getUserProfile() call below to use the token in its header
+                // We use selective removeItem instead of clear() to protect visitor IDs
                 localStorage.setItem('jwt_token', token);
                 localStorage.setItem('isAuthenticated', 'true');
 
                 // 3. Trigger backend profile fetch to sync local state (Name, Avatar, Roles)
                 const profile = await getUserProfile();
                 
-                if (profile && profile.fullName) {
+                if (profile && (profile.fullName || profile.email)) {
                     // Success: Redirect to Home
                     navigate('/', { replace: true });
                 } else {
@@ -34,8 +34,9 @@ const OAuth2RedirectHandler = () => {
             } catch (error: any) {
                 console.error("OAuth2 Sync Error:", error);
                 
-                // Clear state if something goes wrong to prevent "Session Expired" loops
-                localStorage.clear();
+                // Fail-safe: Only remove auth data, leave other settings (like visitor IDs) alone
+                localStorage.removeItem('jwt_token');
+                localStorage.removeItem('isAuthenticated');
                 
                 navigate('/login', { 
                     replace: true, 

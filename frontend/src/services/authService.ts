@@ -9,30 +9,45 @@ const extractError = (error: any, defaultMsg: string): string => {
   return error.message || defaultMsg;
 };
 
+/**
+ * Utility to clear ONLY authentication data.
+ * This preserves the 'chatGuestId' so visitors don't lose chat history.
+ */
+const clearAuthData = () => {
+    const keysToRemove = [
+        'jwt_token', 
+        'isAuthenticated', 
+        'userName', 
+        'userEmail', 
+        'userPhone', 
+        'userAvatar', 
+        'userRoles'
+    ];
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+};
+
 export const getUserProfile = async (): Promise<any> => {
   try {
     const response = await api.get('/auth/me'); 
     
     if (response.data) {
+      // Logic check: We want to ensure the user is actually valid.
+      // We are more lenient now to support Social Users who might have generic names.
       const name = response.data.fullName;
-      const isValidName = name && name !== 'undefined' && name !== 'null' && name.trim() !== 'Thành viên';
+      const email = response.data.email;
 
-      if (isValidName) {
+      if (name || email) {
         localStorage.setItem('isAuthenticated', 'true');
-        localStorage.setItem('userName', name);
+        localStorage.setItem('userName', name || 'Thành viên');
         
-        // FIX: Save identity for Chat Component
+        // Save identity for Chat and Profile components
         localStorage.setItem('userEmail', response.data.email || '');
         localStorage.setItem('userPhone', response.data.phone || '');
-
         localStorage.setItem('userAvatar', response.data.avatarUrl || '');
         localStorage.setItem('userRoles', JSON.stringify(response.data.roles || []));
       } else {
-        localStorage.removeItem('isAuthenticated');
-        localStorage.removeItem('userName');
-        localStorage.removeItem('userEmail');
-        localStorage.removeItem('userPhone');
-        localStorage.removeItem('userAvatar');
+        // Only remove if the response is completely empty
+        clearAuthData();
       }
 
       window.dispatchEvent(new Event('profileUpdate'));
@@ -41,7 +56,8 @@ export const getUserProfile = async (): Promise<any> => {
     return response.data;
   } catch (error: any) {
     if (error.response?.status === 401) {
-        localStorage.clear();
+        // Token expired or invalid: Clear auth but keep Visitor IDs
+        clearAuthData();
         window.dispatchEvent(new Event('profileUpdate'));
     }
     throw new Error(extractError(error, "Không thể tải thông tin cá nhân."));
@@ -54,7 +70,8 @@ export const logoutUser = async (): Promise<void> => {
   } catch (err) {
     console.error("Backend logout failed, clearing local state anyway.");
   } finally {
-    localStorage.clear();
+    // PROTECT VISITOR ID: Use specific removal instead of .clear()
+    clearAuthData();
     window.dispatchEvent(new Event('profileUpdate'));
   }
 };
@@ -90,12 +107,11 @@ export const loginUser = async (loginData: any): Promise<any> => {
     }
     
     localStorage.setItem('isAuthenticated', 'true');
-    localStorage.setItem('userName', response.data.fullName);
+    localStorage.setItem('userName', response.data.fullName || 'Thành viên');
 
-    // FIX: Save identity for Chat Component immediately on login
+    // Save full identity for Chat/Header immediately
     localStorage.setItem('userEmail', response.data.email || '');
     localStorage.setItem('userPhone', response.data.phone || '');
-
     localStorage.setItem('userAvatar', response.data.avatarUrl || '');
     localStorage.setItem('userRoles', JSON.stringify(response.data.roles || []));
     
@@ -136,6 +152,7 @@ export const resetPassword = async (resetData: { contactInfo: string, otp: strin
 export const upgradeToSeller = async (): Promise<string> => {
   try {
     const response = await api.post('/auth/upgrade-seller');
+    // Refresh the profile to get the new ROLE_SELLER in localStorage
     await getUserProfile(); 
     return response.data;
   } catch (error: any) {

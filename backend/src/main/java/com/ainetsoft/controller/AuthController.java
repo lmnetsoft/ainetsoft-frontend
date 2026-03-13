@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,6 +16,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@Slf4j // Added for better debugging of 500 errors
 public class AuthController {
 
     private final AuthService authService;
@@ -22,11 +24,23 @@ public class AuthController {
     /**
      * GET /api/auth/me
      * Returns the full profile of the currently logged-in user.
+     * UPDATED: Added null-safety check for Social Login principals.
      */
     @GetMapping("/me")
     public ResponseEntity<UserResponse> getCurrentUser(Principal principal) {
-        if (principal == null) throw new RuntimeException("Phiên đăng nhập hết hạn");
-        return ResponseEntity.ok(authService.getUserProfile(principal.getName()));
+        if (principal == null) {
+            log.warn("GET /me called without a valid principal");
+            throw new RuntimeException("Phiên đăng nhập hết hạn hoặc không hợp lệ");
+        }
+        
+        try {
+            // Social logins sometimes put the ID in Name. 
+            // AuthService must handle looking up by either Email or Social ID.
+            return ResponseEntity.ok(authService.getUserProfile(principal.getName()));
+        } catch (Exception e) {
+            log.error("Error in GET /me for user {}: {}", principal.getName(), e.getMessage());
+            throw new RuntimeException("Không thể tải thông tin cá nhân: " + e.getMessage());
+        }
     }
 
     /**
@@ -80,12 +94,10 @@ public class AuthController {
 
     /**
      * POST /api/auth/login
-     * UPDATED: Now returns a JWT token. 
-     * We removed the manual SecurityContextRepository saving to support Stateless mode.
+     * Handles standard login and returns a JWT token.
      */
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        // AuthService now handles credential check AND token generation
         LoginResponse loginResponse = authService.login(request);
         return ResponseEntity.ok(loginResponse);
     }
@@ -113,8 +125,6 @@ public class AuthController {
 
     /**
      * POST /api/auth/logout
-     * Simply returns a success message. 
-     * The actual session cleanup is handled by SecurityConfig and the Frontend.
      */
     @PostMapping("/logout")
     public ResponseEntity<?> logout() {

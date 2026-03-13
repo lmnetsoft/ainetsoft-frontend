@@ -14,12 +14,28 @@ public interface UserRepository extends MongoRepository<User, String> {
 
     /**
      * Counts users who have a specific role in their roles set.
+     * Preserved for Admin Dashboard stats.
      */
     long countByRolesContaining(String role);
 
-    @Query("{ '$or': [ { 'email': ?0 }, { 'phone': ?0 } ] }")
+    /**
+     * FIND BY IDENTIFIER
+     * UPDATED: Uses a regex-based case-insensitive match to ensure social 
+     * login emails (which might have different casing) are always found.
+     */
+    @Query("{ '$or': [ { 'email': { $regex: '^?0$', $options: 'i' } }, { 'phone': ?0 } ] }")
     Optional<User> findByIdentifier(String identifier);
 
+    /**
+     * Robust lookup by email with case-insensitivity.
+     */
+    @Query("{ 'email': { $regex: '^?0$', $options: 'i' } }")
     Optional<User> findByEmail(String email);
+
     Optional<User> findByPhone(String phone);
+
+    /**
+     * Added for Social Login stability: Find user by their social provider ID.
+     */
+    Optional<User> findByProviderId(String providerId);
 }

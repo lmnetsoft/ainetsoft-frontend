@@ -10,7 +10,7 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // --- THE FIX: Capture the requested path from the URL or Router State ---
+  // Capture the requested path from the URL or Router State
   const searchParams = new URLSearchParams(location.search);
   const redirectPath = searchParams.get('redirect') || location.state?.from?.pathname || '/';
 
@@ -26,9 +26,10 @@ const Login = () => {
     password: ''
   });
 
-  // Automatically redirect if already authenticated
+  // Automatically redirect if already authenticated (Safeguarded)
   useEffect(() => {
-    if (localStorage.getItem('isAuthenticated') === 'true') {
+    const token = localStorage.getItem('jwt_token');
+    if (localStorage.getItem('isAuthenticated') === 'true' && token) {
       navigate(redirectPath, { replace: true });
     }
   }, [navigate, redirectPath]);
@@ -65,7 +66,7 @@ const Login = () => {
         password: loginData.password
       };
 
-      // authService.loginUser now handles saving the jwt_token
+      // authService.loginUser handles saving the jwt_token
       const userData = await loginUser(payload);
       
       localStorage.setItem('isAuthenticated', 'true');
@@ -75,7 +76,7 @@ const Login = () => {
       // Sync profile to ensure name/avatar are updated in Header
       await getUserProfile();
 
-      // --- THE FIX: Navigate back to the intended page ---
+      // Navigate back to the intended page
       navigate(redirectPath, { replace: true });
 
     } catch (err: any) {

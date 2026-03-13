@@ -28,7 +28,6 @@ public class AuthService {
 
     /**
      * Vietnamese & Global Phone Validation
-     * Strips non-digits and checks carrier prefixes for VN numbers.
      */
     private boolean isValidPhone(String phone) {
         if (phone == null || phone.isBlank()) return true;
@@ -62,21 +61,32 @@ public class AuthService {
         return normalizePhone(trimmed);
     }
 
+    /**
+     * GET USER PROFILE
+     * UPDATED: Robust lookup to handle both Local and Social identities.
+     */
     public UserResponse getUserProfile(String contactInfo) {
         String identifier = normalizeIdentifier(contactInfo);
+        
+        // Lookup by identifier (Email or Phone)
         User user = userRepository.findByIdentifier(identifier)
-                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
+                .orElseThrow(() -> new RuntimeException("Tài khoản '" + contactInfo + "' không tồn tại!"));
+
+        // Ensure we return a fallback name if fullName is missing (common for some social profiles)
+        String displayName = user.getFullName();
+        if (displayName == null || displayName.isBlank()) {
+            displayName = (user.getEmail() != null) ? user.getEmail().split("@")[0] : "Thành viên";
+        }
 
         return UserResponse.builder()
                 .email(user.getEmail())
                 .phone(user.getPhone())
-                .fullName(user.getFullName())
+                .fullName(displayName)
                 .gender(user.getGender())
                 .birthDate(user.getBirthDate())
                 .avatarUrl(user.getAvatarUrl())
                 .roles(user.getRoles())
                 .provider(user.getProvider() != null ? user.getProvider().toString() : "LOCAL")
-                // --- NEW: Map the shop profile for the frontend ---
                 .shopProfile(user.getShopProfile()) 
                 .addresses(user.getAddresses() != null ? user.getAddresses() : new ArrayList<>())
                 .bankAccounts(user.getBankAccounts() != null ? user.getBankAccounts() : new ArrayList<>())
@@ -95,7 +105,7 @@ public class AuthService {
 
         if (request.getEmail() != null && !request.getEmail().isBlank()) {
             boolean isSocialUser = user.getProvider() != null && 
-                                  !user.getProvider().toString().equalsIgnoreCase("LOCAL");
+                                   !user.getProvider().toString().equalsIgnoreCase("LOCAL");
 
             if (!isSocialUser) {
                 String newEmail = request.getEmail().trim().toLowerCase();
@@ -127,9 +137,7 @@ public class AuthService {
 
         if (request.getAvatarUrl() != null) user.setAvatarUrl(request.getAvatarUrl());
 
-        // --- NEW: SHOP SETTINGS LOGIC ---
         if (request.getShopProfile() != null) {
-            // Check if user is actually a seller
             if (user.getRoles() == null || !user.getRoles().contains("SELLER")) {
                 throw new RuntimeException("Chỉ người bán mới có quyền thiết lập thông tin shop!");
             }
@@ -145,7 +153,6 @@ public class AuthService {
                 if (incoming.getShopAddress() != null) existing.setShopAddress(incoming.getShopAddress());
                 if (incoming.getShopLogoUrl() != null) existing.setShopLogoUrl(incoming.getShopLogoUrl());
                 
-                // Update Stock and Availability settings
                 existing.setLowStockThreshold(incoming.getLowStockThreshold());
                 existing.setHolidayMode(incoming.isHolidayMode());
             }

@@ -10,7 +10,24 @@ const api = axios.create({
   withCredentials: true, 
 });
 
-// NEW: Request interceptor to attach the JWT token to every request
+/**
+ * Utility to clear ONLY authentication data.
+ * This ensures 'chatGuestId' is preserved so visitors don't lose chat history.
+ */
+const clearAuthData = () => {
+    const authKeys = [
+        'jwt_token', 
+        'isAuthenticated', 
+        'userName', 
+        'userEmail', 
+        'userPhone', 
+        'userAvatar', 
+        'userRoles'
+    ];
+    authKeys.forEach(key => localStorage.removeItem(key));
+};
+
+// Request interceptor to attach the JWT token to every request
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('jwt_token');
@@ -29,14 +46,18 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      console.warn("Session expired or unauthorized. Cleaning up...");
+      console.warn("Session expired or unauthorized. Cleaning up authentication...");
       
-      localStorage.clear();
+      // FIXED: Use targeted removal instead of .clear() to protect Visitor/Guest IDs
+      clearAuthData();
+      
+      // Notify components (like Header/Chat) that the user is now logged out
       window.dispatchEvent(new Event('profileUpdate'));
       
-      if (!window.location.pathname.includes('/login')) {
+      // Only redirect to login if we aren't already there and if the user was actually logged in
+      const currentPath = window.location.pathname;
+      if (!currentPath.includes('/login')) {
         // Redirect to login and preserve the current path for post-login return
-        const currentPath = window.location.pathname;
         window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
       }
     }
