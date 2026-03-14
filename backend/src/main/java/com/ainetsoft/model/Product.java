@@ -8,7 +8,10 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Data
 @Builder
@@ -22,17 +25,27 @@ public class Product {
     private String description;
     private double price;
     private int stock;
-    private List<String> images; 
-    private String category;
     
+    // UPDATED: Now links to Category ID for dynamic filtering
+    private String categoryId;
+    private String categoryName; 
+    
+    @Builder.Default
+    private List<String> imageUrls = new ArrayList<>(); 
+    
+    private String videoUrl;
+    private String videoThumbnailUrl; 
+
     private String sellerId;   
     private String shopName;
+
+    // SMART FEATURE: Dynamic Specs (e.g., {"Brand": "Apple", "Color": "Titanium"})
+    @Builder.Default
+    private Map<String, String> specifications = new HashMap<>();
     
-    // UPDATED: Standard is PENDING for review
     @Builder.Default
     private String status = "PENDING"; // PENDING, APPROVED, REJECTED, ARCHIVED
     
-    // NEW: Rating fields to support ReviewService and Stats Engine
     @Builder.Default
     private double averageRating = 0.0;
     

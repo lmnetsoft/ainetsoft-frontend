@@ -11,7 +11,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -25,25 +30,47 @@ public class AuthService {
     private final AzureCommunicationService azureService;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
+    
+    // Injected service for reusable file operations
+    private final FileStorageService fileStorageService;
+
+    // Directory for file storage
+    private final String UPLOAD_DIR = "uploads/cccd/";
+
+    /**
+     * Helper to save files to the local disk.
+     */
+    private String saveFile(MultipartFile file, String userId, String side) throws IOException {
+        if (file == null || file.isEmpty()) return null;
+
+        Path uploadPath = Paths.get(UPLOAD_DIR);
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
+        }
+
+        // Create a unique filename: userId_front_timestamp.jpg
+        String extension = Objects.requireNonNull(file.getOriginalFilename())
+                .substring(file.getOriginalFilename().lastIndexOf("."));
+        String fileName = userId + "_" + side + "_" + System.currentTimeMillis() + extension;
+        
+        Path filePath = uploadPath.resolve(fileName);
+        Files.copy(file.getInputStream(), filePath);
+
+        return "/api/uploads/cccd/" + fileName; // Return the URL path
+    }
 
     /**
      * Vietnamese & Global Phone Validation
      */
     private boolean isValidPhone(String phone) {
         if (phone == null || phone.isBlank()) return true;
-
         String cleanPhone = phone.replaceAll("[^0-9]", "");
-        
         if (cleanPhone.startsWith("0") || cleanPhone.startsWith("84")) {
             String vnNormalized = cleanPhone.startsWith("84") ? "0" + cleanPhone.substring(2) : cleanPhone;
-            
             String vnRegex = "^(03[2-9]|086|09[6-8]|070|07[6-9]|089|090|093|08[1-5]|088|091|094|052|05[68]|092|059|099)\\d{7}$";
-            
             if (vnNormalized.matches(vnRegex)) return true;
-            
             throw new RuntimeException("Số điện thoại Việt Nam không thuộc nhà mạng được hỗ trợ!");
         }
-
         return cleanPhone.matches("^\\d{7,15}$");
     }
 
@@ -55,24 +82,15 @@ public class AuthService {
     private String normalizeIdentifier(String identifier) {
         if (identifier == null) return null;
         String trimmed = identifier.trim();
-        if (trimmed.contains("@")) {
-            return trimmed.toLowerCase();
-        }
+        if (trimmed.contains("@")) return trimmed.toLowerCase();
         return normalizePhone(trimmed);
     }
 
-    /**
-     * GET USER PROFILE
-     * UPDATED: Robust lookup to handle both Local and Social identities.
-     */
     public UserResponse getUserProfile(String contactInfo) {
         String identifier = normalizeIdentifier(contactInfo);
-        
-        // Lookup by identifier (Email or Phone)
         User user = userRepository.findByIdentifier(identifier)
                 .orElseThrow(() -> new RuntimeException("Tài khoản '" + contactInfo + "' không tồn tại!"));
 
-        // Ensure we return a fallback name if fullName is missing (common for some social profiles)
         String displayName = user.getFullName();
         if (displayName == null || displayName.isBlank()) {
             displayName = (user.getEmail() != null) ? user.getEmail().split("@")[0] : "Thành viên";
@@ -86,11 +104,15 @@ public class AuthService {
                 .birthDate(user.getBirthDate())
                 .avatarUrl(user.getAvatarUrl())
                 .roles(user.getRoles())
+                .isGlobalAdmin(user.isGlobalAdmin())
+                .permissions(user.getPermissions() != null ? user.getPermissions() : new HashSet<>())
                 .provider(user.getProvider() != null ? user.getProvider().toString() : "LOCAL")
                 .shopProfile(user.getShopProfile()) 
                 .addresses(user.getAddresses() != null ? user.getAddresses() : new ArrayList<>())
-                .bankAccounts(user.getBankAccounts() != null ? user.getBankAccounts() : new ArrayList<>())
+                .bankAccounts(user.getBankAccounts() != null ? (List)user.getBankAccounts() : new ArrayList<>())
                 .cart(user.getCart() != null ? user.getCart() : new ArrayList<>())
+                .sellerVerification(user.getSellerVerification())
+                .rejectionReason(user.getRejectionReason())
                 .build();
     }
 
@@ -122,10 +144,6 @@ public class AuthService {
         if (request.getBirthDate() != null) user.setBirthDate(request.getBirthDate());
         
         if (request.getPhone() != null && !request.getPhone().isBlank()) {
-            if (!isValidPhone(request.getPhone())) {
-                throw new RuntimeException("Số điện thoại không hợp lệ!");
-            }
-
             String newPhone = normalizePhone(request.getPhone());
             if (!newPhone.equals(user.getPhone())) {
                 if (userRepository.existsByPhone(newPhone)) {
@@ -138,34 +156,11 @@ public class AuthService {
         if (request.getAvatarUrl() != null) user.setAvatarUrl(request.getAvatarUrl());
 
         if (request.getShopProfile() != null) {
-            if (user.getRoles() == null || !user.getRoles().contains("SELLER")) {
-                throw new RuntimeException("Chỉ người bán mới có quyền thiết lập thông tin shop!");
-            }
-            
-            if (user.getShopProfile() == null) {
-                user.setShopProfile(request.getShopProfile());
-            } else {
-                User.ShopProfile existing = user.getShopProfile();
-                User.ShopProfile incoming = request.getShopProfile();
-                
-                if (incoming.getShopName() != null) existing.setShopName(incoming.getShopName().trim());
-                if (incoming.getShopDescription() != null) existing.setShopDescription(incoming.getShopDescription());
-                if (incoming.getShopAddress() != null) existing.setShopAddress(incoming.getShopAddress());
-                if (incoming.getShopLogoUrl() != null) existing.setShopLogoUrl(incoming.getShopLogoUrl());
-                
-                existing.setLowStockThreshold(incoming.getLowStockThreshold());
-                existing.setHolidayMode(incoming.isHolidayMode());
-            }
+            user.setShopProfile(request.getShopProfile());
         }
 
-        if (request.getAddresses() != null) {
-            request.getAddresses().forEach(addr -> {
-                if (addr.getPhone() != null) addr.setPhone(normalizePhone(addr.getPhone()));
-            });
-            user.setAddresses(request.getAddresses());
-        }
-
-        if (request.getBankAccounts() != null) user.setBankAccounts(request.getBankAccounts());
+        if (request.getAddresses() != null) user.setAddresses(request.getAddresses());
+        if (request.getBankAccounts() != null) user.setBankAccounts((List)request.getBankAccounts());
 
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
@@ -174,13 +169,6 @@ public class AuthService {
 
     public String register(RegisterRequest request) {
         validatePasswordStrength(request.getPassword());
-        
-        if (request.getPhone() != null && !request.getPhone().isBlank()) {
-            if (!isValidPhone(request.getPhone())) {
-                throw new RuntimeException("Số điện thoại không hợp lệ!");
-            }
-        }
-
         String email = (request.getEmail() == null || request.getEmail().isBlank()) ? null : request.getEmail().trim().toLowerCase();
         String phone = normalizePhone(request.getPhone());
 
@@ -194,20 +182,11 @@ public class AuthService {
                 .password(passwordEncoder.encode(request.getPassword()))
                 .roles(new HashSet<>(Collections.singleton("USER")))
                 .enabled(true)
-                .cart(new ArrayList<>())
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
 
         userRepository.save(user);
-
-        if (email != null) {
-            try {
-                azureService.sendWelcomeEmail(email, user.getFullName());
-            } catch (Exception e) {
-                log.error("Welcome email failed for {}: {}", email, e.getMessage());
-            }
-        }
         return "Đăng ký thành công!";
     }
 
@@ -222,12 +201,74 @@ public class AuthService {
 
         String token = jwtUtils.generateToken(identifier, user.getRoles()); 
 
-        return new LoginResponse(
-            token, 
-            user.getFullName(), 
-            user.getRoles(), 
-            "Đăng nhập thành công!"
-        );
+        return LoginResponse.builder()
+                .token(token)
+                .fullName(user.getFullName())
+                .roles(user.getRoles())
+                .isGlobalAdmin(user.isGlobalAdmin())
+                .permissions(user.getPermissions() != null ? user.getPermissions() : new HashSet<>())
+                .message("Đăng nhập thành công!")
+                .build();
+    }
+
+    /**
+     * FULL MERGED UPGRADE LOGIC
+     * Fixed saveFile arguments (2 instead of 3) and inner class name (BankInfo).
+     */
+    public String upgradeToSeller(String contactInfo, SellerRegistrationDTO dto, MultipartFile front, MultipartFile back) {
+        String identifier = normalizeIdentifier(contactInfo);
+        User user = userRepository.findByIdentifier(identifier)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
+        
+        if (user.getRoles() != null && user.getRoles().contains("SELLER")) {
+            return "Bạn đã là Người bán rồi!";
+        }
+
+        try {
+            // 1. Save CCCD Images using the FileStorageService (2 arguments only)
+            String frontUrl = fileStorageService.saveFile(front, "cccd");
+            String backUrl = fileStorageService.saveFile(back, "cccd");
+
+            // 2. Map Identity Info
+            user.setIdentityInfo(User.IdentityInfo.builder()
+                    .cccdNumber(dto.getCccdNumber())
+                    .frontImageUrl(frontUrl)
+                    .backImageUrl(backUrl)
+                    .submittedAt(LocalDateTime.now())
+                    .build());
+
+            // 3. Map Shop Profile (Including Tax Code)
+            user.setShopProfile(User.ShopProfile.builder()
+                    .shopName(dto.getShopName())
+                    .shopAddress(dto.getShopAddress())
+                    .taxCode(dto.getTaxCode()) 
+                    .businessPhone(dto.getPhone() != null ? dto.getPhone() : user.getPhone())
+                    .build());
+
+            // 4. Map Bank Account (FIXED: Using BankInfo class name)
+            List<User.BankInfo> banks = new ArrayList<>();
+            banks.add(User.BankInfo.builder()
+                    .bankName(dto.getBankName())
+                    .accountNumber(dto.getAccountNumber())
+                    .accountHolder(dto.getAccountHolder())
+                    .isDefault(true)
+                    .build());
+            user.setBankAccounts(banks);
+
+            // 5. Update Status for Admin Board (Critical)
+            user.setSellerVerification("PENDING");
+            user.setAccountStatus("PENDING_SELLER");
+            user.setUpdatedAt(LocalDateTime.now());
+            
+            userRepository.save(user);
+            log.info("Seller Upgrade request received for: {}. Status set to PENDING_SELLER.", identifier);
+            
+            return "Hồ sơ đã được gửi! Vui lòng chờ Admin phê duyệt.";
+            
+        } catch (Exception e) {
+            log.error("File upload error: {}", e.getMessage());
+            throw new RuntimeException("Lỗi khi lưu hồ sơ: " + e.getMessage());
+        }
     }
 
     public String changePassword(String contactInfo, ChangePasswordRequest request) {
@@ -247,7 +288,7 @@ public class AuthService {
     public String processForgotPassword(String contactInfo) {
         String identifier = normalizeIdentifier(contactInfo);
         userRepository.findByIdentifier(identifier)
-            .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại trong hệ thống!"));
+            .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
         String otp = String.format("%06d", new Random().nextInt(999999));
         tokenRepository.deleteByContactInfo(identifier);
         PasswordResetToken token = PasswordResetToken.builder()
@@ -256,18 +297,8 @@ public class AuthService {
             .expiryDate(LocalDateTime.now().plusMinutes(10))
             .build();
         tokenRepository.save(token);
-        try {
-            if (identifier.contains("@")) {
-                azureService.sendResetEmail(identifier, otp);
-                return "Mã OTP đã được gửi đến email của bạn.";
-            } else {
-                log.info("OTP generated for phone {}: {}", identifier, otp);
-                return "Mã OTP đã được gửi đến số điện thoại của bạn.";
-            }
-        } catch (Exception e) {
-            log.error("Azure Communication delivery error: {}", e.getMessage());
-            throw new RuntimeException("Lỗi hệ thống khi gửi mã xác thực.");
-        }
+        log.info("OTP generated for {}: {}", identifier, otp);
+        return "Mã OTP đã được tạo.";
     }
 
     public String resetPassword(String contactInfo, String otp, String newPassword) {
@@ -281,15 +312,12 @@ public class AuthService {
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
         tokenRepository.delete(token);
-        return "Mật khẩu của bạn đã được cập nhật thành công.";
+        return "Mật khẩu đã được cập nhật.";
     }
 
     private void validatePasswordStrength(String password) {
         if (password == null || password.trim().length() < 8) {
             throw new RuntimeException("Mật khẩu phải có ít nhất 8 ký tự!");
-        }
-        if (!password.matches(".*[a-zA-Z].*")) {
-            throw new RuntimeException("Mật khẩu phải chứa ít nhất một chữ cái!");
         }
     }
 
@@ -300,20 +328,5 @@ public class AuthService {
         user.setCart(cartItems != null ? cartItems : new ArrayList<>());
         userRepository.save(user);
         return "Giỏ hàng đã được đồng bộ.";
-    }
-
-    public String upgradeToSeller(String contactInfo) {
-        String identifier = normalizeIdentifier(contactInfo);
-        User user = userRepository.findByIdentifier(identifier)
-                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
-        Set<String> roles = user.getRoles();
-        if (roles == null) roles = new HashSet<>();
-        else roles = new HashSet<>(roles);
-        if (roles.contains("SELLER")) return "Bạn đã là Người bán rồi!";
-        roles.add("SELLER");
-        user.setRoles(roles);
-        user.setUpdatedAt(LocalDateTime.now());
-        userRepository.save(user);
-        return "Chúc mừng! Bạn đã trở thành Người bán thành công.";
     }
 }

@@ -2,23 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   FaShoppingCart, FaStore, FaShieldAlt, FaTruck, FaStar, 
-  FaCommentDots // Added for the Chat button
+  FaCommentDots, FaClipboardList 
 } from 'react-icons/fa';
 import axios from 'axios';
 import ToastNotification from '../../components/Toast/ToastNotification';
 import './ProductDetail.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:8080';
 
 interface Product {
   id: string;
-  sellerId?: string; // Assume backend provides the owner's ID
+  sellerId?: string;
   name: string;
   description: string;
   price: number;
   stock: number;
-  category: string;
-  images: string[];
+  categoryName: string;
+  specifications?: Record<string, string>;
+  imageUrls: string[]; 
   videoUrl?: string; 
   shopName: string;
   averageRating?: number;
@@ -30,6 +32,7 @@ interface Review {
   rating: number;
   comment: string;
   userName: string;
+  imageUrls?: string[];
   createdAt: string;
 }
 
@@ -42,7 +45,6 @@ const ProductDetail = () => {
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [activeMedia, setActiveMedia] = useState(0); 
-  
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
@@ -54,8 +56,12 @@ const ProductDetail = () => {
         setProduct(prodRes.data);
         document.title = `${prodRes.data.name} | AiNetsoft`;
 
-        const revRes = await axios.get(`${API_URL}/reviews/product/${id}`);
-        setReviews(revRes.data);
+        try {
+          const revRes = await axios.get(`${API_URL}/reviews/product/${id}`);
+          setReviews(Array.isArray(revRes.data) ? revRes.data : []);
+        } catch (e) {
+          setReviews([]);
+        }
       } catch (error) {
         setToastMessage("Không tìm thấy sản phẩm.");
         setShowToast(true);
@@ -66,13 +72,16 @@ const ProductDetail = () => {
     fetchProductAndReviews();
   }, [id]);
 
-  // NEW: Navigate to Chat Page
+  const formatMediaUrl = (url: string) => {
+    if (!url) return "/placeholder.png";
+    return url.startsWith('http') ? url : `${BASE_URL}${url}`;
+  };
+
   const handleChatWithSeller = () => {
     if (!localStorage.getItem('isAuthenticated')) {
       navigate('/login');
       return;
     }
-    // We use product.id or product.sellerId as the recipientId
     const recipientId = product?.sellerId || product?.id;
     navigate(`/chat/${recipientId}`);
   };
@@ -82,19 +91,16 @@ const ProductDetail = () => {
       navigate('/login');
       return;
     }
-
     try {
       const cartItem = {
         productId: product?.id,
         productName: product?.name,
-        productImage: product?.images[0],
+        productImage: product?.imageUrls?.[0] || "/placeholder.png",
         price: product?.price,
         quantity: quantity,
         shopName: product?.shopName
       };
-
       await axios.post(`${API_URL}/auth/sync-cart`, { items: [cartItem] }, { withCredentials: true });
-      
       setToastMessage("Đã thêm vào giỏ hàng!");
       setShowToast(true);
       window.dispatchEvent(new Event('cartUpdate'));
@@ -107,6 +113,10 @@ const ProductDetail = () => {
   if (loading) return <div className="detail-loading">Đang tải chi tiết sản phẩm...</div>;
   if (!product) return <div className="detail-error">Sản phẩm không tồn tại.</div>;
 
+  const images = Array.isArray(product.imageUrls) ? product.imageUrls : [];
+  const hasVideo = !!product.videoUrl;
+  const descriptionLines = (product.description || "").split('\n');
+
   return (
     <div className="product-detail-wrapper">
       <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
@@ -115,25 +125,25 @@ const ProductDetail = () => {
         {/* LEFT: Media Gallery */}
         <div className="detail-media-section">
           <div className="main-display">
-            {product.videoUrl && activeMedia === product.images.length ? (
-               <video controls className="main-video">
-                 <source src={product.videoUrl} type="video/mp4" />
-                 Trình duyệt của bạn không hỗ trợ video.
+            {hasVideo && activeMedia === images.length ? (
+               <video controls className="main-video" key={product.videoUrl}>
+                 <source src={formatMediaUrl(product.videoUrl!)} type="video/mp4" />
                </video>
             ) : (
-               <img src={product.images[activeMedia] || "/placeholder.png"} alt={product.name} />
+               <img src={formatMediaUrl(images[activeMedia])} alt={product.name} />
             )}
           </div>
           
           <div className="thumbnail-list">
-            {product.images.map((img, idx) => (
+            {images.map((img, idx) => (
               <div key={idx} className={`thumb-item ${activeMedia === idx ? 'active' : ''}`} onMouseEnter={() => setActiveMedia(idx)}>
-                <img src={img} alt="thumb" />
+                <img src={formatMediaUrl(img)} alt="thumb" />
               </div>
             ))}
-            {product.videoUrl && (
-              <div className={`thumb-item video-thumb ${activeMedia === product.images.length ? 'active' : ''}`} onMouseEnter={() => setActiveMedia(product.images.length)}>
+            {hasVideo && (
+              <div className={`thumb-item video-thumb ${activeMedia === images.length ? 'active' : ''}`} onMouseEnter={() => setActiveMedia(images.length)}>
                 <div className="play-icon-overlay">▶</div>
+                <p style={{fontSize: '10px', marginTop: '20px'}}>Video</p>
               </div>
             )}
           </div>
@@ -143,24 +153,24 @@ const ProductDetail = () => {
         <div className="detail-info-section">
           <h1 className="product-title">{product.name}</h1>
           
-          <div className="product-rating-overview" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
+          <div className="product-rating-overview">
             <div style={{ display: 'flex', color: '#ee4d2d' }}>
               {[...Array(5)].map((_, i) => (
                 <FaStar key={i} color={i < Math.floor(product.averageRating || 0) ? "#ee4d2d" : "#e4e5e9"} />
               ))}
             </div>
-            <span style={{ color: '#ee4d2d', fontWeight: 'bold' }}>{product.averageRating || 0}</span>
-            <span style={{ color: '#767676', borderLeft: '1px solid #ccc', paddingLeft: '10px' }}>{product.reviewCount || 0} Đánh giá</span>
+            <span className="rating-value">{product.averageRating || 0}</span>
+            <span className="review-count">{product.reviewCount || 0} Đánh giá</span>
           </div>
           
           <div className="product-stats">
-            <span className="category-tag">{product.category}</span>
+            <span className="category-tag">{product.categoryName || "Chưa phân loại"}</span>
             <span className="stock-info">Kho: {product.stock} sản phẩm có sẵn</span>
           </div>
 
           <div className="price-box">
             <span className="currency">₫</span>
-            <span className="amount">{product.price.toLocaleString()}</span>
+            <span className="amount">{(product.price || 0).toLocaleString()}</span>
           </div>
 
           <div className="shipping-info">
@@ -173,22 +183,24 @@ const ProductDetail = () => {
             </div>
           </div>
 
-          <div className="quantity-selector">
-            <label>Số lượng</label>
-            <div className="qty-controls">
-              <button onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</button>
-              <input type="number" value={quantity} readOnly />
-              <button onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}>+</button>
-            </div>
-          </div>
-
           <div className="purchase-buttons">
-            <button className="add-to-cart-btn" onClick={handleAddToCart}>
-              <FaShoppingCart /> Thêm vào giỏ hàng
-            </button>
-            <button className="buy-now-btn" onClick={() => { handleAddToCart(); navigate('/cart'); }}>
-              Mua ngay
-            </button>
+            <div className="quantity-selector">
+              <label>Số lượng</label>
+              <div className="qty-controls">
+                <button onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</button>
+                <input type="number" value={quantity} readOnly />
+                <button onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}>+</button>
+              </div>
+            </div>
+
+            <div className="button-group">
+                <button className="add-to-cart-btn" onClick={handleAddToCart}>
+                  <FaShoppingCart /> Thêm vào giỏ hàng
+                </button>
+                <button className="buy-now-btn" onClick={() => { handleAddToCart(); navigate('/cart'); }}>
+                  Mua ngay
+                </button>
+            </div>
           </div>
 
           <div className="guarantee-box">
@@ -198,7 +210,6 @@ const ProductDetail = () => {
         </div>
       </div>
 
-      {/* BOTTOM: Description, Shop & REVIEWS */}
       <div className="container detail-bottom">
         <div className="shop-card">
           <FaStore className="shop-icon" />
@@ -213,10 +224,28 @@ const ProductDetail = () => {
           </div>
         </div>
 
+        {/* Dynamic Specifications */}
+        {product.specifications && Object.keys(product.specifications).length > 0 && (
+          <div className="specs-section">
+            <h3 className="section-title"><FaClipboardList /> CHI TIẾT SẢN PHẨM</h3>
+            <div className="specs-table">
+              {Object.entries(product.specifications || {}).map(([key, value]) => (
+                <div key={key} className="specs-row">
+                  <div className="specs-label">{key}</div>
+                  <div className="specs-value">{String(value)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="description-section">
           <h3 className="section-title">MÔ TẢ SẢN PHẨM</h3>
           <div className="description-content">
-            {product.description.split('\n').map((line, i) => <p key={i}>{line}</p>)}
+            {/* FIX: Ensuring split never runs on undefined */}
+            {descriptionLines.map((line, i) => (
+               <p key={i}>{line}</p>
+            ))}
           </div>
         </div>
 
@@ -229,14 +258,22 @@ const ProductDetail = () => {
             <div className="reviews-list">
               {reviews.map(review => (
                 <div key={review.id} className="review-item">
-                  <div className="rev-user">
+                  <div className="rev-header">
                     <strong>{review.userName}</strong>
                     <div className="user-stars">
                       {[...Array(5)].map((_, i) => <FaStar key={i} color={i < review.rating ? "#ee4d2d" : "#e4e5e9"} />)}
                     </div>
                   </div>
-                  <p className="rev-date">{new Date(review.createdAt).toLocaleDateString('vi-VN')}</p>
                   <p className="rev-comment">{review.comment}</p>
+                  
+                  {review.imageUrls && review.imageUrls.length > 0 && (
+                    <div className="review-images">
+                      {review.imageUrls.map((url, i) => (
+                        <img key={i} src={formatMediaUrl(url)} alt="Review proof" />
+                      ))}
+                    </div>
+                  )}
+                  <p className="rev-date">{new Date(review.createdAt).toLocaleDateString('vi-VN')}</p>
                 </div>
               ))}
             </div>

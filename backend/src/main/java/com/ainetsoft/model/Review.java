@@ -8,6 +8,8 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @Builder
@@ -25,9 +27,14 @@ public class Review {
     
     private int rating; // 1 to 5 stars
     private String comment;
-    private LocalDateTime createdAt;
+
+    // SMART FEATURE: Visual Proof (Buyers upload photos of the received product)
+    @Builder.Default
+    private List<String> imageUrls = new ArrayList<>();
+
+    @Builder.Default
+    private LocalDateTime createdAt = LocalDateTime.now();
     
-    // For "Shopee-style" verification: Did they actually buy it?
     private String orderId;
     private boolean isVerifiedPurchase;
 }

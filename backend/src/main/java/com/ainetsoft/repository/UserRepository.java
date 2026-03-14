@@ -5,6 +5,7 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 import java.util.Optional;
+import java.util.List;
 
 @Repository
 public interface UserRepository extends MongoRepository<User, String> {
@@ -14,14 +15,34 @@ public interface UserRepository extends MongoRepository<User, String> {
 
     /**
      * Counts users who have a specific role in their roles set.
-     * Preserved for Admin Dashboard stats.
      */
     long countByRolesContaining(String role);
 
     /**
+     * FIXED SOURCE OF TRUTH: Query by sellerVerification.
+     * This is what shows the "1" on your dashboard card for Bestseller.
+     */
+    long countBySellerVerification(String status);
+
+    /**
+     * FIXED SOURCE OF TRUTH: Find the list of users for the "Duyệt Shop" table.
+     */
+    List<User> findBySellerVerification(String status);
+
+    /**
+     * KEPT: Counts users by their specific account status.
+     * (e.g., ACTIVE, BANNED, PENDING_SELLER)
+     */
+    long countByAccountStatus(String accountStatus);
+
+    /**
+     * KEPT: Finds the actual list of users by status.
+     */
+    List<User> findByAccountStatus(String accountStatus);
+
+    /**
      * FIND BY IDENTIFIER
-     * UPDATED: Uses a regex-based case-insensitive match to ensure social 
-     * login emails (which might have different casing) are always found.
+     * UPDATED: Uses a regex-based case-insensitive match.
      */
     @Query("{ '$or': [ { 'email': { $regex: '^?0$', $options: 'i' } }, { 'phone': ?0 } ] }")
     Optional<User> findByIdentifier(String identifier);

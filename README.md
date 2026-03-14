@@ -1,5 +1,14 @@
  mvn clean compile -DskipTests && mvn spring-boot:run
 
+mvn clean compile -DskipTests && \
+mvn spring-boot:run -Dspring-boot.run.arguments="--app.seed.mock-data=true"
+
+mvn clean compile -DskipTests && \
+mvn spring-boot:run -Dspring-boot.run.arguments="--app.seed.mock-data=false"
+
+mvn clean compile -DskipTests && \
+mvn spring-boot:run -Dspring-boot.run.arguments="--app.seed.mock-data=false --admin.setup.password=RealStrongPass123! --ainetsoft.jwt.secret=HighlySecureRandomString64Chars"
+
 docker run -d \
   --name ainetsoft-mongodb \
   --network ainetsoft-network \

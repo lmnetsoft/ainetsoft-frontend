@@ -1,7 +1,8 @@
 .account-sidebar {
-  width: 180px;
+  width: 230px; /* Standardized width for all pages */
   flex-shrink: 0;
   padding: 20px 0;
+  background: transparent;
 }
 
 /* User Brief Section */
@@ -20,7 +21,7 @@
   border-radius: 50%;
   overflow: hidden;
   border: 1px solid rgba(0,0,0,0.09);
-  background-color: #fff; /* Ensures no transparency issues */
+  background-color: #fff;
 }
 
 .sidebar-avatar-wrapper img {
@@ -53,9 +54,7 @@
   gap: 5px;
 }
 
-.edit-profile-link:hover {
-  color: #5b67f1;
-}
+.edit-profile-link:hover { color: #5b67f1; }
 
 /* Sidebar Menu Navigation */
 .sidebar-menu {
@@ -76,10 +75,7 @@
   transition: color 0.2s;
 }
 
-.menu-icon {
-  font-size: 16px;
-}
-
+.menu-icon { font-size: 16px; }
 .profile-icon { color: #5b67f1; }
 .purchase-icon { color: #f15b5b; }
 
@@ -96,6 +92,9 @@
   color: rgba(0,0,0,0.65);
   font-size: 14px;
   transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .menu-sub-items a:hover,
@@ -104,48 +103,46 @@
   font-weight: 500;
 }
 
-/* Standalone Items (Purchase, Seller Invite) */
+.sub-menu-icon {
+  font-size: 0.9rem;
+}
+
+/* Standalone Items */
 .single-item:hover, 
-.single-item.active {
-  color: #f15b5b;
-}
+.single-item.active { color: #f15b5b; }
 
-/* --- NEW: Seller Section Styles --- */
-
-/* Invitation to become a seller */
-.seller-invite {
-  margin-top: 5px;
-  transition: transform 0.2s;
-}
-
-.seller-invite:hover {
-  transform: translateX(3px); /* Subtle slide effect */
-}
-
-.seller-invite span {
-  color: #ee4d2d; /* Special orange for seller highlights */
-  font-weight: 500;
-}
-
-/* Full Seller Channel Menu Section */
+/* --- Seller Section --- */
 .seller-menu-section {
   margin-top: 10px;
   padding-top: 15px;
   border-top: 1px dotted #ddd;
 }
 
-.seller-title {
-  color: #ee4d2d !important;
-  font-weight: bold;
-}
+.seller-title { color: #ee4d2d !important; font-weight: bold; }
+.seller-icon { color: #ee4d2d; }
 
-.seller-icon {
-  color: #ee4d2d;
-}
-
-/* Sub-items specifically for the Seller Channel */
 .seller-menu-section .menu-sub-items a:hover,
 .seller-menu-section .menu-sub-items a.active {
   color: #ee4d2d;
+  font-weight: 600;
+}
+
+/* --- Admin Section --- */
+.admin-menu-section {
+  margin-top: 10px;
+  padding-top: 15px;
+  border-top: 1px dotted #ddd;
+}
+
+.admin-title { 
+  color: #5b67f1 !important; 
+  font-weight: bold; 
+}
+
+.admin-icon { color: #5b67f1; }
+
+.admin-menu-section .menu-sub-items a:hover,
+.admin-menu-section .menu-sub-items a.active {
+  color: #5b67f1;
   font-weight: 600;
 }

@@ -21,7 +21,9 @@ const clearAuthData = () => {
         'userEmail', 
         'userPhone', 
         'userAvatar', 
-        'userRoles'
+        'userRoles',
+        'userPermissions',
+        'isGlobalAdmin' 
     ];
     keysToRemove.forEach(key => localStorage.removeItem(key));
 };
@@ -31,8 +33,6 @@ export const getUserProfile = async (): Promise<any> => {
     const response = await api.get('/auth/me'); 
     
     if (response.data) {
-      // Logic check: We want to ensure the user is actually valid.
-      // We are more lenient now to support Social Users who might have generic names.
       const name = response.data.fullName;
       const email = response.data.email;
 
@@ -40,13 +40,13 @@ export const getUserProfile = async (): Promise<any> => {
         localStorage.setItem('isAuthenticated', 'true');
         localStorage.setItem('userName', name || 'Thành viên');
         
-        // Save identity for Chat and Profile components
         localStorage.setItem('userEmail', response.data.email || '');
         localStorage.setItem('userPhone', response.data.phone || '');
         localStorage.setItem('userAvatar', response.data.avatarUrl || '');
         localStorage.setItem('userRoles', JSON.stringify(response.data.roles || []));
+        localStorage.setItem('userPermissions', JSON.stringify(response.data.permissions || []));
+        localStorage.setItem('isGlobalAdmin', response.data.isGlobalAdmin ? 'true' : 'false');
       } else {
-        // Only remove if the response is completely empty
         clearAuthData();
       }
 
@@ -56,7 +56,6 @@ export const getUserProfile = async (): Promise<any> => {
     return response.data;
   } catch (error: any) {
     if (error.response?.status === 401) {
-        // Token expired or invalid: Clear auth but keep Visitor IDs
         clearAuthData();
         window.dispatchEvent(new Event('profileUpdate'));
     }
@@ -70,7 +69,6 @@ export const logoutUser = async (): Promise<void> => {
   } catch (err) {
     console.error("Backend logout failed, clearing local state anyway.");
   } finally {
-    // PROTECT VISITOR ID: Use specific removal instead of .clear()
     clearAuthData();
     window.dispatchEvent(new Event('profileUpdate'));
   }
@@ -108,12 +106,12 @@ export const loginUser = async (loginData: any): Promise<any> => {
     
     localStorage.setItem('isAuthenticated', 'true');
     localStorage.setItem('userName', response.data.fullName || 'Thành viên');
-
-    // Save full identity for Chat/Header immediately
     localStorage.setItem('userEmail', response.data.email || '');
     localStorage.setItem('userPhone', response.data.phone || '');
     localStorage.setItem('userAvatar', response.data.avatarUrl || '');
     localStorage.setItem('userRoles', JSON.stringify(response.data.roles || []));
+    localStorage.setItem('userPermissions', JSON.stringify(response.data.permissions || []));
+    localStorage.setItem('isGlobalAdmin', response.data.isGlobalAdmin ? 'true' : 'false');
     
     window.dispatchEvent(new Event('profileUpdate'));
     return response.data;
@@ -149,13 +147,46 @@ export const resetPassword = async (resetData: { contactInfo: string, otp: strin
   }
 };
 
-export const upgradeToSeller = async (): Promise<string> => {
+/**
+ * FIXED: upgradeToSeller handles Multipart/FormData with application/json Blob
+ */
+export const upgradeToSeller = async (formData: any): Promise<string> => {
   try {
-    const response = await api.post('/auth/upgrade-seller');
-    // Refresh the profile to get the new ROLE_SELLER in localStorage
+    const bodyFormData = new FormData();
+
+    // Prepare JSON part
+    const registrationData = {
+      phone: formData.phone,
+      cccdNumber: formData.cccdNumber,
+      shopName: formData.shopName,
+      shopAddress: formData.shopAddress,
+      taxCode: formData.taxCode,
+      bankName: formData.bankName,
+      accountNumber: formData.accountNumber,
+      accountHolder: formData.accountHolder
+    };
+
+    // Wrap JSON in Blob to ensure Content-Type: application/json for this part
+    const jsonBlob = new Blob([JSON.stringify(registrationData)], {
+      type: 'application/json'
+    });
+    bodyFormData.append('data', jsonBlob);
+
+    // Append images
+    if (formData.frontImage) {
+      bodyFormData.append('frontImage', formData.frontImage);
+    }
+    if (formData.backImage) {
+      bodyFormData.append('backImage', formData.backImage);
+    }
+
+    const response = await api.post('/auth/upgrade-seller', bodyFormData);
+    
+    // Refresh profile to reflect PENDING status
     await getUserProfile(); 
+    
     return response.data;
   } catch (error: any) {
-    throw new Error(extractError(error, "Nâng cấp Người bán thất bại."));
+    throw new Error(extractError(error, "Gửi hồ sơ Người bán thất bại."));
   }
 };

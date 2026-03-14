@@ -22,7 +22,15 @@ const AdminSellers = () => {
     try {
       setLoading(true);
       const data = await adminService.getPendingSellers();
-      setSellers(data);
+      
+      // Safety check: ensure we are setting an array
+      if (Array.isArray(data)) {
+        setSellers(data);
+      } else if (data && (data as any).content) {
+        setSellers((data as any).content);
+      } else {
+        setSellers([]);
+      }
     } catch (error: any) {
       console.error("Failed to fetch sellers:", error);
       setToastMessage("Không thể tải danh sách người bán chờ duyệt.");
@@ -40,10 +48,9 @@ const AdminSellers = () => {
   // 2. Handle the Approve/Reject Action
   const handleAction = async (sellerId: string, isApproved: boolean) => {
     try {
-      // Call the backend service
+      // Logic Fix: Calls the correctly named service function
       await adminService.approveSeller(sellerId, isApproved);
       
-      // Show success message
       setToastMessage(isApproved ? "Đã phê duyệt người bán thành công!" : "Đã từ chối người bán.");
       setShowToast(true);
       
@@ -57,12 +64,12 @@ const AdminSellers = () => {
   };
 
   return (
-    <div className="container" style={{ padding: '40px 20px', maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
+    <div className="container" style={{ padding: '20px 0', maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
       <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '30px', borderBottom: '2px solid #e2e8f0', paddingBottom: '15px' }}>
         <FaUserClock size={32} color="#5b67f1" />
-        <h2 style={{ margin: 0, color: '#1e293b' }}>Quản lý Yêu cầu Mở Shop</h2>
+        <h2 style={{ margin: 0, color: '#1e293b' }}>Quản lý Yêu cầu Mở Shop ({sellers.length})</h2>
       </div>
 
       {loading ? (

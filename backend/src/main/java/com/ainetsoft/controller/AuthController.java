@@ -7,8 +7,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.security.Principal;
 import java.util.Map;
@@ -16,7 +18,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-@Slf4j // Added for better debugging of 500 errors
+@Slf4j 
 public class AuthController {
 
     private final AuthService authService;
@@ -24,7 +26,6 @@ public class AuthController {
     /**
      * GET /api/auth/me
      * Returns the full profile of the currently logged-in user.
-     * UPDATED: Added null-safety check for Social Login principals.
      */
     @GetMapping("/me")
     public ResponseEntity<UserResponse> getCurrentUser(Principal principal) {
@@ -34,8 +35,6 @@ public class AuthController {
         }
         
         try {
-            // Social logins sometimes put the ID in Name. 
-            // AuthService must handle looking up by either Email or Social ID.
             return ResponseEntity.ok(authService.getUserProfile(principal.getName()));
         } catch (Exception e) {
             log.error("Error in GET /me for user {}: {}", principal.getName(), e.getMessage());
@@ -55,7 +54,6 @@ public class AuthController {
 
     /**
      * POST /api/auth/sync-cart
-     * Saves the guest cart items to the user's account in MongoDB.
      */
     @PostMapping("/sync-cart")
     public ResponseEntity<String> syncCart(@RequestBody CartSyncRequest request, Principal principal) {
@@ -65,17 +63,30 @@ public class AuthController {
 
     /**
      * POST /api/auth/upgrade-seller
-     * Submits a request or instantly upgrades a user to ROLE_SELLER.
+     * UPDATED: Handles Multi-part data for CCCD images and Shop/Bank details.
+     * Maps to the frontend FormData logic.
      */
-    @PostMapping("/upgrade-seller")
-    public ResponseEntity<String> upgradeToSeller(Principal principal) {
+    @PostMapping(value = "/upgrade-seller", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<String> upgradeToSeller(
+            Principal principal,
+            @RequestPart("data") SellerRegistrationDTO registrationData,
+            @RequestPart(value = "frontImage", required = false) MultipartFile frontImage,
+            @RequestPart(value = "backImage", required = false) MultipartFile backImage) {
+        
         if (principal == null) throw new RuntimeException("Unauthorized");
-        return ResponseEntity.ok(authService.upgradeToSeller(principal.getName()));
+        
+        log.info("Received seller upgrade request for: {}", principal.getName());
+        
+        return ResponseEntity.ok(authService.upgradeToSeller(
+                principal.getName(), 
+                registrationData, 
+                frontImage, 
+                backImage
+        ));
     }
 
     /**
      * POST /api/auth/change-password
-     * Allows a logged-in user to update their password.
      */
     @PostMapping("/change-password")
     public ResponseEntity<String> changePassword(@Valid @RequestBody ChangePasswordRequest request, Principal principal) {
@@ -85,7 +96,6 @@ public class AuthController {
 
     /**
      * POST /api/auth/register
-     * Public endpoint to create a new account.
      */
     @PostMapping("/register")
     public ResponseEntity<String> register(@Valid @RequestBody RegisterRequest request) {
@@ -94,7 +104,6 @@ public class AuthController {
 
     /**
      * POST /api/auth/login
-     * Handles standard login and returns a JWT token.
      */
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
@@ -104,7 +113,6 @@ public class AuthController {
 
     /**
      * POST /api/auth/forgot-password
-     * Initiates the OTP process for password recovery.
      */
     @PostMapping("/forgot-password")
     public ResponseEntity<String> forgotPassword(@RequestBody Map<String, String> request) {
@@ -113,7 +121,6 @@ public class AuthController {
 
     /**
      * POST /api/auth/reset-password
-     * Verifies the OTP and sets the new password.
      */
     @PostMapping("/reset-password")
     public ResponseEntity<String> resetPassword(@RequestBody Map<String, String> request) {

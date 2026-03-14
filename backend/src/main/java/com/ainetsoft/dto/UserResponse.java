@@ -1,20 +1,18 @@
 package com.ainetsoft.dto;
 
 import com.ainetsoft.model.User;
-import com.ainetsoft.model.CartItem;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 
 @Data
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class UserResponse {
     private String email;
     private String phone;
@@ -23,12 +21,16 @@ public class UserResponse {
     private LocalDate birthDate;
     private String avatarUrl;
     private Set<String> roles;
+    private boolean isGlobalAdmin;
+    private Set<String> permissions;
     private String provider;
-
-    // --- NEW: Include Shop Profile in the response ---
+    
+    // Seller specific
+    private String sellerVerification;
+    private String rejectionReason;
     private User.ShopProfile shopProfile;
-
+    
     private List<User.AddressInfo> addresses;
     private List<User.BankInfo> bankAccounts;
-    private List<CartItem> cart;
+    private List<com.ainetsoft.model.CartItem> cart;
 }

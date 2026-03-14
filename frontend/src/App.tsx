@@ -46,8 +46,8 @@ import SellerOrders from './pages/Seller/SellerOrders';
 import SellerSettings from './pages/Seller/SellerSettings';
 
 // Admin Components
-import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminChat from './pages/admin/AdminChat'; 
+import AdminDashboard from './pages/Admin/AdminDashboard';
+import AdminChat from './pages/Admin/AdminChat'; 
 
 import './App.css';
 

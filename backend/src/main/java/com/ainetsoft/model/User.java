@@ -5,10 +5,12 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -21,6 +23,7 @@ public class User {
     @Id
     private String id;
     
+    @Indexed(unique = true)
     private String email;
     private String phone;
     private String password; 
@@ -40,10 +43,29 @@ public class User {
     @Builder.Default
     private String accountStatus = "ACTIVE"; 
 
+    /**
+     * Verification States: 
+     * NONE: Default buyer
+     * PENDING: User submitted info, waiting for admin
+     * REJECTED: Admin denied (check rejectionReason)
+     * VERIFIED: Full Seller access
+     */
     @Builder.Default
     private String sellerVerification = "NONE"; 
+    
+    private String rejectionReason;
+
+    // --- START NEW DELEGATION FIELDS ---
+    @Builder.Default
+    private boolean isGlobalAdmin = false; // admin@ainetsoft.com
+
+    @Builder.Default
+    private Set<String> permissions = new HashSet<>(); 
+    // --- END NEW DELEGATION FIELDS ---
 
     private ShopProfile shopProfile;
+    
+    private IdentityInfo identityInfo; // New field for CCCD verification
 
     @Builder.Default
     private List<CartItem> cart = new ArrayList<>();
@@ -78,10 +100,24 @@ public class User {
         private String shopDescription;
         private String shopAddress;
         private String shopLogoUrl;
+        private String businessEmail;
+        private String businessPhone;
+        private String taxCode;
         @Builder.Default
         private int lowStockThreshold = 5;
         @Builder.Default
         private boolean holidayMode = false;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class IdentityInfo {
+        private String cccdNumber;
+        private String frontImageUrl; // URL for front of ID
+        private String backImageUrl;  // URL for back of ID
+        private LocalDateTime submittedAt;
     }
 
     @Data
@@ -106,5 +142,6 @@ public class User {
         private String bankName;
         private String accountNumber;
         private String accountHolder;
+        private boolean isDefault;
     }
 }

@@ -1,89 +1,131 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../../services/api'; 
+import api, { getCategories } from '../../services/api'; 
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import ToastNotification from '../../components/Toast/ToastNotification';
 import './AddProduct.css';
 
+interface Category {
+  id: string;
+  name: string;
+}
+
 const AddProduct = () => {
   const navigate = useNavigate();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
+  // 1. Text & Dynamic Data State
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     price: 0,
     stock: 0,
-    category: 'Electronics',
-    images: [] as string[],
+    categoryId: '', // Now using ID from database
     shopName: localStorage.getItem('userName') || 'Cửa hàng của tôi'
   });
+
+  // 2. Specifications State (Dynamic Key-Value Pairs)
+  const [specs, setSpecs] = useState<{ key: string; value: string }[]>([
+    { key: '', value: '' }
+  ]);
+
+  // 3. Media & Category State
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
-  // 1. SECURITY CHECK: Only Verified Sellers
+  // Initial Data Fetch: Security + Categories
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     if (user.sellerVerification !== 'VERIFIED') {
       alert("Bạn cần được Admin phê duyệt tài khoản Người bán trước khi đăng sản phẩm!");
       navigate('/seller/register');
+      return;
     }
+
+    const fetchCategories = async () => {
+      try {
+        const res = await getCategories();
+        setCategories(res.data);
+        if (res.data.length > 0) {
+          setFormData(prev => ({ ...prev, categoryId: res.data[0].id }));
+        }
+      } catch (error) {
+        console.error("Failed to load categories:", error);
+      }
+    };
+    fetchCategories();
   }, [navigate]);
 
-  const categories = ['Electronics', 'Fashion', 'Home & Living', 'Beauty', 'Health', 'Sports', 'Other'];
-
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      const newImages: string[] = [];
-      Array.from(files).forEach(file => {
-        if (file.size > 1024 * 1024) {
-          setToastMessage("Ảnh quá lớn! Vui lòng chọn ảnh dưới 1MB.");
-          setShowToast(true);
-          return;
-        }
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          newImages.push(reader.result as string);
-          if (newImages.length === files.length) {
-            setFormData(prev => ({ 
-              ...prev, 
-              images: [...prev.images, ...newImages].slice(0, 5) 
-            }));
-          }
-        };
-        reader.readAsDataURL(file);
-      });
+    const files = Array.from(e.target.files || []);
+    if (imageFiles.length + files.length > 5) {
+      setToastMessage("Bạn chỉ được tải lên tối đa 5 hình ảnh.");
+      setShowToast(true);
+      return;
+    }
+    setImageFiles(prev => [...prev, ...files]);
+    const newPreviews = files.map(file => URL.createObjectURL(file));
+    setImagePreviews(prev => [...prev, ...newPreviews]);
+  };
+
+  const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.size <= 15 * 1024 * 1024) {
+      setVideoFile(file);
+      setVideoPreview(URL.createObjectURL(file));
+    } else if (file) {
+      setToastMessage("Dung lượng video phải nhỏ hơn 15MB.");
+      setShowToast(true);
     }
   };
 
-  const removeImage = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index)
-    }));
+  // Spec management
+  const addSpecField = () => setSpecs([...specs, { key: '', value: '' }]);
+  const removeSpecField = (index: number) => setSpecs(specs.filter((_, i) => i !== index));
+  const updateSpec = (index: number, field: 'key' | 'value', val: string) => {
+    const newSpecs = [...specs];
+    newSpecs[index][field] = val;
+    setSpecs(newSpecs);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validations...
-    if (!formData.name.trim()) { setToastMessage("Vui lòng nhập tên sản phẩm"); setShowToast(true); return; }
-    if (formData.price <= 0) { setToastMessage("Giá sản phẩm phải lớn hơn 0"); setShowToast(true); return; }
-    if (formData.images.length === 0) { setToastMessage("Vui lòng thêm ít nhất 1 hình ảnh"); setShowToast(true); return; }
+    if (!formData.name.trim() || formData.price <= 0 || imageFiles.length === 0) {
+      setToastMessage("Vui lòng điền đủ tên, giá và ít nhất 1 ảnh.");
+      setShowToast(true);
+      return;
+    }
 
     try {
       setIsSubmitting(true);
+      const data = new FormData();
+
+      // Convert Specs Array to the Map format the Backend expects
+      const specificationsMap: Record<string, string> = {};
+      specs.forEach(s => {
+        if (s.key.trim() && s.value.trim()) specificationsMap[s.key] = s.value;
+      });
+
+      const payload = { ...formData, specifications: specificationsMap };
+      data.append("product", new Blob([JSON.stringify(payload)], { type: "application/json" }));
       
-      // POST to backend. Note: Backend forces status to "PENDING"
-      await api.post('/products/seller/add', formData);
+      imageFiles.forEach(file => data.append("images", file));
+      if (videoFile) data.append("video", videoFile);
+
+      await api.post('/products/seller/add', data, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
       
-      // 2. UPDATED SUCCESS MESSAGE: Be transparent about the review process
-      setToastMessage("Đã gửi sản phẩm! Vui lòng chờ Admin kiểm duyệt trước khi hiển thị.");
+      setToastMessage("Đã gửi sản phẩm! Vui lòng chờ Admin kiểm duyệt.");
       setShowToast(true);
-      
       setTimeout(() => navigate('/seller/my-products'), 2000);
       
     } catch (error: any) {
@@ -96,44 +138,52 @@ const AddProduct = () => {
 
   return (
     <div className="add-product-wrapper">
-      <ToastNotification 
-        message={toastMessage} 
-        isVisible={showToast} 
-        onClose={() => setShowToast(false)} 
-      />
+      <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
 
       <div className="container seller-container">
         <AccountSidebar />
         
         <main className="add-product-main">
           <div className="form-header">
-            <h1>Thêm 1 sản phẩm mới</h1>
-            <p>Sản phẩm sẽ được gửi đến Admin để kiểm duyệt nội dung trước khi công khai.</p>
+            <h1>Đăng bán sản phẩm mới</h1>
+            <p>Sản phẩm sẽ được Admin duyệt trước khi hiển thị công khai.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="product-form">
             <section className="form-section">
-              <h3>Hình ảnh sản phẩm (Tối đa 5 ảnh)</h3>
-              <div className="image-upload-grid">
-                {formData.images.map((img, index) => (
-                  <div key={index} className="image-preview-item">
-                    <img src={img} alt="Preview" />
-                    <button type="button" className="remove-img" onClick={() => removeImage(index)}>×</button>
-                  </div>
-                ))}
-                {formData.images.length < 5 && (
-                  <div className="upload-placeholder" onClick={() => fileInputRef.current?.click()}>
-                    <span>+ Thêm ảnh</span>
-                  </div>
-                )}
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  multiple 
-                  onChange={handleImageChange} 
-                  accept="image/*" 
-                  style={{ display: 'none' }} 
-                />
+              <h3>Hình ảnh & Video</h3>
+              <div className="media-upload-area">
+                <div className="image-upload-grid">
+                  {imagePreviews.map((url, index) => (
+                    <div key={index} className="image-preview-item">
+                      <img src={url} alt="Preview" />
+                      <button type="button" className="remove-img" onClick={() => {
+                        setImageFiles(prev => prev.filter((_, i) => i !== index));
+                        setImagePreviews(prev => prev.filter((_, i) => i !== index));
+                      }}>×</button>
+                    </div>
+                  ))}
+                  {imageFiles.length < 5 && (
+                    <div className="upload-placeholder" onClick={() => imageInputRef.current?.click()}>
+                      <span>+ Thêm ảnh</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="video-upload-area">
+                    {videoPreview ? (
+                        <div className="video-preview-item">
+                            <video src={videoPreview} controls />
+                            <button type="button" className="remove-video" onClick={() => {setVideoFile(null); setVideoPreview(null);}}>Xóa Video</button>
+                        </div>
+                    ) : (
+                        <div className="video-placeholder" onClick={() => videoInputRef.current?.click()}>
+                            <span>📹 Thêm Video giới thiệu (Max 15MB)</span>
+                        </div>
+                    )}
+                </div>
+                <input type="file" ref={imageInputRef} multiple onChange={handleImageChange} accept="image/*" style={{ display: 'none' }} />
+                <input type="file" ref={videoInputRef} onChange={handleVideoChange} accept="video/*" style={{ display: 'none' }} />
               </div>
             </section>
 
@@ -141,33 +191,19 @@ const AddProduct = () => {
               <h3>Thông tin cơ bản</h3>
               <div className="input-group">
                 <label>Tên sản phẩm</label>
-                <input 
-                  type="text" 
-                  value={formData.name} 
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  placeholder="Ví dụ: Apple iPhone 15 Pro Max"
-                  maxLength={120}
-                />
+                <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="Ví dụ: Apple iPhone 15 Pro Max" />
               </div>
 
               <div className="input-group">
-                <label>Mô tả sản phẩm</label>
-                <textarea 
-                  value={formData.description} 
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  placeholder="Mô tả chi tiết sản phẩm..."
-                  rows={6}
-                />
+                <label>Mô tả chi tiết</label>
+                <textarea value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder="Mô tả công dụng, tính năng..." rows={5} />
               </div>
 
               <div className="row-group">
                 <div className="input-group half">
                   <label>Danh mục</label>
-                  <select 
-                    value={formData.category} 
-                    onChange={(e) => setFormData({...formData, category: e.target.value})}
-                  >
-                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                  <select value={formData.categoryId} onChange={(e) => setFormData({...formData, categoryId: e.target.value})}>
+                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
                 <div className="input-group half">
@@ -177,33 +213,40 @@ const AddProduct = () => {
               </div>
             </section>
 
+            {/* NEW SECTION: Specifications (Shopee-style) */}
+            <section className="form-section">
+              <h3>Thông số kỹ thuật</h3>
+              <p className="sub-label">Thêm các thuộc tính như: Thương hiệu, Chất liệu, Bảo hành...</p>
+              <div className="specs-container">
+                {specs.map((spec, index) => (
+                  <div key={index} className="spec-row">
+                    <input type="text" placeholder="Tên (vd: RAM)" value={spec.key} onChange={(e) => updateSpec(index, 'key', e.target.value)} />
+                    <input type="text" placeholder="Giá trị (vd: 16GB)" value={spec.value} onChange={(e) => updateSpec(index, 'value', e.target.value)} />
+                    {specs.length > 1 && <button type="button" className="remove-spec" onClick={() => removeSpecField(index)}>×</button>}
+                  </div>
+                ))}
+                <button type="button" className="add-spec-btn" onClick={addSpecField}>+ Thêm thông số</button>
+              </div>
+            </section>
+
             <section className="form-section">
               <h3>Thông tin bán hàng</h3>
               <div className="row-group">
                 <div className="input-group half">
-                  <label>Giá (₫)</label>
-                  <input 
-                    type="number" 
-                    value={formData.price} 
-                    onChange={(e) => setFormData({...formData, price: Number(e.target.value)})}
-                  />
+                  <label>Giá niêm yết (₫)</label>
+                  <input type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: Number(e.target.value)})} />
                 </div>
                 <div className="input-group half">
-                  <label>Kho hàng</label>
-                  <input 
-                    type="number" 
-                    value={formData.stock} 
-                    onChange={(e) => setFormData({...formData, stock: Number(e.target.value)})}
-                  />
+                  <label>Số lượng tồn kho</label>
+                  <input type="number" value={formData.stock} onChange={(e) => setFormData({...formData, stock: Number(e.target.value)})} />
                 </div>
               </div>
             </section>
 
             <div className="form-actions">
               <button type="button" className="cancel-btn" onClick={() => navigate(-1)}>Hủy</button>
-              {/* 3. UPDATED BUTTON TEXT */}
               <button type="submit" className="submit-btn" disabled={isSubmitting}>
-                {isSubmitting ? "Đang gửi..." : "Gửi yêu cầu kiểm duyệt"}
+                {isSubmitting ? "Đang xử lý..." : "Gửi yêu cầu kiểm duyệt"}
               </button>
             </div>
           </form>

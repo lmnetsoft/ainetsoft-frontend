@@ -24,7 +24,6 @@ public class Order {
     @Builder.Default
     private String status = "PENDING"; 
 
-    // NEW: Review status field to prevent duplicate reviews
     @Builder.Default
     private boolean reviewed = false; 
 

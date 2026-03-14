@@ -7,7 +7,7 @@ const AccountSidebar = () => {
   const [userName, setUserName] = useState(localStorage.getItem('userName') || 'Thành viên');
   const [userAvatar, setUserAvatar] = useState(localStorage.getItem('userAvatar') || '');
   const [isSeller, setIsSeller] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false); // NEW: State for Admin role
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const handleSync = () => {
@@ -16,7 +16,7 @@ const AccountSidebar = () => {
       
       const updatedRoles = JSON.parse(localStorage.getItem('userRoles') || '[]');
       setIsSeller(updatedRoles.includes('SELLER'));
-      setIsAdmin(updatedRoles.includes('ADMIN')); // NEW: Check for ADMIN role
+      setIsAdmin(updatedRoles.includes('ADMIN'));
     };
 
     handleSync();
@@ -32,6 +32,7 @@ const AccountSidebar = () => {
 
   return (
     <aside className="account-sidebar">
+      {/* User Brief Section */}
       <div className="sidebar-user-info">
         <div className="sidebar-avatar-wrapper">
           <img 
@@ -83,7 +84,7 @@ const AccountSidebar = () => {
           </div>
         )}
 
-        {/* 3. ADMIN SECTION (NEW) */}
+        {/* 3. ADMIN SECTION */}
         {isAdmin && (
           <div className="menu-section admin-menu-section">
             <div className="menu-header">
@@ -91,9 +92,11 @@ const AccountSidebar = () => {
               <span className="admin-title">Quản trị viên</span>
             </div>
             <div className="menu-sub-items">
-              <NavLink to="/admin/dashboard" className={({isActive}) => isActive ? 'active' : ''}>Tổng quan Admin</NavLink>
+              <NavLink to="/admin/dashboard" className={({isActive}) => isActive ? 'active' : ''}>
+                Tổng quan Admin
+              </NavLink>
               <NavLink to="/admin/chat" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaComments style={{marginRight: '8px', fontSize: '0.8rem'}} /> 
+                <FaComments className="sub-menu-icon" /> 
                 Quản lý Chat
               </NavLink>
             </div>

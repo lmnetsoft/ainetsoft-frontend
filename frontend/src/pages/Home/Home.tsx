@@ -8,9 +8,11 @@ interface Product {
   id: string;
   name: string;
   price: number;
-  images: string[];
-  imageUrl?: string; // Support for seeded mock data
-  category: string;
+  images?: string[]; // Optional for safety
+  imageUrls?: string[]; // Supporting both naming conventions
+  imageUrl?: string; 
+  category?: string;
+  categoryName?: string;
   shopName: string;
   stock: number;
   status: string; 
@@ -23,6 +25,7 @@ const Home = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   
+  // Initialize as empty array to prevent .filter() errors
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -39,9 +42,11 @@ const Home = () => {
       try {
         setLoading(true);
         const response = await api.get('/products');
-        setProducts(response.data);
+        // GUARD: Ensure products is always an array
+        setProducts(Array.isArray(response.data) ? response.data : []);
       } catch (error) {
         console.error("Failed to fetch products:", error);
+        setProducts([]); // Fallback to empty list instead of crashing
       } finally {
         setLoading(false);
       }
@@ -72,6 +77,7 @@ const Home = () => {
     }
   };
 
+  // Your original static categories
   const categories = [
     "Máy Tính", "TiVi", "Âm Thanh", "Điện Thoại", "Dịch Vụ IT", "Máy Ảnh", 
     "Thiết Bị VP", "Thiết Bị Mạng", "Linh Kiện", "Gia Dụng", "Thời Trang", "Sức Khỏe",
@@ -82,15 +88,21 @@ const Home = () => {
     "Máy tính xách tay", "iPhone 15", "Máy giặt Inverter", "Bàn phím cơ", "Đồng hồ thông minh"
   ];
 
-  // 3. Integrated Filtering Logic (Search + Rating Filter)
-  const displayProducts = products.filter(p => {
+  // 3. Integrated Filtering Logic (With Array Guard)
+  const displayProducts = Array.isArray(products) ? products.filter(p => {
+    // Robust naming check: support both 'category' and 'categoryName'
+    const categoryToMatch = (p.categoryName || p.category || "").toLowerCase();
+    
     const matchesSearch = p.name.toLowerCase().includes(searchQuery) || 
-                          p.category.toLowerCase().includes(searchQuery);
+                          categoryToMatch.includes(searchQuery);
+    
     const matchesRating = (p.averageRating || 0) >= minRatingParam;
-    const isApproved = p.status === 'APPROVED' || !p.status;
+    
+    // In dev mode, allow items without status, but strictly check APPROVED for production
+    const isApproved = p.status === 'APPROVED' || !p.status; 
     
     return isApproved && matchesSearch && matchesRating;
-  });
+  }) : [];
 
   return (
     <div className="home-page">
@@ -118,8 +130,9 @@ const Home = () => {
           <div className="category-wrapper">
             <button className="scroll-btn left" onClick={() => scroll('left')}>‹</button>
             <div className="category-grid" ref={scrollRef}>
+              {/* This is safe now because categories is a static array */}
               {categories.map((cat, index) => (
-                <div key={index} className="category-item" onClick={() => navigate(`/?search=${cat}`)}>
+                <div key={index} className="category-item" onClick={() => navigate(`/?search=${encodeURIComponent(cat)}`)}>
                   <div className="category-icon-placeholder"></div>
                   <span>{cat}</span>
                 </div>
@@ -147,9 +160,8 @@ const Home = () => {
                 {displayProducts.map(product => (
                   <div key={product.id} className="result-card" onClick={() => navigate(`/product/${product.id}`)}>
                     <div className="product-image-wrapper">
-                       {/* CRITICAL FIX: Optional chaining and hybrid fallback */}
                        <img 
-                          src={product.images?.[0] || product.imageUrl || "/placeholder.png"} 
+                          src={product.imageUrls?.[0] || product.images?.[0] || product.imageUrl || "/placeholder.png"} 
                           alt={product.name} 
                           onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder.png" }}
                        />
