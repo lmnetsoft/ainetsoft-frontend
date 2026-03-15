@@ -23,9 +23,20 @@ public class User {
     @Id
     private String id;
     
-    @Indexed(unique = true)
+    /**
+     * FIXED: Added sparse = true to allow multiple users with NULL email 
+     * (e.g., Phone-only users like BestSeller) to coexist.
+     */
+    @Indexed(unique = true, sparse = true)
     private String email;
+
+    /**
+     * FIXED: Added sparse = true to allow users with NULL phone 
+     * (e.g., Google/Facebook users) to coexist.
+     */
+    @Indexed(unique = true, sparse = true)
     private String phone;
+
     private String password; 
     private String fullName;
     private String gender;
@@ -43,29 +54,20 @@ public class User {
     @Builder.Default
     private String accountStatus = "ACTIVE"; 
 
-    /**
-     * Verification States: 
-     * NONE: Default buyer
-     * PENDING: User submitted info, waiting for admin
-     * REJECTED: Admin denied (check rejectionReason)
-     * VERIFIED: Full Seller access
-     */
     @Builder.Default
     private String sellerVerification = "NONE"; 
     
     private String rejectionReason;
 
-    // --- START NEW DELEGATION FIELDS ---
     @Builder.Default
-    private boolean isGlobalAdmin = false; // admin@ainetsoft.com
+    private boolean isGlobalAdmin = false; 
 
     @Builder.Default
     private Set<String> permissions = new HashSet<>(); 
-    // --- END NEW DELEGATION FIELDS ---
 
     private ShopProfile shopProfile;
     
-    private IdentityInfo identityInfo; // New field for CCCD verification
+    private IdentityInfo identityInfo; 
 
     @Builder.Default
     private List<CartItem> cart = new ArrayList<>();
@@ -115,8 +117,8 @@ public class User {
     @Builder
     public static class IdentityInfo {
         private String cccdNumber;
-        private String frontImageUrl; // URL for front of ID
-        private String backImageUrl;  // URL for back of ID
+        private String frontImageUrl; 
+        private String backImageUrl;  
         private LocalDateTime submittedAt;
     }
 

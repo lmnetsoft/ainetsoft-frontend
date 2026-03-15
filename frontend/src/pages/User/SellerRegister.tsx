@@ -19,9 +19,10 @@ const SellerRegister = () => {
   const [userStatus, setUserStatus] = useState<string>('NONE');
   const [rejectionReason, setRejectionReason] = useState<string>('');
 
-  // --- FULL FORM STATE ---
+  // --- FULL FORM STATE (UPDATED WITH EMAIL) ---
   const [formData, setFormData] = useState({
     phone: '',
+    email: '', // MANDATORY for system notifications
     cccdNumber: '',
     frontImage: null as File | null,
     backImage: null as File | null,
@@ -49,6 +50,7 @@ const SellerRegister = () => {
         setFormData(prev => ({
           ...prev,
           phone: data.phone || '',
+          email: data.email || '', // Pre-fill if the user already has one
           shopName: data.shopProfile?.shopName || '',
           shopAddress: data.shopProfile?.shopAddress || '',
           taxCode: data.shopProfile?.taxCode || '',
@@ -89,15 +91,22 @@ const SellerRegister = () => {
     }
   };
 
-  // --- VALIDATION LOGIC ---
+  // --- VALIDATION LOGIC (UPDATED STEP 1) ---
   const isStepValid = () => {
     switch (step) {
-      case 1: return formData.phone.length >= 10;
-      case 2: return formData.cccdNumber.length === 12 && formData.frontImage !== null && formData.backImage !== null;
-      case 3: return formData.shopName.trim() !== '' && formData.shopAddress.trim() !== '';
-      case 4: return formData.bankName.trim() !== '' && formData.accountNumber.trim() !== '' && formData.accountHolder.trim() !== '';
-      case 5: return true;
-      default: return false;
+      case 1: 
+        // Must have phone AND valid email format
+        return formData.phone.length >= 10 && formData.email.includes('@');
+      case 2: 
+        return formData.cccdNumber.length === 12 && formData.frontImage !== null && formData.backImage !== null;
+      case 3: 
+        return formData.shopName.trim() !== '' && formData.shopAddress.trim() !== '';
+      case 4: 
+        return formData.bankName.trim() !== '' && formData.accountNumber.trim() !== '' && formData.accountHolder.trim() !== '';
+      case 5: 
+        return true;
+      default: 
+        return false;
     }
   };
 
@@ -106,7 +115,11 @@ const SellerRegister = () => {
       setStep(step + 1);
       window.scrollTo(0, 0);
     } else {
-      toast.error("Vui lòng hoàn thành đầy đủ thông tin yêu cầu.");
+      if (step === 1 && !formData.email.includes('@')) {
+        toast.error("Vui lòng nhập Email hợp lệ để nhận thông báo.");
+      } else {
+        toast.error("Vui lòng hoàn thành đầy đủ thông tin yêu cầu.");
+      }
     }
   };
 
@@ -139,7 +152,6 @@ const SellerRegister = () => {
 
   if (loading) return <div className="loading-spinner">Đang tải...</div>;
 
-  // --- VIEW 1: PENDING ---
   if (userStatus === 'PENDING') {
     return (
       <div className="profile-wrapper">
@@ -158,7 +170,6 @@ const SellerRegister = () => {
     );
   }
 
-  // --- VIEW 2: VERIFIED (The Success screen after Admin clicks Approve) ---
   if (userStatus === 'VERIFIED') {
     return (
       <div className="profile-wrapper">
@@ -170,7 +181,7 @@ const SellerRegister = () => {
               <h1>Đăng ký thành công!</h1>
               <p>Chào mừng bạn gia nhập đội ngũ Người bán của AiNetsoft.</p>
               <button onClick={() => navigate('/seller/dashboard')} className="btn-go-seller">
-                 Truy cập Kênh Người Bán <FaRocket />
+                  Truy cập Kênh Người Bán <FaRocket />
               </button>
             </div>
           </main>
@@ -179,7 +190,6 @@ const SellerRegister = () => {
     );
   }
 
-  // --- VIEW 3: REJECTED ---
   if (userStatus === 'REJECTED') {
     return (
       <div className="profile-wrapper">
@@ -198,7 +208,6 @@ const SellerRegister = () => {
     );
   }
 
-  // --- VIEW 4: THE FULL 5-STEP FORM (NONE / RE-REGISTER) ---
   return (
     <div className="profile-wrapper">
       <div className="container profile-container">
@@ -214,7 +223,7 @@ const SellerRegister = () => {
             {renderStepper()}
 
             <div className="step-content">
-              {/* STEP 1: CONTACT */}
+              {/* STEP 1: CONTACT (UPDATED WITH EMAIL) */}
               {step === 1 && (
                 <div className="form-step">
                   <h3><span className="step-indicator">|</span> Xác thực Liên hệ</h3>
@@ -222,6 +231,14 @@ const SellerRegister = () => {
                     <label>Số điện thoại <span className="required">*</span></label>
                     <input type="text" name="phone" value={formData.phone} onChange={handleNumericInputChange} placeholder="Nhập số điện thoại" />
                   </div>
+                  
+                  {/* NEW MANDATORY EMAIL FIELD */}
+                  <div className="input-group">
+                    <label>Email tài khoản <span className="required">*</span></label>
+                    <input type="email" name="email" value={formData.email} onChange={handleInputChange} placeholder="Nhập email để nhận thông báo" />
+                    <p className="field-hint">Hệ thống sẽ gửi thông tin đối soát và phê duyệt qua email này.</p>
+                  </div>
+
                   <div className="step-actions">
                     <button className={`btn-next ${!isStepValid() ? 'disabled' : ''}`} onClick={handleNext}>
                       Tiếp theo <FaArrowRight />
@@ -317,6 +334,7 @@ const SellerRegister = () => {
                   <h3><span className="step-indicator">|</span> Xác nhận thông tin</h3>
                   <div className="review-box">
                     <div className="review-row"><strong>SĐT:</strong> {formData.phone}</div>
+                    <div className="review-row"><strong>Email:</strong> {formData.email}</div>
                     <div className="review-row"><strong>CCCD:</strong> {formData.cccdNumber}</div>
                     <div className="review-row"><strong>Shop:</strong> {formData.shopName}</div>
                     <div className="review-row"><strong>Địa chỉ:</strong> {formData.shopAddress}</div>

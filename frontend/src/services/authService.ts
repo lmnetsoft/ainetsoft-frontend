@@ -1,5 +1,8 @@
 import api from './api'; 
 
+/**
+ * Utility to extract clean error messages from backend responses.
+ */
 const extractError = (error: any, defaultMsg: string): string => {
   const errorData = error.response?.data;
   if (typeof errorData === 'string') return errorData;
@@ -11,7 +14,7 @@ const extractError = (error: any, defaultMsg: string): string => {
 
 /**
  * Utility to clear ONLY authentication data.
- * This preserves the 'chatGuestId' so visitors don't lose chat history.
+ * Preserves 'chatGuestId' so visitors don't lose chat history during logout/expiry.
  */
 const clearAuthData = () => {
     const keysToRemove = [
@@ -39,7 +42,6 @@ export const getUserProfile = async (): Promise<any> => {
       if (name || email) {
         localStorage.setItem('isAuthenticated', 'true');
         localStorage.setItem('userName', name || 'Thành viên');
-        
         localStorage.setItem('userEmail', response.data.email || '');
         localStorage.setItem('userPhone', response.data.phone || '');
         localStorage.setItem('userAvatar', response.data.avatarUrl || '');
@@ -148,15 +150,17 @@ export const resetPassword = async (resetData: { contactInfo: string, otp: strin
 };
 
 /**
- * FIXED: upgradeToSeller handles Multipart/FormData with application/json Blob
+ * UPDATED: upgradeToSeller now includes mandatory 'email' in the JSON Blob
+ * to support users who registered with Phone but need an Email for Seller status.
  */
 export const upgradeToSeller = async (formData: any): Promise<string> => {
   try {
     const bodyFormData = new FormData();
 
-    // Prepare JSON part
+    // Prepare JSON part - Sync with backend SellerRegistrationDTO
     const registrationData = {
       phone: formData.phone,
+      email: formData.email, // Mandatory field added
       cccdNumber: formData.cccdNumber,
       shopName: formData.shopName,
       shopAddress: formData.shopAddress,
@@ -166,7 +170,7 @@ export const upgradeToSeller = async (formData: any): Promise<string> => {
       accountHolder: formData.accountHolder
     };
 
-    // Wrap JSON in Blob to ensure Content-Type: application/json for this part
+    // Wrap JSON in Blob to ensure Content-Type: application/json for this @RequestPart
     const jsonBlob = new Blob([JSON.stringify(registrationData)], {
       type: 'application/json'
     });
@@ -182,7 +186,7 @@ export const upgradeToSeller = async (formData: any): Promise<string> => {
 
     const response = await api.post('/auth/upgrade-seller', bodyFormData);
     
-    // Refresh profile to reflect PENDING status
+    // Crucial: Refresh profile so the UI reflects the PENDING status and updated email
     await getUserProfile(); 
     
     return response.data;

@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -49,8 +50,10 @@ public class AuthService {
         }
 
         // Create a unique filename: userId_front_timestamp.jpg
-        String extension = Objects.requireNonNull(file.getOriginalFilename())
-                .substring(file.getOriginalFilename().lastIndexOf("."));
+        String originalName = file.getOriginalFilename();
+        String extension = (originalName != null && originalName.contains(".")) 
+                ? originalName.substring(originalName.lastIndexOf(".")) : ".jpg";
+        
         String fileName = userId + "_" + side + "_" + System.currentTimeMillis() + extension;
         
         Path filePath = uploadPath.resolve(fileName);
@@ -212,9 +215,10 @@ public class AuthService {
     }
 
     /**
-     * FULL MERGED UPGRADE LOGIC
-     * Fixed saveFile arguments (2 instead of 3) and inner class name (BankInfo).
+     * UPDATED UPGRADE LOGIC: MANDATORY EMAIL REQUIREMENT
+     * Merged with original logic to ensure all identity types can upgrade.
      */
+    @Transactional
     public String upgradeToSeller(String contactInfo, SellerRegistrationDTO dto, MultipartFile front, MultipartFile back) {
         String identifier = normalizeIdentifier(contactInfo);
         User user = userRepository.findByIdentifier(identifier)
@@ -224,8 +228,23 @@ public class AuthService {
             return "Bạn đã là Người bán rồi!";
         }
 
+        // --- NEW REQUIREMENT: MANDATORY EMAIL ---
+        String providedEmail = (dto.getEmail() != null) ? dto.getEmail().trim().toLowerCase() : null;
+        if (providedEmail == null || providedEmail.isEmpty()) {
+            throw new RuntimeException("Email là bắt buộc để đăng ký làm Người bán! (Hệ thống cần gửi đối soát)");
+        }
+
+        // Verify if email is already taken
+        Optional<User> existingEmailUser = userRepository.findByEmail(providedEmail);
+        if (existingEmailUser.isPresent() && !existingEmailUser.get().getId().equals(user.getId())) {
+            throw new RuntimeException("Email '" + providedEmail + "' đã được sử dụng bởi một tài khoản khác!");
+        }
+        
+        // Permanent update: Ensure user now has this email
+        user.setEmail(providedEmail);
+
         try {
-            // 1. Save CCCD Images using the FileStorageService (2 arguments only)
+            // 1. Save CCCD Images using FileStorageService
             String frontUrl = fileStorageService.saveFile(front, "cccd");
             String backUrl = fileStorageService.saveFile(back, "cccd");
 
@@ -237,33 +256,33 @@ public class AuthService {
                     .submittedAt(LocalDateTime.now())
                     .build());
 
-            // 3. Map Shop Profile (Including Tax Code)
+            // 3. Map Shop Profile
             user.setShopProfile(User.ShopProfile.builder()
                     .shopName(dto.getShopName())
                     .shopAddress(dto.getShopAddress())
                     .taxCode(dto.getTaxCode()) 
-                    .businessPhone(dto.getPhone() != null ? dto.getPhone() : user.getPhone())
+                    .businessPhone(dto.getPhone() != null ? normalizePhone(dto.getPhone()) : user.getPhone())
                     .build());
 
-            // 4. Map Bank Account (FIXED: Using BankInfo class name)
+            // 4. Map Bank Account
             List<User.BankInfo> banks = new ArrayList<>();
             banks.add(User.BankInfo.builder()
                     .bankName(dto.getBankName())
                     .accountNumber(dto.getAccountNumber())
-                    .accountHolder(dto.getAccountHolder())
+                    .accountHolder(dto.getAccountHolder().toUpperCase())
                     .isDefault(true)
                     .build());
             user.setBankAccounts(banks);
 
-            // 5. Update Status for Admin Board (Critical)
+            // 5. Update Status
             user.setSellerVerification("PENDING");
             user.setAccountStatus("PENDING_SELLER");
             user.setUpdatedAt(LocalDateTime.now());
             
             userRepository.save(user);
-            log.info("Seller Upgrade request received for: {}. Status set to PENDING_SELLER.", identifier);
+            log.info("Upgrade request received. User ID: {}, Identifier: {}, Email: {}", user.getId(), identifier, providedEmail);
             
-            return "Hồ sơ đã được gửi! Vui lòng chờ Admin phê duyệt.";
+            return "Hồ sơ đã được gửi! Admin sẽ phản hồi qua email: " + providedEmail;
             
         } catch (Exception e) {
             log.error("File upload error: {}", e.getMessage());
