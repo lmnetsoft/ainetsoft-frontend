@@ -40,15 +40,6 @@ public class AdminController {
         }
     }
 
-    /**
-     * GET /api/admin/summary
-     * Fetches statistics for the Dashboard (Revenue, Users, etc.)
-     */
-    @GetMapping("/summary")
-    public ResponseEntity<?> getGlobalStats() {
-        return ResponseEntity.ok(adminService.getGlobalStats());
-    }
-
     // --- USER MANAGEMENT & DELEGATION ---
 
     @GetMapping("/users/all")
@@ -91,7 +82,7 @@ public class AdminController {
 
     /**
      * GET /api/admin/sellers/pending
-     * Lists all users currently in the PENDING_SELLER state.
+     * Lists all users currently in the PENDING state.
      */
     @GetMapping("/sellers/pending")
     public ResponseEntity<?> getPendingSellers() {

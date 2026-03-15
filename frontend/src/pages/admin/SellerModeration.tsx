@@ -19,14 +19,24 @@ const SellerModeration = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
 
+  // --- CONFIG ---
+  const API_BASE_URL = "http://localhost:8080";
+
+  /**
+   * Helper to ensure images load from the Backend port
+   */
+  const getFullImageUrl = (path: string | null | undefined) => {
+    if (!path) return '/default-avatar.png';
+    if (path.startsWith('http')) return path; // Already a full URL (like Google/FB avatars)
+    return `${API_BASE_URL}${path}`;
+  };
+
   // --- FETCH DATA ---
   const fetchPending = async () => {
     try {
       setLoading(true);
-      // Calls @GetMapping("/admin/sellers/pending")
       const data = await adminService.getPendingSellers();
       
-      // STABILITY FIX: Ensure Bestseller shows up even if data is wrapped
       if (Array.isArray(data)) {
         setPendingSellers(data);
       } else if (data && data.users) {
@@ -70,14 +80,13 @@ const SellerModeration = () => {
 
     try {
       setIsProcessing(true);
-      // Synchronized with AdminController.java POST @/sellers/process/{userId}
       await adminService.approveSeller(selectedSeller.id, approved, adminNote);
       
       setShowModal(false);
       triggerSuccessAnimation(approved ? "Đã phê duyệt người bán!" : "Đã từ chối hồ sơ");
       
       setAdminNote('');
-      fetchPending(); // Refresh list to remove the processed user
+      fetchPending(); 
     } catch (err) {
       console.error("Action Error:", err);
       toast.error("Thao tác thất bại.");
@@ -139,9 +148,13 @@ const SellerModeration = () => {
                 <tr key={seller.id}>
                   <td>
                     <div className="user-info-cell">
-                      <img src={seller.avatarUrl || '/default-avatar.png'} alt="avatar" />
+                      <img 
+                        src={getFullImageUrl(seller.avatarUrl)} 
+                        alt="avatar" 
+                        onError={(e) => { e.currentTarget.src = '/default-avatar.png'; }}
+                      />
                       <div className="name-box">
-                        <strong className="full-name">{seller.fullName || 'Test User'}</strong>
+                        <strong className="full-name">{seller.fullName || 'Người dùng'}</strong>
                         <span className="user-id">UID: {seller.id?.substring(0, 8)}</span>
                       </div>
                     </div>
@@ -201,13 +214,21 @@ const SellerModeration = () => {
                     <div className="id-image-item">
                       <span className="img-label">Mặt trước</span>
                       <div className="img-wrapper">
-                        <img src={selectedSeller.identityInfo?.frontImageUrl} alt="Front" />
+                        <img 
+                            src={getFullImageUrl(selectedSeller.identityInfo?.frontImageUrl)} 
+                            alt="Mặt trước CCCD" 
+                            onError={(e) => { e.currentTarget.src = '/default-placeholder.png'; }}
+                        />
                       </div>
                     </div>
                     <div className="id-image-item">
                       <span className="img-label">Mặt sau</span>
                       <div className="img-wrapper">
-                        <img src={selectedSeller.identityInfo?.backImageUrl} alt="Back" />
+                        <img 
+                            src={getFullImageUrl(selectedSeller.identityInfo?.backImageUrl)} 
+                            alt="Mặt sau CCCD" 
+                            onError={(e) => { e.currentTarget.src = '/default-placeholder.png'; }}
+                        />
                       </div>
                     </div>
                   </div>
@@ -261,11 +282,19 @@ const SellerModeration = () => {
                 />
               </div>
               <div className="button-group">
-                <button className="btn-reject-modal" onClick={() => handleAction(false)} disabled={isProcessing}>
+                <button 
+                  className="btn-reject-modal" 
+                  onClick={() => handleAction(false)} 
+                  disabled={isProcessing}
+                >
                   Từ chối
                 </button>
-                <button className="btn-approve-modal" onClick={() => handleAction(true)} disabled={isProcessing}>
-                  Phê duyệt
+                <button 
+                  className="btn-approve-modal" 
+                  onClick={() => handleAction(true)} 
+                  disabled={isProcessing}
+                >
+                  {isProcessing ? 'Đang xử lý...' : 'Phê duyệt'}
                 </button>
               </div>
             </div>

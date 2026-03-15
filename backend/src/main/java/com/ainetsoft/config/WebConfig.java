@@ -15,7 +15,7 @@ public class WebConfig implements WebMvcConfigurer {
         // 1. Target the 'uploads' folder relative to the project root
         String dirName = "uploads";
         
-        // BITNAMILEGACY FIX: Ensure both base and cccd subfolders exist to avoid mapping errors
+        // BITNAMILEGACY FIX: (KEPT) Ensure both base and cccd subfolders exist
         File uploadFolder = new File(dirName);
         File cccdFolder = new File(dirName + "/cccd");
         
@@ -28,26 +28,21 @@ public class WebConfig implements WebMvcConfigurer {
 
         Path uploadDir = Paths.get(dirName).toAbsolutePath();
         
-        // 2. Convert to URI string (file:/...)
-        String uploadPath = uploadDir.toUri().toString();
-
-        // 3. Trailing slash check
-        if (!uploadPath.endsWith("/")) {
-            uploadPath += "/";
-        }
+        // 2. FIXED PATH MAPPING:
+        // We ensure it starts with 'file:' and ends with the correct OS slash.
+        // This is the most stable way to let Spring "see" into the /cccd/ folder.
+        String uploadPath = "file:" + uploadDir.toString() + File.separator;
 
         /**
-         * 4. Register the mapping
-         * This maps 'http://localhost:8080/api/uploads/...' to the physical folder.
-         * Note: I added '/api/' prefix to the handler to match the standard API routing 
-         * and the return path in AuthService.
+         * 3. Register the mapping
+         * Maps 'http://localhost:8080/api/uploads/...' to the physical folder.
          */
         registry.addResourceHandler("/api/" + dirName + "/**")
                 .addResourceLocations(uploadPath)
-                .setCachePeriod(3600) 
+                .setCachePeriod(0) // Set to 0 for debugging so images update immediately
                 .resourceChain(true);
 
-        // 5. Debug Print
+        // 4. Debug Print (KEPT)
         System.out.println("=================================================");
         System.out.println("SYSTEM MEDIA STORAGE ACTIVE");
         System.out.println("Mapping URL: /api/" + dirName + "/**");

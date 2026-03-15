@@ -58,7 +58,7 @@ public class SecurityConfig {
                     "/oauth2/**",
                     "/login/oauth2/**",
                     "/error",
-                    "/uploads/**",             
+                    "/api/uploads/**",         // FIXED: Allow browser to load CCCD & Product images
                     "/api/chat/download/**",
                     "/ws/**"                   // WebSocket connection
                 ).permitAll() 
@@ -71,6 +71,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll() 
 
                 // --- 2. ADMIN ONLY ENDPOINTS ---
+                .requestMatchers("/api/admin/**").hasRole("ADMIN") // SECURED: All admin stats & moderation
                 .requestMatchers("/api/chat/admin/**").hasRole("ADMIN")
 
                 // --- 3. AUTHENTICATED USER ENDPOINTS ---
@@ -108,7 +109,6 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        // Update this list if you have a production domain
         config.setAllowedOrigins(List.of("http://localhost:5173")); 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
