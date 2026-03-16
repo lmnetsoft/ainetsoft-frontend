@@ -5,6 +5,9 @@ import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import ToastNotification from '../../components/Toast/ToastNotification';
 import './AddProduct.css';
 
+// The base URL for your backend server
+const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:8080';
+
 interface Category {
   id: string;
   name: string;
@@ -22,7 +25,8 @@ const AddProduct = () => {
     price: 0,
     stock: 0,
     categoryId: '', 
-    shopName: localStorage.getItem('userName') || 'Cửa hàng của tôi'
+    shopName: localStorage.getItem('userName') || 'Cửa hàng của tôi',
+    sellerId: '' // Track sellerId for path consistency
   });
 
   // 2. Specifications State
@@ -41,25 +45,34 @@ const AddProduct = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
-  // --- FIXED: Used /auth/me to avoid 405 Method Not Allowed error ---
+  /**
+   * DYNAMIC PATH RESOLVER
+   * Standardized across the Seller dashboard to handle the uploads/ads/{sellerId}/ structure.
+   */
+  const formatMediaUrl = (url?: string) => {
+    if (!url || url === 'undefined' || url === 'null' || url === '') return "/placeholder.png";
+    if (url.startsWith('http') || url.startsWith('blob:')) return url;
+    const cleanPath = url.startsWith('/') ? url : `/${url}`;
+    return `${BASE_URL}${cleanPath}`;
+  };
+
   useEffect(() => {
     const checkStatusAndFetchData = async () => {
       try {
-        // 1. Fetch FRESH user data from backend using the correct GET endpoint
         const profileRes = await api.get('/auth/me'); 
         const latestUser = profileRes.data;
 
-        // 2. Sync localStorage so other components are aware of the update
         localStorage.setItem('user', JSON.stringify(latestUser));
 
-        // 3. Security Guard check: only proceed if VERIFIED
         if (latestUser.sellerVerification !== 'VERIFIED') {
           alert("Bạn cần được Admin phê duyệt tài khoản Người bán trước khi đăng sản phẩm!");
           navigate('/seller/register');
           return;
         }
 
-        // 4. Fetch Categories only after verification is confirmed
+        // Capture the sellerId for internal state
+        setFormData(prev => ({ ...prev, sellerId: latestUser.id || latestUser.userId }));
+
         const catRes = await getCategories();
         setCategories(catRes.data);
         if (catRes.data.length > 0) {
@@ -67,7 +80,6 @@ const AddProduct = () => {
         }
       } catch (error) {
         console.error("Security check failed:", error);
-        // If profile fetch fails (401/403/405), user is redirected by interceptor or manually
         navigate('/login');
       }
     };
@@ -136,7 +148,6 @@ const AddProduct = () => {
       setToastMessage("Đã gửi sản phẩm! Vui lòng chờ Admin kiểm duyệt.");
       setShowToast(true);
 
-      // --- FIXED: Corrected path from /seller/my-products to /seller/products ---
       setTimeout(() => navigate('/seller/products'), 2000);
       
     } catch (error: any) {

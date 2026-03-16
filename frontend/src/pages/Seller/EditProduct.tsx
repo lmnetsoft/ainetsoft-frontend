@@ -5,6 +5,9 @@ import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import ToastNotification from '../../components/Toast/ToastNotification';
 import './AddProduct.css'; 
 
+// The base URL for your backend server
+const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:8080';
+
 interface Category {
   id: string;
   name: string;
@@ -23,7 +26,8 @@ const EditProduct = () => {
     price: 0,
     stock: 0,
     categoryId: '',
-    shopName: ''
+    shopName: '',
+    sellerId: '' // Track sellerId to ensure path consistency for subfolders
   });
 
   // 2. Media Management
@@ -32,7 +36,6 @@ const EditProduct = () => {
   const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
   
   const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [videoPreview, setVideoPreview] = useState<string | null>(null);
 
   // 3. Metadata
   const [categories, setCategories] = useState<Category[]>([]);
@@ -43,18 +46,32 @@ const EditProduct = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
+  /**
+   * DYNAMIC IMAGE RESOLVER
+   * Standardized to handle the uploads/ads/{sellerId}/ structure.
+   * Prepends the BASE_URL to any relative path coming from the DB.
+   */
+  const formatMediaUrl = (url?: string) => {
+    if (!url || url === 'undefined' || url === 'null' || url === '') return "/placeholder.png";
+    if (url.startsWith('http') || url.startsWith('blob:')) return url;
+    
+    // Standardize leading slash to avoid double-slashes or missing slashes
+    const cleanPath = url.startsWith('/') ? url : `/${url}`;
+    
+    return `${BASE_URL}${cleanPath}`;
+  };
+
   useEffect(() => {
     const initData = async () => {
       try {
         setLoading(true);
-        // Sync User status & Fetch Categories
         const [profileRes, catRes, prodRes] = await Promise.all([
           api.get('/auth/me'),
           getCategories(),
           api.get(`/products/${id}`)
         ]);
 
-        // Security Check
+        // Security Check: Only verified sellers can edit
         if (profileRes.data.sellerVerification !== 'VERIFIED') {
           navigate('/seller/register');
           return;
@@ -62,7 +79,6 @@ const EditProduct = () => {
 
         setCategories(catRes.data);
 
-        // Map Product Data
         const p = prodRes.data;
         setFormData({
           name: p.name,
@@ -70,12 +86,15 @@ const EditProduct = () => {
           price: p.price,
           stock: p.stock,
           categoryId: p.categoryId || (catRes.data[0]?.id),
-          shopName: p.shopName
+          shopName: p.shopName,
+          sellerId: p.sellerId // Capture owner ID for potential path logic
         });
 
-        setExistingImages(p.images || []);
+        // Use the image array from backend (checking common naming variations)
+        const imageList = p.imageUrls || p.images || [];
+        setExistingImages(Array.isArray(imageList) ? imageList : []);
         
-        // Convert Specs Map back to Array for the UI
+        // Convert Specifications Map back to Array for the UI
         if (p.specifications) {
           const specArray = Object.entries(p.specifications).map(([key, value]) => ({ 
             key, 
@@ -125,24 +144,20 @@ const EditProduct = () => {
       setIsSubmitting(true);
       const data = new FormData();
 
-      // Convert Specs to Map
       const specMap: Record<string, string> = {};
       specs.forEach(s => {
         if (s.key.trim() && s.value.trim()) specMap[s.key] = s.value;
       });
 
-      // Combine existing images (URLs) and new ones logic
-      // Note: Backend needs to know which existing images to keep. 
-      // For now, we update the product object with the final URL list
       const productPayload = { 
         ...formData, 
         specifications: specMap,
-        images: existingImages // Keeping these
+        images: existingImages // These are the URLs we chose to KEEP
       };
 
       data.append("product", new Blob([JSON.stringify(productPayload)], { type: "application/json" }));
       
-      // Append New Files
+      // Add newly uploaded files
       newImageFiles.forEach(file => data.append("images", file));
       if (videoFile) data.append("video", videoFile);
 
@@ -152,8 +167,6 @@ const EditProduct = () => {
       
       setToastMessage("Cập nhật thành công! Đang chờ Admin duyệt lại.");
       setShowToast(true);
-      
-      // FIXED: Navigate to the correct products path
       setTimeout(() => navigate('/seller/products'), 2000);
     } catch (error: any) {
       setToastMessage(error.response?.data?.message || "Lỗi khi cập nhật.");
@@ -183,14 +196,20 @@ const EditProduct = () => {
               <h3>Hình ảnh sản phẩm (Tối đa 5)</h3>
               <div className="media-upload-area">
                 <div className="image-upload-grid">
-                  {/* Render Existing Images */}
+                  
+                  {/* RENDER EXISTING IMAGES - RESOLVED VIA SUBFOLDER PATHS */}
                   {existingImages.map((url, index) => (
                     <div key={`exist-${index}`} className="image-preview-item">
-                      <img src={url} alt="Current" />
+                      <img 
+                        src={formatMediaUrl(url)} 
+                        alt="Current" 
+                        onError={(e) => { e.currentTarget.src = "/placeholder.png"; }}
+                      />
                       <button type="button" className="remove-img" onClick={() => setExistingImages(prev => prev.filter((_, i) => i !== index))}>×</button>
                     </div>
                   ))}
-                  {/* Render New Uploads */}
+                  
+                  {/* RENDER NEW UPLOADS */}
                   {newImagePreviews.map((url, index) => (
                     <div key={`new-${index}`} className="image-preview-item new-upload">
                       <img src={url} alt="New" />
@@ -200,6 +219,7 @@ const EditProduct = () => {
                       }}>×</button>
                     </div>
                   ))}
+
                   {(existingImages.length + newImageFiles.length) < 5 && (
                     <div className="upload-placeholder" onClick={() => imageInputRef.current?.click()}>
                       <span>+ Thêm ảnh</span>

@@ -30,19 +30,30 @@ public class ProductService {
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
 
-    private final String uploadDir = "uploads/";
+    // Base directory
+    private final String uploadDir = "uploads";
 
-    private String saveFile(MultipartFile file) {
+    /**
+     * UPDATED: Accepts a subFolder parameter (e.g., "ads/sellerId")
+     * to organize files correctly.
+     */
+    private String saveFile(MultipartFile file, String subFolder) {
         if (file == null || file.isEmpty()) return null;
         try {
-            Path path = Paths.get(uploadDir);
-            if (!Files.exists(path)) Files.createDirectories(path);
+            // Full directory: uploads/ads/sellerId
+            Path targetDir = Paths.get(uploadDir, subFolder);
+            
+            if (!Files.exists(targetDir)) {
+                Files.createDirectories(targetDir);
+            }
 
             String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
-            Path filePath = path.resolve(fileName);
+            Path filePath = targetDir.resolve(fileName);
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
             
-            return "/uploads/" + fileName;
+            // Return the path starting from /uploads/ for the frontend
+            // Result: /uploads/ads/sellerId/filename.webp
+            return "/uploads/" + subFolder + "/" + fileName;
         } catch (IOException e) {
             log.error("Lỗi khi lưu tệp: {}", e.getMessage());
             throw new RuntimeException("Không thể lưu tệp đính kèm!");
@@ -58,9 +69,6 @@ public class ProductService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm!"));
     }
 
-    /**
-     * UPDATED: Now validates dynamic Category and saves Specifications.
-     */
     public Product createProductWithMedia(String contactInfo, Product product, List<MultipartFile> images, MultipartFile video) {
         User user = userRepository.findByIdentifier(contactInfo)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
@@ -69,25 +77,28 @@ public class ProductService {
             throw new RuntimeException("Tài khoản Người bán của bạn chưa được Admin phê duyệt!");
         }
 
-        // 1. Dynamic Category Lookup
+        // Prepare the subfolder path using Seller ID
+        String sellerSubFolder = "ads/" + user.getId();
+
         if (product.getCategoryId() != null) {
             Category category = categoryRepository.findById(product.getCategoryId())
                     .orElseThrow(() -> new RuntimeException("Danh mục không hợp lệ!"));
             product.setCategoryName(category.getName());
         }
 
-        // 2. Process Media
+        // Process Images into the subfolder
         List<String> imageUrls = new ArrayList<>();
         if (images != null) {
             images.forEach(img -> {
-                String url = saveFile(img);
+                String url = saveFile(img, sellerSubFolder);
                 if (url != null) imageUrls.add(url);
             });
         }
         product.setImageUrls(imageUrls);
 
+        // Process Video into the subfolder
         if (video != null && !video.isEmpty()) {
-            product.setVideoUrl(saveFile(video));
+            product.setVideoUrl(saveFile(video, sellerSubFolder));
         }
 
         product.setSellerId(user.getId());
@@ -99,9 +110,6 @@ public class ProductService {
         return productRepository.save(product);
     }
 
-    /**
-     * UPDATED: Handles category changes and specification updates.
-     */
     public Product updateProductWithMedia(String productId, String contactInfo, Product updatedData, List<MultipartFile> newImages, MultipartFile newVideo) {
         Product existing = getProductById(productId);
         User user = userRepository.findByIdentifier(contactInfo)
@@ -111,7 +119,9 @@ public class ProductService {
             throw new RuntimeException("Bạn không có quyền chỉnh sửa sản phẩm này!");
         }
 
-        // Update Category logic
+        // Path for this specific seller
+        String sellerSubFolder = "ads/" + user.getId();
+
         if (updatedData.getCategoryId() != null && !updatedData.getCategoryId().equals(existing.getCategoryId())) {
             Category category = categoryRepository.findById(updatedData.getCategoryId())
                     .orElseThrow(() -> new RuntimeException("Danh mục mới không hợp lệ!"));
@@ -119,21 +129,22 @@ public class ProductService {
             existing.setCategoryName(category.getName());
         }
 
-        // Media management
+        // Process New Images
         if (newImages != null && !newImages.isEmpty()) {
-            List<String> updatedImageUrls = new ArrayList<>();
-            newImages.forEach(img -> {
-                String url = saveFile(img);
-                if (url != null) updatedImageUrls.add(url);
-            });
-            existing.setImageUrls(updatedImageUrls);
+            // Keep the URLs user chose to stay with (if any)
+            List<String> currentList = updatedData.getImageUrls() != null ? updatedData.getImageUrls() : new ArrayList<>();
+            
+            for (MultipartFile img : newImages) {
+                String url = saveFile(img, sellerSubFolder);
+                if (url != null) currentList.add(url);
+            }
+            existing.setImageUrls(currentList);
         }
 
         if (newVideo != null && !newVideo.isEmpty()) {
-            existing.setVideoUrl(saveFile(newVideo));
+            existing.setVideoUrl(saveFile(newVideo, sellerSubFolder));
         }
 
-        // Core data and Smart Features (Specifications)
         existing.setName(updatedData.getName());
         existing.setDescription(updatedData.getDescription());
         existing.setPrice(updatedData.getPrice());

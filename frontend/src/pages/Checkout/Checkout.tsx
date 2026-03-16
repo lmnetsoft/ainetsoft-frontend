@@ -6,6 +6,9 @@ import { placeOrder } from '../../services/orderService';
 import ToastNotification from '../../components/Toast/ToastNotification';
 import './Checkout.css';
 
+// Base URL for image resolution
+const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:8080';
+
 const Checkout = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -18,14 +21,23 @@ const Checkout = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
+  /**
+   * Resolves relative paths to full server URLs.
+   */
+  const formatMediaUrl = (url?: string) => {
+    if (!url || url === "/placeholder.png") return "/placeholder.png";
+    return url.startsWith('http') ? url : `${BASE_URL}${url}`;
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
+        // This service uses the /auth/me endpoint we verified
         const data = await getUserProfile();
         setCartItems(data.cart || []);
         
-        // Auto-select the default address for the user
+        // Auto-select the default address
         const defaultAddr = data.addresses?.find((addr: any) => addr.isDefault);
         setSelectedAddress(defaultAddr || data.addresses?.[0]);
 
@@ -57,13 +69,13 @@ const Checkout = () => {
 
     try {
       setIsSubmitting(true);
-      // Calls the OrderService to convert the cart into a permanent Order
+      // Place order and clear cart on backend
       await placeOrder(paymentMethod);
       
       setToastMessage("Đặt hàng thành công!");
       setShowToast(true);
       
-      // Navigate to the Purchase page where they can now write reviews
+      // Navigate to purchase history
       setTimeout(() => navigate('/user/purchase'), 2000);
     } catch (err: any) {
       setToastMessage(err.message || "Có lỗi xảy ra khi đặt hàng.");
@@ -73,13 +85,17 @@ const Checkout = () => {
     }
   };
 
-  if (loading) return <div className="checkout-loading">Đang chuẩn bị đơn hàng...</div>;
+  if (loading) return (
+    <div className="checkout-loading-wrapper">
+      <div className="loading-spinner"></div>
+      <p>Đang chuẩn bị đơn hàng...</p>
+    </div>
+  );
 
   return (
-    <div className="checkout-wrapper">
+    <div className="checkout-page-wrapper">
       <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
 
-      {/* Already correctly using the container class for 1600px alignment */}
       <div className="container checkout-container">
         
         {/* ADDRESS SECTION */}
@@ -114,8 +130,12 @@ const Checkout = () => {
           {cartItems.map((item, idx) => (
             <div key={idx} className="checkout-item-row">
               <div className="col-prod item-meta">
-                {/* SAFETY: Added fallback to placeholder to prevent rendering errors */}
-                <img src={item.productImage || "/placeholder.png"} alt={item.productName} />
+                {/* FIXED: Using formatMediaUrl and onError for safety */}
+                <img 
+                  src={formatMediaUrl(item.productImage)} 
+                  alt={item.productName} 
+                  onError={(e) => { e.currentTarget.src = "/placeholder.png"; }}
+                />
                 <span>{item.productName}</span>
               </div>
               <div className="col-price">₫{item.price.toLocaleString()}</div>

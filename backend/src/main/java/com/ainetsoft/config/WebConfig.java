@@ -12,41 +12,42 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        // 1. Target the 'uploads' folder relative to the project root
         String dirName = "uploads";
         
-        // BITNAMILEGACY FIX: (KEPT) Ensure both base and cccd subfolders exist
+        // 1. Ensure the directory structure exists on startup
         File uploadFolder = new File(dirName);
         File cccdFolder = new File(dirName + "/cccd");
+        File adsFolder = new File(dirName + "/ads"); // Added for product photos
         
-        if (!uploadFolder.exists()) {
-            uploadFolder.mkdirs();
-        }
-        if (!cccdFolder.exists()) {
-            cccdFolder.mkdirs();
-        }
+        if (!uploadFolder.exists()) uploadFolder.mkdirs();
+        if (!cccdFolder.exists()) cccdFolder.mkdirs();
+        if (!adsFolder.exists()) adsFolder.mkdirs();
 
         Path uploadDir = Paths.get(dirName).toAbsolutePath();
-        
-        // 2. FIXED PATH MAPPING:
-        // We ensure it starts with 'file:' and ends with the correct OS slash.
-        // This is the most stable way to let Spring "see" into the /cccd/ folder.
         String uploadPath = "file:" + uploadDir.toString() + File.separator;
 
         /**
-         * 3. Register the mapping
-         * Maps 'http://localhost:8080/api/uploads/...' to the physical folder.
+         * 2. REGISTER THE MAPPINGS
+         * We map BOTH standard and API paths to the physical folder.
+         * This ensures /uploads/ads/... works for the frontend components.
          */
+        
+        // Standard Mapping (Matches your current Frontend format)
+        registry.addResourceHandler("/" + dirName + "/**")
+                .addResourceLocations(uploadPath)
+                .setCachePeriod(0);
+
+        // Legacy/API Mapping (Ensures backward compatibility)
         registry.addResourceHandler("/api/" + dirName + "/**")
                 .addResourceLocations(uploadPath)
-                .setCachePeriod(0) // Set to 0 for debugging so images update immediately
-                .resourceChain(true);
+                .setCachePeriod(0);
 
-        // 4. Debug Print (KEPT)
+        // 3. Debug Print
         System.out.println("=================================================");
         System.out.println("SYSTEM MEDIA STORAGE ACTIVE");
-        System.out.println("Mapping URL: /api/" + dirName + "/**");
-        System.out.println("To Physical Path: " + uploadPath);
+        System.out.println("Standard Mapping: /" + dirName + "/**");
+        System.out.println("API Mapping: /api/" + dirName + "/**");
+        System.out.println("Physical Path: " + uploadPath);
         System.out.println("=================================================");
     }
 }

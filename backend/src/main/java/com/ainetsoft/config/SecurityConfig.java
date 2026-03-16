@@ -46,7 +46,6 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable()) 
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             
-            // --- FIX: STOP REDIRECTING TO LOGIN PAGE ---
             .exceptionHandling(exception -> exception
                 .authenticationEntryPoint((request, response, authException) -> {
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -68,7 +67,8 @@ public class SecurityConfig {
                     "/oauth2/**",
                     "/login/oauth2/**",
                     "/error",
-                    "/api/uploads/**",
+                    "/api/uploads/**",    // API prefixed uploads
+                    "/uploads/**",        // FIXED: Direct uploads (Matches WebConfig)
                     "/api/chat/download/**",
                     "/ws/**"
                 ).permitAll() 
@@ -90,7 +90,8 @@ public class SecurityConfig {
                     "/api/auth/change-password",
                     "/api/auth/upgrade-seller",
                     "/api/orders/**",
-                    "/api/notifications/**"
+                    "/api/notifications/**",
+                    "/api/products/seller/**" // Ensure seller actions are protected
                 ).authenticated() 
                 
                 .anyRequest().authenticated()
@@ -101,7 +102,9 @@ public class SecurityConfig {
                 .logoutSuccessHandler((request, response, authentication) -> {
                     response.setStatus(HttpServletResponse.SC_OK);
                     response.setContentType("application/json");
-                    response.getWriter().write("{\"message\": \"Logged out successfully\"}");
+                    try {
+                        response.getWriter().write("{\"message\": \"Logged out successfully\"}");
+                    } catch (Exception e) {}
                 })
             )
             .oauth2Login(oauth2 -> oauth2
@@ -118,8 +121,8 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of("http://localhost:5173")); 
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD")); // Added HEAD
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "Accept"));
         config.setAllowCredentials(true); 
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

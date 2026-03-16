@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaStore, FaTruck, FaMapMarkerAlt, FaStar } from 'react-icons/fa';
+import { FaStore, FaTruck, FaMapMarkerAlt, FaStar, FaCommentDots } from 'react-icons/fa';
 import { getMyOrders } from '../../services/orderService';
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import ToastNotification from '../../components/Toast/ToastNotification';
 import './Profile.css';
 import './Purchase.css'; 
+
+const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:8080';
 
 const Purchase = () => {
   const navigate = useNavigate();
@@ -23,6 +25,14 @@ const Purchase = () => {
     { id: 'COMPLETED', label: 'Hoàn thành' },
     { id: 'CANCELLED', label: 'Đã hủy' }
   ];
+
+  /**
+   * BITNAMILEGACY IMAGE FIX: Resolves relative paths to full server URLs.
+   */
+  const formatMediaUrl = (url?: string) => {
+    if (!url || url === "/placeholder.png") return "/placeholder.png";
+    return url.startsWith('http') ? url : `${BASE_URL}${url}`;
+  };
 
   const fetchOrders = async (status: string) => {
     try {
@@ -56,6 +66,10 @@ const Purchase = () => {
       case 'CANCELLED': return 'ĐÃ HỦY';
       default: return status;
     }
+  };
+
+  const handleChatWithSeller = (sellerId: string) => {
+    if (sellerId) navigate(`/chat/${sellerId}`);
   };
 
   return (
@@ -100,7 +114,14 @@ const Purchase = () => {
                       <div className="shop-name-group">
                         <FaStore className="icon-orange" />
                         <strong>{order.items?.[0]?.shopName || 'Cửa hàng'}</strong>
-                        <button className="chat-btn" style={{ marginLeft: '10px', padding: '2px 8px', fontSize: '12px', background: '#ee4d2d', color: '#fff', border: 'none', borderRadius: '2px' }}>Chat</button>
+                        {/* FIXED: Functional Chat Button */}
+                        <button 
+                          className="chat-btn" 
+                          onClick={() => handleChatWithSeller(order.items?.[0]?.sellerId)}
+                          style={{ marginLeft: '10px', padding: '4px 10px', fontSize: '12px', background: '#ee4d2d', color: '#fff', border: 'none', borderRadius: '2px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+                        >
+                          <FaCommentDots /> Chat
+                        </button>
                       </div>
                       <div className="status-tag">
                         <FaTruck /> {getStatusText(order.status)}
@@ -110,7 +131,13 @@ const Purchase = () => {
                     <div className="order-item-body">
                       {order.items?.map((item: any, idx: number) => (
                         <div key={idx} className="item-row" onClick={() => navigate(`/product/${item.productId}`)}>
-                           <img src={item.imageUrl || "/placeholder.png"} alt={item.productName} className="item-thumb" />
+                           {/* FIXED: Using formatMediaUrl and onError for safety */}
+                           <img 
+                              src={formatMediaUrl(item.imageUrl)} 
+                              alt={item.productName} 
+                              className="item-thumb" 
+                              onError={(e) => { e.currentTarget.src = "/placeholder.png"; }}
+                           />
                            <div className="item-info">
                               <p className="item-title">{item.productName}</p>
                               <p className="item-count">x{item.quantity}</p>
@@ -140,17 +167,24 @@ const Purchase = () => {
                         <div className="footer-actions">
                           {order.status === 'COMPLETED' ? (
                             <>
-                              {/* NEW: Write Review Button for Completed Orders */}
                               <button 
                                 onClick={() => navigate(`/product/${order.items[0]?.productId}?review=true&orderId=${order.id}`)}
                                 style={{ background: '#fff', color: '#ee4d2d', border: '1px solid #ee4d2d', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
                               >
                                 <FaStar /> Đánh giá sản phẩm
                               </button>
-                              <button className="buy-again-btn" style={{ background: '#ee4d2d', color: '#fff', border: 'none' }}>Mua lại</button>
+                              <button 
+                                className="buy-again-btn" 
+                                onClick={() => navigate(`/product/${order.items[0]?.productId}`)}
+                                style={{ background: '#ee4d2d', color: '#fff', border: 'none', cursor: 'pointer' }}
+                              >
+                                Mua lại
+                              </button>
                             </>
                           ) : (
-                            <button className="contact-seller-btn">Liên hệ người bán</button>
+                            <button className="contact-seller-btn" onClick={() => handleChatWithSeller(order.items?.[0]?.sellerId)}>
+                               Liên hệ người bán
+                            </button>
                           )}
                           <button className="view-detail-btn" onClick={() => navigate(`/user/order/${order.id}`)}>
                               Xem chi tiết

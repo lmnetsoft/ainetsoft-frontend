@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaTrashAlt, FaMinus, FaPlus, FaStore } from 'react-icons/fa';
-// Use our centralized API instance
 import api from '../../services/api';
 import { getUserProfile } from '../../services/authService';
 import ToastNotification from '../../components/Toast/ToastNotification';
 import './Cart.css';
+
+const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:8080';
 
 interface CartItem {
   productId: string;
@@ -23,17 +24,34 @@ const Cart = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
-  // 1. Initial Load: Fetch cart from User Profile
+  /**
+   * BITNAMILEGACY IMAGE FIX: Ensures relative paths from the backend
+   * are correctly resolved to the full server URL.
+   */
+  const formatMediaUrl = (url?: string) => {
+    if (!url || url === "/placeholder.png") return "/placeholder.png";
+    return url.startsWith('http') ? url : `${BASE_URL}${url}`;
+  };
+
   useEffect(() => {
     const fetchCart = async () => {
+      // 1. Avoid fetching if no token is present (Guest Mode)
+      if (!localStorage.getItem('jwt_token')) {
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         const data = await getUserProfile();
         setCartItems(data.cart || []);
       } catch (error) {
         console.error("Cart fetch error:", error);
-        setToastMessage("Không thể tải giỏ hàng. Vui lòng đăng nhập lại.");
-        setShowToast(true);
+        // Only show toast if the user is supposed to be logged in
+        if (localStorage.getItem('isAuthenticated') === 'true') {
+           setToastMessage("Không thể tải giỏ hàng. Vui lòng đăng nhập lại.");
+           setShowToast(true);
+        }
       } finally {
         setLoading(false);
       }
@@ -43,20 +61,18 @@ const Cart = () => {
     document.title = "Giỏ hàng | AiNetsoft";
   }, []);
 
-  // 2. Sync Logic: Uses the 'api' instance which includes withCredentials automatically
   const syncWithBackend = async (items: CartItem[]) => {
+    if (!localStorage.getItem('jwt_token')) return;
     try {
       await api.post('/auth/sync-cart', { items });
-      // Dispatch event to update Cart Icon count in Header
       window.dispatchEvent(new Event('cartUpdate'));
     } catch (err) {
       console.error("Sync failed", err);
     }
   };
 
-  // 3. Debounced Sync: Only saves to DB after user stops clicking for 800ms
   useEffect(() => {
-    if (!loading) {
+    if (!loading && localStorage.getItem('jwt_token')) {
       const timer = setTimeout(() => {
         syncWithBackend(cartItems);
       }, 800);
@@ -76,7 +92,6 @@ const Cart = () => {
     if(window.confirm("Xóa sản phẩm khỏi giỏ hàng?")) {
       const newItems = cartItems.filter(item => item.productId !== productId);
       setCartItems(newItems);
-      // Forced immediate sync for deletions to ensure DB matches UI instantly
       syncWithBackend(newItems);
     }
   };
@@ -90,21 +105,24 @@ const Cart = () => {
     </div>
   );
 
+  const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+
   return (
     <div className="cart-page-wrapper">
       <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
       
-      {/* ALIGNMENT FIX: Added 'container' class to match 1600px standard */}
       <div className="container cart-container">
         <div className="cart-title-section">
           <h2>Giỏ hàng</h2>
         </div>
         
-        {cartItems.length === 0 ? (
+        {(!isAuthenticated || cartItems.length === 0) ? (
           <div className="cart-empty-state">
             <img src="/logo.svg" alt="Empty" /> 
-            <p>Giỏ hàng của bạn còn trống</p>
-            <button onClick={() => navigate('/')} className="go-shopping-btn">Mua sắm ngay</button>
+            <p>{!isAuthenticated ? "Vui lòng đăng nhập để xem giỏ hàng của bạn." : "Giỏ hàng của bạn còn trống."}</p>
+            <button onClick={() => navigate(!isAuthenticated ? '/login' : '/')} className="go-shopping-btn">
+              {!isAuthenticated ? "Đăng nhập ngay" : "Mua sắm ngay"}
+            </button>
           </div>
         ) : (
           <div className="cart-main-content">
@@ -120,7 +138,12 @@ const Cart = () => {
               {cartItems.map(item => (
                 <div key={item.productId} className="cart-item-row">
                   <div className="col-product product-details">
-                    <img src={item.productImage || "/placeholder.png"} alt={item.productName} className="cart-item-img" />
+                    <img 
+                      src={formatMediaUrl(item.productImage)} 
+                      alt={item.productName} 
+                      className="cart-item-img" 
+                      onError={(e) => { e.currentTarget.src = "/placeholder.png"; }}
+                    />
                     <div className="product-info-text">
                       <p className="product-name">{item.productName}</p>
                       <span className="shop-name-tag"><FaStore size={12} /> {item.shopName}</span>

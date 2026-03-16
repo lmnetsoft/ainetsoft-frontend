@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaBoxOpen, FaPlus } from 'react-icons/fa';
+import { FaBoxOpen, FaPlus, FaEye, FaEdit, FaTrashAlt } from 'react-icons/fa';
 import api from '../../services/api'; 
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import ToastNotification from '../../components/Toast/ToastNotification';
 import { getUserProfile } from '../../services/authService'; 
 import './MyProducts.css';
+
+// The base URL for your backend server
+const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:8080';
 
 interface Product {
   id: string; 
@@ -15,6 +18,7 @@ interface Product {
   category: string;
   images: string[];
   status: string;
+  sellerId?: string; // Included to ensure subfolder pathing consistency
 }
 
 const MyProducts = () => {
@@ -25,8 +29,23 @@ const MyProducts = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   
-  // Dynamic low stock threshold logic
   const [lowStockThreshold, setLowStockThreshold] = useState(5); 
+
+  /**
+   * SMART PATH RESOLVER
+   * Resolves paths to http://localhost:8080/uploads/ads/{sellerId}/{filename}
+   */
+  const formatMediaUrl = (url?: string) => {
+    if (!url || url === 'undefined' || url === 'null' || url === '') return "/placeholder.png";
+    if (url.startsWith('http')) return url;
+    
+    // Standardize leading slash
+    const cleanPath = url.startsWith('/') ? url : `/${url}`;
+    
+    // If your backend doesn't include '/uploads' in the string stored in the DB, 
+    // you would add it here. Based on your debug, we use the BASE_URL + path.
+    return `${BASE_URL}${cleanPath}`;
+  };
 
   useEffect(() => {
     const initPage = async () => {
@@ -42,10 +61,6 @@ const MyProducts = () => {
     document.title = "Sản phẩm của tôi | AiNetsoft";
   }, []);
 
-  /**
-   * FETCH LIVE DATA: Ensures verification status and shop settings 
-   * are updated in storage while browsing.
-   */
   const fetchThreshold = async () => {
     try {
       const profile = await getUserProfile();
@@ -53,7 +68,7 @@ const MyProducts = () => {
         setLowStockThreshold(profile.shopProfile.lowStockThreshold);
       }
     } catch (error) {
-      console.warn("Could not load shop settings, using default threshold.");
+      console.warn("Could not load shop settings.");
     }
   };
 
@@ -103,7 +118,6 @@ const MyProducts = () => {
               <h1>Sản phẩm của tôi</h1>
               <p>Quản lý danh sách sản phẩm và theo dõi trạng thái kiểm duyệt</p>
             </div>
-            {/* FIX: Ensure this path matches your App.tsx route (usually /seller/add) */}
             <button className="save-btn" onClick={() => navigate('/seller/add')}>
               <FaPlus /> Thêm sản phẩm
             </button>
@@ -150,7 +164,11 @@ const MyProducts = () => {
                     <tr key={p.id}>
                       <td>
                         <div className="table-prod-info">
-                          <img src={p.images[0] || "/placeholder.png"} alt={p.name} />
+                          <img 
+                            src={formatMediaUrl(p.images?.[0])} 
+                            alt={p.name} 
+                            onError={(e) => { e.currentTarget.src = "/placeholder.png"; }}
+                          />
                           <span>{p.name}</span>
                         </div>
                       </td>
@@ -162,10 +180,33 @@ const MyProducts = () => {
                       </td>
                       <td>{getStatusBadge(p.status)}</td>
                       <td style={{ textAlign: 'right' }}>
-                        <div className="action-btns">
-                           {/* FIX: Path consistency */}
-                           <button className="edit-text-btn" onClick={() => navigate(`/seller/edit/${p.id}`)}>Sửa</button>
-                           <button className="del-text-btn" onClick={() => handleDelete(p.id)}>Xóa</button>
+                        <div className="action-btns" style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                           {/* PREVIEW BUTTON - Passing full product object via state */}
+                           <button 
+                              className="preview-text-btn" 
+                              onClick={() => navigate(`/product/${p.id}`, { state: { productPreview: p } })}
+                              style={{ color: '#007bff', border: 'none', background: 'none', cursor: 'pointer', fontWeight: '500', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                           >
+                              <FaEye /> Xem trước
+                           </button>
+                           
+                           {/* EDIT BUTTON */}
+                           <button 
+                              className="edit-text-btn" 
+                              onClick={() => navigate(`/seller/edit/${p.id}`)}
+                              style={{ border: 'none', background: 'none', cursor: 'pointer', fontWeight: '500', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                           >
+                              <FaEdit /> Sửa
+                           </button>
+
+                           {/* DELETE BUTTON */}
+                           <button 
+                              className="del-text-btn" 
+                              onClick={() => handleDelete(p.id)}
+                              style={{ border: 'none', background: 'none', cursor: 'pointer', fontWeight: '500', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                           >
+                              <FaTrashAlt /> Xóa
+                           </button>
                         </div>
                       </td>
                     </tr>
