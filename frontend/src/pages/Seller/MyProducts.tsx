@@ -4,7 +4,7 @@ import { FaBoxOpen, FaPlus } from 'react-icons/fa';
 import api from '../../services/api'; 
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import ToastNotification from '../../components/Toast/ToastNotification';
-import { getUserProfile } from '../../services/authService'; // NEW: Import this to get the threshold
+import { getUserProfile } from '../../services/authService'; 
 import './MyProducts.css';
 
 interface Product {
@@ -25,7 +25,7 @@ const MyProducts = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   
-  // NEW: State for dynamic low stock threshold
+  // Dynamic low stock threshold logic
   const [lowStockThreshold, setLowStockThreshold] = useState(5); 
 
   useEffect(() => {
@@ -33,7 +33,7 @@ const MyProducts = () => {
       setLoading(true);
       await Promise.all([
         fetchMyProducts(),
-        fetchThreshold() // NEW: Get the threshold on load
+        fetchThreshold() 
       ]);
       setLoading(false);
     };
@@ -42,7 +42,10 @@ const MyProducts = () => {
     document.title = "Sản phẩm của tôi | AiNetsoft";
   }, []);
 
-  // NEW: Fetch user threshold from backend
+  /**
+   * FETCH LIVE DATA: Ensures verification status and shop settings 
+   * are updated in storage while browsing.
+   */
   const fetchThreshold = async () => {
     try {
       const profile = await getUserProfile();
@@ -100,7 +103,8 @@ const MyProducts = () => {
               <h1>Sản phẩm của tôi</h1>
               <p>Quản lý danh sách sản phẩm và theo dõi trạng thái kiểm duyệt</p>
             </div>
-            <button className="save-btn" onClick={() => navigate('/seller/add-product')}>
+            {/* FIX: Ensure this path matches your App.tsx route (usually /seller/add) */}
+            <button className="save-btn" onClick={() => navigate('/seller/add')}>
               <FaPlus /> Thêm sản phẩm
             </button>
           </div>
@@ -152,7 +156,6 @@ const MyProducts = () => {
                       </td>
                       <td>{p.category}</td>
                       <td>₫{p.price.toLocaleString()}</td>
-                      {/* UPDATED: Dynamic stock threshold logic */}
                       <td className={p.stock < lowStockThreshold ? "low-stock" : ""}>
                         {p.stock}
                         {p.stock < lowStockThreshold && <span className="stock-warning"> !</span>}
@@ -160,7 +163,8 @@ const MyProducts = () => {
                       <td>{getStatusBadge(p.status)}</td>
                       <td style={{ textAlign: 'right' }}>
                         <div className="action-btns">
-                           <button className="edit-text-btn" onClick={() => navigate(`/seller/edit-product/${p.id}`)}>Sửa</button>
+                           {/* FIX: Path consistency */}
+                           <button className="edit-text-btn" onClick={() => navigate(`/seller/edit/${p.id}`)}>Sửa</button>
                            <button className="del-text-btn" onClick={() => handleDelete(p.id)}>Xóa</button>
                         </div>
                       </td>

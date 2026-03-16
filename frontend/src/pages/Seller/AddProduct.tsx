@@ -21,11 +21,11 @@ const AddProduct = () => {
     description: '',
     price: 0,
     stock: 0,
-    categoryId: '', // Now using ID from database
+    categoryId: '', 
     shopName: localStorage.getItem('userName') || 'Cửa hàng của tôi'
   });
 
-  // 2. Specifications State (Dynamic Key-Value Pairs)
+  // 2. Specifications State
   const [specs, setSpecs] = useState<{ key: string; value: string }[]>([
     { key: '', value: '' }
   ]);
@@ -41,27 +41,38 @@ const AddProduct = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
-  // Initial Data Fetch: Security + Categories
+  // --- FIXED: Used /auth/me to avoid 405 Method Not Allowed error ---
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (user.sellerVerification !== 'VERIFIED') {
-      alert("Bạn cần được Admin phê duyệt tài khoản Người bán trước khi đăng sản phẩm!");
-      navigate('/seller/register');
-      return;
-    }
-
-    const fetchCategories = async () => {
+    const checkStatusAndFetchData = async () => {
       try {
-        const res = await getCategories();
-        setCategories(res.data);
-        if (res.data.length > 0) {
-          setFormData(prev => ({ ...prev, categoryId: res.data[0].id }));
+        // 1. Fetch FRESH user data from backend using the correct GET endpoint
+        const profileRes = await api.get('/auth/me'); 
+        const latestUser = profileRes.data;
+
+        // 2. Sync localStorage so other components are aware of the update
+        localStorage.setItem('user', JSON.stringify(latestUser));
+
+        // 3. Security Guard check: only proceed if VERIFIED
+        if (latestUser.sellerVerification !== 'VERIFIED') {
+          alert("Bạn cần được Admin phê duyệt tài khoản Người bán trước khi đăng sản phẩm!");
+          navigate('/seller/register');
+          return;
+        }
+
+        // 4. Fetch Categories only after verification is confirmed
+        const catRes = await getCategories();
+        setCategories(catRes.data);
+        if (catRes.data.length > 0) {
+          setFormData(prev => ({ ...prev, categoryId: catRes.data[0].id }));
         }
       } catch (error) {
-        console.error("Failed to load categories:", error);
+        console.error("Security check failed:", error);
+        // If profile fetch fails (401/403/405), user is redirected by interceptor or manually
+        navigate('/login');
       }
     };
-    fetchCategories();
+
+    checkStatusAndFetchData();
   }, [navigate]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -87,7 +98,6 @@ const AddProduct = () => {
     }
   };
 
-  // Spec management
   const addSpecField = () => setSpecs([...specs, { key: '', value: '' }]);
   const removeSpecField = (index: number) => setSpecs(specs.filter((_, i) => i !== index));
   const updateSpec = (index: number, field: 'key' | 'value', val: string) => {
@@ -108,7 +118,6 @@ const AddProduct = () => {
       setIsSubmitting(true);
       const data = new FormData();
 
-      // Convert Specs Array to the Map format the Backend expects
       const specificationsMap: Record<string, string> = {};
       specs.forEach(s => {
         if (s.key.trim() && s.value.trim()) specificationsMap[s.key] = s.value;
@@ -126,7 +135,9 @@ const AddProduct = () => {
       
       setToastMessage("Đã gửi sản phẩm! Vui lòng chờ Admin kiểm duyệt.");
       setShowToast(true);
-      setTimeout(() => navigate('/seller/my-products'), 2000);
+
+      // --- FIXED: Corrected path from /seller/my-products to /seller/products ---
+      setTimeout(() => navigate('/seller/products'), 2000);
       
     } catch (error: any) {
       setToastMessage(error.response?.data?.message || "Lỗi khi đăng sản phẩm.");
@@ -213,7 +224,6 @@ const AddProduct = () => {
               </div>
             </section>
 
-            {/* NEW SECTION: Specifications (Shopee-style) */}
             <section className="form-section">
               <h3>Thông số kỹ thuật</h3>
               <p className="sub-label">Thêm các thuộc tính như: Thương hiệu, Chất liệu, Bảo hành...</p>

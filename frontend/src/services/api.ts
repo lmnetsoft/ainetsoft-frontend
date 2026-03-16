@@ -12,16 +12,20 @@ const api = axios.create({
 
 /**
  * Utility to clear ONLY authentication data.
+ * Updated to include the 'user' object and extra permission keys.
  */
 const clearAuthData = () => {
     const authKeys = [
         'jwt_token', 
         'isAuthenticated', 
+        'user',             // FIX: Essential to clear the verification status
         'userName', 
         'userEmail', 
         'userPhone', 
         'userAvatar', 
-        'userRoles'
+        'userRoles',
+        'userPermissions',  // FIX: Added
+        'isGlobalAdmin'     // FIX: Added
     ];
     authKeys.forEach(key => localStorage.removeItem(key));
 };
@@ -34,9 +38,6 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // FIX: If the data is FormData (like our seller registration), 
-    // we MUST let the browser set the Content-Type automatically 
-    // to include the boundary string.
     if (config.data instanceof FormData) {
       delete config.headers['Content-Type'];
     }
@@ -53,13 +54,16 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      console.warn("Session expired or unauthorized. Cleaning up authentication...");
-      clearAuthData();
-      window.dispatchEvent(new Event('profileUpdate'));
-      
       const currentPath = window.location.pathname;
+
+      // FIX: Prevent loop if already on login page
       if (!currentPath.includes('/login')) {
-        window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+        console.warn("Session invalid. Forcing re-authentication...");
+        clearAuthData();
+        window.dispatchEvent(new Event('profileUpdate'));
+        
+        // Include 'message' flag so Login.tsx knows to stop the auto-redirect
+        window.location.href = `/login?message=session_updated&redirect=${encodeURIComponent(currentPath)}`;
       }
     }
     return Promise.reject(error);

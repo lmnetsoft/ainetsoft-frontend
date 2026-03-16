@@ -22,9 +22,15 @@ const SellerSettings = () => {
     const fetchShopInfo = async () => {
       try {
         setLoading(true);
+        // This helper uses the correct /auth/me endpoint we fixed
         const data = await getUserProfile();
+        
         if (data.shopProfile) {
-          setShopData(data.shopProfile);
+          // Merge with defaults to ensure no undefined fields
+          setShopData(prev => ({
+            ...prev,
+            ...data.shopProfile
+          }));
         }
       } catch (error) {
         console.error("Lỗi tải thông tin shop:", error);
@@ -45,8 +51,16 @@ const SellerSettings = () => {
 
     try {
       setIsSaving(true);
-      // We send the shopProfile nested object as defined in our Backend DTO
+      
+      // Update backend
       await updateProfile({ shopProfile: shopData });
+
+      // FIXED: Refresh local profile to update Sidebar and Header
+      await getUserProfile();
+      
+      // Signal other components (Sidebar/Header) to update their UI
+      window.dispatchEvent(new Event('profileUpdate'));
+
       setToastMessage("Cập nhật thiết lập shop thành công!");
       setShowToast(true);
     } catch (error: any) {
@@ -57,7 +71,7 @@ const SellerSettings = () => {
     }
   };
 
-  if (loading) return <div className="loading-spinner"></div>;
+  if (loading) return <div className="loading-spinner-container"><div className="loading-spinner"></div></div>;
 
   return (
     <div className="profile-wrapper">
@@ -89,7 +103,7 @@ const SellerSettings = () => {
               <label>Mô tả Shop</label>
               <textarea 
                 className="shop-textarea"
-                value={shopData.shopDescription} 
+                value={shopData.shopDescription || ''} 
                 onChange={(e) => setShopData({...shopData, shopDescription: e.target.value})} 
                 placeholder="Giới thiệu ngắn về shop..."
               />
@@ -99,7 +113,7 @@ const SellerSettings = () => {
               <label>Địa chỉ lấy hàng</label>
               <input 
                 type="text" 
-                value={shopData.shopAddress} 
+                value={shopData.shopAddress || ''} 
                 onChange={(e) => setShopData({...shopData, shopAddress: e.target.value})} 
               />
             </div>
@@ -129,7 +143,7 @@ const SellerSettings = () => {
               </div>
             </div>
 
-            <div className="form-row">
+            <div className="form-actions-row">
               <label></label>
               <button className="save-btn" onClick={handleSave} disabled={isSaving}>
                 {isSaving ? "Đang lưu..." : "Lưu thiết lập"}

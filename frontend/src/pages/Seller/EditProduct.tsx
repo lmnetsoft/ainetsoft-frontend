@@ -1,86 +1,160 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import api from '../../services/api';
+import api, { getCategories } from '../../services/api';
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import ToastNotification from '../../components/Toast/ToastNotification';
-import './AddProduct.css'; // We can reuse the same styles as AddProduct
+import './AddProduct.css'; 
+
+interface Category {
+  id: string;
+  name: string;
+}
 
 const EditProduct = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
+  // 1. Core Product State
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     price: 0,
     stock: 0,
-    category: 'Electronics',
-    images: [] as string[]
+    categoryId: '',
+    shopName: ''
   });
+
+  // 2. Media Management
+  const [existingImages, setExistingImages] = useState<string[]>([]);
+  const [newImageFiles, setNewImageFiles] = useState<File[]>([]);
+  const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
+  
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
+
+  // 3. Metadata
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [specs, setSpecs] = useState<{ key: string; value: string }[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
-  const categories = ['Electronics', 'Fashion', 'Home & Living', 'Beauty', 'Health', 'Sports', 'Other'];
-
-  // 1. Fetch existing product data on mount
   useEffect(() => {
-    const fetchProduct = async () => {
+    const initData = async () => {
       try {
-        const res = await api.get(`/products/${id}`);
-        const p = res.data;
+        setLoading(true);
+        // Sync User status & Fetch Categories
+        const [profileRes, catRes, prodRes] = await Promise.all([
+          api.get('/auth/me'),
+          getCategories(),
+          api.get(`/products/${id}`)
+        ]);
+
+        // Security Check
+        if (profileRes.data.sellerVerification !== 'VERIFIED') {
+          navigate('/seller/register');
+          return;
+        }
+
+        setCategories(catRes.data);
+
+        // Map Product Data
+        const p = prodRes.data;
         setFormData({
           name: p.name,
           description: p.description,
           price: p.price,
           stock: p.stock,
-          category: p.category,
-          images: p.images || []
+          categoryId: p.categoryId || (catRes.data[0]?.id),
+          shopName: p.shopName
         });
+
+        setExistingImages(p.images || []);
+        
+        // Convert Specs Map back to Array for the UI
+        if (p.specifications) {
+          const specArray = Object.entries(p.specifications).map(([key, value]) => ({ 
+            key, 
+            value: value as string 
+          }));
+          setSpecs(specArray.length > 0 ? specArray : [{ key: '', value: '' }]);
+        } else {
+          setSpecs([{ key: '', value: '' }]);
+        }
+
       } catch (err) {
-        toast.error("Không thể tải thông tin sản phẩm.");
-        navigate('/seller/my-products');
+        console.error("Load error:", err);
+        setToastMessage("Không thể tải thông tin sản phẩm.");
+        setShowToast(true);
+        setTimeout(() => navigate('/seller/products'), 2000);
       } finally {
         setLoading(false);
       }
     };
-    fetchProduct();
+    initData();
   }, [id, navigate]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      const newImages: string[] = [];
-      Array.from(files).forEach(file => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          newImages.push(reader.result as string);
-          if (newImages.length === files.length) {
-            setFormData(prev => ({ 
-              ...prev, 
-              images: [...prev.images, ...newImages].slice(0, 5) 
-            }));
-          }
-        };
-        reader.readAsDataURL(file);
-      });
+    const files = Array.from(e.target.files || []);
+    const totalCount = existingImages.length + newImageFiles.length + files.length;
+    
+    if (totalCount > 5) {
+      setToastMessage("Tổng số lượng ảnh không được vượt quá 5.");
+      setShowToast(true);
+      return;
     }
+
+    setNewImageFiles(prev => [...prev, ...files]);
+    const previews = files.map(file => URL.createObjectURL(file));
+    setNewImagePreviews(prev => [...prev, ...previews]);
+  };
+
+  const updateSpec = (index: number, field: 'key' | 'value', val: string) => {
+    const newSpecs = [...specs];
+    newSpecs[index][field] = val;
+    setSpecs(newSpecs);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setIsSubmitting(true);
-      // Calls the update endpoint we defined in ProductService
-      await api.put(`/products/seller/update/${id}`, formData);
+      const data = new FormData();
+
+      // Convert Specs to Map
+      const specMap: Record<string, string> = {};
+      specs.forEach(s => {
+        if (s.key.trim() && s.value.trim()) specMap[s.key] = s.value;
+      });
+
+      // Combine existing images (URLs) and new ones logic
+      // Note: Backend needs to know which existing images to keep. 
+      // For now, we update the product object with the final URL list
+      const productPayload = { 
+        ...formData, 
+        specifications: specMap,
+        images: existingImages // Keeping these
+      };
+
+      data.append("product", new Blob([JSON.stringify(productPayload)], { type: "application/json" }));
       
-      setToastMessage("Cập nhật thành công! Sản phẩm đã được gửi lại để Admin duyệt.");
+      // Append New Files
+      newImageFiles.forEach(file => data.append("images", file));
+      if (videoFile) data.append("video", videoFile);
+
+      await api.put(`/products/seller/update/${id}`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      setToastMessage("Cập nhật thành công! Đang chờ Admin duyệt lại.");
       setShowToast(true);
       
-      setTimeout(() => navigate('/seller/my-products'), 2000);
+      // FIXED: Navigate to the correct products path
+      setTimeout(() => navigate('/seller/products'), 2000);
     } catch (error: any) {
       setToastMessage(error.response?.data?.message || "Lỗi khi cập nhật.");
       setShowToast(true);
@@ -89,15 +163,11 @@ const EditProduct = () => {
     }
   };
 
-  if (loading) return <div className="p-10 text-center">Đang tải dữ liệu...</div>;
+  if (loading) return <div className="loading-placeholder-seller">Đang tải dữ liệu...</div>;
 
   return (
     <div className="add-product-wrapper">
-      <ToastNotification 
-        message={toastMessage} 
-        isVisible={showToast} 
-        onClose={() => setShowToast(false)} 
-      />
+      <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
 
       <div className="container seller-container">
         <AccountSidebar />
@@ -105,55 +175,76 @@ const EditProduct = () => {
         <main className="add-product-main">
           <div className="form-header">
             <h1>Chỉnh sửa sản phẩm</h1>
-            <p className="warning-text">Lưu ý: Sau khi chỉnh sửa, sản phẩm sẽ tạm ẩn để Admin duyệt lại.</p>
+            <p className="warning-text">Lưu ý: Sau khi lưu, sản phẩm sẽ cần được Admin duyệt lại.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="product-form">
             <section className="form-section">
-              <h3>Hình ảnh hiện tại</h3>
-              <div className="image-upload-grid">
-                {formData.images.map((img, index) => (
-                  <div key={index} className="image-preview-item">
-                    <img src={img} alt="" />
-                    <button type="button" className="remove-img" onClick={() => setFormData({...formData, images: formData.images.filter((_, i) => i !== index)})}>×</button>
-                  </div>
-                ))}
-                {formData.images.length < 5 && (
-                  <div className="upload-placeholder" onClick={() => fileInputRef.current?.click()}>
-                    <span>+ Thay đổi ảnh</span>
-                  </div>
-                )}
-                <input type="file" ref={fileInputRef} multiple onChange={handleImageChange} accept="image/*" className="hidden" />
+              <h3>Hình ảnh sản phẩm (Tối đa 5)</h3>
+              <div className="media-upload-area">
+                <div className="image-upload-grid">
+                  {/* Render Existing Images */}
+                  {existingImages.map((url, index) => (
+                    <div key={`exist-${index}`} className="image-preview-item">
+                      <img src={url} alt="Current" />
+                      <button type="button" className="remove-img" onClick={() => setExistingImages(prev => prev.filter((_, i) => i !== index))}>×</button>
+                    </div>
+                  ))}
+                  {/* Render New Uploads */}
+                  {newImagePreviews.map((url, index) => (
+                    <div key={`new-${index}`} className="image-preview-item new-upload">
+                      <img src={url} alt="New" />
+                      <button type="button" className="remove-img" onClick={() => {
+                        setNewImageFiles(prev => prev.filter((_, i) => i !== index));
+                        setNewImagePreviews(prev => prev.filter((_, i) => i !== index));
+                      }}>×</button>
+                    </div>
+                  ))}
+                  {(existingImages.length + newImageFiles.length) < 5 && (
+                    <div className="upload-placeholder" onClick={() => imageInputRef.current?.click()}>
+                      <span>+ Thêm ảnh</span>
+                    </div>
+                  )}
+                </div>
+                <input type="file" ref={imageInputRef} multiple onChange={handleImageChange} accept="image/*" style={{ display: 'none' }} />
               </div>
             </section>
 
             <section className="form-section">
-              <h3>Thông tin chi tiết</h3>
+              <h3>Thông tin cơ bản</h3>
               <div className="input-group">
                 <label>Tên sản phẩm</label>
-                <input 
-                  type="text" 
-                  value={formData.name} 
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                />
+                <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} />
               </div>
               <div className="input-group">
-                <label>Mô tả</label>
-                <textarea 
-                  value={formData.description} 
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  rows={6}
-                />
+                <label>Mô tả chi tiết</label>
+                <textarea rows={5} value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} />
               </div>
               <div className="row-group">
                 <div className="input-group half">
-                  <label>Giá (₫)</label>
-                  <input type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: Number(e.target.value)})} />
+                  <label>Danh mục</label>
+                  <select value={formData.categoryId} onChange={(e) => setFormData({...formData, categoryId: e.target.value})}>
+                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
                 </div>
                 <div className="input-group half">
-                  <label>Kho</label>
-                  <input type="number" value={formData.stock} onChange={(e) => setFormData({...formData, stock: Number(e.target.value)})} />
+                  <label>Giá niêm yết (₫)</label>
+                  <input type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: Number(e.target.value)})} />
                 </div>
+              </div>
+            </section>
+
+            <section className="form-section">
+              <h3>Thông số kỹ thuật</h3>
+              <div className="specs-container">
+                {specs.map((spec, index) => (
+                  <div key={index} className="spec-row">
+                    <input type="text" placeholder="Tên" value={spec.key} onChange={(e) => updateSpec(index, 'key', e.target.value)} />
+                    <input type="text" placeholder="Giá trị" value={spec.value} onChange={(e) => updateSpec(index, 'value', e.target.value)} />
+                    <button type="button" className="remove-spec" onClick={() => setSpecs(specs.filter((_, i) => i !== index))}>×</button>
+                  </div>
+                ))}
+                <button type="button" className="add-spec-btn" onClick={() => setSpecs([...specs, { key: '', value: '' }])}>+ Thêm thông số</button>
               </div>
             </section>
 

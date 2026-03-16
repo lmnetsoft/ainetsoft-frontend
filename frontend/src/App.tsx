@@ -57,7 +57,6 @@ import './App.css';
  */
 const GlobalChatOverlay = () => {
   const { isChatOpen } = useChat();
-  // ChatPage.css (position: fixed) handles the bottom-right placement.
   return isChatOpen ? <ChatPage /> : null;
 };
 
@@ -126,8 +125,6 @@ function App() {
                 <Route path="/user/purchase" element={<ProtectedRoute><Purchase /></ProtectedRoute>} />
                 <Route path="/seller/register" element={<ProtectedRoute><SellerRegister /></ProtectedRoute>} />
                 
-                {/* REMOVED: Redundant /chat routes. Chat is now a global popup. */}
-
                 {/* --- PROTECTED SELLER ROUTES --- */}
                 <Route 
                   path="/seller/dashboard" 
@@ -137,14 +134,26 @@ function App() {
                   path="/seller/products" 
                   element={<ProtectedRoute allowedRoles={['SELLER']}><MyProducts /></ProtectedRoute>} 
                 />
+
+                {/* --- FIXED: Supports both Short and Long paths to prevent 404 --- */}
                 <Route 
                   path="/seller/add-product" 
                   element={<ProtectedRoute allowedRoles={['SELLER']}><AddProduct /></ProtectedRoute>} 
                 />
                 <Route 
+                  path="/seller/add" 
+                  element={<ProtectedRoute allowedRoles={['SELLER']}><AddProduct /></ProtectedRoute>} 
+                />
+
+                <Route 
                   path="/seller/edit-product/:id" 
                   element={<ProtectedRoute allowedRoles={['SELLER']}><EditProduct /></ProtectedRoute>} 
                 />
+                <Route 
+                  path="/seller/edit/:id" 
+                  element={<ProtectedRoute allowedRoles={['SELLER']}><EditProduct /></ProtectedRoute>} 
+                />
+
                 <Route 
                   path="/seller/orders" 
                   element={<ProtectedRoute allowedRoles={['SELLER']}><SellerOrders /></ProtectedRoute>} 
@@ -174,10 +183,10 @@ function App() {
             
             <Footer />
 
-            {/* 1. PERSISTENT CHAT OVERLAY: The actual chat window popup */}
+            {/* 1. PERSISTENT CHAT OVERLAY */}
             <GlobalChatOverlay />
 
-            {/* 2. PERSISTENT TRIGGER: The floating bubble button */}
+            {/* 2. PERSISTENT TRIGGER */}
             <ChatBubble />
           </div>
         </ChatProvider>

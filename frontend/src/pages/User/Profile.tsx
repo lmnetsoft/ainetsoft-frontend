@@ -51,9 +51,11 @@ const Profile = () => {
           bankAccounts: data.bankAccounts || []
         });
 
-        if (data.roles && data.roles.includes('SELLER')) {
-          setIsSeller(true);
-        }
+        // --- FIXED: Reliable Role & Verification detection ---
+        const roles = data.roles || [];
+        const isVerifiedSeller = roles.includes('SELLER') || data.sellerVerification === 'VERIFIED';
+        setIsSeller(isVerifiedSeller);
+
       } catch (error: any) {
         console.error("Profile load error:", error);
         navigate('/login');
@@ -87,23 +89,14 @@ const Profile = () => {
     }
   };
 
-  /**
-   * UPDATED: Global-Friendly Phone Validation
-   */
   const validatePhone = (phone: string) => {
     if (!phone) return false;
-    
-    // 1. Strip all non-digits
     const digitsOnly = phone.replace(/\D/g, '');
-    
-    // 2. Identify region (Vietnam)
     if (digitsOnly.startsWith('0') || digitsOnly.startsWith('84')) {
         const normalized = digitsOnly.startsWith('84') ? '0' + digitsOnly.slice(2) : digitsOnly;
         const vnRegex = /^(03[2-9]|086|09[6-8]|070|07[6-9]|089|090|093|08[1-5]|088|091|094|052|05[68]|092|059|099)\d{7}$/;
         return vnRegex.test(normalized) && normalized.length === 10;
     }
-
-    // 3. International fallback
     return digitsOnly.length >= 7 && digitsOnly.length <= 15;
   };
 
@@ -114,7 +107,6 @@ const Profile = () => {
       return;
     }
 
-    // UPDATED: Global logic
     if (!formData.phone || !validatePhone(formData.phone)) {
       setToastMessage("Số điện thoại không hợp lệ hoặc nhà mạng không hỗ trợ.");
       setShowToast(true);
@@ -123,7 +115,6 @@ const Profile = () => {
 
     try {
       setIsSaving(true);
-      
       const synchronizedAddresses = formData.addresses.map(addr => ({
         ...addr,
         phone: formData.phone 
@@ -135,7 +126,6 @@ const Profile = () => {
       };
 
       const message = await updateProfile(payload);
-      
       setToastMessage(message || "Cập nhật hồ sơ thành công!");
       setShowToast(true);
       
@@ -249,9 +239,16 @@ const Profile = () => {
                   <button type="button" className="save-btn" onClick={handleSave} disabled={isSaving}>
                     {isSaving ? "Đang lưu..." : "Lưu thay đổi"}
                   </button>
+                  {/* --- FIXED: Hidden once user is SELLER --- */}
                   {!isSeller && (
                     <button type="button" className="become-seller-btn" onClick={() => navigate('/seller/register')}>
                       Trở thành Người bán
+                    </button>
+                  )}
+                  {/* Optional: Add button to go to Seller Dashboard if they ARE a seller */}
+                  {isSeller && (
+                    <button type="button" className="become-seller-btn" style={{backgroundColor: '#27ae60'}} onClick={() => navigate('/seller/dashboard')}>
+                      Vào Kênh Người Bán
                     </button>
                   )}
                 </div>

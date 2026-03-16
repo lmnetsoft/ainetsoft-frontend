@@ -7,7 +7,7 @@ import {
 import api from '../../services/api';
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import LoadingOverlay from '../../components/LoadingOverlay/LoadingOverlay';
-import { getUserProfile } from '../../services/authService'; //
+import { getUserProfile } from '../../services/authService';
 import './SellerDashboard.css';
 
 const SellerDashboard = () => {
@@ -17,7 +17,7 @@ const SellerDashboard = () => {
     totalOrders: 0,
     pendingOrders: 0,
     activeProducts: 0,
-    lowStockCount: 0, // NEW: Track items below threshold
+    lowStockCount: 0, 
     rating: 0.0,
     reviewCount: 0
   });
@@ -34,7 +34,7 @@ const SellerDashboard = () => {
         // 1. Fetch Seller Stats and Shop Settings in parallel
         const [statsRes, profile] = await Promise.all([
           api.get('/orders/seller/stats'),
-          getUserProfile() //
+          getUserProfile()
         ]);
 
         setStats(statsRes.data);
@@ -68,7 +68,8 @@ const SellerDashboard = () => {
               <h1><FaChartLine className="header-icon" /> Xin chào, {userName}</h1>
               <p>Tổng quan hiệu quả kinh doanh của shop bạn.</p>
             </div>
-            <button className="btn-add-quick" onClick={() => navigate('/seller/add-product')}>
+            {/* FIXED: Path synchronized with App.tsx to prevent 404 */}
+            <button className="btn-add-quick" onClick={() => navigate('/seller/add')}>
               <FaPlusCircle /> Đăng sản phẩm mới
             </button>
           </div>
@@ -135,7 +136,6 @@ const SellerDashboard = () => {
 
                 <div className="task-item" onClick={() => navigate('/seller/products')}>
                   <div className="task-left">
-                    {/* UPDATED: Reflects custom threshold from settings */}
                     <span className={`count ${stats.lowStockCount > 0 ? 'highlight-warning' : ''}`}>
                       {stats.lowStockCount}
                     </span>

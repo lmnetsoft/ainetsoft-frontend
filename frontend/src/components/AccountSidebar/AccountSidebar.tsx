@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { FaUser, FaStore, FaShoppingBag, FaShieldAlt, FaComments } from 'react-icons/fa'; 
+import api from '../../services/api'; 
 import './AccountSidebar.css';
 
 const AccountSidebar = () => {
@@ -14,12 +15,41 @@ const AccountSidebar = () => {
       setUserName(localStorage.getItem('userName') || 'Thành viên');
       setUserAvatar(localStorage.getItem('userAvatar') || '');
       
-      const updatedRoles = JSON.parse(localStorage.getItem('userRoles') || '[]');
-      setIsSeller(updatedRoles.includes('SELLER'));
-      setIsAdmin(updatedRoles.includes('ADMIN'));
+      const userStr = localStorage.getItem('user');
+      const rolesStr = localStorage.getItem('userRoles');
+      
+      let roles: string[] = [];
+      if (userStr) {
+        const userObj = JSON.parse(userStr);
+        roles = userObj.roles || [];
+      } else if (rolesStr) {
+        roles = JSON.parse(rolesStr);
+      }
+
+      setIsSeller(roles.includes('SELLER'));
+      setIsAdmin(roles.includes('ADMIN'));
     };
 
-    handleSync();
+    // --- FIXED: Changed /auth/profile to /auth/me to match backend GET endpoint ---
+    const fetchLatestProfile = async () => {
+      try {
+        const res = await api.get('/auth/me');
+        const latestUser = res.data;
+
+        // Sync fresh data back to storage
+        localStorage.setItem('user', JSON.stringify(latestUser));
+        localStorage.setItem('userName', latestUser.fullName || latestUser.username);
+        localStorage.setItem('userAvatar', latestUser.avatarUrl || '');
+        localStorage.setItem('userRoles', JSON.stringify(latestUser.roles || []));
+
+        handleSync(); // Update UI state
+      } catch (err) {
+        console.error("Sidebar background sync failed:", err);
+      }
+    };
+
+    handleSync(); 
+    fetchLatestProfile(); 
 
     window.addEventListener('storage', handleSync);
     window.addEventListener('profileUpdate', handleSync);
@@ -32,7 +62,6 @@ const AccountSidebar = () => {
 
   return (
     <aside className="account-sidebar">
-      {/* User Brief Section */}
       <div className="sidebar-user-info">
         <div className="sidebar-avatar-wrapper">
           <img 
@@ -49,7 +78,6 @@ const AccountSidebar = () => {
       </div>
 
       <nav className="sidebar-menu">
-        {/* 1. Customer Section */}
         <div className="menu-section">
           <div className="menu-header">
             <FaUser className="menu-icon profile-icon" />
@@ -68,7 +96,6 @@ const AccountSidebar = () => {
           <span>Đơn mua</span>
         </NavLink>
 
-        {/* 2. SELLER SECTION */}
         {isSeller && (
           <div className="menu-section seller-menu-section">
             <div className="menu-header">
@@ -84,7 +111,6 @@ const AccountSidebar = () => {
           </div>
         )}
 
-        {/* 3. ADMIN SECTION */}
         {isAdmin && (
           <div className="menu-section admin-menu-section">
             <div className="menu-header">

@@ -20,6 +20,7 @@ const clearAuthData = () => {
     const keysToRemove = [
         'jwt_token', 
         'isAuthenticated', 
+        'user', // FIX: Added to clear the master object
         'userName', 
         'userEmail', 
         'userPhone', 
@@ -40,6 +41,9 @@ export const getUserProfile = async (): Promise<any> => {
       const email = response.data.email;
 
       if (name || email) {
+        // FIX: Save the full object so AddProduct.tsx can see the 'VERIFIED' status
+        localStorage.setItem('user', JSON.stringify(response.data));
+
         localStorage.setItem('isAuthenticated', 'true');
         localStorage.setItem('userName', name || 'Thành viên');
         localStorage.setItem('userEmail', response.data.email || '');
@@ -79,6 +83,10 @@ export const logoutUser = async (): Promise<void> => {
 export const updateProfile = async (profileData: any): Promise<string> => {
   try {
     const response = await api.put('/auth/profile', profileData);
+    
+    // FIX: Re-fetch profile after update to ensure storage is 100% in sync
+    await getUserProfile();
+
     if (profileData.fullName) localStorage.setItem('userName', profileData.fullName);
     if (profileData.avatarUrl) localStorage.setItem('userAvatar', profileData.avatarUrl);
 
@@ -106,6 +114,9 @@ export const loginUser = async (loginData: any): Promise<any> => {
       localStorage.setItem('jwt_token', response.data.token);
     }
     
+    // FIX: Save initial user state including verification status
+    localStorage.setItem('user', JSON.stringify(response.data));
+
     localStorage.setItem('isAuthenticated', 'true');
     localStorage.setItem('userName', response.data.fullName || 'Thành viên');
     localStorage.setItem('userEmail', response.data.email || '');
@@ -160,7 +171,7 @@ export const upgradeToSeller = async (formData: any): Promise<string> => {
     // Prepare JSON part - Sync with backend SellerRegistrationDTO
     const registrationData = {
       phone: formData.phone,
-      email: formData.email, // Mandatory field added
+      email: formData.email, 
       cccdNumber: formData.cccdNumber,
       shopName: formData.shopName,
       shopAddress: formData.shopAddress,
