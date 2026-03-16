@@ -3,7 +3,7 @@ import adminService from '../../services/admin.service';
 import { toast } from 'react-hot-toast';
 import { 
   FaEye, FaCheck, FaTimes, FaIdCard, FaUniversity, 
-  FaStore, FaFileInvoice, FaUserClock, FaHistory 
+  FaStore, FaFileInvoice, FaUserClock, FaHistory, FaSearchPlus 
 } from 'react-icons/fa';
 import './AdminDashboard.css'; 
 
@@ -15,6 +15,9 @@ const SellerModeration = () => {
   const [adminNote, setAdminNote] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   
+  // --- State for Image Zoom ---
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+
   // Success Animation States
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
@@ -23,12 +26,30 @@ const SellerModeration = () => {
   const API_BASE_URL = "http://localhost:8080";
 
   /**
-   * Helper to ensure images load from the Backend port
+   * FIXED HELPER:
+   * 1. Handles Base64 strings (data:image...) from MongoDB.
+   * 2. Handles "DEFAULT_LOGO" fallback.
+   * 3. Handles standard file paths (/api/uploads/...).
    */
   const getFullImageUrl = (path: string | null | undefined) => {
-    if (!path) return '/default-avatar.png';
-    if (path.startsWith('http')) return path; // Already a full URL (like Google/FB avatars)
-    return `${API_BASE_URL}${path}`;
+    // Case 1: Empty or Fallback flag
+    if (!path || path === "DEFAULT_LOGO" || path.trim() === "") {
+      return '/logo.svg'; 
+    }
+    
+    // Case 2: Base64 Data URI
+    if (path.startsWith('data:image')) {
+      return path; 
+    }
+
+    // Case 3: External URL (Google/FB)
+    if (path.startsWith('http')) {
+      return path;
+    }
+    
+    // Case 4: Backend File Path
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    return `${API_BASE_URL}${cleanPath}`;
   };
 
   // --- FETCH DATA ---
@@ -101,6 +122,16 @@ const SellerModeration = () => {
 
   return (
     <div className="admin-moderation-page">
+      {/* --- FULL SCREEN ZOOM OVERLAY --- */}
+      {zoomedImage && (
+        <div className="image-zoom-overlay" onClick={() => setZoomedImage(null)}>
+          <div className="zoom-content-wrapper">
+             <button className="close-zoom-btn" onClick={() => setZoomedImage(null)}><FaTimes /></button>
+             <img src={zoomedImage} alt="Phóng to" />
+          </div>
+        </div>
+      )}
+
       {/* --- SUCCESS ANIMATION OVERLAY --- */}
       {showSuccess && (
         <div className="success-animation-overlay">
@@ -147,33 +178,40 @@ const SellerModeration = () => {
               {pendingSellers.length > 0 ? pendingSellers.map(seller => (
                 <tr key={seller.id}>
                   <td>
-                    <div className="user-info-cell">
-                      <img 
-                        src={getFullImageUrl(seller.avatarUrl)} 
-                        alt="avatar" 
-                        onError={(e) => { e.currentTarget.src = '/default-avatar.png'; }}
-                      />
-                      <div className="name-box">
-                        <strong className="full-name">{seller.fullName || 'Người dùng'}</strong>
-                        <span className="user-id">UID: {seller.id?.substring(0, 8)}</span>
+                    <div className="user-profile-cell">
+                      <div className="moderation-avatar-wrapper">
+                        <img 
+                          src={getFullImageUrl(seller.avatarUrl)} 
+                          alt="avatar" 
+                          onError={(e) => { e.currentTarget.src = '/logo.svg'; }}
+                        />
+                      </div>
+                      <div className="user-meta-info">
+                        <strong className="user-full-name">{seller.fullName || 'Người dùng'}</strong>
+                        <span className="user-uid-text">ID: {seller.id?.substring(0, 8)}</span>
                       </div>
                     </div>
                   </td>
                   <td>
-                    <div className="contact-info-cell">
-                      <p className="email-text">{seller.email}</p>
-                      <p className="phone-text">{seller.phone || 'N/A'}</p>
+                    <div className="contact-details-box">
+                      <p className="contact-email">{seller.email}</p>
+                      <p className="contact-phone">{seller.phone || 'Chưa cập nhật'}</p>
                     </div>
                   </td>
                   <td>
-                    <div className="date-cell">
-                      <FaHistory /> {new Date(seller.updatedAt || seller.createdAt || Date.now()).toLocaleDateString('vi-VN')}
+                    <div className="moderation-date-cell">
+                      <FaHistory className="date-icon" /> 
+                      {new Date(seller.updatedAt || seller.createdAt || Date.now()).toLocaleDateString('vi-VN')}
                     </div>
                   </td>
-                  <td><span className="status-badge-pending">Chờ duyệt</span></td>
                   <td>
-                    <button onClick={() => openReview(seller.id)} className="btn-review-action">
-                      <FaEye /> Xem chi tiết
+                    <div className="status-badge-container">
+                        <span className="status-badge-pending">Chờ duyệt</span>
+                    </div>
+                  </td>
+                  <td>
+                    <button onClick={() => openReview(seller.id)} className="btn-action-view">
+                      <FaEye /> <span>Xem hồ sơ</span>
                     </button>
                   </td>
                 </tr>
@@ -213,7 +251,9 @@ const SellerModeration = () => {
                   <div className="id-images-container">
                     <div className="id-image-item">
                       <span className="img-label">Mặt trước</span>
-                      <div className="img-wrapper">
+                      {/* --- ADDED: zoomable class and click handler --- */}
+                      <div className="img-wrapper zoomable" onClick={() => setZoomedImage(getFullImageUrl(selectedSeller.identityInfo?.frontImageUrl))}>
+                        <div className="zoom-hint"><FaSearchPlus /></div>
                         <img 
                             src={getFullImageUrl(selectedSeller.identityInfo?.frontImageUrl)} 
                             alt="Mặt trước CCCD" 
@@ -223,7 +263,9 @@ const SellerModeration = () => {
                     </div>
                     <div className="id-image-item">
                       <span className="img-label">Mặt sau</span>
-                      <div className="img-wrapper">
+                      {/* --- ADDED: zoomable class and click handler --- */}
+                      <div className="img-wrapper zoomable" onClick={() => setZoomedImage(getFullImageUrl(selectedSeller.identityInfo?.backImageUrl))}>
+                        <div className="zoom-hint"><FaSearchPlus /></div>
                         <img 
                             src={getFullImageUrl(selectedSeller.identityInfo?.backImageUrl)} 
                             alt="Mặt sau CCCD" 

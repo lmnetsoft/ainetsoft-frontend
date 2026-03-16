@@ -74,7 +74,7 @@ public class AdminService {
 
     /**
      * Aggregates Master Stats for the Global Admin Dashboard.
-     * FIXED: Counts pending sellers by sellerVerification to match the User's "Waiting" UI.
+     * FIXED: This now specifically counts "PENDING" to match your UI.
      */
     public AdminStatsSummary getGlobalStats() {
         log.info("--- Dashboard Stats Sync Initiated ---");
@@ -84,7 +84,7 @@ public class AdminService {
         long pCount = productRepository.count();
         long pendingPCount = productRepository.countByStatus("PENDING");
         
-        // FIXED SOURCE OF TRUTH: Query by sellerVerification to find "Bestseller"
+        // FIXED SOURCE OF TRUTH: Now explicitly counts the users you see in the "Duyệt Shop" list
         long pendingSCount = userRepository.countBySellerVerification("PENDING");
 
         log.info("DB Counts -> Users: {}, Sellers: {}, Pending Sellers (Shop): {}", uCount, sCount, pendingSCount);
@@ -110,8 +110,11 @@ public class AdminService {
                 .build();
     }
 
+    /**
+     * FIXED: Added single quotes around 'Tháng' so Java doesn't think 'T' is a command.
+     */
     private List<Map<String, Object>> generateRevenueHistory(List<Order> completedOrders) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("Tháng MM");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("'Tháng' MM");
         
         Map<String, Double> monthlyData = completedOrders.stream()
             .collect(Collectors.groupingBy(
@@ -148,12 +151,20 @@ public class AdminService {
     // --- SELLER MODERATION ---
 
     /**
-     * FIXED: Now searches by sellerVerification: PENDING.
-     * This ensures the "Bestseller" user appears in the Admin moderation list.
+     * UPDATED: Injects "DEFAULT_LOGO" if the requester hasn't set an avatar yet.
+     * This allows the Frontend to point to logo.svg in its public folder.
      */
     public List<User> getPendingSellers() {
         log.info("Searching for users with sellerVerification: PENDING");
         List<User> pending = userRepository.findBySellerVerification("PENDING");
+        
+        // BITNAMILEGACY FIX: Identify missing avatars so Frontend can use the SVG logo
+        pending.forEach(user -> {
+            if (user.getAvatarUrl() == null || user.getAvatarUrl().isEmpty()) {
+                user.setAvatarUrl("DEFAULT_LOGO"); 
+            }
+        });
+
         log.info("Found {} pending seller requests", pending.size());
         return pending;
     }
@@ -173,7 +184,6 @@ public class AdminService {
         }
 
         if (request.isApproved()) {
-            // Success Path
             user.setSellerVerification("VERIFIED");
             user.setAccountStatus("ACTIVE"); 
             user.setRejectionReason(null);
@@ -196,9 +206,8 @@ public class AdminService {
             recordAudit(performingAdmin, "APPROVE_SELLER", user.getId(), user.getEmail(), "Phê duyệt Shop");
             return "Người dùng " + user.getFullName() + " đã trở thành Người bán.";
         } else {
-            // Rejection Path
             user.setSellerVerification("REJECTED");
-            user.setAccountStatus("ACTIVE"); // Reset status so they can try again if they want
+            user.setAccountStatus("ACTIVE"); 
             user.setRejectionReason(request.getAdminNote());
             user.setUpdatedAt(LocalDateTime.now());
             userRepository.save(user);

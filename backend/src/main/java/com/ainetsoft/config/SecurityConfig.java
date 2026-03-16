@@ -45,11 +45,21 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable()) 
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            
+            // --- FIX: STOP REDIRECTING TO LOGIN PAGE ---
+            .exceptionHandling(exception -> exception
+                .authenticationEntryPoint((request, response, authException) -> {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json");
+                    response.getWriter().write("{\"error\": \"Unauthorized\", \"message\": \"" + authException.getMessage() + "\"}");
+                })
+            )
+            
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 
-                // --- 1. PUBLIC ENDPOINTS (Available to Visitors) ---
+                // --- 1. PUBLIC ENDPOINTS ---
                 .requestMatchers(
                     "/api/auth/login", 
                     "/api/auth/register", 
@@ -58,20 +68,18 @@ public class SecurityConfig {
                     "/oauth2/**",
                     "/login/oauth2/**",
                     "/error",
-                    "/api/uploads/**",         // FIXED: Allow browser to load CCCD & Product images
+                    "/api/uploads/**",
                     "/api/chat/download/**",
-                    "/ws/**"                   // WebSocket connection
+                    "/ws/**"
                 ).permitAll() 
 
-                // FIX: Allow Visitors to load history and upload images
                 .requestMatchers("/api/chat/history/**").permitAll()
                 .requestMatchers("/api/chat/read/**").permitAll()
                 .requestMatchers("/api/chat/upload").permitAll() 
-                
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll() 
 
                 // --- 2. ADMIN ONLY ENDPOINTS ---
-                .requestMatchers("/api/admin/**").hasRole("ADMIN") // SECURED: All admin stats & moderation
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/chat/admin/**").hasRole("ADMIN")
 
                 // --- 3. AUTHENTICATED USER ENDPOINTS ---

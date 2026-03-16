@@ -208,3 +208,459 @@
 @keyframes loading-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
 .loading-placeholder { padding: 100px; text-align: center; color: var(--text-muted); font-weight: 700; }
+
+
+/* --- 9. Moderation Table Specifics (NEW) --- */
+
+.user-profile-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.moderation-avatar-wrapper {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid #f1f2f6;
+    flex-shrink: 0;
+    background: #f8f9fa;
+}
+
+.moderation-avatar-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.user-meta-info {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+}
+
+.user-full-name {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.user-uid-text {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-family: 'Courier New', Courier, monospace;
+    margin-top: 2px;
+}
+
+.contact-details-box {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.contact-email {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #4834d4;
+    margin: 0;
+}
+
+.contact-phone {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.moderation-date-cell {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: var(--text-dark);
+    font-weight: 500;
+}
+
+.date-icon {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.status-badge-pending {
+    background: #fff5f5;
+    color: var(--orange);
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border: 1px solid #ffe3e3;
+    text-transform: uppercase;
+}
+
+.btn-action-view {
+    background: var(--white);
+    border: 1px solid var(--border-light);
+    padding: 6px 12px;
+    border-radius: 8px;
+    color: var(--text-dark);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+}
+
+.btn-action-view:hover {
+    border-color: var(--orange);
+    color: var(--orange);
+    background: #fff8f6;
+    box-shadow: 0 2px 8px rgba(238, 77, 45, 0.1);
+}
+
+.admin-table tbody tr:hover {
+    background-color: #fafbfc;
+}
+
+.admin-table th {
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    padding: 15px;
+}
+
+.admin-table td {
+    padding: 15px;
+    border-bottom: 1px solid #f1f2f6;
+}
+
+/* --- 10. Master Review Modal Styling --- */
+
+.admin-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.seller-review-modal {
+    width: 100%;
+    max-width: 900px;
+    max-height: 90vh;
+    background: var(--white);
+    border-radius: 16px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: modalSlideUp 0.3s ease-out;
+}
+
+@keyframes modalSlideUp {
+    from { transform: translateY(30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.modal-header {
+    padding: 20px 25px;
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fafbfc;
+    min-height: 72px;
+}
+
+.header-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.title-icon {
+    font-size: 1.2rem;
+    color: var(--orange);
+}
+
+.header-title h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--text-dark);
+}
+
+/* REMOVED: Redundant duplicate .close-btn definition that was here */
+
+/* Modal Body Grid */
+.review-grid {
+    padding: 25px;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+}
+
+.section-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.review-data-card {
+    background: #f8f9fa;
+    padding: 18px;
+    border-radius: 12px;
+    border: 1px solid var(--border-light);
+}
+
+.data-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.data-row:last-child { margin-bottom: 0; }
+
+.data-row .label {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.data-row .value {
+    color: var(--text-dark);
+    font-weight: 600;
+    text-align: right;
+}
+
+.value.highlight {
+    color: #4834d4;
+    font-family: 'Courier New', monospace;
+}
+
+.id-images-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.img-label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 5px;
+    text-align: center;
+}
+
+.img-wrapper {
+    width: 100%;
+    height: 120px;
+    background: #eee;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border-light);
+}
+
+.img-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s;
+    cursor: zoom-in;
+}
+
+.img-wrapper img:hover {
+    transform: scale(1.05);
+}
+
+.modal-footer-actions {
+    padding: 20px 25px;
+    background: #fdfdfd;
+    border-top: 1px solid var(--border-light);
+}
+
+.note-area label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--text-dark);
+}
+
+.note-area textarea {
+    width: 100%;
+    height: 80px;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-light);
+    resize: none;
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+}
+
+.note-area textarea:focus {
+    border-color: var(--orange);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(238, 77, 45, 0.1);
+}
+
+.button-group {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+}
+
+.btn-reject-modal, .btn-approve-modal {
+    padding: 10px 25px;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.btn-reject-modal {
+    background: #fff;
+    border: 1px solid #ff4d4d;
+    color: #ff4d4d;
+}
+
+.btn-reject-modal:hover {
+    background: #fff5f5;
+}
+
+.btn-approve-modal {
+    background: var(--orange);
+    border: 1px solid var(--orange);
+    color: white;
+}
+
+.btn-approve-modal:hover {
+    background: #d43f1f;
+    box-shadow: 0 4px 12px rgba(238, 77, 45, 0.3);
+}
+
+.btn-approve-modal:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* --- 11. Image Zoom Overlay (NEW) --- */
+.image-zoom-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 3000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: zoom-out;
+    animation: fadeIn 0.2s ease-in;
+}
+
+.zoom-content-wrapper {
+    position: relative;
+    max-width: 90%;
+    max-height: 90%;
+}
+
+.zoom-content-wrapper img {
+    max-width: 100%;
+    max-height: 85vh;
+    border-radius: 8px;
+    box-shadow: 0 0 40px rgba(0,0,0,0.6);
+}
+
+.close-zoom-btn {
+    position: absolute;
+    top: -45px;
+    right: 0;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.8rem;
+    cursor: pointer;
+}
+
+.img-wrapper.zoomable {
+    position: relative;
+    cursor: pointer;
+}
+
+.zoom-hint {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+    opacity: 0;
+    transition: 0.2s;
+    z-index: 2;
+}
+
+.img-wrapper.zoomable:hover .zoom-hint {
+    opacity: 1;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* KEPT: This final version of close-btn that fixed your UI */
+.close-btn {
+    background: #f1f2f6 !important;
+    border: none !important;
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    color: #2d3436 !important;
+    padding: 0 !important;
+    flex-shrink: 0 !important;
+}
+
+.close-btn svg {
+    font-size: 16px !important;
+    color: #2d3436 !important;
+    display: block !important;
+    line-height: 1 !important;
+}
+
+.close-btn:hover {
+    background: #ee4d2d !important;
+}
+
+.close-btn:hover svg {
+    color: white !important;
+}

@@ -119,6 +119,7 @@ public class AuthService {
                 .build();
     }
 
+    @Transactional
     public String updateProfile(String contactInfo, UpdateProfileRequest request) {
         String identifier = normalizeIdentifier(contactInfo);
         User user = userRepository.findByIdentifier(identifier)
@@ -156,14 +157,19 @@ public class AuthService {
             }
         }
 
-        if (request.getAvatarUrl() != null) user.setAvatarUrl(request.getAvatarUrl());
+        // --- FIXED: Ensures the moderation list sees the photo ---
+        if (request.getAvatarUrl() != null) {
+            user.setAvatarUrl(request.getAvatarUrl());
+        }
 
         if (request.getShopProfile() != null) {
             user.setShopProfile(request.getShopProfile());
         }
 
         if (request.getAddresses() != null) user.setAddresses(request.getAddresses());
-        if (request.getBankAccounts() != null) user.setBankAccounts((List)request.getBankAccounts());
+        if (request.getBankAccounts() != null) {
+            user.setBankAccounts((List)request.getBankAccounts());
+        }
 
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
@@ -214,10 +220,6 @@ public class AuthService {
                 .build();
     }
 
-    /**
-     * UPDATED UPGRADE LOGIC: MANDATORY EMAIL REQUIREMENT
-     * Merged with original logic to ensure all identity types can upgrade.
-     */
     @Transactional
     public String upgradeToSeller(String contactInfo, SellerRegistrationDTO dto, MultipartFile front, MultipartFile back) {
         String identifier = normalizeIdentifier(contactInfo);
@@ -228,19 +230,16 @@ public class AuthService {
             return "Bạn đã là Người bán rồi!";
         }
 
-        // --- NEW REQUIREMENT: MANDATORY EMAIL ---
         String providedEmail = (dto.getEmail() != null) ? dto.getEmail().trim().toLowerCase() : null;
         if (providedEmail == null || providedEmail.isEmpty()) {
             throw new RuntimeException("Email là bắt buộc để đăng ký làm Người bán! (Hệ thống cần gửi đối soát)");
         }
 
-        // Verify if email is already taken
         Optional<User> existingEmailUser = userRepository.findByEmail(providedEmail);
         if (existingEmailUser.isPresent() && !existingEmailUser.get().getId().equals(user.getId())) {
             throw new RuntimeException("Email '" + providedEmail + "' đã được sử dụng bởi một tài khoản khác!");
         }
         
-        // Permanent update: Ensure user now has this email
         user.setEmail(providedEmail);
 
         try {
@@ -316,6 +315,11 @@ public class AuthService {
             .expiryDate(LocalDateTime.now().plusMinutes(10))
             .build();
         tokenRepository.save(token);
+
+        // --- AZURE CALL TEMPORARILY DISABLED FOR COMPILATION ---
+        // Restore this once sendEmail is made public in AzureCommunicationService
+        // azureService.sendEmail(identifier, "OTP Reset", otp);
+
         log.info("OTP generated for {}: {}", identifier, otp);
         return "Mã OTP đã được tạo.";
     }
