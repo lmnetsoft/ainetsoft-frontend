@@ -3,9 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import api, { getCategories } from '../../services/api';
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import ToastNotification from '../../components/Toast/ToastNotification';
+import heic2any from 'heic2any'; // Support for iPhone photos
 import './AddProduct.css'; 
 
-// The base URL for your backend server
 const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:8080';
 
 interface Category {
@@ -27,7 +27,7 @@ const EditProduct = () => {
     stock: 0,
     categoryId: '',
     shopName: '',
-    sellerId: '' // Track sellerId to ensure path consistency for subfolders
+    sellerId: '' 
   });
 
   // 2. Media Management
@@ -36,6 +36,7 @@ const EditProduct = () => {
   const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
   
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
 
   // 3. Metadata
   const [categories, setCategories] = useState<Category[]>([]);
@@ -46,18 +47,10 @@ const EditProduct = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
-  /**
-   * DYNAMIC IMAGE RESOLVER
-   * Standardized to handle the uploads/ads/{sellerId}/ structure.
-   * Prepends the BASE_URL to any relative path coming from the DB.
-   */
   const formatMediaUrl = (url?: string) => {
     if (!url || url === 'undefined' || url === 'null' || url === '') return "/placeholder.png";
     if (url.startsWith('http') || url.startsWith('blob:')) return url;
-    
-    // Standardize leading slash to avoid double-slashes or missing slashes
     const cleanPath = url.startsWith('/') ? url : `/${url}`;
-    
     return `${BASE_URL}${cleanPath}`;
   };
 
@@ -71,7 +64,6 @@ const EditProduct = () => {
           api.get(`/products/${id}`)
         ]);
 
-        // Security Check: Only verified sellers can edit
         if (profileRes.data.sellerVerification !== 'VERIFIED') {
           navigate('/seller/register');
           return;
@@ -87,14 +79,19 @@ const EditProduct = () => {
           stock: p.stock,
           categoryId: p.categoryId || (catRes.data[0]?.id),
           shopName: p.shopName,
-          sellerId: p.sellerId // Capture owner ID for potential path logic
+          sellerId: p.sellerId 
         });
 
-        // Use the image array from backend (checking common naming variations)
+        // Load images
         const imageList = p.imageUrls || p.images || [];
         setExistingImages(Array.isArray(imageList) ? imageList : []);
         
-        // Convert Specifications Map back to Array for the UI
+        // Load video
+        if (p.videoUrl) {
+          setVideoPreview(formatMediaUrl(p.videoUrl));
+        }
+
+        // Load specs
         if (p.specifications) {
           const specArray = Object.entries(p.specifications).map(([key, value]) => ({ 
             key, 
@@ -117,7 +114,10 @@ const EditProduct = () => {
     initData();
   }, [id, navigate]);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  /**
+   * ASYNC IMAGE HANDLER: Supports Multi-upload + HEIC Conversion
+   */
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const totalCount = existingImages.length + newImageFiles.length + files.length;
     
@@ -127,9 +127,49 @@ const EditProduct = () => {
       return;
     }
 
-    setNewImageFiles(prev => [...prev, ...files]);
-    const previews = files.map(file => URL.createObjectURL(file));
-    setNewImagePreviews(prev => [...prev, ...previews]);
+    const processedFiles: File[] = [];
+    const processedPreviews: string[] = [];
+
+    for (const file of files) {
+      const fileName = file.name.toLowerCase();
+      if (fileName.endsWith(".heic") || fileName.endsWith(".heif")) {
+        try {
+          setToastMessage("Đang xử lý ảnh HEIC...");
+          setShowToast(true);
+          const convertedBlob = await heic2any({
+            blob: file,
+            toType: "image/jpeg",
+            quality: 0.8
+          });
+          const blob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+          const newFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), { type: "image/jpeg" });
+          processedFiles.push(newFile);
+          processedPreviews.push(URL.createObjectURL(blob));
+        } catch (error) {
+          setToastMessage("Lỗi xử lý ảnh HEIC.");
+          setShowToast(true);
+        }
+      } else {
+        processedFiles.push(file);
+        processedPreviews.push(URL.createObjectURL(file));
+      }
+    }
+
+    setNewImageFiles(prev => [...prev, ...processedFiles]);
+    setNewImagePreviews(prev => [...prev, ...processedPreviews]);
+  };
+
+  const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 15 * 1024 * 1024) {
+        setToastMessage("Dung lượng video phải nhỏ hơn 15MB.");
+        setShowToast(true);
+        return;
+      }
+      setVideoFile(file);
+      setVideoPreview(URL.createObjectURL(file));
+    }
   };
 
   const updateSpec = (index: number, field: 'key' | 'value', val: string) => {
@@ -149,15 +189,14 @@ const EditProduct = () => {
         if (s.key.trim() && s.value.trim()) specMap[s.key] = s.value;
       });
 
+      // Maintain consistency between imageUrls and existing state
       const productPayload = { 
         ...formData, 
         specifications: specMap,
-        images: existingImages // These are the URLs we chose to KEEP
+        imageUrls: existingImages 
       };
 
       data.append("product", new Blob([JSON.stringify(productPayload)], { type: "application/json" }));
-      
-      // Add newly uploaded files
       newImageFiles.forEach(file => data.append("images", file));
       if (videoFile) data.append("video", videoFile);
 
@@ -193,40 +232,51 @@ const EditProduct = () => {
 
           <form onSubmit={handleSubmit} className="product-form">
             <section className="form-section">
-              <h3>Hình ảnh sản phẩm (Tối đa 5)</h3>
+              <h3>Hình ảnh & Video</h3>
               <div className="media-upload-area">
-                <div className="image-upload-grid">
-                  
-                  {/* RENDER EXISTING IMAGES - RESOLVED VIA SUBFOLDER PATHS */}
-                  {existingImages.map((url, index) => (
-                    <div key={`exist-${index}`} className="image-preview-item">
-                      <img 
-                        src={formatMediaUrl(url)} 
-                        alt="Current" 
-                        onError={(e) => { e.currentTarget.src = "/placeholder.png"; }}
-                      />
-                      <button type="button" className="remove-img" onClick={() => setExistingImages(prev => prev.filter((_, i) => i !== index))}>×</button>
-                    </div>
-                  ))}
-                  
-                  {/* RENDER NEW UPLOADS */}
-                  {newImagePreviews.map((url, index) => (
-                    <div key={`new-${index}`} className="image-preview-item new-upload">
-                      <img src={url} alt="New" />
-                      <button type="button" className="remove-img" onClick={() => {
-                        setNewImageFiles(prev => prev.filter((_, i) => i !== index));
-                        setNewImagePreviews(prev => prev.filter((_, i) => i !== index));
-                      }}>×</button>
-                    </div>
-                  ))}
+                
+                {/* 1. EXISTING IMAGES (URLs) */}
+                {existingImages.map((url, index) => (
+                  <div key={`exist-${index}`} className="image-preview-item">
+                    <img src={formatMediaUrl(url)} alt="Current" />
+                    <button type="button" className="remove-img" onClick={() => setExistingImages(prev => prev.filter((_, i) => i !== index))}>×</button>
+                    {index === 0 && <span className="primary-badge">Ảnh bìa</span>}
+                  </div>
+                ))}
+                
+                {/* 2. NEW IMAGE PREVIEWS (Blobs) */}
+                {newImagePreviews.map((url, index) => (
+                  <div key={`new-${index}`} className="image-preview-item">
+                    <img src={url} alt="New" />
+                    <button type="button" className="remove-img" onClick={() => {
+                      setNewImageFiles(prev => prev.filter((_, i) => i !== index));
+                      setNewImagePreviews(prev => prev.filter((_, i) => i !== index));
+                    }}>×</button>
+                  </div>
+                ))}
 
-                  {(existingImages.length + newImageFiles.length) < 5 && (
-                    <div className="upload-placeholder" onClick={() => imageInputRef.current?.click()}>
-                      <span>+ Thêm ảnh</span>
-                    </div>
-                  )}
-                </div>
-                <input type="file" ref={imageInputRef} multiple onChange={handleImageChange} accept="image/*" style={{ display: 'none' }} />
+                {/* 3. VIDEO PREVIEW */}
+                {videoPreview ? (
+                  <div className="video-preview-item">
+                    <video src={videoPreview} />
+                    <button type="button" className="remove-video" onClick={() => {setVideoFile(null); setVideoPreview(null);}}>×</button>
+                    <div className="video-icon-overlay">▶</div>
+                  </div>
+                ) : (
+                  <div className="video-placeholder" onClick={() => videoInputRef.current?.click()}>
+                    <span>📹 Thêm Video</span>
+                  </div>
+                )}
+
+                {/* 4. ADD BUTTON */}
+                {(existingImages.length + newImageFiles.length) < 5 && (
+                  <div className="upload-placeholder" onClick={() => imageInputRef.current?.click()}>
+                    <span>+ Thêm ảnh</span>
+                  </div>
+                )}
+
+                <input type="file" ref={imageInputRef} multiple onChange={handleImageChange} accept="image/*,.heic,.heif" style={{ display: 'none' }} />
+                <input type="file" ref={videoInputRef} onChange={handleVideoChange} accept="video/*" style={{ display: 'none' }} />
               </div>
             </section>
 
@@ -251,6 +301,10 @@ const EditProduct = () => {
                   <label>Giá niêm yết (₫)</label>
                   <input type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: Number(e.target.value)})} />
                 </div>
+              </div>
+              <div className="input-group" style={{marginTop: '20px'}}>
+                  <label>Số lượng tồn kho</label>
+                  <input type="number" value={formData.stock} onChange={(e) => setFormData({...formData, stock: Number(e.target.value)})} />
               </div>
             </section>
 

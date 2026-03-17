@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api, { getCategories } from '../../services/api'; 
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import ToastNotification from '../../components/Toast/ToastNotification';
+import heic2any from 'heic2any'; // Support for iPhone HEIC photos
 import './AddProduct.css';
 
 // The base URL for your backend server
@@ -26,7 +27,7 @@ const AddProduct = () => {
     stock: 0,
     categoryId: '', 
     shopName: localStorage.getItem('userName') || 'Cửa hàng của tôi',
-    sellerId: '' // Track sellerId for path consistency
+    sellerId: '' 
   });
 
   // 2. Specifications State
@@ -45,17 +46,6 @@ const AddProduct = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
-  /**
-   * DYNAMIC PATH RESOLVER
-   * Standardized across the Seller dashboard to handle the uploads/ads/{sellerId}/ structure.
-   */
-  const formatMediaUrl = (url?: string) => {
-    if (!url || url === 'undefined' || url === 'null' || url === '') return "/placeholder.png";
-    if (url.startsWith('http') || url.startsWith('blob:')) return url;
-    const cleanPath = url.startsWith('/') ? url : `/${url}`;
-    return `${BASE_URL}${cleanPath}`;
-  };
-
   useEffect(() => {
     const checkStatusAndFetchData = async () => {
       try {
@@ -70,7 +60,7 @@ const AddProduct = () => {
           return;
         }
 
-        // Capture the sellerId for internal state
+        // Capture sellerId for internal state
         setFormData(prev => ({ ...prev, sellerId: latestUser.id || latestUser.userId }));
 
         const catRes = await getCategories();
@@ -87,16 +77,55 @@ const AddProduct = () => {
     checkStatusAndFetchData();
   }, [navigate]);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  /**
+   * SMART IMAGE HANDLER: Supports HEIC Conversion + Multi-upload
+   */
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
+    
     if (imageFiles.length + files.length > 5) {
       setToastMessage("Bạn chỉ được tải lên tối đa 5 hình ảnh.");
       setShowToast(true);
       return;
     }
-    setImageFiles(prev => [...prev, ...files]);
-    const newPreviews = files.map(file => URL.createObjectURL(file));
-    setImagePreviews(prev => [...prev, ...newPreviews]);
+
+    const processedFiles: File[] = [];
+    const processedPreviews: string[] = [];
+
+    for (const file of files) {
+      const fileName = file.name.toLowerCase();
+      
+      if (fileName.endsWith(".heic") || fileName.endsWith(".heif")) {
+        try {
+          setToastMessage("Đang xử lý ảnh HEIC...");
+          setShowToast(true);
+
+          const convertedBlob = await heic2any({
+            blob: file,
+            toType: "image/jpeg",
+            quality: 0.8
+          });
+
+          const blob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+          const newFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), {
+            type: "image/jpeg",
+          });
+
+          processedFiles.push(newFile);
+          processedPreviews.push(URL.createObjectURL(blob));
+        } catch (error) {
+          console.error("HEIC Error:", error);
+          setToastMessage("Lỗi xử lý ảnh HEIC.");
+          setShowToast(true);
+        }
+      } else {
+        processedFiles.push(file);
+        processedPreviews.push(URL.createObjectURL(file));
+      }
+    }
+
+    setImageFiles(prev => [...prev, ...processedFiles]);
+    setImagePreviews(prev => [...prev, ...processedPreviews]);
   };
 
   const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -147,7 +176,6 @@ const AddProduct = () => {
       
       setToastMessage("Đã gửi sản phẩm! Vui lòng chờ Admin kiểm duyệt.");
       setShowToast(true);
-
       setTimeout(() => navigate('/seller/products'), 2000);
       
     } catch (error: any) {
@@ -175,36 +203,39 @@ const AddProduct = () => {
             <section className="form-section">
               <h3>Hình ảnh & Video</h3>
               <div className="media-upload-area">
-                <div className="image-upload-grid">
-                  {imagePreviews.map((url, index) => (
-                    <div key={index} className="image-preview-item">
-                      <img src={url} alt="Preview" />
-                      <button type="button" className="remove-img" onClick={() => {
-                        setImageFiles(prev => prev.filter((_, i) => i !== index));
-                        setImagePreviews(prev => prev.filter((_, i) => i !== index));
-                      }}>×</button>
-                    </div>
-                  ))}
-                  {imageFiles.length < 5 && (
-                    <div className="upload-placeholder" onClick={() => imageInputRef.current?.click()}>
-                      <span>+ Thêm ảnh</span>
-                    </div>
-                  )}
-                </div>
+                {/* 1. IMAGES */}
+                {imagePreviews.map((url, index) => (
+                  <div key={`img-${index}`} className="image-preview-item">
+                    <img src={url} alt="Preview" />
+                    <button type="button" className="remove-img" onClick={() => {
+                      setImageFiles(prev => prev.filter((_, i) => i !== index));
+                      setImagePreviews(prev => prev.filter((_, i) => i !== index));
+                    }}>×</button>
+                    {index === 0 && <span className="primary-badge">Ảnh bìa</span>}
+                  </div>
+                ))}
 
-                <div className="video-upload-area">
-                    {videoPreview ? (
-                        <div className="video-preview-item">
-                            <video src={videoPreview} controls />
-                            <button type="button" className="remove-video" onClick={() => {setVideoFile(null); setVideoPreview(null);}}>Xóa Video</button>
-                        </div>
-                    ) : (
-                        <div className="video-placeholder" onClick={() => videoInputRef.current?.click()}>
-                            <span>📹 Thêm Video giới thiệu (Max 15MB)</span>
-                        </div>
-                    )}
-                </div>
-                <input type="file" ref={imageInputRef} multiple onChange={handleImageChange} accept="image/*" style={{ display: 'none' }} />
+                {/* 2. VIDEO - SIDE BY SIDE */}
+                {videoPreview ? (
+                  <div className="video-preview-item">
+                    <video src={videoPreview} />
+                    <button type="button" className="remove-video" onClick={() => {setVideoFile(null); setVideoPreview(null);}}>×</button>
+                    <div className="video-icon-overlay">▶</div>
+                  </div>
+                ) : (
+                  <div className="video-placeholder" onClick={() => videoInputRef.current?.click()}>
+                    <span>📹 Thêm Video</span>
+                  </div>
+                )}
+
+                {/* 3. PLACEHOLDER */}
+                {imageFiles.length < 5 && (
+                  <div className="upload-placeholder" onClick={() => imageInputRef.current?.click()}>
+                    <span>+ Thêm ảnh</span>
+                  </div>
+                )}
+
+                <input type="file" ref={imageInputRef} multiple onChange={handleImageChange} accept="image/*,.heic,.heif" style={{ display: 'none' }} />
                 <input type="file" ref={videoInputRef} onChange={handleVideoChange} accept="video/*" style={{ display: 'none' }} />
               </div>
             </section>
