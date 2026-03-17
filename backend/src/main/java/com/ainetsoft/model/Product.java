@@ -26,7 +26,6 @@ public class Product {
     private double price;
     private int stock;
     
-    // UPDATED: Now links to Category ID for dynamic filtering
     private String categoryId;
     private String categoryName; 
     
@@ -39,7 +38,6 @@ public class Product {
     private String sellerId;   
     private String shopName;
 
-    // SMART FEATURE: Dynamic Specs (e.g., {"Brand": "Apple", "Color": "Titanium"})
     @Builder.Default
     private Map<String, String> specifications = new HashMap<>();
     
@@ -48,9 +46,49 @@ public class Product {
     
     @Builder.Default
     private double averageRating = 0.0;
-    
+
+    @Builder.Default
+    private int favoriteCount = 0;
+
     @Builder.Default
     private int reviewCount = 0;
+
+    // --- NEW PROFESSIONAL FEATURES [Fully Dynamic] ---
+
+    // 1. Vận chuyển (Shipping Config)
+    // Using a List avoids the "Map key contains dots" error and allows full seller customization
+    @Builder.Default
+    private List<ShippingConfig> shippingOptions = new ArrayList<>();
+
+    // 2. An tâm mua sắm (Buyer Protection)
+    @Builder.Default
+    private boolean protectionEnabled = true; 
+    
+    @Builder.Default
+    private String protectionPolicy = "AiNetsoft Bảo Đảm: Nhận hàng, hoặc được hoàn tiền.";
+
+    // 3. Social & Interaction Flags
+    @Builder.Default
+    private boolean allowSharing = true;
+
+    @Builder.Default
+    private int totalReports = 0; // Incremented when users click "Tố cáo"
+
+    // --- DYNAMIC HELPER CLASSES ---
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ShippingConfig {
+        private String methodId;       // Link to the shipping_methods collection
+        private String methodName;     // e.g., "Hỏa Tốc", "Nhanh"
+        private double cost;           // Seller can input their own price for this product
+        private String estimatedTime;  // Seller can type "Ngày mai 08:00", "3-5 ngày", etc.
+        private String voucherNote;    // Seller can type "Tặng Voucher 20.000đ..."
+    }
+
+    // --- AUDIT FIELDS ---
 
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();

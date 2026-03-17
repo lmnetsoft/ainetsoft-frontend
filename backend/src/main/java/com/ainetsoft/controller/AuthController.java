@@ -137,4 +137,11 @@ public class AuthController {
     public ResponseEntity<?> logout() {
         return ResponseEntity.ok(Map.of("message", "Đăng xuất thành công!"));
     }
+
+    @PostMapping("/favorite/{productId}")
+    public ResponseEntity<?> toggleFavorite(@PathVariable String productId, Principal principal) {
+        if (principal == null) return ResponseEntity.status(401).body("Vui lòng đăng nhập để yêu thích sản phẩm.");
+        
+        return ResponseEntity.ok(authService.toggleFavorite(productId, principal.getName()));
+    }
 }

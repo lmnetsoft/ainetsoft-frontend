@@ -3,7 +3,8 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { 
   FaShoppingCart, FaStore, FaStar, FaCommentDots, FaClipboardList, 
   FaExclamationTriangle, FaPlay, FaTimes, FaChevronLeft, FaChevronRight,
-  FaStoreAlt 
+  FaStoreAlt, FaTruck, FaShieldAlt, FaHeart, FaRegHeart, FaFacebook,
+  FaFacebookMessenger, FaPinterest, FaTwitter, FaInfoCircle
 } from 'react-icons/fa';
 import api from '../../services/api'; 
 import ToastNotification from '../../components/Toast/ToastNotification';
@@ -11,6 +12,15 @@ import { useChat } from '../../context/ChatContext';
 import './ProductDetail.css';
 
 const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:8080';
+
+// Professional Interfaces
+interface ShippingConfig {
+  methodId: string;
+  methodName: string;
+  cost: number;
+  estimatedTime: string;
+  voucherNote: string;
+}
 
 interface Product {
   id: string;
@@ -28,6 +38,11 @@ interface Product {
   averageRating?: number;
   reviewCount?: number;
   status?: string;
+  // Professional fields
+  shippingOptions?: ShippingConfig[];
+  protectionEnabled?: boolean;
+  allowSharing?: boolean;
+  favoriteCount?: number;
 }
 
 interface Review {
@@ -57,6 +72,10 @@ const ProductDetail = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [isZoomed, setIsZoomed] = useState(false);
+
+  // Interaction States
+  const [showShippingDrawer, setShowShippingDrawer] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
 
   const formatMediaUrl = (url?: string) => {
     if (!url || url === 'undefined' || url === 'null' || url === '') return "/placeholder.png";
@@ -184,6 +203,38 @@ const ProductDetail = () => {
     <div className="product-detail-wrapper">
       <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
 
+      {/* --- SHIPPING DRAWER MODAL --- */}
+      {showShippingDrawer && (
+        <div className="shipping-drawer-overlay" onClick={() => setShowShippingDrawer(false)}>
+          <div className="shipping-drawer-card" onClick={e => e.stopPropagation()}>
+            <div className="drawer-header">
+              <h3>Thông tin về phí vận chuyển</h3>
+              <button className="close-btn" onClick={() => setShowShippingDrawer(false)}><FaTimes /></button>
+            </div>
+            <div className="drawer-body">
+              <p className="ship-to-loc-text">Vận chuyển tới: <strong>Phường Tân Chánh Hiệp, Quận 12</strong> <FaChevronRight size={10}/></p>
+              <div className="drawer-ship-list">
+                {product.shippingOptions?.map((opt, idx) => (
+                  <div key={idx} className="drawer-ship-item">
+                    <div className="drawer-ship-row-main">
+                      <div className="drawer-ship-meta">
+                        <span className="drawer-arrival-badge">Nhận trong <strong className="green-text">{opt.estimatedTime}</strong> <FaInfoCircle size={11} color="#ccc" /></span>
+                        <span className="drawer-method-name">{opt.methodName}</span>
+                        {opt.voucherNote && <p className="drawer-voucher-note">{opt.voucherNote}</p>}
+                      </div>
+                      <span className="drawer-ship-price">{(opt.cost || 0).toLocaleString()}₫</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="drawer-footer">
+               <button className="btn-understand" onClick={() => setShowShippingDrawer(false)}>Đã Hiểu</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL SECTION: FIXED POSITIONING */}
       {isZoomed && (
         <div className="zoom-modal-overlay" onClick={() => setIsZoomed(false)}>
@@ -248,6 +299,24 @@ const ProductDetail = () => {
               </div>
               <button className="thumb-scroll-btn right" onClick={() => scrollThumbnails('right')}><FaChevronRight /></button>
             </div>
+
+            {/* --- 2. SOCIAL & LIKE ROW --- */}
+            {product.allowSharing && (
+              <div className="social-interaction-block">
+                <div className="share-section">
+                  <span>Chia sẻ:</span>
+                  <button className="share-icon-btn messenger"><FaFacebookMessenger /></button>
+                  <button className="share-icon-btn facebook"><FaFacebook /></button>
+                  <button className="share-icon-btn pinterest"><FaPinterest /></button>
+                  <button className="share-icon-btn twitter"><FaTwitter /></button>
+                </div>
+                <div className="interaction-divider"></div>
+                <div className="like-section" onClick={() => setIsLiked(!isLiked)}>
+                  {isLiked ? <FaHeart className="heart-icon active" /> : <FaRegHeart className="heart-icon" />}
+                  <span className="like-text">Đã thích ({product.favoriteCount || 0})</span>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="detail-info-section">
@@ -268,6 +337,33 @@ const ProductDetail = () => {
               <span className="amount">{(product.price || 0).toLocaleString()}</span>
             </div>
 
+            {/* --- 3. SHIPPING GRID ROW --- */}
+            <div className="info-grid-row selectable" onClick={() => setShowShippingDrawer(true)}>
+              <span className="grid-label">Vận Chuyển</span>
+              <div className="grid-content">
+                <div className="ship-summary-main">
+                  <FaTruck className="truck-icon-green" />
+                  <span>Nhận trong <strong className="green-text">{product.shippingOptions?.[0]?.estimatedTime || 'Dự kiến 2-3 ngày'}</strong></span>
+                  <FaChevronRight className="arrow-right-sm" />
+                </div>
+                {product.shippingOptions?.[0]?.voucherNote && <p className="voucher-hint-text">{product.shippingOptions[0].voucherNote}</p>}
+              </div>
+            </div>
+
+            {/* --- 4. PROTECTION GRID ROW --- */}
+            {product.protectionEnabled && (
+              <div className="info-grid-row no-border">
+                <span className="grid-label">An Tâm Mua Sắm</span>
+                <div className="grid-content">
+                  <div className="protection-summary-line">
+                    <FaShieldAlt className="shield-icon-red" />
+                    <span>AiNetsoft Bảo Đảm: Nhận hàng, hoặc được hoàn tiền.</span>
+                    <FaChevronRight className="arrow-right-sm" />
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="purchase-grid-system">
               <div className="p-grid-row combined-action-row">
                 <span className="p-grid-label">Số lượng</span>
@@ -285,6 +381,10 @@ const ProductDetail = () => {
               </div>
               <div className="p-grid-row"><span className="p-grid-label"></span><span className="stock-hint">{product.stock} sản phẩm có sẵn</span></div>
             </div>
+
+            <div className="report-link-row">
+               <button className="btn-report-action"><FaExclamationTriangle /> Tố cáo</button>
+            </div>
           </div>
         </div>
       </div>
@@ -299,7 +399,6 @@ const ProductDetail = () => {
               <button className="chat-now-btn" onClick={handleChatWithSeller}>
                 <FaCommentDots /> Chat ngay
               </button>
-              {/* RESTORED: Colorful Shop Button with Icon */}
               <button className="view-shop-btn" onClick={() => navigate(`/shop/${product.sellerId || product.id}`)}>
                 <FaStoreAlt /> Xem Shop
               </button>

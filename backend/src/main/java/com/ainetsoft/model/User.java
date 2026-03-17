@@ -47,6 +47,10 @@ public class User {
         return this.avatarUrl;
     }
 
+    // Inside User.java
+    @Builder.Default
+    private Set<String> favoriteProductIds = new HashSet<>();
+
     @Builder.Default
     private AuthProvider provider = AuthProvider.LOCAL;
     private String providerId; 

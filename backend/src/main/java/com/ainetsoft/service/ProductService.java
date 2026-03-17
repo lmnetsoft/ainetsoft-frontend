@@ -39,11 +39,9 @@ public class ProductService {
             if (!Files.exists(targetDir)) {
                 Files.createDirectories(targetDir);
             }
-
             String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
             Path filePath = targetDir.resolve(fileName);
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-            
             return "/uploads/" + subFolder + "/" + fileName;
         } catch (IOException e) {
             log.error("Lỗi khi lưu tệp: {}", e.getMessage());
@@ -51,18 +49,11 @@ public class ProductService {
         }
     }
 
-    /**
-     * HELPER: Deletes a single file from the disk based on its stored URL.
-     * Crucial for storage cleanup.
-     */
     private void deletePhysicalFile(String storedUrl) {
         if (storedUrl == null || storedUrl.isEmpty() || storedUrl.contains("placeholder.png")) return;
-
         try {
-            // Converts "/uploads/ads/sellerId/file.jpg" to "uploads/ads/sellerId/file.jpg"
             String relativePath = storedUrl.startsWith("/") ? storedUrl.substring(1) : storedUrl;
             Path filePath = Paths.get(relativePath);
-
             if (Files.exists(filePath)) {
                 Files.delete(filePath);
                 log.info("Đã xóa tệp vật lý thành công: {}", relativePath);
@@ -97,6 +88,7 @@ public class ProductService {
             product.setCategoryName(category.getName());
         }
 
+        // Media Processing
         List<String> imageUrls = new ArrayList<>();
         if (images != null) {
             images.forEach(img -> {
@@ -109,6 +101,12 @@ public class ProductService {
         if (video != null && !video.isEmpty()) {
             product.setVideoUrl(saveFile(video, sellerSubFolder));
         }
+
+        // --- DYNAMIC PROFESSIONAL FIELDS ---
+        // We trust the configured list coming from the Seller's situational settings
+        product.setShippingOptions(product.getShippingOptions() != null ? product.getShippingOptions() : new ArrayList<>());
+        product.setProtectionEnabled(product.isProtectionEnabled());
+        product.setAllowSharing(product.isAllowSharing());
 
         product.setSellerId(user.getId());
         product.setShopName(user.getFullName()); 
@@ -130,6 +128,7 @@ public class ProductService {
 
         String sellerSubFolder = "ads/" + user.getId();
 
+        // Category Sync
         if (updatedData.getCategoryId() != null && !updatedData.getCategoryId().equals(existing.getCategoryId())) {
             Category category = categoryRepository.findById(updatedData.getCategoryId())
                     .orElseThrow(() -> new RuntimeException("Danh mục mới không hợp lệ!"));
@@ -137,8 +136,10 @@ public class ProductService {
             existing.setCategoryName(category.getName());
         }
 
+        // Image Handling
         if (newImages != null && !newImages.isEmpty()) {
-            List<String> currentList = updatedData.getImageUrls() != null ? updatedData.getImageUrls() : new ArrayList<>();
+            // If new images provided, we usually append or replace. Here we append.
+            List<String> currentList = existing.getImageUrls() != null ? existing.getImageUrls() : new ArrayList<>();
             for (MultipartFile img : newImages) {
                 String url = saveFile(img, sellerSubFolder);
                 if (url != null) currentList.add(url);
@@ -150,11 +151,20 @@ public class ProductService {
             existing.setVideoUrl(saveFile(newVideo, sellerSubFolder));
         }
 
+        // Core Data Update
         existing.setName(updatedData.getName());
         existing.setDescription(updatedData.getDescription());
         existing.setPrice(updatedData.getPrice());
         existing.setStock(updatedData.getStock());
         existing.setSpecifications(updatedData.getSpecifications());
+        
+        // --- SITUATIONAL CONFIGURATION UPDATE ---
+        // Seller can change these values based on their current situation
+        existing.setShippingOptions(updatedData.getShippingOptions() != null ? updatedData.getShippingOptions() : new ArrayList<>());
+        existing.setProtectionEnabled(updatedData.isProtectionEnabled());
+        existing.setAllowSharing(updatedData.isAllowSharing());
+
+        // Note: favoriteCount and totalReports are NOT updated here to prevent reset
         
         existing.setStatus("PENDING"); 
         existing.setUpdatedAt(LocalDateTime.now());
@@ -162,9 +172,6 @@ public class ProductService {
         return productRepository.save(existing);
     }
 
-    /**
-     * UPDATED: Deletes record and cleans up physical storage.
-     */
     public void deleteProduct(String productId, String contactInfo) {
         Product existing = getProductById(productId);
         User user = userRepository.findByIdentifier(contactInfo)
@@ -174,23 +181,17 @@ public class ProductService {
             throw new RuntimeException("Bạn không có quyền xóa sản phẩm này!");
         }
 
-        // 1. Delete images from disk
         if (existing.getImageUrls() != null) {
             existing.getImageUrls().forEach(this::deletePhysicalFile);
         }
 
-        // 2. Delete video from disk
         if (existing.getVideoUrl() != null) {
             deletePhysicalFile(existing.getVideoUrl());
         }
 
-        // 3. Delete DB record
         productRepository.delete(existing);
     }
 
-    /**
-     * NEW: Bulk delete for efficient cleanup.
-     */
     public void bulkDeleteProducts(List<String> productIds, String contactInfo) {
         for (String id : productIds) {
             try {

@@ -1,6 +1,8 @@
 package com.ainetsoft.controller;
 
 import com.ainetsoft.model.Product;
+import com.ainetsoft.model.ProductReport;
+import com.ainetsoft.repository.ProductReportRepository;
 import com.ainetsoft.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +21,7 @@ import java.util.Map;
 public class ProductController {
 
     private final ProductService productService;
+    private final ProductReportRepository productReportRepository; // NEW: Added for Report functionality
 
     private static final long MAX_VIDEO_SIZE = 15 * 1024 * 1024; // 15MB
     private static final int MAX_IMAGE_COUNT = 5;
@@ -33,6 +36,32 @@ public class ProductController {
     @GetMapping("/{id}")
     public ResponseEntity<Product> getProductDetail(@PathVariable String id) {
         return ResponseEntity.ok(productService.getProductById(id));
+    }
+
+    // --- NEW: REPORT ENDPOINT ("Tố cáo") ---
+    @PostMapping("/{id}/report")
+    public ResponseEntity<?> reportProduct(
+            @PathVariable String id, 
+            @RequestBody Map<String, String> reportData, 
+            Principal principal) {
+        
+        if (principal == null) return ResponseEntity.status(401).body("Bạn cần đăng nhập để báo cáo.");
+
+        ProductReport report = new ProductReport();
+        report.setProductId(id);
+        report.setReporterId(principal.getName()); // Stores user email/identifier
+        report.setReason(reportData.get("reason"));
+        report.setDetails(reportData.get("details"));
+        
+        productReportRepository.save(report);
+
+        // Optional: Increment total reports on the product for Admin visibility
+        Product product = productService.getProductById(id);
+        product.setTotalReports(product.getTotalReports() + 1);
+        // We don't change status to PENDING here to avoid malicious "fake reporting" 
+        // that takes down products. Admins handle this manually.
+        
+        return ResponseEntity.ok(Map.of("message", "Cảm ơn bạn đã báo cáo. Chúng tôi sẽ xem xét nội dung này sớm nhất."));
     }
 
     // --- SELLER ENDPOINTS ---
@@ -86,9 +115,6 @@ public class ProductController {
         return ResponseEntity.ok(productService.updateProductWithMedia(id, principal.getName(), product, images, video));
     }
 
-    /**
-     * DELETE SINGLE: Deletes one product and its physical files.
-     */
     @DeleteMapping("/seller/delete/{id}")
     public ResponseEntity<?> deleteItem(@PathVariable String id, Principal principal) {
         if (principal == null) throw new RuntimeException("Unauthorized");
@@ -96,9 +122,6 @@ public class ProductController {
         return ResponseEntity.ok(Map.of("message", "Xóa sản phẩm thành công!"));
     }
 
-    /**
-     * NEW: BULK DELETE: Deletes multiple selected products and their physical files.
-     */
     @PostMapping("/seller/delete-bulk")
     public ResponseEntity<?> bulkDelete(@RequestBody List<String> ids, Principal principal) {
         if (principal == null) throw new RuntimeException("Unauthorized");

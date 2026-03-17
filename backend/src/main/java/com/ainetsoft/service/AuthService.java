@@ -323,6 +323,32 @@ public class AuthService {
         log.info("OTP generated for {}: {}", identifier, otp);
         return "Mã OTP đã được tạo.";
     }
+    
+    public Map<String, Object> toggleFavorite(String productId, String userEmail) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại"));
+
+        Set<String> favorites = user.getFavoriteProductIds();
+        if (favorites == null) favorites = new HashSet<>();
+
+        boolean isNowLiked;
+        if (favorites.contains(productId)) {
+            favorites.remove(productId);
+            isNowLiked = false;
+        } else {
+            favorites.add(productId);
+            isNowLiked = true;
+        }
+
+        user.setFavoriteProductIds(favorites);
+        userRepository.save(user);
+
+        return Map.of(
+            "productId", productId,
+            "isLiked", isNowLiked,
+            "totalFavorites", favorites.size()
+        );
+    }
 
     public String resetPassword(String contactInfo, String otp, String newPassword) {
         validatePasswordStrength(newPassword);
