@@ -73,7 +73,7 @@ const ProductDetail = () => {
   const scrollThumbnails = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
       const { scrollLeft } = scrollRef.current;
-      const scrollAmount = 250;
+      const scrollAmount = 200;
       scrollRef.current.scrollTo({
         left: direction === 'left' ? scrollLeft - scrollAmount : scrollLeft + scrollAmount,
         behavior: 'smooth'
@@ -111,44 +111,32 @@ const ProductDetail = () => {
   useEffect(() => {
     const fetchProductAndReviews = async () => {
       if (location.state?.productPreview) {
-          const previewData = location.state.productPreview;
-          setProduct(previewData);
-          document.title = `${previewData.name} | AiNetsoft (Xem trước)`;
-          try {
-            const revRes = await api.get(`/reviews/product/${id}`);
-            setReviews(Array.isArray(revRes.data) ? revRes.data : []);
-          } catch (e) { setReviews([]); }
+          setProduct(location.state.productPreview);
           setLoading(false);
           return;
       }
-
       try {
         setLoading(true);
         const prodRes = await api.get(`/products/${id}`);
         const productData = prodRes.data;
-        const rawUser = localStorage.getItem('user');
-        const userObj = rawUser ? JSON.parse(rawUser) : {};
-        const currentUserId = userObj.id || userObj.userId;
         const storedRoles = JSON.parse(localStorage.getItem('userRoles') || '[]');
         const isAdmin = storedRoles.includes('ADMIN');
 
-        const isOwner = productData.sellerId === currentUserId;
-        const isApproved = productData.status === 'APPROVED';
-
-        if (!isApproved && !isOwner && !isAdmin) {
-          setToastMessage("Sản phẩm này hiện đang chờ kiểm duyệt.");
-          setShowToast(true);
-          setTimeout(() => navigate('/'), 2500);
-          return;
+        if (productData.status !== 'APPROVED' && !isAdmin) {
+          const rawUser = localStorage.getItem('user');
+          const userObj = rawUser ? JSON.parse(rawUser) : {};
+          if (productData.sellerId !== (userObj.id || userObj.userId)) {
+              setToastMessage("Sản phẩm này hiện đang chờ kiểm duyệt.");
+              setShowToast(true);
+              setTimeout(() => navigate('/'), 2500);
+              return;
+          }
         }
 
         setProduct(productData);
         document.title = `${productData.name} | AiNetsoft`;
-
-        try {
-          const revRes = await api.get(`/reviews/product/${id}`);
-          setReviews(Array.isArray(revRes.data) ? revRes.data : []);
-        } catch (e) { setReviews([]); }
+        const revRes = await api.get(`/reviews/product/${id}`);
+        setReviews(Array.isArray(revRes.data) ? revRes.data : []);
       } catch (error) {
         setToastMessage("Không tìm thấy sản phẩm.");
         setShowToast(true);
@@ -156,7 +144,6 @@ const ProductDetail = () => {
         setLoading(false);
       }
     };
-
     if (id) fetchProductAndReviews();
     window.scrollTo(0, 0); 
   }, [id, navigate, location.state]);
@@ -169,16 +156,11 @@ const ProductDetail = () => {
   const handleAddToCart = async () => {
     if (!localStorage.getItem('isAuthenticated')) { navigate('/login'); return; }
     if (!product) return;
-    if (product.status !== 'APPROVED') {
-        setToastMessage("Không thể mua sản phẩm đang trong chế độ xem trước.");
-        setShowToast(true);
-        return;
-    }
     try {
       const cartItem = {
         productId: product.id,
         productName: product.name,
-        productImage: (product.imageUrls?.[0] || (product as any).images?.[0]) || "/placeholder.png",
+        productImage: (product.imageUrls?.[0] || "/placeholder.png"),
         price: product.price,
         quantity: quantity,
         shopName: product.shopName
@@ -193,7 +175,7 @@ const ProductDetail = () => {
     }
   };
 
-  if (loading) return <div className="detail-loading">Đang tải chi tiết sản phẩm...</div>;
+  if (loading) return <div className="detail-loading">Đang tải...</div>;
   if (!product) return <div className="detail-error">Sản phẩm không tồn tại.</div>;
 
   const descriptionLines = (product.description || "").split('\n');
@@ -202,137 +184,113 @@ const ProductDetail = () => {
     <div className="product-detail-wrapper">
       <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
 
-      {/* --- ZOOM MODAL (GLASS ARROWS) --- */}
+      {/* MODAL SECTION: FIXED POSITIONING */}
       {isZoomed && (
         <div className="zoom-modal-overlay" onClick={() => setIsZoomed(false)}>
           <div className="zoom-modal-content" onClick={(e) => e.stopPropagation()}>
-            <button className="zoom-nav-arrow prev" onClick={handlePrevMedia} title="Ảnh trước">
-              <FaChevronLeft size={24} />
-            </button>
-            <button className="zoom-close-btn" onClick={() => setIsZoomed(false)} title="Đóng"><FaTimes /></button>
+            <button className="zoom-nav-arrow prev" onClick={handlePrevMedia}><FaChevronLeft size={24} /></button>
+            <button className="zoom-close-btn" onClick={() => setIsZoomed(false)}><FaTimes /></button>
             {hasVideo && activeMedia === images.length ? (
-                <video ref={zoomVideoRef} autoPlay controls className="zoom-media-main" key={product.videoUrl}>
+                <video ref={zoomVideoRef} autoPlay controls className="zoom-media-main">
                   <source src={formatMediaUrl(product.videoUrl!)} type="video/mp4" />
                 </video>
             ) : (
-                <img 
-                  src={formatMediaUrl(images[activeMedia])} 
-                  alt="Zoomed" 
-                  className="zoom-media-main"
-                  onError={(e) => { e.currentTarget.src = "/placeholder.png"; }}
-                  key={images[activeMedia]}
-                />
+                <img src={formatMediaUrl(images[activeMedia])} alt="Zoom" className="zoom-media-main" key={images[activeMedia]} />
             )}
-            <button className="zoom-nav-arrow next" onClick={handleNextMedia} title="Ảnh sau">
-              <FaChevronRight size={24} />
-            </button>
+            <button className="zoom-nav-arrow next" onClick={handleNextMedia}><FaChevronRight size={24} /></button>
           </div>
         </div>
       )}
 
-      {/* AMBER PREVIEW BANNER */}
+      {/* BOX 1: BANNER */}
       {product.status !== 'APPROVED' && (
-        <div className="container">
+        <div className="container sync-container">
           <div className="preview-mode-banner">
             <FaExclamationTriangle size={20} /> 
-            <div className="banner-text">
-                <strong>BẢN XEM TRƯỚC:</strong> Sản phẩm chưa phê duyệt. Chỉ bạn mới có thể xem.
-            </div>
+            <div className="banner-text"><strong>BẢN XEM TRƯỚC:</strong> Sản phẩm chưa phê duyệt. Chỉ bạn mới có thể xem.</div>
           </div>
         </div>
       )}
 
-      <div className="container detail-container">
-        {/* LEFT BLOCK: GALLERY (FIXED WIDTH WRAPPER) */}
-        <div className="detail-media-section">
-          <div className="main-display" onClick={() => setIsZoomed(true)}>
-            {hasVideo && activeMedia === images.length ? (
-                <video ref={videoRef} muted loop playsInline controls className="main-video" key={product.videoUrl}>
-                  <source src={formatMediaUrl(product.videoUrl!)} type="video/mp4" />
-                </video>
-            ) : (
-                <img src={formatMediaUrl(images[activeMedia])} alt={product.name} />
-            )}
-            <div className="zoom-badge-hint">🔍 Click để xem lớn</div>
-          </div>
-          
-          <div className="thumbnail-navigation-container">
-            <button className="thumb-scroll-btn left" onClick={() => scrollThumbnails('left')}><FaChevronLeft /></button>
-            <div className="thumbnail-list" ref={scrollRef}>
-              {images.map((img, idx) => (
-                <div key={idx} className={`thumb-item ${activeMedia === idx ? 'active' : ''}`} onClick={() => setActiveMedia(idx)}>
-                  <img src={formatMediaUrl(img)} alt="thumb" />
-                </div>
-              ))}
-              {/* VIDEO THUMB (CONTENT PREVIEW) */}
-              {hasVideo && (
-                <div className={`thumb-item video-thumb ${activeMedia === images.length ? 'active' : ''}`} onClick={() => setActiveMedia(images.length)}>
-                  <div className="video-thumb-container">
-                    {product.videoThumbnailUrl ? (
-                      <img src={formatMediaUrl(product.videoThumbnailUrl)} alt="v-thumb" className="v-thumb-img" />
-                    ) : (
+      {/* BOX 2: PRODUCT INFO */}
+      <div className="container sync-container">
+        <div className="detail-container">
+          <div className="detail-media-section">
+            <div className="main-display" onClick={() => setIsZoomed(true)}>
+              {hasVideo && activeMedia === images.length ? (
+                  <video ref={videoRef} muted loop playsInline controls className="main-video">
+                    <source src={formatMediaUrl(product.videoUrl!)} type="video/mp4" />
+                  </video>
+              ) : (
+                  <img src={formatMediaUrl(images[activeMedia])} alt={product.name} />
+              )}
+              <div className="zoom-badge-hint">🔍 Click để xem lớn</div>
+            </div>
+            
+            <div className="thumbnail-navigation-container">
+              <button className="thumb-scroll-btn left" onClick={() => scrollThumbnails('left')}><FaChevronLeft /></button>
+              <div className="thumbnail-list" ref={scrollRef}>
+                {images.map((img, idx) => (
+                  <div key={idx} className={`thumb-item ${activeMedia === idx ? 'active' : ''}`} onClick={() => setActiveMedia(idx)}>
+                    <img src={formatMediaUrl(img)} alt="thumb" />
+                  </div>
+                ))}
+                {hasVideo && (
+                  <div className={`thumb-item video-thumb ${activeMedia === images.length ? 'active' : ''}`} onClick={() => setActiveMedia(images.length)}>
+                    <div className="video-thumb-container">
                       <video className="v-thumb-video-preview" preload="metadata" muted>
                         <source src={`${formatMediaUrl(product.videoUrl!)}#t=0.5`} type="video/mp4" />
                       </video>
-                    )}
-                    <div className="play-badge"><FaPlay /></div>
+                      <div className="play-badge"><FaPlay /></div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <button className="thumb-scroll-btn right" onClick={() => scrollThumbnails('right')}><FaChevronRight /></button>
+            </div>
+          </div>
+
+          <div className="detail-info-section">
+            <h1 className="product-title">{product.name}</h1>
+            <div className="product-rating-overview">
+              <div className="star-row">
+                {[...Array(5)].map((_, i) => (
+                  <FaStar key={i} color={i < Math.floor(product.averageRating || 0) ? "#ee4d2d" : "#e4e5e9"} />
+                ))}
+              </div>
+              <span className="rating-value">{product.averageRating || 0}</span>
+              <span className="divider">|</span>
+              <span className="review-count">{product.reviewCount || 0} Đánh giá</span>
+            </div>
+
+            <div className="price-display-box">
+              <span className="currency">₫</span>
+              <span className="amount">{(product.price || 0).toLocaleString()}</span>
+            </div>
+
+            <div className="purchase-grid-system">
+              <div className="p-grid-row combined-action-row">
+                <span className="p-grid-label">Số lượng</span>
+                <div className="p-grid-content horizontal-actions">
+                  <div className="qty-controls">
+                    <button onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</button>
+                    <input type="number" value={quantity} readOnly />
+                    <button onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}>+</button>
+                  </div>
+                  <div className="action-button-group">
+                    <button className="add-to-cart-btn" onClick={handleAddToCart} disabled={product.status !== 'APPROVED'}><FaShoppingCart /> Thêm vào giỏ hàng</button>
+                    <button className="buy-now-btn" onClick={() => { if(product.status === 'APPROVED'){ handleAddToCart(); navigate('/cart'); } }} disabled={product.status !== 'APPROVED'}>Mua ngay</button>
                   </div>
                 </div>
-              )}
-            </div>
-            <button className="thumb-scroll-btn right" onClick={() => scrollThumbnails('right')}><FaChevronRight /></button>
-          </div>
-        </div>
-
-        {/* RIGHT BLOCK: INFO & HORIZONTAL ACTIONS */}
-        <div className="detail-info-section">
-          <h1 className="product-title">{product.name}</h1>
-          <div className="product-rating-overview">
-            <div className="star-row">
-              {[...Array(5)].map((_, i) => (
-                <FaStar key={i} color={i < Math.floor(product.averageRating || 0) ? "#ee4d2d" : "#e4e5e9"} />
-              ))}
-            </div>
-            <span className="rating-value">{product.averageRating || 0}</span>
-            <span className="divider">|</span>
-            <span className="review-count">{product.reviewCount || 0} Đánh giá</span>
-          </div>
-
-          <div className="price-display-box">
-            <span className="currency">₫</span>
-            <span className="amount">{(product.price || 0).toLocaleString()}</span>
-          </div>
-
-          <div className="purchase-grid-system">
-            <div className="p-grid-row combined-action-row">
-              <span className="p-grid-label">Số lượng</span>
-              <div className="p-grid-content horizontal-actions">
-                <div className="qty-controls">
-                  <button onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</button>
-                  <input type="number" value={quantity} readOnly />
-                  <button onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}>+</button>
-                </div>
-                
-                <div className="action-button-group">
-                  <button className="add-to-cart-btn" onClick={handleAddToCart} disabled={product.status !== 'APPROVED'}>
-                    <FaShoppingCart /> Thêm vào giỏ hàng
-                  </button>
-                  <button className="buy-now-btn" onClick={() => { if(product.status === 'APPROVED'){ handleAddToCart(); navigate('/cart'); } }} disabled={product.status !== 'APPROVED'}>
-                    Mua ngay
-                  </button>
-                </div>
               </div>
-            </div>
-            <div className="p-grid-row">
-               <span className="p-grid-label"></span>
-               <span className="stock-hint">{product.stock} sản phẩm có sẵn</span>
+              <div className="p-grid-row"><span className="p-grid-label"></span><span className="stock-hint">{product.stock} sản phẩm có sẵn</span></div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="container detail-bottom">
-        {/* COLORFUL SHOP CARD */}
+      {/* BOX 3: SHOP & DETAILS */}
+      <div className="container sync-container">
         <div className="shop-card">
           <FaStore className="shop-icon" />
           <div className="shop-name-box">
@@ -341,6 +299,7 @@ const ProductDetail = () => {
               <button className="chat-now-btn" onClick={handleChatWithSeller}>
                 <FaCommentDots /> Chat ngay
               </button>
+              {/* RESTORED: Colorful Shop Button with Icon */}
               <button className="view-shop-btn" onClick={() => navigate(`/shop/${product.sellerId || product.id}`)}>
                 <FaStoreAlt /> Xem Shop
               </button>
@@ -348,7 +307,6 @@ const ProductDetail = () => {
           </div>
         </div>
 
-        {/* SPECIFICATIONS */}
         {product.specifications && Object.keys(product.specifications).length > 0 && (
           <div className="specs-section">
             <h3 className="section-title"><FaClipboardList /> CHI TIẾT SẢN PHẨM</h3>
@@ -363,13 +321,11 @@ const ProductDetail = () => {
           </div>
         )}
 
-        {/* DESCRIPTION */}
         <div className="description-section">
           <h3 className="section-title">MÔ TẢ SẢN PHẨM</h3>
           <div className="description-content">{descriptionLines.map((line, i) => <p key={i}>{line}</p>)}</div>
         </div>
 
-        {/* REVIEWS */}
         <div className="reviews-section">
           <h3 className="section-title">ĐÁNH GIÁ SẢN PHẨM</h3>
           {reviews.length === 0 ? <p className="no-reviews">Chưa có đánh giá nào.</p> : (

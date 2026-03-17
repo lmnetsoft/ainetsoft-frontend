@@ -1,4 +1,6 @@
-/* --- 1. GLOBAL WRAPPER & CONTAINER --- */
+/* --- 1. GLOBAL RESET & ALIGNMENT SYNC --- */
+* { box-sizing: border-box; } 
+
 .product-detail-wrapper {
     background-color: #f5f5f5;
     padding: 20px 0 60px;
@@ -6,29 +8,26 @@
     font-family: -apple-system, HelveticaNeue, Arial, sans-serif;
 }
 
-.container {
+/* Master alignment for all boxes */
+.container.sync-container {
     max-width: 1180px;
+    width: 100%;
     margin: 0 auto;
+    padding: 0 10px; /* Unified horizontal gutter */
 }
 
-/* --- 2. PROFESSIONAL AMBER PREVIEW BANNER --- */
+/* --- 2. AMBER PREVIEW BANNER --- */
 .preview-mode-banner {
     background: #fff8e1;
     border: 1px solid #ffca28;
     color: #bf360c;
     padding: 14px 20px;
-    margin-bottom: 20px;
-    border-radius: 8px;
+    margin-bottom: 15px;
+    border-radius: 4px;
     display: flex;
     align-items: center;
     gap: 15px;
     font-weight: 500;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-}
-
-.preview-mode-banner svg {
-    color: #ffa000;
-    flex-shrink: 0;
 }
 
 /* --- 3. MAIN PRODUCT BLOCK --- */
@@ -37,12 +36,13 @@
     display: flex;
     gap: 30px;
     padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+    border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     margin-bottom: 20px;
+    width: 100%; /* Spans full container width */
 }
 
-/* --- 4. LEFT MEDIA GALLERY (FIXED WIDTH SYNC) --- */
+/* --- 4. GALLERY WIDTH SYNC --- */
 .detail-media-section {
     flex: 0 0 420px;
     width: 420px;
@@ -52,46 +52,38 @@
     width: 420px;
     height: 420px;
     position: relative;
-    cursor: zoom-in;
     background: #fff;
     border: 1px solid #eee;
-    border-radius: 6px;
+    border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
 }
 
-.main-display img,
-.main-display video {
+.main-display img, .main-display video {
     width: 100%;
     height: 100%;
     object-fit: contain;
 }
 
 .zoom-badge-hint {
-    position: absolute;
-    bottom: 10px;
-    right: 10px;
-    background: rgba(0,0,0,0.55);
-    color: white;
-    font-size: 11px;
-    padding: 5px 10px;
-    border-radius: 4px;
+    position: absolute; bottom: 10px; right: 10px;
+    background: rgba(0,0,0,0.5); color: white;
+    font-size: 11px; padding: 4px 8px; border-radius: 2px;
 }
 
-/* THUMBNAIL WRAPPER SYNC */
+/* --- PHOTO BAR FIX --- */
 .thumbnail-navigation-container {
     position: relative;
     margin-top: 14px;
-    padding: 0 34px;
-    width: 420px;
-    box-sizing: border-box;
+    padding: 0 30px; /* Space for horizontal arrows */
+    width: 420px; /* Strictly synced to photo width above */
 }
 
 .thumbnail-list {
     display: flex;
-    gap: 10px;
+    gap: 8px; 
     overflow-x: auto;
     scrollbar-width: none;
     justify-content: center;
@@ -100,132 +92,106 @@
 .thumbnail-list::-webkit-scrollbar { display: none; }
 
 .thumb-item {
-    width: 72px;
-    height: 72px;
+    width: 62px; /* Reduced to fit 5 + 1 video perfectly */
+    height: 62px;
     flex-shrink: 0;
     border: 2px solid transparent;
-    border-radius: 4px;
+    border-radius: 2px;
     overflow: hidden;
     cursor: pointer;
-    background: #fafafa;
 }
 
 .thumb-item.active { border-color: #ee4d2d; }
 .thumb-item img { width: 100%; height: 100%; object-fit: cover; }
 
-/* VIDEO THUMBNAIL CONTENT PREVIEW */
+/* Video Content Thumbnail */
 .video-thumb-container {
-    width: 100%;
-    height: 100%;
-    position: relative;
-    background: #000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    width: 100%; height: 100%; position: relative;
+    background: #000; display: flex; align-items: center; justify-content: center;
 }
+.v-thumb-video-preview { width: 100%; height: 100%; object-fit: cover; opacity: 0.8; }
+.play-badge { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); color: #fff; font-size: 16px; z-index: 2; }
 
-.v-thumb-video-preview {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    opacity: 0.8;
-}
-
-.play-badge {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%,-50%);
-    color: white;
-    font-size: 20px;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
-    z-index: 2;
-}
-
+/* Horizontal Scroll Buttons */
 .thumb-scroll-btn {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 28px;
-    height: 46px;
-    border: none;
-    background: rgba(0,0,0,0.25);
-    color: white;
-    cursor: pointer;
-    z-index: 10;
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 24px; height: 40px; border: none;
+    background: rgba(0,0,0,0.1); color: #888; cursor: pointer; z-index: 10;
 }
-.thumb-scroll-btn.left { left: 0; }
-.thumb-scroll-btn.right { right: 0; }
+.thumb-scroll-btn.left { left: 0; } .thumb-scroll-btn.right { right: 0; }
+.thumb-scroll-btn:hover { background: rgba(0,0,0,0.2); color: #fff; }
 
-/* --- 5. RIGHT INFO SECTION --- */
+/* --- 5. INFO SECTION & HORIZONTAL ACTIONS --- */
 .detail-info-section { flex: 1; }
-.product-title { font-size: 22px; font-weight: 500; margin-bottom: 14px; }
-.price-display-box { background: #fafafa; padding: 18px 20px; color: #ee4d2d; margin-bottom: 25px; border-radius: 6px; }
-.price-display-box .amount { font-size: 30px; font-weight: 600; }
+.product-title { font-size: 20px; font-weight: 500; margin-bottom: 12px; }
+.price-display-box { background: #fafafa; padding: 15px 20px; color: #ee4d2d; margin-bottom: 20px; border-radius: 4px; }
+.price-display-box .amount { font-size: 28px; font-weight: 600; }
 
-/* --- 6. HORIZONTAL PURCHASE LAYOUT --- */
-.purchase-grid-system { display: flex; flex-direction: column; gap: 15px; }
-.p-grid-row { display: grid; grid-template-columns: 110px 1fr; gap: 20px; align-items: center; }
-.horizontal-actions { display: flex; align-items: center; gap: 30px; }
-
+.horizontal-actions { display: flex; align-items: center; gap: 20px; }
 .qty-controls { display: flex; border: 1px solid #ddd; height: 34px; border-radius: 2px; }
-.qty-controls button { width: 34px; border: none; background: white; cursor: pointer; color: #555; }
-.qty-controls input { width: 50px; border: none; text-align: center; border-left: 1px solid #ddd; border-right: 1px solid #ddd; font-size: 0.95rem; }
+.qty-controls button { width: 32px; border: none; background: #fff; cursor: pointer; }
+.qty-controls input { width: 45px; border: none; text-align: center; border-left: 1px solid #ddd; border-right: 1px solid #ddd; }
 
-.action-button-group { display: flex; gap: 12px; }
-.add-to-cart-btn, .buy-now-btn { height: 48px; padding: 0 20px; border-radius: 4px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+.action-button-group { display: flex; gap: 10px; }
 .add-to-cart-btn { background: rgba(238,77,45,0.08); color: #ee4d2d; border: 1px solid #ee4d2d; }
-.buy-now-btn { background: #ee4d2d; color: white; border: none; }
+.buy-now-btn { background: #ee4d2d; color: #fff; border: none; }
+.add-to-cart-btn, .buy-now-btn { height: 46px; padding: 0 15px; border-radius: 2px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; }
 
-/* --- 7. ZOOM MODAL (GLASS ARROWS) --- */
-.zoom-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); display: flex; align-items: center; justify-content: center; z-index: 99999; }
-.zoom-modal-content { position: relative; display: flex; align-items: center; justify-content: center; }
-.zoom-media-main { max-width: 85vw; max-height: 85vh; border-radius: 4px; object-fit: contain; }
-.zoom-nav-arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 54px; height: 54px; border: 1px solid rgba(255,255,255,0.4); border-radius: 50%; background: rgba(255, 255, 255, 0.1); color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); transition: all 0.2s; }
-.zoom-nav-arrow.prev { left: -27px; } .zoom-nav-arrow.next { right: -27px; }
-.zoom-close-btn { position: absolute; top: -45px; right: 0; background: none; border: none; color: #fff; font-size: 32px; cursor: pointer; opacity: 0.7; }
-
-/* --- 8. COLORFUL SHOP CARD --- */
+/* --- 6. SHOP CARD: RESTORED COLORFUL LOOK --- */
 .shop-card {
-    background: #fff; padding: 25px; border-radius: 8px; margin-top: 20px;
+    background: #fff; padding: 20px; border-radius: 4px; margin-top: 15px;
     display: flex; align-items: center; gap: 20px; border: 1px solid #f0f0f0;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
-.shop-icon { font-size: 2.5rem; color: #ee4d2d; background: #fff5f2; padding: 12px; border-radius: 50%; flex-shrink: 0; border: 1px solid rgba(238,77,45,0.1); }
-.shop-name-box h3 { margin: 0 0 12px 0; font-size: 1.25rem; color: #333; }
+.shop-icon { font-size: 2.2rem; color: #ee4d2d; background: #fff5f2; padding: 10px; border-radius: 50%; flex-shrink: 0; }
 .shop-actions { display: flex; gap: 12px; }
 
-.chat-now-btn {
-    background: #ee4d2d; color: white; border: none; padding: 10px 20px; border-radius: 4px;
-    font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px;
-}
+.chat-now-btn { background: #ee4d2d; color: #fff; border: none; padding: 8px 16px; border-radius: 2px; font-weight: 500; display: flex; align-items: center; gap: 8px; cursor: pointer; }
 
-/* NICE COLORFUL SHOP BUTTON */
+/* RESTORED: Premium Colorful View Shop Button */
 .view-shop-btn {
     background: #fff;
-    color: #ee4d2d; /* BRAND ORANGE */
-    border: 1px solid #ee4d2d; /* BRAND BORDER */
-    padding: 10px 20px;
-    border-radius: 4px;
+    color: #ee4d2d; /* Orange brand text */
+    border: 1px solid #ee4d2d; /* Orange brand border */
+    padding: 8px 16px;
+    border-radius: 2px;
     font-weight: 500;
-    cursor: pointer;
     display: flex;
     align-items: center;
     gap: 8px;
-    transition: all 0.2s ease;
+    cursor: pointer;
+    transition: background 0.2s;
 }
-.view-shop-btn:hover {
-    background: rgba(238, 77, 45, 0.05);
-}
+.view-shop-btn:hover { background: rgba(238, 77, 45, 0.04); }
 
-/* --- 9. BOTTOM SECTIONS --- */
-.specs-section, .description-section, .reviews-section { background: white; padding: 25px; border-radius: 8px; margin-bottom: 15px; }
-.section-title { background: #fafafa; padding: 12px 15px; margin-bottom: 20px; border-radius: 4px; font-weight: 600; color: #333; display: flex; align-items: center; gap: 10px; }
-.specs-row { display: flex; padding: 12px 0; border-bottom: 1px solid #f5f5f5; }
+/* --- 7. BOTTOM SECTIONS --- */
+.specs-section, .description-section, .reviews-section { background: white; padding: 25px; border-radius: 4px; margin-top: 15px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+.section-title { background: #fafafa; padding: 12px 15px; margin-bottom: 20px; border-radius: 4px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+.specs-row { display: flex; padding: 10px 0; border-bottom: 1px solid #f5f5f5; }
 .specs-label { width: 160px; color: #757575; }
+
+/* ZOOM MODAL: FIXED POSITIONS */
+.zoom-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); display: flex; align-items: center; justify-content: center; z-index: 99999; }
+.zoom-modal-content { position: relative; display: flex; align-items: center; justify-content: center; }
+.zoom-media-main { max-width: 85vw; max-height: 85vh; border-radius: 4px; object-fit: contain; }
+
+/* FIXED: Premium Glass Modal Arrows */
+.zoom-nav-arrow {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 50px; height: 50px; border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 50%; background: rgba(255, 255, 255, 0.1);
+    color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(8px);
+}
+.zoom-nav-arrow.prev { left: -25px; } .zoom-nav-arrow.next { right: -25px; }
+
+/* FIXED: Modal Close button position */
+.zoom-close-btn {
+    position: absolute; top: -45px; right: 0;
+    background: none; border: none; color: #fff; font-size: 32px; cursor: pointer;
+}
 
 @media (max-width: 1000px) {
     .detail-container { flex-direction: column; padding: 15px; }
     .detail-media-section, .thumbnail-navigation-container { width: 100%; flex: 0 0 auto; }
-    .main-display { width: 100%; height: auto; aspect-ratio: 1/1; }
-    .horizontal-actions { flex-direction: column; align-items: flex-start; gap: 20px; }
 }
