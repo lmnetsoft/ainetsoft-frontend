@@ -1,134 +1,69 @@
-/* 1. MAIN LAYOUT - Matches Dashboard */
-.seller-products-wrapper {
-  background-color: #f5f5f5;
+/* --- 1. PROPORTIONS & LAYOUT (Preserving your logic) --- */
+.profile-wrapper {
+  background-color: #f8f9fa;
   min-height: 100vh;
+  padding: 30px 0 80px 0;
 }
 
-.seller-container {
+.profile-container {
   display: flex;
   gap: 24px;
   max-width: 1400px;
   margin: 0 auto;
-  padding: 24px;
 }
 
-.seller-main-content {
+.profile-main-content {
   flex: 1;
-  background: #f5f5f5; /* Gray background, white cards go inside */
-  min-width: 0;
+  background: white;
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
-/* 2. HEADER */
-.seller-header {
+/* --- 2. HEADER & NEW BULK DELETE BUTTON --- */
+.content-header-seller {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
-.seller-header h1 { font-size: 1.5rem; font-weight: 600; }
+.content-header-seller h1 { font-size: 1.5rem; font-weight: 600; color: #333; }
 
-.add-product-btn {
-  background: #ee4d2d;
+.save-btn {
+  background: #5b67f1;
   color: white;
   border: none;
   padding: 10px 24px;
   border-radius: 4px;
   font-weight: 600;
   cursor: pointer;
-}
-
-/* 3. HORIZONTAL TABS */
-.product-filter-tabs {
   display: flex;
-  background: white;
-  margin-bottom: 16px;
-  border-radius: 4px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-}
-
-.product-filter-tabs .tab {
-  flex: 1;
-  text-align: center;
-  padding: 16px 0;
-  cursor: pointer;
-  color: #555;
-  border-bottom: 3px solid transparent;
-}
-
-.product-filter-tabs .tab.active {
-  color: #ee4d2d;
-  border-bottom-color: #ee4d2d;
-  font-weight: 600;
-}
-
-/* 4. TABLE SECTION - White Card */
-.product-table-container {
-  background: white;
-  padding: 24px;
-  border-radius: 4px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-}
-
-.product-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.product-table th {
-  text-align: left;
-  padding: 16px;
-  color: #888;
-  font-size: 0.85rem;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.product-table td {
-  padding: 20px 16px;
-  border-bottom: 1px solid #f9f9f9;
-  font-size: 0.95rem;
-}
-
-.product-cell img {
-  width: 56px;
-  height: 56px;
-  object-fit: cover;
-  border-radius: 4px;
-}
-
-.status-badge {
-  padding: 4px 10px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.status-badge.approved { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
-.status-badge.pending { background: #fff7e6; color: #fa8c16; border: 1px solid #ffd591; }
-
-.action-links button {
-  background: none;
-  border: none;
-  color: #0055aa;
-  cursor: pointer;
-  margin-right: 15px;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 100px;
-  color: #999;
-}
-
-/* Inherits global profile structure from your Profile.css */
-
-.content-header-seller {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 8px;
 }
 
-/* HORIZONTAL TABS STYLE (Match your expected horizontal list) */
+/* NEW: The Bulk Delete Button Style */
+.bulk-delete-btn {
+  background-color: #fff1f0;
+  color: #ff4d4f;
+  border: 1px solid #ffccc7;
+  padding: 10px 18px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.bulk-delete-btn:hover {
+  background-color: #ff4d4f;
+  color: white;
+}
+
+/* --- 3. TABS (Horizontal List) --- */
 .purchase-tabs-container {
   display: flex;
   border-bottom: 1px solid #efefef;
@@ -136,10 +71,10 @@
 }
 
 .tab-item-seller {
-  padding: 15px 30px;
+  padding: 15px 25px;
   cursor: pointer;
-  color: #555;
-  font-size: 0.9375rem;
+  color: #666;
+  font-size: 0.95rem;
   border-bottom: 2px solid transparent;
   transition: 0.2s;
 }
@@ -150,65 +85,96 @@
   font-weight: 600;
 }
 
-/* Order/Product Item Cards inside Main Content */
-.seller-order-item-card {
-  border: 1px solid #efefef;
-  padding: 20px;
-  border-radius: 4px;
-  margin-bottom: 20px;
+/* --- 4. TABLE & CHECKBOXES --- */
+.seller-data-table {
+  width: 100%;
+  border-collapse: collapse;
 }
 
-.order-item-header {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 15px;
+.seller-data-table th {
+  text-align: left;
+  padding: 15px 12px;
+  color: #888;
+  font-size: 0.85rem;
+  border-bottom: 1px solid #eee;
+  background-color: #fafafa;
 }
 
-.seller-cust-info {
-  display: flex;
-  gap: 20px;
-  color: #666;
+.seller-data-table td {
+  padding: 18px 12px;
+  border-bottom: 1px solid #f9f9f9;
   font-size: 0.9rem;
-  margin-bottom: 15px;
+  vertical-align: middle;
 }
 
-.prod-row {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  padding: 10px 0;
-  border-bottom: 1px solid #fafafa;
-}
-
-.prod-row img { width: 50px; height: 50px; object-fit: cover; }
-.prod-meta { flex: 1; }
-
-.order-item-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 15px;
-}
-
-.revenue-total span {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #ee4d2d;
-}
-
-.confirm-btn-seller {
-  background: #5b67f1;
-  color: white;
-  border: none;
-  padding: 8px 20px;
-  border-radius: 4px;
+/* Checkbox Styling */
+.seller-data-table input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
   cursor: pointer;
+  accent-color: #5b67f1;
 }
 
-/* Table styling for Products */
-.seller-data-table { width: 100%; border-collapse: collapse; }
-.seller-data-table th { text-align: left; padding: 15px 10px; color: #888; border-bottom: 1px solid #eee; }
-.seller-data-table td { padding: 15px 10px; border-bottom: 1px solid #fafafa; font-size: 0.9rem; }
-.table-prod-info { display: flex; align-items: center; gap: 10px; }
-.table-prod-info img { width: 40px; height: 40px; object-fit: cover; }
-.edit-text-btn { color: #5b67f1; background: none; border: none; cursor: pointer; }
+/* NEW: Highlight row when selected */
+.row-selected {
+  background-color: #f5f6ff !important;
+}
+
+.table-prod-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.table-prod-info img {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid #eee;
+}
+
+/* --- 5. STATUS BADGES --- */
+.badge-status {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge-status.approved { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
+.badge-status.pending { background: #fff7e6; color: #fa8c16; border: 1px solid #ffd591; }
+.badge-status.rejected { background: #fff1f0; color: #ff4d4f; border: 1px solid #ffa39e; }
+
+/* --- 6. STOCK & ACTIONS --- */
+.low-stock {
+  color: #ff4d4f;
+  font-weight: 600;
+}
+
+.stock-warning {
+  color: #ff4d4f;
+  font-weight: bold;
+  animation: blink 1.5s infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0.3; }
+}
+
+.preview-text-btn, .edit-text-btn, .del-text-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.85rem;
+}
+
+.preview-text-btn { color: #5b67f1; }
+.edit-text-btn { color: #666; }
+.del-text-btn { color: #ff4d4f; }
+
+.preview-text-btn:hover, .edit-text-btn:hover { text-decoration: underline; }

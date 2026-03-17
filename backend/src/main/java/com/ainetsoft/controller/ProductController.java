@@ -10,6 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/products")
@@ -19,7 +20,6 @@ public class ProductController {
 
     private final ProductService productService;
 
-    // Constants for your business rules
     private static final long MAX_VIDEO_SIZE = 15 * 1024 * 1024; // 15MB
     private static final int MAX_IMAGE_COUNT = 5;
 
@@ -37,10 +37,6 @@ public class ProductController {
 
     // --- SELLER ENDPOINTS ---
 
-    /**
-     * UPDATED: Create Product with Media Upload
-     * We use @RequestPart to handle the Product data (JSON) and Files (Multipart) together.
-     */
     @PostMapping(value = "/seller/add", consumes = {"multipart/form-data"})
     public ResponseEntity<Product> createProduct(
             @RequestPart("product") Product product,
@@ -50,20 +46,17 @@ public class ProductController {
         
         if (principal == null) throw new RuntimeException("Bạn cần đăng nhập để thực hiện thao tác này");
 
-        // 1. Validate Image Count (Max 5)
         if (images != null && images.size() > MAX_IMAGE_COUNT) {
             throw new RuntimeException("Bạn chỉ được phép tải lên tối đa " + MAX_IMAGE_COUNT + " hình ảnh.");
         }
 
-        // 2. Validate Video Size (< 15MB)
         if (video != null && !video.isEmpty()) {
             if (video.getSize() > MAX_VIDEO_SIZE) {
                 throw new RuntimeException("Dung lượng video phải nhỏ hơn 15MB.");
             }
         }
 
-        log.info("Seller {} adding product {} with {} images", principal.getName(), product.getName(), (images != null ? images.size() : 0));
-        
+        log.info("Seller {} adding product {}", principal.getName(), product.getName());
         return ResponseEntity.ok(productService.createProductWithMedia(principal.getName(), product, images, video));
     }
 
@@ -73,9 +66,6 @@ public class ProductController {
         return ResponseEntity.ok(productService.getProductsBySeller(principal.getName()));
     }
 
-    /**
-     * UPDATED: Update Product with optional new Media
-     */
     @PutMapping(value = "/seller/update/{id}", consumes = {"multipart/form-data"})
     public ResponseEntity<Product> updateItem(
             @PathVariable String id,
@@ -86,21 +76,33 @@ public class ProductController {
         
         if (principal == null) throw new RuntimeException("Unauthorized");
 
-        // Validation for update
         if (images != null && images.size() > MAX_IMAGE_COUNT) {
             throw new RuntimeException("Tối đa " + MAX_IMAGE_COUNT + " hình ảnh.");
         }
-        if (video != null && video.getSize() > MAX_VIDEO_SIZE) {
+        if (video != null && !video.isEmpty() && video.getSize() > MAX_VIDEO_SIZE) {
             throw new RuntimeException("Video phải nhỏ hơn 15MB.");
         }
 
         return ResponseEntity.ok(productService.updateProductWithMedia(id, principal.getName(), product, images, video));
     }
 
+    /**
+     * DELETE SINGLE: Deletes one product and its physical files.
+     */
     @DeleteMapping("/seller/delete/{id}")
-    public ResponseEntity<String> deleteItem(@PathVariable String id, Principal principal) {
+    public ResponseEntity<?> deleteItem(@PathVariable String id, Principal principal) {
         if (principal == null) throw new RuntimeException("Unauthorized");
         productService.deleteProduct(id, principal.getName());
-        return ResponseEntity.ok("Xóa sản phẩm thành công!");
+        return ResponseEntity.ok(Map.of("message", "Xóa sản phẩm thành công!"));
+    }
+
+    /**
+     * NEW: BULK DELETE: Deletes multiple selected products and their physical files.
+     */
+    @PostMapping("/seller/delete-bulk")
+    public ResponseEntity<?> bulkDelete(@RequestBody List<String> ids, Principal principal) {
+        if (principal == null) throw new RuntimeException("Unauthorized");
+        productService.bulkDeleteProducts(ids, principal.getName());
+        return ResponseEntity.ok(Map.of("message", "Đã xóa các sản phẩm được chọn thành công!"));
     }
 }

@@ -30,19 +30,12 @@ public class ProductService {
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
 
-    // Base directory
     private final String uploadDir = "uploads";
 
-    /**
-     * UPDATED: Accepts a subFolder parameter (e.g., "ads/sellerId")
-     * to organize files correctly.
-     */
     private String saveFile(MultipartFile file, String subFolder) {
         if (file == null || file.isEmpty()) return null;
         try {
-            // Full directory: uploads/ads/sellerId
             Path targetDir = Paths.get(uploadDir, subFolder);
-            
             if (!Files.exists(targetDir)) {
                 Files.createDirectories(targetDir);
             }
@@ -51,12 +44,31 @@ public class ProductService {
             Path filePath = targetDir.resolve(fileName);
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
             
-            // Return the path starting from /uploads/ for the frontend
-            // Result: /uploads/ads/sellerId/filename.webp
             return "/uploads/" + subFolder + "/" + fileName;
         } catch (IOException e) {
             log.error("Lỗi khi lưu tệp: {}", e.getMessage());
             throw new RuntimeException("Không thể lưu tệp đính kèm!");
+        }
+    }
+
+    /**
+     * HELPER: Deletes a single file from the disk based on its stored URL.
+     * Crucial for storage cleanup.
+     */
+    private void deletePhysicalFile(String storedUrl) {
+        if (storedUrl == null || storedUrl.isEmpty() || storedUrl.contains("placeholder.png")) return;
+
+        try {
+            // Converts "/uploads/ads/sellerId/file.jpg" to "uploads/ads/sellerId/file.jpg"
+            String relativePath = storedUrl.startsWith("/") ? storedUrl.substring(1) : storedUrl;
+            Path filePath = Paths.get(relativePath);
+
+            if (Files.exists(filePath)) {
+                Files.delete(filePath);
+                log.info("Đã xóa tệp vật lý thành công: {}", relativePath);
+            }
+        } catch (IOException e) {
+            log.error("Không thể xóa tệp vật lý {}: {}", storedUrl, e.getMessage());
         }
     }
 
@@ -77,7 +89,6 @@ public class ProductService {
             throw new RuntimeException("Tài khoản Người bán của bạn chưa được Admin phê duyệt!");
         }
 
-        // Prepare the subfolder path using Seller ID
         String sellerSubFolder = "ads/" + user.getId();
 
         if (product.getCategoryId() != null) {
@@ -86,7 +97,6 @@ public class ProductService {
             product.setCategoryName(category.getName());
         }
 
-        // Process Images into the subfolder
         List<String> imageUrls = new ArrayList<>();
         if (images != null) {
             images.forEach(img -> {
@@ -96,7 +106,6 @@ public class ProductService {
         }
         product.setImageUrls(imageUrls);
 
-        // Process Video into the subfolder
         if (video != null && !video.isEmpty()) {
             product.setVideoUrl(saveFile(video, sellerSubFolder));
         }
@@ -119,7 +128,6 @@ public class ProductService {
             throw new RuntimeException("Bạn không có quyền chỉnh sửa sản phẩm này!");
         }
 
-        // Path for this specific seller
         String sellerSubFolder = "ads/" + user.getId();
 
         if (updatedData.getCategoryId() != null && !updatedData.getCategoryId().equals(existing.getCategoryId())) {
@@ -129,11 +137,8 @@ public class ProductService {
             existing.setCategoryName(category.getName());
         }
 
-        // Process New Images
         if (newImages != null && !newImages.isEmpty()) {
-            // Keep the URLs user chose to stay with (if any)
             List<String> currentList = updatedData.getImageUrls() != null ? updatedData.getImageUrls() : new ArrayList<>();
-            
             for (MultipartFile img : newImages) {
                 String url = saveFile(img, sellerSubFolder);
                 if (url != null) currentList.add(url);
@@ -157,6 +162,9 @@ public class ProductService {
         return productRepository.save(existing);
     }
 
+    /**
+     * UPDATED: Deletes record and cleans up physical storage.
+     */
     public void deleteProduct(String productId, String contactInfo) {
         Product existing = getProductById(productId);
         User user = userRepository.findByIdentifier(contactInfo)
@@ -166,13 +174,36 @@ public class ProductService {
             throw new RuntimeException("Bạn không có quyền xóa sản phẩm này!");
         }
 
+        // 1. Delete images from disk
+        if (existing.getImageUrls() != null) {
+            existing.getImageUrls().forEach(this::deletePhysicalFile);
+        }
+
+        // 2. Delete video from disk
+        if (existing.getVideoUrl() != null) {
+            deletePhysicalFile(existing.getVideoUrl());
+        }
+
+        // 3. Delete DB record
         productRepository.delete(existing);
+    }
+
+    /**
+     * NEW: Bulk delete for efficient cleanup.
+     */
+    public void bulkDeleteProducts(List<String> productIds, String contactInfo) {
+        for (String id : productIds) {
+            try {
+                deleteProduct(id, contactInfo);
+            } catch (Exception e) {
+                log.warn("Không thể xóa sản phẩm {}: {}", id, e.getMessage());
+            }
+        }
     }
 
     public List<Product> getProductsBySeller(String contactInfo) {
         User user = userRepository.findByIdentifier(contactInfo)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
-        
         return productRepository.findBySellerId(user.getId());
     }
 

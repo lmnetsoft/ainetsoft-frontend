@@ -1,62 +1,49 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaBoxOpen, FaPlus, FaEye, FaEdit, FaTrashAlt } from 'react-icons/fa';
+import { FaBoxOpen, FaPlus, FaEye, FaEdit, FaTrashAlt, FaCheckSquare } from 'react-icons/fa';
 import api from '../../services/api'; 
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import ToastNotification from '../../components/Toast/ToastNotification';
 import { getUserProfile } from '../../services/authService'; 
 import './MyProducts.css';
 
-// The base URL for your backend server
 const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:8080';
 
+// FIX 1: Updated interface to use imageUrls to match backend Product.java
 interface Product {
   id: string; 
   name: string;
   price: number;
   stock: number;
   category: string;
-  images: string[];
+  imageUrls: string[]; // Changed from 'images' to 'imageUrls'
   status: string;
-  sellerId?: string; // Included to ensure subfolder pathing consistency
+  sellerId?: string;
 }
 
 const MyProducts = () => {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [filter, setFilter] = useState<'ALL' | 'APPROVED' | 'PENDING' | 'REJECTED'>('ALL');
   const [loading, setLoading] = useState(true);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
-  
   const [lowStockThreshold, setLowStockThreshold] = useState(5); 
 
-  /**
-   * SMART PATH RESOLVER
-   * Resolves paths to http://localhost:8080/uploads/ads/{sellerId}/{filename}
-   */
   const formatMediaUrl = (url?: string) => {
     if (!url || url === 'undefined' || url === 'null' || url === '') return "/placeholder.png";
     if (url.startsWith('http')) return url;
-    
-    // Standardize leading slash
     const cleanPath = url.startsWith('/') ? url : `/${url}`;
-    
-    // If your backend doesn't include '/uploads' in the string stored in the DB, 
-    // you would add it here. Based on your debug, we use the BASE_URL + path.
     return `${BASE_URL}${cleanPath}`;
   };
 
   useEffect(() => {
     const initPage = async () => {
       setLoading(true);
-      await Promise.all([
-        fetchMyProducts(),
-        fetchThreshold() 
-      ]);
+      await Promise.all([fetchMyProducts(), fetchThreshold()]);
       setLoading(false);
     };
-
     initPage();
     document.title = "Sản phẩm của tôi | AiNetsoft";
   }, []);
@@ -67,9 +54,7 @@ const MyProducts = () => {
       if (profile?.shopProfile?.lowStockThreshold) {
         setLowStockThreshold(profile.shopProfile.lowStockThreshold);
       }
-    } catch (error) {
-      console.warn("Could not load shop settings.");
-    }
+    } catch (error) { console.warn("Could not load shop settings."); }
   };
 
   const fetchMyProducts = async () => {
@@ -82,15 +67,44 @@ const MyProducts = () => {
     }
   };
 
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filteredProducts.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredProducts.map(p => p.id));
+    }
+  };
+
+  const toggleSelectItem = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
   const handleDelete = async (productId: string) => {
-    if (!window.confirm("Bạn có chắc chắn muốn xóa sản phẩm này?")) return;
+    if (!window.confirm("Xóa sản phẩm này sẽ xóa vĩnh viễn cả hình ảnh và video trên máy chủ. Bạn chắc chắn chứ?")) return;
     try {
       await api.delete(`/products/seller/delete/${productId}`);
-      setToastMessage("Xóa sản phẩm thành công!");
+      setToastMessage("Đã xóa sản phẩm và dữ liệu vật lý thành công!");
       setShowToast(true);
       setProducts(prev => prev.filter(p => p.id !== productId));
+      setSelectedIds(prev => prev.filter(id => id !== productId));
     } catch (error: any) {
-      setToastMessage("Không thể xóa sản phẩm.");
+      setToastMessage("Lỗi khi xóa sản phẩm.");
+      setShowToast(true);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Bạn có chắc muốn xóa ${selectedIds.length} sản phẩm đã chọn? Thao tác này sẽ dọn sạch toàn bộ tệp đính kèm trên server.`)) return;
+    try {
+      await api.post('/products/seller/delete-bulk', selectedIds);
+      setToastMessage(`Đã dọn dẹp và xóa ${selectedIds.length} sản phẩm thành công!`);
+      setShowToast(true);
+      setProducts(prev => prev.filter(p => !selectedIds.includes(p.id)));
+      setSelectedIds([]);
+    } catch (error: any) {
+      setToastMessage("Lỗi khi thực hiện xóa hàng loạt.");
       setShowToast(true);
     }
   };
@@ -116,11 +130,18 @@ const MyProducts = () => {
           <div className="content-header-seller">
             <div>
               <h1>Sản phẩm của tôi</h1>
-              <p>Quản lý danh sách sản phẩm và theo dõi trạng thái kiểm duyệt</p>
+              <p>Quản lý và dọn dẹp kho hàng của bạn</p>
             </div>
-            <button className="save-btn" onClick={() => navigate('/seller/add')}>
-              <FaPlus /> Thêm sản phẩm
-            </button>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              {selectedIds.length > 0 && (
+                <button className="bulk-delete-btn" onClick={handleBulkDelete}>
+                  <FaTrashAlt /> Xóa {selectedIds.length} mục
+                </button>
+              )}
+              <button className="save-btn" onClick={() => navigate('/seller/add')}>
+                <FaPlus /> Thêm sản phẩm
+              </button>
+            </div>
           </div>
 
           <hr className="divider" />
@@ -151,6 +172,13 @@ const MyProducts = () => {
               <table className="seller-data-table">
                 <thead>
                   <tr>
+                    <th style={{ width: '40px' }}>
+                      <input 
+                        type="checkbox" 
+                        onChange={toggleSelectAll} 
+                        checked={selectedIds.length === filteredProducts.length && filteredProducts.length > 0} 
+                      />
+                    </th>
                     <th>Sản phẩm</th>
                     <th>Danh mục</th>
                     <th>Giá</th>
@@ -161,15 +189,23 @@ const MyProducts = () => {
                 </thead>
                 <tbody>
                   {filteredProducts.map(p => (
-                    <tr key={p.id}>
+                    <tr key={p.id} className={selectedIds.includes(p.id) ? "row-selected" : ""}>
+                      <td>
+                        <input 
+                          type="checkbox" 
+                          checked={selectedIds.includes(p.id)} 
+                          onChange={() => toggleSelectItem(p.id)} 
+                        />
+                      </td>
                       <td>
                         <div className="table-prod-info">
+                          {/* FIX 2: Correctly map imageUrls to fix the white square issue */}
                           <img 
-                            src={formatMediaUrl(p.images?.[0])} 
+                            src={formatMediaUrl(p.imageUrls?.[0])} 
                             alt={p.name} 
                             onError={(e) => { e.currentTarget.src = "/placeholder.png"; }}
                           />
-                          <span>{p.name}</span>
+                          <span style={{fontWeight: selectedIds.includes(p.id) ? '600' : '400'}}>{p.name}</span>
                         </div>
                       </td>
                       <td>{p.category}</td>
@@ -181,31 +217,14 @@ const MyProducts = () => {
                       <td>{getStatusBadge(p.status)}</td>
                       <td style={{ textAlign: 'right' }}>
                         <div className="action-btns" style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-                           {/* PREVIEW BUTTON - Passing full product object via state */}
-                           <button 
-                              className="preview-text-btn" 
-                              onClick={() => navigate(`/product/${p.id}`, { state: { productPreview: p } })}
-                              style={{ color: '#007bff', border: 'none', background: 'none', cursor: 'pointer', fontWeight: '500', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-                           >
-                              <FaEye /> Xem trước
+                           <button className="preview-text-btn" onClick={() => navigate(`/product/${p.id}`, { state: { productPreview: p } })}>
+                             <FaEye /> Xem trước
                            </button>
-                           
-                           {/* EDIT BUTTON */}
-                           <button 
-                              className="edit-text-btn" 
-                              onClick={() => navigate(`/seller/edit/${p.id}`)}
-                              style={{ border: 'none', background: 'none', cursor: 'pointer', fontWeight: '500', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-                           >
-                              <FaEdit /> Sửa
+                           <button className="edit-text-btn" onClick={() => navigate(`/seller/edit/${p.id}`)}>
+                             <FaEdit /> Sửa
                            </button>
-
-                           {/* DELETE BUTTON */}
-                           <button 
-                              className="del-text-btn" 
-                              onClick={() => handleDelete(p.id)}
-                              style={{ border: 'none', background: 'none', cursor: 'pointer', fontWeight: '500', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-                           >
-                              <FaTrashAlt /> Xóa
+                           <button className="del-text-btn" onClick={() => handleDelete(p.id)}>
+                             <FaTrashAlt /> Xóa
                            </button>
                         </div>
                       </td>
