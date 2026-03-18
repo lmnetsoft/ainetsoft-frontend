@@ -2,7 +2,9 @@ package com.ainetsoft.controller;
 
 import com.ainetsoft.model.Product;
 import com.ainetsoft.model.ProductReport;
+import com.ainetsoft.model.User;
 import com.ainetsoft.repository.ProductReportRepository;
+import com.ainetsoft.repository.UserRepository;
 import com.ainetsoft.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +25,7 @@ public class ProductController {
 
     private final ProductService productService;
     private final ProductReportRepository productReportRepository;
+    private final UserRepository userRepository; // 🛠️ ADDED: To find the reporter's real name
 
     private static final long MAX_VIDEO_SIZE = 15 * 1024 * 1024; // 15MB
     private static final int MAX_IMAGE_COUNT = 5;
@@ -43,7 +46,6 @@ public class ProductController {
 
     /**
      * Increment the share count for a product.
-     * Frictionless flow: No login required to share.
      */
     @PostMapping("/{id}/share")
     public ResponseEntity<?> shareProduct(@PathVariable String id) {
@@ -54,7 +56,7 @@ public class ProductController {
 
     /**
      * Submit a formal report ("Tố cáo") against a product/seller.
-     * Follows the Ticket System flow: Database record + Admin visibility.
+     * FIXED: Now captures Real Reporter Name and Product Name for the Admin Dashboard.
      */
     @PostMapping("/{id}/report")
     public ResponseEntity<?> reportProduct(
@@ -71,25 +73,32 @@ public class ProductController {
             return ResponseEntity.status(404).body("Sản phẩm không tồn tại.");
         }
 
-        // Create the Ticket
+        // 🛠️ NEW LOGIC: Look up the real name of the person reporting
+        String reporterName = "Người dùng ẩn";
+        User reporter = userRepository.findByIdentifier(principal.getName()).orElse(null);
+        if (reporter != null) {
+            reporterName = reporter.getFullName();
+        }
+
+        // Create the Ticket with full Snapshot data
         ProductReport report = ProductReport.builder()
                 .productId(id)
-                .sellerId(product.getSellerId()) // Capturing seller context for Admin dashboard
-                .reporterId(principal.getName())
+                .productName(product.getName())   // 🛠️ NEW: Capture Product Name
+                .sellerId(product.getSellerId())
+                .reporterId(reporter != null ? reporter.getId() : principal.getName())
+                .reporterName(reporterName)       // 🛠️ NEW: Capture Real Name
                 .reason((String) reportData.get("reason"))
                 .details((String) reportData.get("details"))
-                .evidenceUrls((List<String>) reportData.get("evidenceUrls")) // Links from frontend upload
+                .evidenceUrls((List<String>) reportData.get("evidenceUrls"))
                 .status("PENDING")
                 .createdAt(LocalDateTime.now())
                 .build();
         
         productReportRepository.save(report);
 
-        // Professional logic: Increment report count but don't auto-ban.
-        // Admins take action via AdminReportController.
         productService.incrementReportCount(id);
 
-        log.warn("User {} reported product {}. Reason: {}", principal.getName(), id, report.getReason());
+        log.warn("User {} reported product {}. Reason: {}", reporterName, id, report.getReason());
         
         return ResponseEntity.ok(Map.of(
             "message", "Báo cáo của bạn đã được gửi. Chúng tôi sẽ tiến hành kiểm tra nội dung này."

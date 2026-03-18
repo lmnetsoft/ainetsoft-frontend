@@ -24,9 +24,10 @@ public class AdminService {
     private final OrderRepository orderRepository;
     private final NotificationService notificationService;
     private final AuditLogRepository auditLogRepository;
-    
-    // 🛠️ ADDED: Required for counting violation reports in Stats
     private final ProductReportRepository productReportRepository;
+    
+    // 🛠️ INTEGRATED: Real Azure Email Engine
+    private final AzureCommunicationService azureEmailService;
 
     /**
      * INTERNAL HELPER: Records admin actions into the Audit Log.
@@ -86,14 +87,10 @@ public class AdminService {
         long sCount = userRepository.countByRolesContaining("SELLER");
         long pCount = productRepository.count();
         long pendingPCount = productRepository.countByStatus("PENDING");
-        
-        // FIXED SOURCE OF TRUTH: Now explicitly counts the users you see in the "Duyệt Shop" list
         long pendingSCount = userRepository.countBySellerVerification("PENDING");
-
-        // 🛠️ ADDED: Get real count of reports to fix the "0" on dashboard card
         long reportCount = productReportRepository.count();
 
-        log.info("DB Counts -> Users: {}, Sellers: {}, Pending Sellers (Shop): {}, Reports: {}", uCount, sCount, pendingSCount, reportCount);
+        log.info("DB Counts -> Users: {}, Sellers: {}, Reports: {}", uCount, sCount, reportCount);
 
         List<Order> allOrders = orderRepository.findAll();
         List<Order> completedOrders = allOrders.stream()
@@ -112,7 +109,7 @@ public class AdminService {
                 .totalRevenue(totalRevenue)
                 .pendingProducts(pendingPCount)
                 .pendingSellers(pendingSCount)
-                .totalReports(reportCount) // 🛠️ ADDED: Map to DTO field
+                .totalReports(reportCount)
                 .revenueHistory(generateRevenueHistory(completedOrders))
                 .build();
     }
@@ -157,15 +154,11 @@ public class AdminService {
 
     // --- SELLER MODERATION ---
 
-    /**
-     * UPDATED: Injects "DEFAULT_LOGO" if the requester hasn't set an avatar yet.
-     * This allows the Frontend to point to logo.svg in its public folder.
-     */
     public List<User> getPendingSellers() {
         log.info("Searching for users with sellerVerification: PENDING");
         List<User> pending = userRepository.findBySellerVerification("PENDING");
         
-        // BITNAMILEGACY FIX: Identify missing avatars so Frontend can use the SVG logo
+        // BITNAMILEGACY FIX: Identify missing avatars
         pending.forEach(user -> {
             if (user.getAvatarUrl() == null || user.getAvatarUrl().isEmpty()) {
                 user.setAvatarUrl("DEFAULT_LOGO"); 
@@ -204,11 +197,12 @@ public class AdminService {
             userRepository.save(user);
 
             notificationService.createNotification(
-                user.getId(),
-                "Yêu cầu nâng cấp Shop thành công",
-                "Chào mừng! Bạn đã chính thức trở thành Người bán.",
-                "SELLER_APPROVAL", null
+                user.getId(), "Yêu cầu nâng cấp Shop thành công",
+                "Chào mừng! Bạn đã chính thức trở thành Người bán.", "SELLER_APPROVAL", null
             );
+
+            // 📧 REQUIREMENT 3: Professional Azure Approval Email
+            azureEmailService.sendSellerStatusEmail(user.getEmail(), user.getFullName(), true, null);
 
             recordAudit(performingAdmin, "APPROVE_SELLER", user.getId(), user.getEmail(), "Phê duyệt Shop");
             return "Người dùng " + user.getFullName() + " đã trở thành Người bán.";
@@ -220,11 +214,12 @@ public class AdminService {
             userRepository.save(user);
 
             notificationService.createNotification(
-                user.getId(),
-                "Yêu cầu nâng cấp Shop bị từ chối",
-                "Lý do: " + request.getAdminNote(),
-                "SYSTEM", null
+                user.getId(), "Yêu cầu nâng cấp Shop bị từ chối",
+                "Lý do: " + request.getAdminNote(), "SYSTEM", null
             );
+
+            // 📧 REQUIREMENT 3: Professional Azure Rejection Email
+            azureEmailService.sendSellerStatusEmail(user.getEmail(), user.getFullName(), false, request.getAdminNote());
 
             recordAudit(performingAdmin, "REJECT_SELLER", user.getId(), user.getEmail(), "Từ chối Shop: " + request.getAdminNote());
             return "Đã từ chối yêu cầu.";
@@ -248,9 +243,13 @@ public class AdminService {
 
         notificationService.createNotification(
             product.getSellerId(), "Sản phẩm đã được duyệt",
-            "Sản phẩm '" + product.getName() + "' hiện đang hiển thị.",
-            "SYSTEM", product.getId()
+            "Sản phẩm '" + product.getName() + "' hiện đang hiển thị.", "SYSTEM", product.getId()
         );
+
+        // 📧 REQUIREMENT 3: Professional Azure Product Approval Email
+        userRepository.findById(product.getSellerId()).ifPresent(seller -> {
+            azureEmailService.sendProductStatusEmail(seller.getEmail(), seller.getFullName(), product.getName(), true, null);
+        });
         
         recordAudit(performingAdmin, "APPROVE_PRODUCT", product.getId(), product.getName(), "Duyệt sản phẩm");
         return "Sản phẩm '" + product.getName() + "' đã được duyệt.";
@@ -269,9 +268,49 @@ public class AdminService {
             product.getSellerId(), "Sản phẩm bị từ chối",
             "Lý do: " + reason, "SYSTEM", product.getId()
         );
+
+        // 📧 REQUIREMENT 3: Professional Azure Product Rejection Email
+        userRepository.findById(product.getSellerId()).ifPresent(seller -> {
+            azureEmailService.sendProductStatusEmail(seller.getEmail(), seller.getFullName(), product.getName(), false, reason);
+        });
         
         recordAudit(performingAdmin, "REJECT_PRODUCT", product.getId(), product.getName(), "Từ chối: " + reason);
         return "Đã từ chối sản phẩm.";
+    }
+
+    // --- 🛠️ REPORT MANAGEMENT (REQUIREMENTS 4 & 5) ---
+
+    @Transactional
+    public String resolveReport(String reportId, String action, User performingAdmin) {
+        ProductReport report = productReportRepository.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Báo cáo không tồn tại!"));
+
+        if ("RESOLVED".equals(action)) {
+            report.setStatus("RESOLVED");
+            productRepository.findById(report.getProductId()).ifPresent(product -> {
+                product.setStatus("BANNED");
+                productRepository.save(product);
+                recordAudit(performingAdmin, "CONFIRM_VIOLATION", product.getId(), product.getName(), "Xác nhận vi phạm & Khóa sản phẩm");
+            });
+        } else {
+            // 🛠️ REQUIREMENT 4: Dismiss logic (Grey-out behavior)
+            report.setStatus("DISMISSED");
+            recordAudit(performingAdmin, "DISMISS_REPORT", report.getId(), "Report Record", "Bác bỏ báo cáo vi phạm");
+        }
+
+        report.setUpdatedAt(LocalDateTime.now());
+        productReportRepository.save(report);
+        return "Đã xử lý báo cáo thành công.";
+    }
+
+    @Transactional
+    public void deleteReport(String reportId, User performingAdmin) {
+        // 🛠️ REQUIREMENT 5: Permanent Delete button logic
+        ProductReport report = productReportRepository.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy báo cáo!"));
+        
+        productReportRepository.delete(report);
+        recordAudit(performingAdmin, "DELETE_REPORT", reportId, "Violation Record", "Xóa vĩnh viễn bản ghi báo cáo");
     }
     
     // --- MASTER USER CONTROL ---

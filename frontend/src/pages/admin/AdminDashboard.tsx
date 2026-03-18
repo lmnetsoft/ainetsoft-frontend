@@ -62,7 +62,6 @@ const AdminDashboard = () => {
       const data = Array.isArray(response) ? response : (response?.content || []);
       setReports(data);
       
-      // Sync badge count with real list length if they differ
       if (data.length !== stats.totalReports) {
         setStats(prev => ({ ...prev, totalReports: data.length }));
       }
@@ -88,34 +87,21 @@ const AdminDashboard = () => {
 
   // --- 2. THE REFRESH ENGINE ---
 
-  // Handle manual "Làm mới" click
   const handleManualRefresh = async () => {
-    // Always refresh the summary
     await fetchSummary(true);
-    
-    // Check which tab is active and refresh its specific data
     if (activeTab === 'reports') await fetchReports();
     if (activeTab === 'reviews') await fetchReviews();
-    if (activeTab === 'sellers' || activeTab === 'products_mod') {
-       // These are sub-components, triggering a re-render or internal refresh might be needed
-       // For now, refreshing summary updates their badge counts.
-    }
   };
 
-  // Auto-Refresh Logic (Every 2 minutes)
   useEffect(() => {
-    fetchSummary(); // Initial load
-
+    fetchSummary();
     const interval = setInterval(() => {
-      console.log("Dashboard Auto-Syncing...");
       fetchSummary();
       if (activeTab === 'reports') fetchReports();
-    }, 120000); // 120,000ms = 2 minutes
-
+    }, 120000);
     return () => clearInterval(interval);
   }, [activeTab]);
 
-  // Sync when switching tabs
   useEffect(() => {
     if (activeTab === 'reports') fetchReports();
     if (activeTab === 'reviews') fetchReviews();
@@ -128,10 +114,19 @@ const AdminDashboard = () => {
     try {
       await adminService.resolveReport(reportId, action);
       toast.success(action === 'RESOLVED' ? "Đã xác nhận vi phạm & Gỡ sản phẩm" : "Đã bác bỏ báo cáo");
-      // Immediate re-fetch to keep numbers consistent
       fetchReports();
       fetchSummary();
     } catch (err) { toast.error("Thao tác thất bại."); }
+  };
+
+  const handleDeleteReport = async (reportId: string) => {
+    if (!window.confirm("Bạn có chắc chắn muốn XÓA vĩnh viễn bản ghi báo cáo này khỏi hệ thống?")) return;
+    try {
+      await adminService.deleteReport(reportId);
+      toast.success("Đã xóa báo cáo.");
+      fetchReports();
+      fetchSummary();
+    } catch (err) { toast.error("Không thể xóa báo cáo."); }
   };
 
   const handleDeleteReview = async (reviewId: string) => {
@@ -157,7 +152,7 @@ const AdminDashboard = () => {
               <thead>
                 <tr>
                   <th>Sản phẩm</th>
-                  <th>Lý do</th>
+                  <th>Lý do & Chi tiết</th> {/* REQ 2: Header Update */}
                   <th>Người báo cáo</th>
                   <th>Ngày gửi</th>
                   <th>Thao tác</th>
@@ -165,22 +160,54 @@ const AdminDashboard = () => {
               </thead>
               <tbody>
                 {reports.length === 0 ? <tr><td colSpan={5} className="empty-row">Không có báo cáo vi phạm nào.</td></tr> : 
-                  reports.map(r => (
-                    <tr key={r.id}>
-                      <td><strong>{r.productName || "Sản phẩm ẩn"}</strong></td>
-                      <td><span className="reason-tag">{r.reason}</span></td>
-                      <td>{r.reporterName || 'Người dùng ẩn'}</td>
-                      <td>{r.createdAt ? new Date(r.createdAt).toLocaleDateString('vi-VN') : '---'}</td>
-                      <td className="action-btns">
-                        <button className="mod-btn approve" onClick={() => handleResolveReport(r.id, 'RESOLVED')} title="Xác nhận vi phạm">
-                          <FaCheck />
-                        </button>
-                        <button className="mod-btn reject" onClick={() => handleResolveReport(r.id, 'DISMISSED')} title="Bác bỏ">
-                          <FaTimes />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                  reports.map(r => {
+                    // REQ 1 & 4: Logic for greying out
+                    const isProcessed = r.status === 'RESOLVED' || r.status === 'DISMISSED';
+
+                    return (
+                      <tr key={r.id} className={isProcessed ? 'resolved-row' : ''}>
+                        <td><strong>{r.productName || "Sản phẩm ẩn"}</strong></td>
+                        <td>
+                          <div className="reason-container">
+                            <span className="reason-tag">{r.reason}</span>
+                            {/* REQ 2: Showing "Chi tiết thêm" content */}
+                            {r.details && (
+                              <div className="report-detail-text">
+                                <small>Ghi chú: </small>{r.details}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td>{r.reporterName || 'Người dùng ẩn'}</td>
+                        <td>{r.createdAt ? new Date(r.createdAt).toLocaleDateString('vi-VN') : '---'}</td>
+                        <td className="action-btns">
+                          {!isProcessed ? (
+                            <>
+                              <button className="mod-btn approve" onClick={() => handleResolveReport(r.id, 'RESOLVED')} title="Xác nhận vi phạm">
+                                <FaCheck />
+                              </button>
+                              <button className="mod-btn reject" onClick={() => handleResolveReport(r.id, 'DISMISSED')} title="Bác bỏ">
+                                <FaTimes />
+                              </button>
+                            </>
+                          ) : (
+                            <span className={`status-badge-mini ${r.status.toLowerCase()}`}>
+                              {r.status === 'RESOLVED' ? 'Đã xử lý' : 'Đã bác bỏ'}
+                            </span>
+                          )}
+                          
+                          {/* REQ 5: The Trash (Xóa) Button */}
+                          <button 
+                            className="mod-btn delete-grey" 
+                            onClick={() => handleDeleteReport(r.id)} 
+                            title="Xóa vĩnh viễn"
+                          >
+                            <FaTrash />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 }
               </tbody>
             </table>
@@ -207,7 +234,7 @@ const AdminDashboard = () => {
                       <td><span className="rating-badge">{rev.rating} <FaStar size={10} /></span></td>
                       <td className="comment-cell">{rev.comment}</td>
                       <td className="action-btns">
-                        <button className="mod-btn reject" onClick={() => handleDeleteReview(rev.id)}><FaTrash /></button>
+                        <button className="mod-btn reject" onClick={() => handleDeleteReview(rev.id)}><FaTrash size={12}/></button>
                       </td>
                     </tr>
                   ))
@@ -268,7 +295,6 @@ const AdminDashboard = () => {
                 <span className="status-dot">Online</span>
               </div>
             </div>
-            {/* FIXED: Button now calls handleManualRefresh to sync everything */}
             <button className="btn-refresh" onClick={handleManualRefresh} disabled={loading}>
               <FaSync className={loading ? 'spin' : ''} />
               <span>{loading ? 'Đang đồng bộ...' : 'Làm mới'}</span>

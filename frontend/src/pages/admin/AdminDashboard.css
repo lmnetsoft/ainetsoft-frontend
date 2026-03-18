@@ -58,7 +58,6 @@
   gap: 20px;
 }
 
-/* Make header-left a column so title and badges stack nicely */
 .header-left {
   display: flex;
   flex-direction: column;
@@ -66,21 +65,18 @@
   gap: 8px;
 }
 
-/* refined dashboard title: consistent weight, spacing and size */
 .header-left h1 {
-  font-size: 1.85rem;         /* slightly large but controlled */
-  font-weight: 700;           /* heavy but not ultra-bold */
+  font-size: 1.85rem;
+  font-weight: 700;
   color: var(--text-dark);
   margin: 0;
   line-height: 1.18;
   letter-spacing: -0.2px;
   font-family: var(--ui-font);
-  /* subtle text rendering improvements */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* badge + status container sits under the title */
 .badge-container {
   display: flex;
   align-items: center;
@@ -88,7 +84,6 @@
   margin-top: 0;
 }
 
-/* Global admin badge */
 .master-badge {
   background: var(--orange);
   color: white;
@@ -100,7 +95,6 @@
   letter-spacing: 0.3px;
 }
 
-/* online status small text */
 .status-dot {
   font-size: 0.8rem;
   color: #00a85a;
@@ -110,7 +104,6 @@
   gap: 8px;
 }
 
-/* green dot */
 .status-dot::before {
   content: '';
   width: 8px;
@@ -120,7 +113,6 @@
   display: inline-block;
 }
 
-/* refresh button on the right */
 .btn-refresh {
   background: var(--white);
   border: 1px solid var(--border-light);
@@ -137,7 +129,6 @@
 }
 .btn-refresh:hover:not(:disabled) { border-color: var(--orange); color: var(--orange); }
 
-/* small spin helper */
 .spin { animation: loading-spin 1s infinite linear; }
 @keyframes loading-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
@@ -228,7 +219,6 @@
 .rev-value-row { display: flex; align-items: baseline; gap: 10px; margin: 10px 0; }
 .rev-value-row h2 { font-size: 2.8rem; margin: 0; font-weight: 800; }
 .unit { font-size: 1.2rem; opacity: 0.6; }
-.rev-subtitle { font-size: 0.85rem; opacity: 0.5; margin: 0; }
 .rev-bg-icon { font-size: 7rem; position: absolute; right: -15px; bottom: -15px; opacity: 0.08; }
 
 /* --- 7. Quick Info Grid --- */
@@ -255,21 +245,6 @@
 .mini-card-text strong { font-size: 1.3rem; color: var(--text-dark); }
 
 /* --- 8. Utils & Animations --- */
-.btn-refresh {
-  background: var(--white);
-  border: 1px solid var(--border-light);
-  padding: 8px 16px;
-  border-radius: 10px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  color: var(--text-muted);
-  transition: 0.2s;
-}
-.btn-refresh:hover:not(:disabled) { border-color: var(--orange); color: var(--orange); }
-
 .loading-placeholder { padding: 100px; text-align: center; color: var(--text-muted); font-weight: 700; }
 
 /* --- 9. Moderation Table Specifics --- */
@@ -305,10 +280,6 @@
     border-color: var(--orange); color: var(--orange); background: #fff8f6;
     box-shadow: 0 2px 8px rgba(238, 77, 45, 0.1);
 }
-
-.admin-table tbody tr:hover { background-color: #fafbfc; }
-.admin-table th { text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; color: var(--text-muted); padding: 15px; }
-.admin-table td { padding: 15px; border-bottom: 1px solid #f1f2f6; }
 
 /* --- 10. Master Review Modal Styling --- */
 .admin-modal-overlay {
@@ -363,7 +334,6 @@
 .zoom-content-wrapper img { max-width: 100%; max-height: 85vh; border-radius: 8px; }
 .close-zoom-btn { position: absolute; top: -45px; right: 0; background: none; border: none; color: white; font-size: 1.8rem; cursor: pointer; }
 
-/* KEPT: Essential Close Button UI Logic */
 .close-btn {
     background: #f1f2f6 !important; border: none !important; width: 36px !important; height: 36px !important;
     border-radius: 50% !important; display: flex !important; align-items: center !important;
@@ -373,9 +343,7 @@
 .close-btn:hover { background: #ee4d2d !important; }
 .close-btn:hover svg { color: white !important; }
 
-/* =======================================================
-   12. ADMIN TABLE & MODERATION UI (Surgical Fixes)
-   ======================================================= */
+/* --- 12. ADMIN TABLE & MODERATION UI --- */
 .admin-table-container { background: #fff; border-radius: 12px; border: 1px solid var(--border-light); overflow: hidden; margin-top: 10px; }
 .admin-data-table { width: 100%; border-collapse: collapse; }
 .admin-data-table th { background: #fafbfc; padding: 15px; text-align: left; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border-light); }
@@ -386,14 +354,10 @@
 .rating-badge { background: #fff8e1; color: #ffa000; padding: 4px 8px; border-radius: 4px; font-weight: 700; display: flex; align-items: center; gap: 4px; width: fit-content; }
 .comment-cell { max-width: 400px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-muted); }
 
-/* --- 13. Action Buttons & Icons (fixed: ensure icons are visible) --- */
+/* --- 13. Action Buttons & Icons (Refined for mod-btn) --- */
 .action-btns { display: flex; gap: 10px; align-items: center; }
 
-/* base button shape */
-.btn-table-success,
-.btn-table-danger,
-.btn-table-delete,
-.btn-table-view {
+.mod-btn {
   width: 36px;
   height: 36px;
   border-radius: 8px;
@@ -402,47 +366,28 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.18s, transform 0.12s;
+  transition: all 0.2s;
   padding: 0;
+  background: #f1f2f6;
 }
 
-/* set button background and the icon color via the button's `color` */
-.btn-table-success { background: #e6f9ed; color: #27ae60; }   /* green icon */
-.btn-table-danger  { background: #fff5f5; color: #e74c3c; }   /* red icon */
-.btn-table-delete  { background: #fff5f5; color: #e74c3c; }   /* delete (red) */
-.btn-table-view    { background: #e3f2fd; color: #2d9cdb; }   /* blue icon */
-
-/* make SVGs use the current color and visible size */
-.action-btns svg,
-.btn-table-success svg,
-.btn-table-danger svg,
-.btn-table-delete svg,
-.btn-table-view svg {
-  width: 16px;              /* fixed size so it's visible */
+.mod-btn svg {
+  width: 16px;
   height: 16px;
   display: block;
-  fill: currentColor;       /* important: make icon follow the button color */
-  stroke: none;
-  opacity: 1;
-  vertical-align: middle;
-}
-
-/* hover states */
-.btn-table-success:hover { background: #27ae60; color: #fff; transform: translateY(-1px); }
-.btn-table-success:hover svg { fill: currentColor; }
-
-.btn-table-danger:hover { background: #e74c3c; color: #fff; transform: translateY(-1px); }
-.btn-table-delete:hover { background: #e74c3c; color: #fff; transform: translateY(-1px); }
-
-.btn-table-view:hover { background: #2d9cdb; color: #fff; transform: translateY(-1px); }
-
-/* ensure icon contrast when disabled or low-opacity rules exist elsewhere */
-.btn-table-success svg,
-.btn-table-danger svg,
-.btn-table-delete svg,
-.btn-table-view svg {
+  fill: currentColor;
   opacity: 1 !important;
 }
+
+.mod-btn.approve { background: #e6f9ed; color: #2ecc71; }
+.mod-btn.approve:hover { background: #2ecc71; color: #fff; transform: translateY(-1px); }
+
+.mod-btn.reject { background: #fff5f5; color: #e74c3c; }
+.mod-btn.reject:hover { background: #e74c3c; color: #fff; transform: translateY(-1px); }
+
+/* Requirement 5: Specific Trash Button Styling */
+.mod-btn.delete-grey { background: #f1f2f6; color: var(--text-muted); }
+.mod-btn.delete-grey:hover { background: #ff4757; color: #fff; transform: translateY(-1px); }
 
 /* --- 14. Fix for Broken Images in List --- */
 .admin-prod-thumb {
@@ -452,6 +397,43 @@
 .admin-prod-thumb img { width: 100%; height: 100%; object-fit: cover; }
 
 .empty-row { padding: 80px !important; text-align: center; color: var(--text-muted); font-style: italic; }
+
+/* =======================================================
+   15. VIOLATION REPORTS & TASK MANAGEMENT (NEW)
+   ======================================================= */
+
+/* Requirement 1: Grey-out behavior */
+.resolved-row {
+  background-color: #fafbfc !important;
+  opacity: 0.6;
+  filter: grayscale(0.4);
+}
+
+/* Requirement 2: Chi tiết thêm text display */
+.report-detail-text {
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  background: #f1f2f6;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border-left: 3px solid var(--border-light);
+  max-width: 320px;
+  line-height: 1.4;
+}
+
+/* Status Badges for Processed Tasks */
+.status-badge-mini {
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 20px;
+  display: inline-block;
+  letter-spacing: 0.02em;
+}
+.status-badge-mini.resolved { background: #e6f9ed; color: #2ecc71; }
+.status-badge-mini.dismissed { background: #f1f2f6; color: var(--text-muted); }
 
 .tab-loading-spinner { padding: 100px; text-align: center; font-weight: 700; color: var(--orange); animation: fadeInOut 1.5s infinite; }
 @keyframes fadeInOut { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }

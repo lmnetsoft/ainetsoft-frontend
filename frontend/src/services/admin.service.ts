@@ -70,9 +70,17 @@ export const adminService = {
 
   /**
    * Updates report status (e.g., RESOLVED, DISMISSED).
+   * Used for Requirement 1 & 4 (Grey-out & Dismiss)
    */
   resolveReport: (reportId: string, action: 'RESOLVED' | 'DISMISSED') => 
     api.post(`/admin/reports/${reportId}/process`, { action }).then(res => res.data),
+
+  /**
+   * 🛠️ NEW: REQUIREMENT 5 (Xóa)
+   * Permanently removes a violation report record from the database.
+   */
+  deleteReport: (reportId: string) => 
+    api.delete(`/admin/reports/${reportId}`).then(res => res.data),
 
   // --- NEW: REVIEW MODERATION (QUẢN LÝ ĐÁNH GIÁ) ---
 
