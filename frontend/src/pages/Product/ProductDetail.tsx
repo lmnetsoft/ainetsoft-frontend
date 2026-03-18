@@ -107,7 +107,7 @@ const ProductDetail = () => {
 
   // --- INTERACTION HANDLERS ---
 
-  const handleShare = async (platform: 'facebook' | 'messenger' | 'link') => {
+  const handleShare = async (platform: 'facebook' | 'messenger' | 'link' | 'twitter') => {
     if (!product) return;
     const currentUrl = window.location.href;
     
@@ -118,6 +118,8 @@ const ProductDetail = () => {
       navigator.clipboard.writeText(currentUrl);
       setToastMessage("Đã sao chép liên kết vào bộ nhớ tạm!");
       setShowToast(true);
+    } else if (platform === 'twitter') {
+      window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(currentUrl)}&text=${encodeURIComponent(product.name)}`, '_blank');
     } else if (platform === 'facebook') {
       window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentUrl)}`, '_blank');
     } else if (platform === 'messenger') {
@@ -407,6 +409,7 @@ const ProductDetail = () => {
                   <span>Chia sẻ:</span>
                   <button className="share-icon-btn messenger" onClick={() => handleShare('messenger')}><FaFacebookMessenger /></button>
                   <button className="share-icon-btn facebook" onClick={() => handleShare('facebook')}><FaFacebook /></button>
+                  <button className="share-icon-btn twitter" onClick={() => handleShare('twitter')}><FaTwitter /></button>
                   <button className="share-icon-btn link" onClick={() => handleShare('link')}><FaLink /></button>
                 </div>
                 <div className="interaction-divider"></div>
