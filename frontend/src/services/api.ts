@@ -96,4 +96,41 @@ export const reportProduct = async (productId: string, reportData: { reason: str
   return await api.post(`/products/${productId}/report`, reportData);
 };
 
+/**
+ * NEW: PROFESSIONAL REVIEW SYSTEM ENDPOINTS
+ * Matches image_971725.png filter bar and Shopee-style audits
+ */
+
+// Fetches reviews with smart filters (rating, images)
+export const getProductReviews = async (productId: string, rating?: number, hasImages?: boolean) => {
+  const params = new URLSearchParams();
+  if (rating) params.append('rating', rating.toString());
+  if (hasImages) params.append('hasImages', 'true');
+  
+  return await api.get(`/reviews/product/${productId}`, { params });
+};
+
+// Fetches the counts for the filter buttons (e.g., "5 Sao (303)")
+export const getReviewStats = async (productId: string) => {
+  return await api.get(`/reviews/product/${productId}/stats`);
+};
+
+// Submits a new review (Linked to Order ID for Verified Purchase badge)
+export const submitReview = async (reviewData: {
+  productId: string;
+  orderId: string;
+  rating: number;
+  comment: string;
+  imageUrls?: string[];
+  videoUrl?: string;
+  variantInfo?: string;
+}) => {
+  return await api.post('/reviews/submit', reviewData);
+};
+
+// Allows seller to respond (Phản hồi của người bán)
+export const replyToReview = async (reviewId: string, replyText: string) => {
+  return await api.post(`/reviews/${reviewId}/reply`, { replyText });
+};
+
 export default api;

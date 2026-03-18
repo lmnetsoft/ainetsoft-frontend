@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { 
   FaUsers, FaBox, FaStore, FaClock, 
-  FaChartBar, FaSync, FaHistory, FaShieldAlt 
+  FaChartBar, FaSync, FaHistory, FaShieldAlt,
+  FaExclamationTriangle, FaStar, FaTrash, FaCheck, FaTimes, FaListUl
 } from 'react-icons/fa';
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import adminService from '../../services/admin.service';
 import SellerModeration from './SellerModeration'; 
+import ProductModeration from './ProductModeration'; // PRESERVED: The Gate 2 Component
 import { toast } from 'react-hot-toast';
 import './AdminDashboard.css';
 
@@ -18,13 +20,24 @@ const AdminDashboard = () => {
     totalOrders: 0,
     totalRevenue: 0,
     pendingProducts: 0,
-    pendingSellers: 0
+    pendingSellers: 0,
+    totalReports: 0 // Track violations
   });
+  
+  const [reports, setReports] = useState<any[]>([]); // Violation list
+  const [allReviews, setAllReviews] = useState<any[]>([]); // Master audit list
   const [loading, setLoading] = useState(true);
+  const [tabLoading, setTabLoading] = useState(false);
 
   useEffect(() => {
     fetchSummary();
   }, []);
+
+  // Sync specific tab data when navigation occurs
+  useEffect(() => {
+    if (activeTab === 'reports') fetchReports();
+    if (activeTab === 'reviews') fetchReviews();
+  }, [activeTab]);
 
   const fetchSummary = async () => {
     try {
@@ -38,7 +51,8 @@ const AdminDashboard = () => {
           totalOrders: data.totalOrders || 0,
           totalRevenue: data.totalRevenue || 0,
           pendingProducts: data.pendingProducts || 0,
-          pendingSellers: data.pendingSellers || 0
+          pendingSellers: data.pendingSellers || 0,
+          totalReports: data.totalReports || 0
         });
       }
     } catch (err) {
@@ -49,14 +63,119 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchReports = async () => {
+    try {
+      setTabLoading(true);
+      const data = await adminService.getAllReports();
+      setReports(data || []);
+    } catch (err) { toast.error("Lỗi tải danh sách báo cáo."); }
+    finally { setTabLoading(false); }
+  };
+
+  const fetchReviews = async () => {
+    try {
+      setTabLoading(true);
+      const data = await adminService.getAllReviews();
+      setAllReviews(data || []);
+    } catch (err) { toast.error("Lỗi tải danh sách đánh giá."); }
+    finally { setTabLoading(false); }
+  };
+
+  const handleResolveReport = async (reportId: string, action: 'RESOLVED' | 'DISMISSED') => {
+    try {
+      await adminService.resolveReport(reportId, action);
+      toast.success(action === 'RESOLVED' ? "Đã xử lý vi phạm" : "Đã bỏ qua báo cáo");
+      fetchReports();
+      fetchSummary();
+    } catch (err) { toast.error("Thao tác thất bại."); }
+  };
+
+  const handleDeleteReview = async (reviewId: string) => {
+    if (!window.confirm("Xác nhận xóa đánh giá này khỏi hệ thống?")) return;
+    try {
+      await adminService.deleteReview(reviewId);
+      toast.success("Đã xóa đánh giá.");
+      fetchReviews();
+    } catch (err) { toast.error("Thao tác thất bại."); }
+  };
+
   const renderContent = () => {
+    if (tabLoading) return <div className="tab-loading-spinner">Đang xử lý dữ liệu...</div>;
+
     switch (activeTab) {
       case 'sellers': 
         return <SellerModeration />;
+      
+      case 'products_mod': // ACTUAL MODERATION LIST FOR PENDING PRODUCTS
+        return <ProductModeration />;
+      
+      case 'reports': 
+        return (
+          <div className="admin-table-container">
+            <table className="admin-data-table">
+              <thead>
+                <tr>
+                  <th>Sản phẩm</th>
+                  <th>Lý do</th>
+                  <th>Người báo cáo</th>
+                  <th>Ngày gửi</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reports.length === 0 ? <tr><td colSpan={5} className="empty-row">Không có báo cáo vi phạm nào.</td></tr> : 
+                  reports.map(r => (
+                    <tr key={r.id}>
+                      <td><strong>{r.productName}</strong></td>
+                      <td><span className="reason-tag">{r.reason}</span></td>
+                      <td>{r.reporterName}</td>
+                      <td>{new Date(r.createdAt).toLocaleDateString('vi-VN')}</td>
+                      <td className="action-btns">
+                        <button className="btn-table-success" title="Xác nhận vi phạm" onClick={() => handleResolveReport(r.id, 'RESOLVED')}><FaCheck /></button>
+                        <button className="btn-table-danger" title="Bác bỏ" onClick={() => handleResolveReport(r.id, 'DISMISSED')}><FaTimes /></button>
+                      </td>
+                    </tr>
+                  ))
+                }
+              </tbody>
+            </table>
+          </div>
+        );
+
+      case 'reviews':
+        return (
+          <div className="admin-table-container">
+            <table className="admin-data-table">
+              <thead>
+                <tr>
+                  <th>Sản phẩm</th>
+                  <th>Đánh giá</th>
+                  <th>Nội dung</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {allReviews.length === 0 ? <tr><td colSpan={4} className="empty-row">Chưa có đánh giá nào.</td></tr> : 
+                  allReviews.map(rev => (
+                    <tr key={rev.id}>
+                      <td>{rev.productName}</td>
+                      <td><span className="rating-badge">{rev.rating} <FaStar size={10} /></span></td>
+                      <td className="comment-cell">{rev.comment}</td>
+                      <td className="action-btns">
+                        <button className="btn-table-delete" onClick={() => handleDeleteReview(rev.id)}><FaTrash /></button>
+                      </td>
+                    </tr>
+                  ))
+                }
+              </tbody>
+            </table>
+          </div>
+        );
+
       case 'summary': 
         return (
           <div className="dashboard-render-area">
-            {/* Revenue Section - Using Chat style gradient */}
+            {/* Revenue Summary Card with Gradient */}
             <div className="revenue-summary-card">
               <div className="rev-info">
                 <label>Doanh thu tổng hệ thống</label>
@@ -66,12 +185,10 @@ const AdminDashboard = () => {
                 </div>
                 <p className="rev-subtitle">Cập nhật dựa trên các đơn hàng đã hoàn tất</p>
               </div>
-              <div className="rev-visual">
-                 <FaChartBar className="rev-bg-icon" />
-              </div>
+              <div className="rev-visual"><FaChartBar className="rev-bg-icon" /></div>
             </div>
             
-            {/* Secondary Stats */}
+            {/* Quick Info Mini Grid */}
             <div className="quick-info-grid">
                <div className="info-mini-card">
                   <div className="mini-card-icon"><FaHistory /></div>
@@ -90,6 +207,7 @@ const AdminDashboard = () => {
             </div>
           </div>
         );
+
       default: 
         return (
           <div className="empty-state-container">
@@ -102,16 +220,13 @@ const AdminDashboard = () => {
 
   return (
     <div className="admin-master-layout"> 
-      {/* 1. Sidebar Column */}
       <div className="sidebar-fixed-column">
         <AccountSidebar />
       </div>
 
-      {/* 2. Main View Container */}
       <main className="admin-main-view">
         <div className="admin-dashboard-wrapper">
           
-          {/* Dashboard Header */}
           <header className="admin-page-header">
             <div className="header-left">
               <h1>Hệ thống Quản trị AiNetsoft</h1>
@@ -126,7 +241,7 @@ const AdminDashboard = () => {
             </button>
           </header>
 
-          {/* Core Metrics Grid */}
+          {/* Metrics Grid - Clickable to change tabs */}
           <section className="metrics-grid">
             <div className={`metric-card ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>
               <div className="metric-icon users"><FaUsers /></div>
@@ -144,7 +259,8 @@ const AdminDashboard = () => {
               </div>
             </div>
 
-            <div className="metric-card urgent" onClick={() => setActiveTab('products')}>
+            {/* Clickable Card for Pending Products */}
+            <div className={`metric-card ${stats.pendingProducts > 0 ? 'urgent' : ''}`} onClick={() => setActiveTab('products_mod')}>
               <div className="metric-icon pending"><FaClock /></div>
               <div className="metric-data">
                 <span className="metric-label">Chờ Duyệt (SP)</span>
@@ -152,6 +268,7 @@ const AdminDashboard = () => {
               </div>
             </div>
 
+            {/* Clickable Card for Pending Sellers */}
             <div className={`metric-card ${stats.pendingSellers > 0 ? 'urgent' : ''}`} onClick={() => setActiveTab('sellers')}>
               <div className="metric-icon sellers"><FaStore /></div>
               <div className="metric-data">
@@ -161,23 +278,28 @@ const AdminDashboard = () => {
             </div>
           </section>
 
-          {/* Content Tabs Navigation */}
+          {/* Navigation Tabs Navigation */}
           <nav className="content-tabs">
             <button className={activeTab === 'summary' ? 'active' : ''} onClick={() => setActiveTab('summary')}>
               Tổng quan
             </button>
-            <button className={activeTab === 'users' ? 'active' : ''} onClick={() => setActiveTab('users')}>
-              Người dùng
+            <button className={activeTab === 'products_mod' ? 'active' : ''} onClick={() => setActiveTab('products_mod')}>
+              Duyệt Sản phẩm {stats.pendingProducts > 0 && <span className="notif-badge danger">{stats.pendingProducts}</span>}
             </button>
             <button className={activeTab === 'sellers' ? 'active' : ''} onClick={() => setActiveTab('sellers')}>
               Duyệt Shop {stats.pendingSellers > 0 && <span className="notif-badge">{stats.pendingSellers}</span>}
+            </button>
+            <button className={activeTab === 'reports' ? 'active' : ''} onClick={() => setActiveTab('reports')}>
+              Báo cáo vi phạm {stats.totalReports > 0 && <span className="notif-badge danger">{stats.totalReports}</span>}
+            </button>
+            <button className={activeTab === 'reviews' ? 'active' : ''} onClick={() => setActiveTab('reviews')}>
+              Quản lý đánh giá
             </button>
             <button className={activeTab === 'logs' ? 'active' : ''} onClick={() => setActiveTab('logs')}>
               Nhật ký hệ thống
             </button>
           </nav>
 
-          {/* Dynamic Content Rendering Area */}
           <section className="dynamic-view-area">
             {loading && activeTab === 'summary' ? (
               <div className="loading-placeholder">

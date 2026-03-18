@@ -2,13 +2,14 @@ import api from './api'; // BaseURL is http://localhost:8080/api
 
 /**
  * adminService fully synchronized with Backend Controllers
+ * Added support for Violation Reports and Review Moderation
  */
 export const adminService = {
   // --- STATS & OVERVIEW ---
   
   /**
-   * FIXED: Added '/stats' to match AdminStatsController.java @RequestMapping("/api/admin/stats")
-   * This is what turns that "0" into a "2" on your dashboard cards.
+   * Fetches summary data for dashboard cards.
+   * Now includes 'totalReports' and 'pendingReviews' count.
    */
   getDashboardSummary: () => api.get('/admin/stats/summary').then(res => res.data),
 
@@ -16,7 +17,6 @@ export const adminService = {
   
   /**
    * Fetches the list of users waiting for seller approval.
-   * Matches: AdminController @GetMapping("/sellers/pending")
    */
   getPendingSellers: async () => {
     const response = await api.get('/admin/sellers/pending');
@@ -25,7 +25,6 @@ export const adminService = {
 
   /**
    * Fetches FULL verification details for a specific user.
-   * Matches: AdminController @GetMapping("/sellers/review/{userId}")
    */
   getSellerDetails: (userId: string) => {
     return api.get(`/admin/sellers/review/${userId}`).then(res => res.data);
@@ -33,7 +32,6 @@ export const adminService = {
   
   /**
    * Approves or Rejects a seller upgrade request.
-   * Matches: AdminController @PostMapping("/sellers/process/{userId}")
    */
   approveSeller: (userId: string, approved: boolean, note: string = "") => {
     const payload = { 
@@ -46,44 +44,58 @@ export const adminService = {
   // --- PRODUCT MODERATION ---
   
   /**
-   * Matches: AdminController @GetMapping("/products/pending")
+   * Fetches products waiting for approval.
    */
   getPendingProducts: () => api.get('/admin/products/pending').then(res => res.data),
   
   /**
-   * Matches: AdminController @PostMapping("/products/approve/{productId}")
+   * FIX: Added optional payload to ensure backend receives the status change.
    */
   approveProduct: (productId: string) => 
-    api.post(`/admin/products/approve/${productId}`).then(res => res.data),
+    api.post(`/admin/products/approve/${productId}`, { status: 'APPROVED' }).then(res => res.data),
 
   /**
-   * Matches: AdminController @PostMapping("/products/reject/{productId}")
+   * Rejects a product with a reason.
    */
   rejectProduct: (productId: string, reason: string) => 
     api.post(`/admin/products/reject/${productId}`, null, { params: { reason } }).then(res => res.data),
 
-  // --- USER MANAGEMENT & DELEGATION ---
-  
-  /**
-   * Matches: AdminController @GetMapping("/users/all")
-   */
-  getAllUsers: () => api.get('/admin/users/all').then(res => res.data),
+  // --- NEW: VIOLATION REPORT MANAGEMENT (BÁO VI PHẠM) ---
 
   /**
-   * Matches: AdminController @PostMapping("/users/promote/{userId}")
+   * Fetches all product violation reports submitted by users.
    */
+  getAllReports: () => api.get('/admin/reports/all').then(res => res.data),
+
+  /**
+   * Updates report status (e.g., RESOLVED, DISMISSED).
+   */
+  resolveReport: (reportId: string, action: 'RESOLVED' | 'DISMISSED') => 
+    api.post(`/admin/reports/${reportId}/process`, { action }).then(res => res.data),
+
+  // --- NEW: REVIEW MODERATION (QUẢN LÝ ĐÁNH GIÁ) ---
+
+  /**
+   * Fetches all reviews across the platform for moderation.
+   */
+  getAllReviews: () => api.get('/admin/reviews/all').then(res => res.data),
+
+  /**
+   * Deletes an offensive or fake review.
+   */
+  deleteReview: (reviewId: string) => 
+    api.delete(`/admin/reviews/${reviewId}`).then(res => res.data),
+
+  // --- USER MANAGEMENT & DELEGATION ---
+  
+  getAllUsers: () => api.get('/admin/users/all').then(res => res.data),
+
   promoteToAdmin: (userId: string, permissions: string[]) => 
     api.post(`/admin/users/promote/${userId}`, permissions).then(res => res.data),
 
-  /**
-   * Matches: AdminController @PostMapping("/users/ban/{userId}")
-   */
   banUser: (userId: string) => 
     api.post(`/admin/users/ban/${userId}`).then(res => res.data),
     
-  /**
-   * Matches: AdminController @GetMapping("/audit-logs")
-   */
   getAuditLogs: () => api.get('/admin/audit-logs').then(res => res.data),
 };
 

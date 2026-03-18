@@ -6,6 +6,7 @@
   --text-muted: #636e72;
   --border-light: #dfe6e9;
   --sidebar-width: 280px;
+  --ui-font: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Inter", sans-serif;
 }
 
 /* --- 1. Master Layout: STABLE SIDE-BY-SIDE --- */
@@ -14,6 +15,7 @@
   min-height: 100vh;
   background-color: var(--chat-bg);
   width: 100%;
+  font-family: var(--ui-font);
 }
 
 .sidebar-fixed-column {
@@ -31,13 +33,13 @@
   padding: 30px;
   overflow-y: auto;
   display: flex;
-  justify-content: flex-start; /* CRITICAL: Prevents horizontal jumping */
+  justify-content: flex-start;
 }
 
 /* --- 2. Dashboard Wrapper --- */
 .admin-dashboard-wrapper {
   width: 100%;
-  max-width: 1150px; /* Locks the width so it doesn't stretch funny */
+  max-width: 1150px;
   background: var(--white);
   border-radius: 12px;
   box-shadow: 0 4px 15px rgba(0,0,0,0.05);
@@ -53,27 +55,91 @@
   margin-bottom: 30px;
   border-bottom: 1px solid #f1f2f6;
   padding-bottom: 20px;
+  gap: 20px;
 }
 
+/* Make header-left a column so title and badges stack nicely */
+.header-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+/* refined dashboard title: consistent weight, spacing and size */
 .header-left h1 {
-  font-size: 1.7rem;
-  font-weight: 800;
+  font-size: 1.85rem;         /* slightly large but controlled */
+  font-weight: 700;           /* heavy but not ultra-bold */
   color: var(--text-dark);
   margin: 0;
+  line-height: 1.18;
+  letter-spacing: -0.2px;
+  font-family: var(--ui-font);
+  /* subtle text rendering improvements */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-.badge-container { display: flex; align-items: center; gap: 10px; margin-top: 5px; }
+/* badge + status container sits under the title */
+.badge-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 0;
+}
+
+/* Global admin badge */
 .master-badge {
   background: var(--orange);
   color: white;
-  padding: 3px 10px;
+  padding: 4px 10px;
   border-radius: 20px;
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
-.status-dot { font-size: 0.75rem; color: #00ca4e; font-weight: 600; display: flex; align-items: center; gap: 4px; }
-.status-dot::before { content: ''; width: 8px; height: 8px; background: #00ca4e; border-radius: 50%; }
+
+/* online status small text */
+.status-dot {
+  font-size: 0.8rem;
+  color: #00a85a;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* green dot */
+.status-dot::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: #00ca4e;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* refresh button on the right */
+.btn-refresh {
+  background: var(--white);
+  border: 1px solid var(--border-light);
+  padding: 8px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: 0.2s;
+  white-space: nowrap;
+}
+.btn-refresh:hover:not(:disabled) { border-color: var(--orange); color: var(--orange); }
+
+/* small spin helper */
+.spin { animation: loading-spin 1s infinite linear; }
+@keyframes loading-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
 /* --- 4. Metrics Grid --- */
 .metrics-grid {
@@ -143,6 +209,7 @@
 
 .content-tabs button.active { color: var(--orange); border-bottom-color: var(--orange); }
 .notif-badge { background: var(--orange); color: white; font-size: 0.7rem; padding: 2px 7px; border-radius: 10px; margin-left: 6px; }
+.notif-badge.danger { background: #d63031; }
 
 /* --- 6. Revenue Banner --- */
 .revenue-summary-card {
@@ -162,7 +229,6 @@
 .rev-value-row h2 { font-size: 2.8rem; margin: 0; font-weight: 800; }
 .unit { font-size: 1.2rem; opacity: 0.6; }
 .rev-subtitle { font-size: 0.85rem; opacity: 0.5; margin: 0; }
-
 .rev-bg-icon { font-size: 7rem; position: absolute; right: -15px; bottom: -15px; opacity: 0.08; }
 
 /* --- 7. Quick Info Grid --- */
@@ -204,463 +270,192 @@
 }
 .btn-refresh:hover:not(:disabled) { border-color: var(--orange); color: var(--orange); }
 
-.spin { animation: loading-spin 1s infinite linear; }
-@keyframes loading-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-
 .loading-placeholder { padding: 100px; text-align: center; color: var(--text-muted); font-weight: 700; }
 
-
-/* --- 9. Moderation Table Specifics (NEW) --- */
-
-.user-profile-cell {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
+/* --- 9. Moderation Table Specifics --- */
+.user-profile-cell { display: flex; align-items: center; gap: 12px; }
 .moderation-avatar-wrapper {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    overflow: hidden;
-    border: 2px solid #f1f2f6;
-    flex-shrink: 0;
-    background: #f8f9fa;
+    width: 44px; height: 44px; border-radius: 50%;
+    overflow: hidden; border: 2px solid #f1f2f6; flex-shrink: 0; background: #f8f9fa;
 }
+.moderation-avatar-wrapper img { width: 100%; height: 100%; object-fit: cover; }
+.user-meta-info { display: flex; flex-direction: column; line-height: 1.2; }
+.user-full-name { font-size: 0.95rem; font-weight: 700; color: var(--text-dark); }
+.user-uid-text { font-size: 0.75rem; color: var(--text-muted); font-family: 'Courier New', Courier, monospace; margin-top: 2px; }
 
-.moderation-avatar-wrapper img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
+.contact-details-box { display: flex; flex-direction: column; gap: 2px; }
+.contact-email { font-size: 0.85rem; font-weight: 500; color: #4834d4; margin: 0; }
+.contact-phone { font-size: 0.8rem; color: var(--text-muted); margin: 0; }
 
-.user-meta-info {
-    display: flex;
-    flex-direction: column;
-    line-height: 1.2;
-}
-
-.user-full-name {
-    font-size: 0.95rem;
-    font-weight: 700;
-    color: var(--text-dark);
-}
-
-.user-uid-text {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    font-family: 'Courier New', Courier, monospace;
-    margin-top: 2px;
-}
-
-.contact-details-box {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.contact-email {
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: #4834d4;
-    margin: 0;
-}
-
-.contact-phone {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    margin: 0;
-}
-
-.moderation-date-cell {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.85rem;
-    color: var(--text-dark);
-    font-weight: 500;
-}
-
-.date-icon {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-}
+.moderation-date-cell { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--text-dark); font-weight: 500; }
+.date-icon { font-size: 0.75rem; color: var(--text-muted); }
 
 .status-badge-pending {
-    background: #fff5f5;
-    color: var(--orange);
-    padding: 4px 12px;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    border: 1px solid #ffe3e3;
-    text-transform: uppercase;
+    background: #fff5f5; color: var(--orange); padding: 4px 12px; border-radius: 6px;
+    font-size: 0.75rem; font-weight: 700; border: 1px solid #ffe3e3; text-transform: uppercase;
 }
 
 .btn-action-view {
-    background: var(--white);
-    border: 1px solid var(--border-light);
-    padding: 6px 12px;
-    border-radius: 8px;
-    color: var(--text-dark);
-    font-size: 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    transition: all 0.2s;
+    background: var(--white); border: 1px solid var(--border-light);
+    padding: 6px 12px; border-radius: 8px; color: var(--text-dark);
+    font-size: 0.85rem; font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; gap: 8px; transition: all 0.2s;
 }
-
 .btn-action-view:hover {
-    border-color: var(--orange);
-    color: var(--orange);
-    background: #fff8f6;
+    border-color: var(--orange); color: var(--orange); background: #fff8f6;
     box-shadow: 0 2px 8px rgba(238, 77, 45, 0.1);
 }
 
-.admin-table tbody tr:hover {
-    background-color: #fafbfc;
-}
-
-.admin-table th {
-    text-transform: uppercase;
-    font-size: 0.75rem;
-    letter-spacing: 0.05em;
-    color: var(--text-muted);
-    padding: 15px;
-}
-
-.admin-table td {
-    padding: 15px;
-    border-bottom: 1px solid #f1f2f6;
-}
+.admin-table tbody tr:hover { background-color: #fafbfc; }
+.admin-table th { text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; color: var(--text-muted); padding: 15px; }
+.admin-table td { padding: 15px; border-bottom: 1px solid #f1f2f6; }
 
 /* --- 10. Master Review Modal Styling --- */
-
 .admin-modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(4px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    padding: 20px;
+    position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center;
+    z-index: 1000; padding: 20px;
 }
-
 .seller-review-modal {
-    width: 100%;
-    max-width: 900px;
-    max-height: 90vh;
-    background: var(--white);
-    border-radius: 16px;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.2);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    animation: modalSlideUp 0.3s ease-out;
+    width: 100%; max-width: 900px; max-height: 90vh;
+    background: var(--white); border-radius: 16px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.2); display: flex; flex-direction: column;
+    overflow: hidden; animation: modalSlideUp 0.3s ease-out;
 }
-
-@keyframes modalSlideUp {
-    from { transform: translateY(30px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-}
-
+@keyframes modalSlideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 .modal-header {
-    padding: 20px 25px;
-    border-bottom: 1px solid var(--border-light);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #fafbfc;
-    min-height: 72px;
+    padding: 20px 25px; border-bottom: 1px solid var(--border-light);
+    display: flex; justify-content: space-between; align-items: center; background: #fafbfc;
 }
+.header-title { display: flex; align-items: center; gap: 12px; }
+.title-icon { font-size: 1.2rem; color: var(--orange); }
+.header-title h3 { margin: 0; font-size: 1.1rem; font-weight: 800; color: var(--text-dark); }
 
-.header-title {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
+.review-grid { padding: 25px; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+.section-title { font-size: 0.9rem; font-weight: 700; color: var(--text-dark); margin-bottom: 15px; display: flex; align-items: center; gap: 8px; text-transform: uppercase; }
+.review-data-card { background: #f8f9fa; padding: 18px; border-radius: 12px; border: 1px solid var(--border-light); }
+.data-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.9rem; }
+.data-row .label { color: var(--text-muted); }
+.data-row .value { color: var(--text-dark); font-weight: 600; }
+.value.highlight { color: #4834d4; font-family: 'Courier New', monospace; }
 
-.title-icon {
-    font-size: 1.2rem;
-    color: var(--orange);
-}
+.id-images-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px; }
+.img-wrapper { width: 100%; height: 120px; background: #eee; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-light); }
+.img-wrapper img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; cursor: zoom-in; }
 
-.header-title h3 {
-    margin: 0;
-    font-size: 1.1rem;
-    font-weight: 800;
-    color: var(--text-dark);
-}
-
-/* REMOVED: Redundant duplicate .close-btn definition that was here */
-
-/* Modal Body Grid */
-.review-grid {
-    padding: 25px;
-    overflow-y: auto;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 30px;
-}
-
-.section-title {
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: var(--text-dark);
-    margin-bottom: 15px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.review-data-card {
-    background: #f8f9fa;
-    padding: 18px;
-    border-radius: 12px;
-    border: 1px solid var(--border-light);
-}
-
-.data-row {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 10px;
-    font-size: 0.9rem;
-    line-height: 1.4;
-}
-
-.data-row:last-child { margin-bottom: 0; }
-
-.data-row .label {
-    color: var(--text-muted);
-    font-weight: 500;
-}
-
-.data-row .value {
-    color: var(--text-dark);
-    font-weight: 600;
-    text-align: right;
-}
-
-.value.highlight {
-    color: #4834d4;
-    font-family: 'Courier New', monospace;
-}
-
-.id-images-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
-    margin-top: 15px;
-}
-
-.img-label {
-    display: block;
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: var(--text-muted);
-    margin-bottom: 5px;
-    text-align: center;
-}
-
-.img-wrapper {
-    width: 100%;
-    height: 120px;
-    background: #eee;
-    border-radius: 8px;
-    overflow: hidden;
-    border: 1px solid var(--border-light);
-}
-
-.img-wrapper img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.3s;
-    cursor: zoom-in;
-}
-
-.img-wrapper img:hover {
-    transform: scale(1.05);
-}
-
-.modal-footer-actions {
-    padding: 20px 25px;
-    background: #fdfdfd;
-    border-top: 1px solid var(--border-light);
-}
-
-.note-area label {
-    display: block;
-    font-size: 0.85rem;
-    font-weight: 700;
-    margin-bottom: 8px;
-    color: var(--text-dark);
-}
-
+.modal-footer-actions { padding: 20px 25px; background: #fdfdfd; border-top: 1px solid var(--border-light); }
 .note-area textarea {
-    width: 100%;
-    height: 80px;
-    padding: 12px;
-    border-radius: 8px;
-    border: 1px solid var(--border-light);
-    resize: none;
-    font-size: 0.9rem;
-    margin-bottom: 20px;
+    width: 100%; height: 80px; padding: 12px; border-radius: 8px;
+    border: 1px solid var(--border-light); resize: none; font-size: 0.9rem; margin-bottom: 20px;
 }
 
-.note-area textarea:focus {
-    border-color: var(--orange);
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(238, 77, 45, 0.1);
-}
+.button-group { display: flex; justify-content: flex-end; gap: 15px; }
+.btn-reject-modal, .btn-approve-modal { padding: 10px 25px; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+.btn-reject-modal { background: #fff; border: 1px solid #ff4d4d; color: #ff4d4d; }
+.btn-approve-modal { background: var(--orange); border: 1px solid var(--orange); color: white; }
 
-.button-group {
-    display: flex;
-    justify-content: flex-end;
-    gap: 15px;
-}
-
-.btn-reject-modal, .btn-approve-modal {
-    padding: 10px 25px;
-    border-radius: 8px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: 0.2s;
-}
-
-.btn-reject-modal {
-    background: #fff;
-    border: 1px solid #ff4d4d;
-    color: #ff4d4d;
-}
-
-.btn-reject-modal:hover {
-    background: #fff5f5;
-}
-
-.btn-approve-modal {
-    background: var(--orange);
-    border: 1px solid var(--orange);
-    color: white;
-}
-
-.btn-approve-modal:hover {
-    background: #d43f1f;
-    box-shadow: 0 4px 12px rgba(238, 77, 45, 0.3);
-}
-
-.btn-approve-modal:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-/* --- 11. Image Zoom Overlay (NEW) --- */
+/* --- 11. Image Zoom Overlay --- */
 .image-zoom-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0, 0, 0, 0.9);
-    z-index: 3000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: zoom-out;
-    animation: fadeIn 0.2s ease-in;
+    position: fixed; inset: 0; background: rgba(0, 0, 0, 0.9);
+    z-index: 3000; display: flex; align-items: center; justify-content: center; cursor: zoom-out;
 }
+.zoom-content-wrapper { position: relative; max-width: 90%; max-height: 90%; }
+.zoom-content-wrapper img { max-width: 100%; max-height: 85vh; border-radius: 8px; }
+.close-zoom-btn { position: absolute; top: -45px; right: 0; background: none; border: none; color: white; font-size: 1.8rem; cursor: pointer; }
 
-.zoom-content-wrapper {
-    position: relative;
-    max-width: 90%;
-    max-height: 90%;
-}
-
-.zoom-content-wrapper img {
-    max-width: 100%;
-    max-height: 85vh;
-    border-radius: 8px;
-    box-shadow: 0 0 40px rgba(0,0,0,0.6);
-}
-
-.close-zoom-btn {
-    position: absolute;
-    top: -45px;
-    right: 0;
-    background: none;
-    border: none;
-    color: white;
-    font-size: 1.8rem;
-    cursor: pointer;
-}
-
-.img-wrapper.zoomable {
-    position: relative;
-    cursor: pointer;
-}
-
-.zoom-hint {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.3);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 1.5rem;
-    opacity: 0;
-    transition: 0.2s;
-    z-index: 2;
-}
-
-.img-wrapper.zoomable:hover .zoom-hint {
-    opacity: 1;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-/* KEPT: This final version of close-btn that fixed your UI */
+/* KEPT: Essential Close Button UI Logic */
 .close-btn {
-    background: #f1f2f6 !important;
-    border: none !important;
-    width: 36px !important;
-    height: 36px !important;
-    border-radius: 50% !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    cursor: pointer !important;
-    color: #2d3436 !important;
-    padding: 0 !important;
-    flex-shrink: 0 !important;
+    background: #f1f2f6 !important; border: none !important; width: 36px !important; height: 36px !important;
+    border-radius: 50% !important; display: flex !important; align-items: center !important;
+    justify-content: center !important; cursor: pointer !important; color: #2d3436 !important;
+}
+.close-btn svg { font-size: 16px !important; display: block !important; }
+.close-btn:hover { background: #ee4d2d !important; }
+.close-btn:hover svg { color: white !important; }
+
+/* =======================================================
+   12. ADMIN TABLE & MODERATION UI (Surgical Fixes)
+   ======================================================= */
+.admin-table-container { background: #fff; border-radius: 12px; border: 1px solid var(--border-light); overflow: hidden; margin-top: 10px; }
+.admin-data-table { width: 100%; border-collapse: collapse; }
+.admin-data-table th { background: #fafbfc; padding: 15px; text-align: left; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border-light); }
+.admin-data-table td { padding: 16px 15px; border-bottom: 1px solid #f1f2f6; font-size: 0.9rem; color: var(--text-dark); }
+.admin-data-table tr:hover { background: #fdfdfd; }
+
+.reason-tag { background: #fff5f5; color: var(--orange); padding: 4px 10px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }
+.rating-badge { background: #fff8e1; color: #ffa000; padding: 4px 8px; border-radius: 4px; font-weight: 700; display: flex; align-items: center; gap: 4px; width: fit-content; }
+.comment-cell { max-width: 400px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-muted); }
+
+/* --- 13. Action Buttons & Icons (fixed: ensure icons are visible) --- */
+.action-btns { display: flex; gap: 10px; align-items: center; }
+
+/* base button shape */
+.btn-table-success,
+.btn-table-danger,
+.btn-table-delete,
+.btn-table-view {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.18s, transform 0.12s;
+  padding: 0;
 }
 
-.close-btn svg {
-    font-size: 16px !important;
-    color: #2d3436 !important;
-    display: block !important;
-    line-height: 1 !important;
+/* set button background and the icon color via the button's `color` */
+.btn-table-success { background: #e6f9ed; color: #27ae60; }   /* green icon */
+.btn-table-danger  { background: #fff5f5; color: #e74c3c; }   /* red icon */
+.btn-table-delete  { background: #fff5f5; color: #e74c3c; }   /* delete (red) */
+.btn-table-view    { background: #e3f2fd; color: #2d9cdb; }   /* blue icon */
+
+/* make SVGs use the current color and visible size */
+.action-btns svg,
+.btn-table-success svg,
+.btn-table-danger svg,
+.btn-table-delete svg,
+.btn-table-view svg {
+  width: 16px;              /* fixed size so it's visible */
+  height: 16px;
+  display: block;
+  fill: currentColor;       /* important: make icon follow the button color */
+  stroke: none;
+  opacity: 1;
+  vertical-align: middle;
 }
 
-.close-btn:hover {
-    background: #ee4d2d !important;
+/* hover states */
+.btn-table-success:hover { background: #27ae60; color: #fff; transform: translateY(-1px); }
+.btn-table-success:hover svg { fill: currentColor; }
+
+.btn-table-danger:hover { background: #e74c3c; color: #fff; transform: translateY(-1px); }
+.btn-table-delete:hover { background: #e74c3c; color: #fff; transform: translateY(-1px); }
+
+.btn-table-view:hover { background: #2d9cdb; color: #fff; transform: translateY(-1px); }
+
+/* ensure icon contrast when disabled or low-opacity rules exist elsewhere */
+.btn-table-success svg,
+.btn-table-danger svg,
+.btn-table-delete svg,
+.btn-table-view svg {
+  opacity: 1 !important;
 }
 
-.close-btn:hover svg {
-    color: white !important;
+/* --- 14. Fix for Broken Images in List --- */
+.admin-prod-thumb {
+    width: 54px; height: 54px; border-radius: 6px; overflow: hidden;
+    border: 1px solid var(--border-light); background: #f8f9fa; flex-shrink: 0;
 }
+.admin-prod-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+.empty-row { padding: 80px !important; text-align: center; color: var(--text-muted); font-style: italic; }
+
+.tab-loading-spinner { padding: 100px; text-align: center; font-weight: 700; color: var(--orange); animation: fadeInOut 1.5s infinite; }
+@keyframes fadeInOut { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+.moderation-header { margin-bottom: 20px; }
+.moderation-header h3 { margin: 0; display: flex; align-items: center; gap: 10px; color: var(--text-dark); }
+.moderation-header p { margin: 5px 0 0; font-size: 0.85rem; color: var(--text-muted); }

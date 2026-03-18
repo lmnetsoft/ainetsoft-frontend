@@ -28,13 +28,26 @@ public class Review {
     private int rating; // 1 to 5 stars
     private String comment;
 
-    // SMART FEATURE: Visual Proof (Buyers upload photos of the received product)
+    /** * Matches the "Có Hình Ảnh / Video" filter in your screenshot.
+     */
     @Builder.Default
     private List<String> imageUrls = new ArrayList<>();
+    private String videoUrl; 
+
+    /**
+     * Matches the "Phân loại hàng" (e.g., Size M) shown in your screenshot.
+     */
+    private String variantInfo; 
+
+    /**
+     * Matches the "Phản Hồi Của Người Bán" section in your screenshot.
+     */
+    private String sellerReply;
+    private LocalDateTime repliedAt;
 
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
     
     private String orderId;
-    private boolean isVerifiedPurchase;
+    private boolean isVerifiedPurchase; // "Đã mua hàng" badge
 }

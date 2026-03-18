@@ -40,10 +40,47 @@ public class ReviewController {
 
     /**
      * GET /api/reviews/product/{productId}
-     * Public endpoint to fetch all reviews for a specific product.
+     * UPDATED: Supports filtering by star rating and media presence (images/video).
+     * Matches the filter bar in image_971725.png.
      */
     @GetMapping("/product/{productId}")
-    public ResponseEntity<?> getProductReviews(@PathVariable String productId) {
-        return ResponseEntity.ok(reviewService.getProductReviews(productId));
+    public ResponseEntity<?> getProductReviews(
+            @PathVariable String productId,
+            @RequestParam(required = false) Integer rating,
+            @RequestParam(required = false) Boolean hasImages) {
+        return ResponseEntity.ok(reviewService.getProductReviews(productId, rating, hasImages));
+    }
+
+    /**
+     * GET /api/reviews/product/{productId}/stats
+     * NEW: Provides counts for each star level (5 sao, 4 sao...) and media.
+     * Essential for showing the numbers on the filter buttons.
+     */
+    @GetMapping("/product/{productId}/stats")
+    public ResponseEntity<?> getReviewStats(@PathVariable String productId) {
+        return ResponseEntity.ok(reviewService.getReviewStats(productId));
+    }
+
+    /**
+     * POST /api/reviews/{reviewId}/reply
+     * NEW: Allows a seller to add a response to a customer review.
+     * Matches the "Phản Hồi Của Người Bán" section in your screenshot.
+     */
+    @PostMapping("/{reviewId}/reply")
+    public ResponseEntity<?> replyToReview(
+            @PathVariable String reviewId, 
+            @RequestBody Map<String, String> body,
+            HttpSession session) {
+        
+        User currentUser = (User) session.getAttribute("user");
+        if (currentUser == null) return ResponseEntity.status(401).build();
+
+        String replyText = body.get("replyText");
+        try {
+            reviewService.addSellerReply(reviewId, replyText, currentUser.getId());
+            return ResponseEntity.ok(Map.of("message", "Đã gửi phản hồi thành công."));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
     }
 }

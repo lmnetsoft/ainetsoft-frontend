@@ -19,6 +19,7 @@ public class DataSeeder implements CommandLineRunner {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final ShippingMethodRepository shippingMethodRepository;
+    private final ReviewRepository reviewRepository; // NEW: Added dependency
     private final PasswordEncoder passwordEncoder;
 
     @Value("${app.seed.mock-data:true}")
@@ -43,7 +44,7 @@ public class DataSeeder implements CommandLineRunner {
 
         // 3. Mock Ecosystem for Development
         if (seedMockData) {
-            System.out.println("🛠 Seeding Full Mock Ecosystem...");
+            System.out.println("🛠 Seeding Full Mock Ecosystem with Audits...");
             List<Category> savedCats = seedCategories();
             seedDefaultSeller(savedCats, globalMethods);
             seedPendingModeration(savedCats);
@@ -142,16 +143,13 @@ public class DataSeeder implements CommandLineRunner {
     private void seedMockProducts(User seller, List<Category> savedCats, List<ShippingMethod> globalMethods) {
         if (productRepository.count() > 10 || savedCats.isEmpty()) return;
 
-        List<Product> products = new ArrayList<>();
+        List<Product> productsToSave = new ArrayList<>();
         Random rand = new Random();
 
         for (int i = 1; i <= 55; i++) {
             Category randomCat = savedCats.get(rand.nextInt(savedCats.size()));
-            
-            // Build SITUATIONAL shipping configs for each mock product
             List<Product.ShippingConfig> situationalOptions = new ArrayList<>();
             
-            // 1. Standard "Nhanh" config
             situationalOptions.add(Product.ShippingConfig.builder()
                     .methodId(globalMethods.get(1).getId())
                     .methodName(globalMethods.get(1).getName())
@@ -160,15 +158,14 @@ public class DataSeeder implements CommandLineRunner {
                     .voucherNote("Tặng Voucher 15.000đ nếu đơn giao sau thời gian trên.")
                     .build());
             
-            // 2. Premium "Hỏa Tốc" config (for roughly 33% of products)
             if (i % 3 == 0) {
                 situationalOptions.add(Product.ShippingConfig.builder()
-                    .methodId(globalMethods.get(0).getId())
-                    .methodName(globalMethods.get(0).getName())
-                    .cost(208600.0)
-                    .estimatedTime("Ngày mai 08:00")
-                    .voucherNote("Tặng Voucher 20.000đ nếu đơn giao sau thời gian trên.")
-                    .build());
+                        .methodId(globalMethods.get(0).getId())
+                        .methodName(globalMethods.get(0).getName())
+                        .cost(208600.0)
+                        .estimatedTime("Ngày mai 08:00")
+                        .voucherNote("Tặng Voucher 20.000đ nếu đơn giao sau thời gian trên.")
+                        .build());
             }
 
             Product p = Product.builder()
@@ -183,19 +180,50 @@ public class DataSeeder implements CommandLineRunner {
                     .status("APPROVED")
                     .imageUrls(Arrays.asList("https://picsum.photos/seed/" + i + "/600/600"))
                     .videoUrl(i % 5 == 0 ? "https://www.w3schools.com/html/mov_bbb.mp4" : null)
-                    .shippingOptions(situationalOptions) // SITUATIONAL SHIPPING
+                    .shippingOptions(situationalOptions)
                     .protectionEnabled(true)
                     .allowSharing(true)
                     .favoriteCount(rand.nextInt(100))
+                    .soldCount(rand.nextInt(500) + 10) // NEW: Social proof
                     .averageRating(4.0 + (rand.nextDouble() * 1.0))
-                    .reviewCount(rand.nextInt(50))
+                    .reviewCount(3) // Initial seed count
                     .createdAt(LocalDateTime.now())
                     .updatedAt(LocalDateTime.now())
                     .build();
-            products.add(p);
+            
+            Product saved = productRepository.save(p);
+            seedMockReviews(saved, seller.getId()); // NEW: Attach reviews to each product
         }
-        productRepository.saveAll(products);
-        System.out.println("✅ 55 Professional Mock Products Seeded.");
+        System.out.println("✅ 55 Professional Mock Products with Reviews Seeded.");
+    }
+
+    private void seedMockReviews(Product product, String sellerId) {
+        // 1. High Rating with Image and Seller Reply
+        reviewRepository.save(Review.builder()
+                .productId(product.getId())
+                .sellerId(sellerId)
+                .userName("tatoanhduc07")
+                .rating(5)
+                .comment("Sản phẩm tuyệt vời! Đúng với mô tả: như hình. Chất lượng tuyệt vời.")
+                .variantInfo("Phân loại hàng: Size M (53-55cm)")
+                .imageUrls(Arrays.asList("https://picsum.photos/seed/rev" + product.getId() + "/400/400"))
+                .isVerifiedPurchase(true)
+                .sellerReply("Cảm ơn Quý khách đã tin tưởng lựa chọn sản phẩm chính hãng!")
+                .repliedAt(LocalDateTime.now())
+                .createdAt(LocalDateTime.now().minusDays(1))
+                .build());
+
+        // 2. Mid Rating
+        reviewRepository.save(Review.builder()
+                .productId(product.getId())
+                .sellerId(sellerId)
+                .userName("lien0988324688")
+                .rating(4)
+                .comment("Giao hàng nhanh, giá rẻ, chất lượng tốt và hàng đẹp.")
+                .variantInfo("Phân loại hàng: Mặc định")
+                .isVerifiedPurchase(true)
+                .createdAt(LocalDateTime.now().minusDays(3))
+                .build());
     }
 
     private void seedSubAdmin() {
@@ -217,7 +245,6 @@ public class DataSeeder implements CommandLineRunner {
     private void seedPendingModeration(List<Category> savedCats) {
         String pendingSellerEmail = "pending_seller@example.com";
         if (!userRepository.existsByEmail(pendingSellerEmail)) {
-            // Full Identity and Bank info for Admin Review testing
             User pSeller = User.builder()
                     .email(pendingSellerEmail)
                     .fullName("Nguyễn Văn Chờ Duyệt")

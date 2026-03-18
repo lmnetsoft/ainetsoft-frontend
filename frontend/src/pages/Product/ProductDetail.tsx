@@ -5,9 +5,14 @@ import {
   FaExclamationTriangle, FaPlay, FaTimes, FaChevronLeft, FaChevronRight,
   FaStoreAlt, FaTruck, FaShieldAlt, FaHeart, FaRegHeart, FaFacebook,
   FaFacebookMessenger, FaPinterest, FaTwitter, FaInfoCircle, FaLink,
-  FaFlag
+  FaFlag, FaCheckCircle
 } from 'react-icons/fa';
-import api, { shareProduct, reportProduct } from '../../services/api'; 
+import api, { 
+  shareProduct, 
+  reportProduct, 
+  getProductReviews, 
+  getReviewStats 
+} from '../../services/api'; 
 import ToastNotification from '../../components/Toast/ToastNotification';
 import { useChat } from '../../context/ChatContext'; 
 import './ProductDetail.css';
@@ -47,8 +52,8 @@ interface Product {
   shopName: string;
   averageRating?: number;
   reviewCount?: number;
+  soldCount?: number; // Added for social proof
   status?: string;
-  // Professional fields
   shippingOptions?: ShippingConfig[];
   protectionEnabled?: boolean;
   allowSharing?: boolean;
@@ -60,7 +65,11 @@ interface Review {
   rating: number;
   comment: string;
   userName: string;
+  userAvatar?: string; // Enhanced
   imageUrls?: string[];
+  videoUrl?: string;   // Enhanced
+  variantInfo?: string; // Enhanced (e.g. Size M)
+  sellerReply?: string; // Enhanced
   createdAt: string;
 }
 
@@ -76,6 +85,9 @@ const ProductDetail = () => {
 
   const [product, setProduct] = useState<Product | null>(location.state?.productPreview || null);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewStats, setReviewStats] = useState<any>(null); // NEW: Stat counts
+  const [selectedFilter, setSelectedFilter] = useState('all'); // NEW: Active filter
+  
   const [loading, setLoading] = useState(!location.state?.productPreview);
   const [quantity, setQuantity] = useState(1);
   const [activeMedia, setActiveMedia] = useState(0); 
@@ -87,7 +99,7 @@ const ProductDetail = () => {
   const [showShippingDrawer, setShowShippingDrawer] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
 
-  // --- NEW: REPORT MODAL STATES ---
+  // --- REPORT MODAL STATES ---
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState(REPORT_REASONS[0]);
   const [reportDetails, setReportDetails] = useState('');
@@ -104,6 +116,24 @@ const ProductDetail = () => {
   const images = Array.isArray(rawImages) ? rawImages : [];
   const hasVideo = !!product?.videoUrl;
   const totalMediaCount = hasVideo ? images.length + 1 : images.length;
+
+  // --- NEW: REVIEW FILTER HANDLER ---
+  const fetchFilteredReviews = async (filterType: string) => {
+    if (!id) return;
+    try {
+      let rating: number | undefined = undefined;
+      let hasImages: boolean | undefined = undefined;
+
+      if (filterType >= '1' && filterType <= '5') rating = parseInt(filterType);
+      if (filterType === 'images') hasImages = true;
+
+      const res = await getProductReviews(id, rating, hasImages);
+      setReviews(res.data);
+      setSelectedFilter(filterType);
+    } catch (err) {
+      console.error("Filtering failed", err);
+    }
+  };
 
   // --- INTERACTION HANDLERS ---
 
@@ -123,7 +153,13 @@ const ProductDetail = () => {
     } else if (platform === 'facebook') {
       window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentUrl)}`, '_blank');
     } else if (platform === 'messenger') {
-      window.open(`fb-messenger://share/?link=${encodeURIComponent(currentUrl)}`, '_blank');
+      // PRO FIX: Prevent blank screen on PC
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (isMobile) {
+        window.location.href = `fb-messenger://share/?link=${encodeURIComponent(currentUrl)}`;
+      } else {
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentUrl)}`, '_blank');
+      }
     }
   };
 
@@ -192,10 +228,10 @@ const ProductDetail = () => {
     }
   }, [activeMedia, images.length]);
 
-  // --- PRESERVED DATA FETCHING ---
+  // --- PRESERVED DATA FETCHING (Enhanced with Review Stats) ---
 
   useEffect(() => {
-    const fetchProductAndReviews = async () => {
+    const fetchData = async () => {
       if (location.state?.productPreview) {
           setProduct(location.state.productPreview);
           setLoading(false);
@@ -203,6 +239,7 @@ const ProductDetail = () => {
       }
       try {
         setLoading(true);
+        // Step 1: Load Core Product
         const prodRes = await api.get(`/products/${id}`);
         const productData = prodRes.data;
         const storedRoles = JSON.parse(localStorage.getItem('userRoles') || '[]');
@@ -221,8 +258,19 @@ const ProductDetail = () => {
 
         setProduct(productData);
         document.title = `${productData.name} | AiNetsoft`;
-        const revRes = await api.get(`/reviews/product/${id}`);
-        setReviews(Array.isArray(revRes.data) ? revRes.data : []);
+
+        // Step 2: Non-blocking fetch for Audit Data (Prevents failure if no reviews exist)
+        try {
+          const [statsRes, revRes] = await Promise.all([
+            getReviewStats(id!),
+            getProductReviews(id!)
+          ]);
+          setReviewStats(statsRes.data);
+          setReviews(revRes.data);
+        } catch (revErr) {
+          console.warn("Review data not found for this product yet.");
+        }
+
       } catch (error) {
         setToastMessage("Không tìm thấy sản phẩm.");
         setShowToast(true);
@@ -230,7 +278,7 @@ const ProductDetail = () => {
         setLoading(false);
       }
     };
-    if (id) fetchProductAndReviews();
+    if (id) fetchData();
     window.scrollTo(0, 0); 
   }, [id, navigate, location.state]);
 
@@ -284,7 +332,6 @@ const ProductDetail = () => {
                 <select value={reportReason} onChange={e => setReportReason(e.target.value)}>
                   {REPORT_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
                 </select>
-
                 <label>Chi tiết thêm</label>
                 <textarea 
                   placeholder="Vui lòng cung cấp thêm thông tin vi phạm..."
@@ -337,7 +384,7 @@ const ProductDetail = () => {
         </div>
       )}
 
-      {/* MODAL SECTION: FIXED POSITIONING */}
+      {/* MODAL SECTION: MEDIA ZOOM */}
       {isZoomed && (
         <div className="zoom-modal-overlay" onClick={() => setIsZoomed(false)}>
           <div className="zoom-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -407,10 +454,10 @@ const ProductDetail = () => {
               <div className="social-interaction-block">
                 <div className="share-section">
                   <span>Chia sẻ:</span>
-                  <button className="share-icon-btn messenger" onClick={() => handleShare('messenger')}><FaFacebookMessenger /></button>
-                  <button className="share-icon-btn facebook" onClick={() => handleShare('facebook')}><FaFacebook /></button>
-                  <button className="share-icon-btn twitter" onClick={() => handleShare('twitter')}><FaTwitter /></button>
-                  <button className="share-icon-btn link" onClick={() => handleShare('link')}><FaLink /></button>
+                  <button className="share-icon-btn messenger" title="Gửi Messenger" onClick={() => handleShare('messenger')}><FaFacebookMessenger /></button>
+                  <button className="share-icon-btn facebook" title="Chia sẻ Facebook" onClick={() => handleShare('facebook')}><FaFacebook /></button>
+                  <button className="share-icon-btn twitter" title="Chia sẻ X (Twitter)" onClick={() => handleShare('twitter')}><FaTwitter /></button>
+                  <button className="share-icon-btn link" title="Sao chép liên kết" onClick={() => handleShare('link')}><FaLink /></button>
                 </div>
                 <div className="interaction-divider"></div>
                 <div className="like-section" onClick={() => setIsLiked(!isLiked)}>
@@ -439,6 +486,8 @@ const ProductDetail = () => {
               <span className="rating-value">{product.averageRating || 0}</span>
               <span className="divider">|</span>
               <span className="review-count">{product.reviewCount || 0} Đánh giá</span>
+              <span className="divider">|</span>
+              <span className="sold-count">Đã bán {product.soldCount || 0}</span>
             </div>
 
             <div className="price-display-box">
@@ -530,22 +579,70 @@ const ProductDetail = () => {
           <div className="description-content">{descriptionLines.map((line, i) => <p key={i}>{line}</p>)}</div>
         </div>
 
+        {/* --- REVIEWS SECTION [Enhanced based on image_971725.png] --- */}
         <div className="reviews-section">
           <h3 className="section-title">ĐÁNH GIÁ SẢN PHẨM</h3>
-          {reviews.length === 0 ? <p className="no-reviews">Chưa có đánh giá nào.</p> : (
-            <div className="reviews-list">
-              {reviews.map(review => (
-                <div key={review.id} className="review-item">
-                  <div className="rev-header">
-                    <strong>{review.userName}</strong>
-                    <div className="user-stars">{[...Array(5)].map((_, i) => <FaStar key={i} color={i < review.rating ? "#ee4d2d" : "#e4e5e9"} />)}</div>
-                  </div>
-                  <p className="rev-comment">{review.comment}</p>
-                  <p className="rev-date">{new Date(review.createdAt).toLocaleDateString('vi-VN')}</p>
-                </div>
-              ))}
+          
+          <div className="review-filter-box">
+            <div className="rating-overview-score">
+              <div className="score-big"><span className="val">{product.averageRating || 0}</span> trên 5</div>
+              <div className="stars-row-big">
+                {[...Array(5)].map((_, i) => (
+                  <FaStar key={i} color={i < Math.floor(product.averageRating || 0) ? "#ee4d2d" : "#e4e5e9"} />
+                ))}
+              </div>
             </div>
-          )}
+            
+            <div className="filter-buttons-grid">
+              <button className={`filter-btn ${selectedFilter === 'all' ? 'active' : ''}`} onClick={() => fetchFilteredReviews('all')}>Tất Cả</button>
+              <button className={`filter-btn ${selectedFilter === '5' ? 'active' : ''}`} onClick={() => fetchFilteredReviews('5')}>5 Sao ({reviewStats?.star5 || 0})</button>
+              <button className={`filter-btn ${selectedFilter === '4' ? 'active' : ''}`} onClick={() => fetchFilteredReviews('4')}>4 Sao ({reviewStats?.star4 || 0})</button>
+              <button className={`filter-btn ${selectedFilter === '3' ? 'active' : ''}`} onClick={() => fetchFilteredReviews('3')}>3 Sao ({reviewStats?.star3 || 0})</button>
+              <button className={`filter-btn ${selectedFilter === '2' ? 'active' : ''}`} onClick={() => fetchFilteredReviews('2')}>2 Sao ({reviewStats?.star2 || 0})</button>
+              <button className={`filter-btn ${selectedFilter === '1' ? 'active' : ''}`} onClick={() => fetchFilteredReviews('1')}>1 Sao ({reviewStats?.star1 || 0})</button>
+              <button className={`filter-btn ${selectedFilter === 'images' ? 'active' : ''}`} onClick={() => fetchFilteredReviews('images')}>Có Hình Ảnh / Video ({reviewStats?.withImages || 0})</button>
+            </div>
+          </div>
+
+          <div className="reviews-list">
+            {reviews.length === 0 ? (
+              <div className="no-reviews-placeholder">Chưa có đánh giá nào cho bộ lọc này.</div>
+            ) : (
+              reviews.map(review => (
+                <div key={review.id} className="review-card-item">
+                  <div className="rev-user-avatar">
+                    <img src={review.userAvatar || "/default-avatar.png"} alt="avatar" />
+                  </div>
+                  <div className="rev-content-side">
+                    <div className="rev-username">{review.userName}</div>
+                    <div className="rev-stars">
+                      {[...Array(5)].map((_, i) => <FaStar key={i} size={12} color={i < review.rating ? "#ee4d2d" : "#e4e5e9"} />)}
+                    </div>
+                    <div className="rev-meta-line">
+                      {new Date(review.createdAt).toLocaleString('vi-VN')} | Phân loại hàng: {review.variantInfo || 'Mặc định'}
+                    </div>
+                    
+                    <div className="rev-comment-text">{review.comment}</div>
+                    
+                    {review.imageUrls && review.imageUrls.length > 0 && (
+                      <div className="rev-media-grid">
+                        {review.imageUrls.map((img, idx) => (
+                          <div key={idx} className="rev-img-thumb"><img src={formatMediaUrl(img)} alt="proof" /></div>
+                        ))}
+                      </div>
+                    )}
+
+                    {review.sellerReply && (
+                      <div className="seller-reply-container">
+                        <div className="reply-label">Phản Hồi Của Người Bán</div>
+                        <div className="reply-text">{review.sellerReply}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>

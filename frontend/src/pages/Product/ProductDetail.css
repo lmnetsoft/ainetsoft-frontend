@@ -366,3 +366,170 @@
 .product-detail-wrapper .btn-confirm-report { background: #ee4d2d; color: #fff; border: none; padding: 10px 25px; cursor: pointer; border-radius: 4px; font-weight: 700; transition: background 0.2s; }
 .product-detail-wrapper .btn-confirm-report:hover { background: #d73211; }
 .product-detail-wrapper .btn-confirm-report:disabled { background: #ccc; cursor: not-allowed; }
+
+/* =======================================================
+   NEW: PROFESSIONAL SHOPEE-STYLE AUDIT SYSTEM STYLES
+   ======================================================= */
+
+.product-detail-wrapper .review-filter-box {
+    background: #fffbf8; /* Professional beige/peach from image_971725.png */
+    border: 1px solid #f9ede5;
+    padding: 30px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 40px;
+    margin-bottom: 25px;
+}
+
+.product-detail-wrapper .rating-overview-score {
+    text-align: center;
+    color: #ee4d2d;
+    min-width: 140px;
+}
+
+.product-detail-wrapper .score-big {
+    font-size: 1.2rem;
+    margin-bottom: 8px;
+}
+
+.product-detail-wrapper .score-big .val {
+    font-size: 2.2rem;
+    font-weight: 600;
+}
+
+.product-detail-wrapper .stars-row-big {
+    font-size: 1.3rem;
+}
+
+.product-detail-wrapper .filter-buttons-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.product-detail-wrapper .filter-btn {
+    background: #fff;
+    border: 1px solid rgba(0,0,0,0.09);
+    padding: 8px 20px;
+    border-radius: 2px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    color: rgba(0,0,0,0.87);
+    transition: all 0.1s;
+    min-width: 100px;
+}
+
+.product-detail-wrapper .filter-btn:hover {
+    border-color: #ee4d2d;
+    color: #ee4d2d;
+}
+
+.product-detail-wrapper .filter-btn.active {
+    border-color: #ee4d2d;
+    color: #ee4d2d;
+    background: #fff;
+}
+
+/* Audit/Review List Container */
+.product-detail-wrapper .reviews-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.product-detail-wrapper .review-card-item {
+    display: flex;
+    gap: 15px;
+    padding: 20px 0;
+    border-bottom: 1px solid #f2f2f2;
+}
+
+.product-detail-wrapper .rev-user-avatar {
+    flex-shrink: 0;
+}
+
+.product-detail-wrapper .rev-user-avatar img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.product-detail-wrapper .rev-content-side {
+    flex: 1;
+}
+
+.product-detail-wrapper .rev-username {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: rgba(0,0,0,0.87);
+    margin-bottom: 3px;
+}
+
+.product-detail-wrapper .rev-stars {
+    margin-bottom: 5px;
+}
+
+.product-detail-wrapper .rev-meta-line {
+    font-size: 0.75rem;
+    color: rgba(0,0,0,0.54);
+    margin-bottom: 12px;
+}
+
+.product-detail-wrapper .rev-comment-text {
+    font-size: 0.95rem;
+    line-height: 1.4;
+    color: rgba(0,0,0,0.87);
+    margin-bottom: 15px;
+    white-space: pre-wrap;
+}
+
+/* Media Proof Grid */
+.product-detail-wrapper .rev-media-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.product-detail-wrapper .rev-img-thumb {
+    width: 72px;
+    height: 72px;
+    border: 1px solid #eee;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.product-detail-wrapper .rev-img-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Seller Reply Section */
+.product-detail-wrapper .seller-reply-container {
+    background: #f5f5f5; /* Matching grey box in image_971725.png */
+    padding: 14px;
+    border-radius: 2px;
+    margin-top: 10px;
+}
+
+.product-detail-wrapper .reply-label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: rgba(0,0,0,0.87);
+    margin-bottom: 8px;
+}
+
+.product-detail-wrapper .reply-text {
+    font-size: 0.9rem;
+    color: rgba(0,0,0,0.7);
+    line-height: 1.4;
+}
+
+.product-detail-wrapper .no-reviews-placeholder {
+    padding: 60px 0;
+    text-align: center;
+    color: #888;
+    font-style: italic;
+}

@@ -48,10 +48,17 @@ public class Product {
     private double averageRating = 0.0;
 
     @Builder.Default
-    private int favoriteCount = 0;
+    private int reviewCount = 0;
 
     @Builder.Default
-    private int reviewCount = 0;
+    private int favoriteCount = 0;
+
+    /**
+     * NEW: Critical Social Proof. 
+     * Displayed as "Đã bán X" next to the star ratings.
+     */
+    @Builder.Default
+    private int soldCount = 0; 
 
     // --- NEW PROFESSIONAL FEATURES [Fully Dynamic] ---
 
@@ -74,7 +81,7 @@ public class Product {
     private int shareCount = 0; // Incremented when user clicks share buttons
 
     @Builder.Default
-    private int totalReports = 0; // Incremented when users click "Tố cáo"
+    private int totalReports = 0; // Incremented when users click "Báo Vi Phạm"
 
     // --- DYNAMIC HELPER CLASSES ---
 
