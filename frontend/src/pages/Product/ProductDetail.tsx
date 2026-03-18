@@ -4,16 +4,26 @@ import {
   FaShoppingCart, FaStore, FaStar, FaCommentDots, FaClipboardList, 
   FaExclamationTriangle, FaPlay, FaTimes, FaChevronLeft, FaChevronRight,
   FaStoreAlt, FaTruck, FaShieldAlt, FaHeart, FaRegHeart, FaFacebook,
-  FaFacebookMessenger, FaPinterest, FaTwitter, FaInfoCircle
+  FaFacebookMessenger, FaPinterest, FaTwitter, FaInfoCircle, FaLink,
+  FaFlag
 } from 'react-icons/fa';
-import api from '../../services/api'; 
+import api, { shareProduct, reportProduct } from '../../services/api'; 
 import ToastNotification from '../../components/Toast/ToastNotification';
 import { useChat } from '../../context/ChatContext'; 
 import './ProductDetail.css';
 
 const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:8080';
 
-// Professional Interfaces
+// Professional Report Categories
+const REPORT_REASONS = [
+  "Sản phẩm giả mạo, hàng nhái",
+  "Nội dung phản cảm, khiêu dâm",
+  "Sản phẩm bị cấm kinh doanh",
+  "Dấu hiệu lừa đảo",
+  "Hình ảnh không rõ ràng/sai lệch",
+  "Lý do khác..."
+];
+
 interface ShippingConfig {
   methodId: string;
   methodName: string;
@@ -77,6 +87,12 @@ const ProductDetail = () => {
   const [showShippingDrawer, setShowShippingDrawer] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
 
+  // --- NEW: REPORT MODAL STATES ---
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState(REPORT_REASONS[0]);
+  const [reportDetails, setReportDetails] = useState('');
+  const [isReporting, setIsReporting] = useState(false);
+
   const formatMediaUrl = (url?: string) => {
     if (!url || url === 'undefined' || url === 'null' || url === '') return "/placeholder.png";
     if (url.startsWith('http')) return url;
@@ -88,6 +104,53 @@ const ProductDetail = () => {
   const images = Array.isArray(rawImages) ? rawImages : [];
   const hasVideo = !!product?.videoUrl;
   const totalMediaCount = hasVideo ? images.length + 1 : images.length;
+
+  // --- INTERACTION HANDLERS ---
+
+  const handleShare = async (platform: 'facebook' | 'messenger' | 'link') => {
+    if (!product) return;
+    const currentUrl = window.location.href;
+    
+    // Increment Count in Backend (Frictionless)
+    try { await shareProduct(product.id); } catch (e) { console.error("Share count fail"); }
+
+    if (platform === 'link') {
+      navigator.clipboard.writeText(currentUrl);
+      setToastMessage("Đã sao chép liên kết vào bộ nhớ tạm!");
+      setShowToast(true);
+    } else if (platform === 'facebook') {
+      window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentUrl)}`, '_blank');
+    } else if (platform === 'messenger') {
+      window.open(`fb-messenger://share/?link=${encodeURIComponent(currentUrl)}`, '_blank');
+    }
+  };
+
+  const handleReportSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!localStorage.getItem('isAuthenticated')) { 
+      setToastMessage("Vui lòng đăng nhập để gửi báo cáo.");
+      setShowToast(true);
+      setTimeout(() => navigate('/login'), 1500);
+      return; 
+    }
+    if (!id || !reportDetails.trim()) return;
+
+    try {
+      setIsReporting(true);
+      await reportProduct(id, { reason: reportReason, details: reportDetails });
+      setToastMessage("Báo cáo vi phạm của bạn đã được gửi tới Admin.");
+      setShowToast(true);
+      setShowReportModal(false);
+      setReportDetails('');
+    } catch (error) {
+      setToastMessage("Gửi báo cáo thất bại. Vui lòng thử lại sau.");
+      setShowToast(true);
+    } finally {
+      setIsReporting(false);
+    }
+  };
+
+  // --- PRESERVED GALLERY & SCROLL LOGIC ---
 
   const scrollThumbnails = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
@@ -126,6 +189,8 @@ const ProductDetail = () => {
       videoRef.current.play().catch(() => {});
     }
   }, [activeMedia, images.length]);
+
+  // --- PRESERVED DATA FETCHING ---
 
   useEffect(() => {
     const fetchProductAndReviews = async () => {
@@ -202,6 +267,41 @@ const ProductDetail = () => {
   return (
     <div className="product-detail-wrapper">
       <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
+
+      {/* --- REPORT MODAL --- */}
+      {showReportModal && (
+        <div className="report-modal-overlay" onClick={() => setShowReportModal(false)}>
+          <div className="report-modal-card" onClick={e => e.stopPropagation()}>
+            <div className="report-header">
+              <h3><FaFlag /> Báo Vi Phạm</h3>
+              <button className="close-x" onClick={() => setShowReportModal(false)}><FaTimes /></button>
+            </div>
+            <form onSubmit={handleReportSubmit}>
+              <div className="report-body">
+                <label>Lý do vi phạm</label>
+                <select value={reportReason} onChange={e => setReportReason(e.target.value)}>
+                  {REPORT_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+
+                <label>Chi tiết thêm</label>
+                <textarea 
+                  placeholder="Vui lòng cung cấp thêm thông tin vi phạm..."
+                  value={reportDetails}
+                  onChange={e => setReportDetails(e.target.value)}
+                  rows={4}
+                  required
+                />
+              </div>
+              <div className="report-footer">
+                <button type="button" className="btn-cancel" onClick={() => setShowReportModal(false)}>Hủy</button>
+                <button type="submit" className="btn-confirm-report" disabled={isReporting}>
+                  {isReporting ? "Đang gửi..." : "Gửi báo cáo"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* --- SHIPPING DRAWER MODAL --- */}
       {showShippingDrawer && (
@@ -305,10 +405,9 @@ const ProductDetail = () => {
               <div className="social-interaction-block">
                 <div className="share-section">
                   <span>Chia sẻ:</span>
-                  <button className="share-icon-btn messenger"><FaFacebookMessenger /></button>
-                  <button className="share-icon-btn facebook"><FaFacebook /></button>
-                  <button className="share-icon-btn pinterest"><FaPinterest /></button>
-                  <button className="share-icon-btn twitter"><FaTwitter /></button>
+                  <button className="share-icon-btn messenger" onClick={() => handleShare('messenger')}><FaFacebookMessenger /></button>
+                  <button className="share-icon-btn facebook" onClick={() => handleShare('facebook')}><FaFacebook /></button>
+                  <button className="share-icon-btn link" onClick={() => handleShare('link')}><FaLink /></button>
                 </div>
                 <div className="interaction-divider"></div>
                 <div className="like-section" onClick={() => setIsLiked(!isLiked)}>
@@ -320,6 +419,13 @@ const ProductDetail = () => {
           </div>
 
           <div className="detail-info-section">
+            {/* SURGICAL INSERTION: TOP-RIGHT FLAG BUTTON */}
+            <div className="report-link-row">
+               <button className="btn-report-action" onClick={() => setShowReportModal(true)}>
+                 <FaFlag /> Báo Vi Phạm
+               </button>
+            </div>
+
             <h1 className="product-title">{product.name}</h1>
             <div className="product-rating-overview">
               <div className="star-row">
@@ -380,10 +486,6 @@ const ProductDetail = () => {
                 </div>
               </div>
               <div className="p-grid-row"><span className="p-grid-label"></span><span className="stock-hint">{product.stock} sản phẩm có sẵn</span></div>
-            </div>
-
-            <div className="report-link-row">
-               <button className="btn-report-action"><FaExclamationTriangle /> Tố cáo</button>
             </div>
           </div>
         </div>

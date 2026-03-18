@@ -122,8 +122,18 @@
 .thumb-scroll-btn:hover { background: rgba(0,0,0,0.2); color: #fff; }
 
 /* --- 5. INFO SECTION & HORIZONTAL ACTIONS --- */
-.detail-info-section { flex: 1; }
-.product-title { font-size: 20px; font-weight: 500; margin-bottom: 12px; }
+.detail-info-section { 
+    flex: 1; 
+    position: relative; /* CRITICAL: Enables absolute positioning for the flag button */
+}
+
+.product-title { 
+    font-size: 20px; 
+    font-weight: 500; 
+    margin-bottom: 12px;
+    padding-right: 125px; /* Safely prevents title from overlapping the "Báo Vi Phạm" button */
+}
+
 .price-display-box { background: #fafafa; padding: 15px 20px; color: #ee4d2d; margin-bottom: 20px; border-radius: 4px; }
 .price-display-box .amount { font-size: 28px; font-weight: 600; }
 
@@ -144,6 +154,7 @@
     box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 .shop-icon { font-size: 2.2rem; color: #ee4d2d; background: #fff5f2; padding: 10px; border-radius: 50%; flex-shrink: 0; }
+.shop-name-box { flex: 1; }
 .shop-actions { display: flex; gap: 12px; }
 
 .chat-now-btn { background: #ee4d2d; color: #fff; border: none; padding: 8px 16px; border-radius: 2px; font-weight: 500; display: flex; align-items: center; gap: 8px; cursor: pointer; }
@@ -197,7 +208,7 @@
 }
 
 /* =======================================================
-   NEW APPENDED PROFESSIONAL STYLES (Shipping & Social)
+   PRESERVED APPENDED STYLES (Shipping & Social)
    ======================================================= */
 
 /* --- 1. SHIPPING DRAWER OVERLAY --- */
@@ -248,6 +259,7 @@
 .share-icon-btn.facebook { color: #1877f2; }
 .share-icon-btn.pinterest { color: #bd081c; }
 .share-icon-btn.twitter { color: #000; }
+.share-icon-btn.link { color: #4a4a4a; }
 
 .interaction-divider { width: 1px; height: 18px; background: #eee; }
 
@@ -267,5 +279,79 @@
 .arrow-right-sm { margin-left: auto; color: #ccc; font-size: 0.8rem; }
 .voucher-hint-text { color: #ee4d2d; font-size: 0.85rem; margin-top: 5px; margin-left: 28px; }
 
-.report-link-row { margin-top: 20px; }
-.btn-report-action { background: none; border: none; color: #666; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+/* =======================================================
+   REFINED: TOP-RIGHT PREMIUM REPORT BUTTON
+   ======================================================= */
+
+.report-link-row {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 10;
+}
+
+.btn-report-action {
+    background: #fff5f5; /* Premium soft red background */
+    border: 1px solid #ffcccc;
+    color: #ff4757; /* Professional vibrant red */
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 5px rgba(255, 71, 87, 0.1);
+    /* Removed text-transform: uppercase to respect "Báo Vi Phạm" casing */
+}
+
+.btn-report-action svg {
+    font-size: 0.95rem;
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.1));
+}
+
+.btn-report-action:hover {
+    background: #ff4757;
+    color: #fff;
+    border-color: #ff4757;
+    transform: translateY(-1.5px);
+    box-shadow: 0 4px 10px rgba(255, 71, 87, 0.2);
+}
+
+/* =======================================================
+   PREMIUM REPORT MODAL STYLES
+   ======================================================= */
+
+.report-modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+    z-index: 10000; display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(4px);
+}
+
+.report-modal-card {
+    background: #fff; width: 450px; border-radius: 8px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2); overflow: hidden;
+}
+
+.report-header { padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+.report-header h3 { margin: 0; font-size: 1.1rem; color: #ee4d2d; display: flex; align-items: center; gap: 10px; }
+
+.close-x { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #999; }
+
+.report-body { padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+.report-body label { font-size: 0.85rem; font-weight: 700; color: #666; text-transform: uppercase; }
+
+.report-body select, 
+.report-body textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; outline: none; font-size: 0.95rem; }
+
+.report-body textarea:focus { border-color: #ee4d2d; }
+
+.report-footer { padding: 15px 20px; background: #f9f9f9; display: flex; justify-content: flex-end; gap: 10px; }
+
+.btn-cancel { background: #fff; border: 1px solid #ddd; padding: 10px 20px; cursor: pointer; border-radius: 4px; font-weight: 600; color: #333; }
+
+.btn-confirm-report { background: #ee4d2d; color: #fff; border: none; padding: 10px 25px; cursor: pointer; border-radius: 4px; font-weight: 700; transition: background 0.2s; }
+.btn-confirm-report:hover { background: #d73211; }
+.btn-confirm-report:disabled { background: #ccc; cursor: not-allowed; }
