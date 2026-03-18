@@ -66,17 +66,27 @@ const AdminDashboard = () => {
   const fetchReports = async () => {
     try {
       setTabLoading(true);
-      const data = await adminService.getAllReports();
-      setReports(data || []);
-    } catch (err) { toast.error("Lỗi tải danh sách báo cáo."); }
-    finally { setTabLoading(false); }
+      const response = await adminService.getAllReports();
+      
+      // FIX: Handle both direct arrays and Spring Data JPA paginated objects
+      const data = Array.isArray(response) ? response : (response?.content || []);
+      setReports(data);
+      
+      console.log("Admin Reports fetched:", data); // Helpful for debugging empty lists
+    } catch (err) { 
+      console.error("Error fetching reports:", err);
+      toast.error("Lỗi tải danh sách báo cáo."); 
+    } finally { 
+      setTabLoading(false); 
+    }
   };
 
   const fetchReviews = async () => {
     try {
       setTabLoading(true);
-      const data = await adminService.getAllReviews();
-      setAllReviews(data || []);
+      const response = await adminService.getAllReviews();
+      const data = Array.isArray(response) ? response : (response?.content || []);
+      setAllReviews(data);
     } catch (err) { toast.error("Lỗi tải danh sách đánh giá."); }
     finally { setTabLoading(false); }
   };
@@ -126,13 +136,18 @@ const AdminDashboard = () => {
                 {reports.length === 0 ? <tr><td colSpan={5} className="empty-row">Không có báo cáo vi phạm nào.</td></tr> : 
                   reports.map(r => (
                     <tr key={r.id}>
-                      <td><strong>{r.productName}</strong></td>
+                      <td><strong>{r.product?.name || r.productName || 'N/A'}</strong></td>
                       <td><span className="reason-tag">{r.reason}</span></td>
-                      <td>{r.reporterName}</td>
-                      <td>{new Date(r.createdAt).toLocaleDateString('vi-VN')}</td>
+                      <td>{r.reporter?.username || r.reporterName || 'Người dùng ẩn'}</td>
+                      <td>{r.createdAt ? new Date(r.createdAt).toLocaleDateString('vi-VN') : '---'}</td>
                       <td className="action-btns">
-                        <button className="btn-table-success" title="Xác nhận vi phạm" onClick={() => handleResolveReport(r.id, 'RESOLVED')}><FaCheck /></button>
-                        <button className="btn-table-danger" title="Bác bỏ" onClick={() => handleResolveReport(r.id, 'DISMISSED')}><FaTimes /></button>
+                        {/* FIXED: Uses mod-btn classes to ensure icon visibility */}
+                        <button className="mod-btn approve" title="Xác nhận vi phạm" onClick={() => handleResolveReport(r.id, 'RESOLVED')}>
+                          <FaCheck />
+                        </button>
+                        <button className="mod-btn reject" title="Bác bỏ" onClick={() => handleResolveReport(r.id, 'DISMISSED')}>
+                          <FaTimes />
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -158,11 +173,13 @@ const AdminDashboard = () => {
                 {allReviews.length === 0 ? <tr><td colSpan={4} className="empty-row">Chưa có đánh giá nào.</td></tr> : 
                   allReviews.map(rev => (
                     <tr key={rev.id}>
-                      <td>{rev.productName}</td>
+                      <td>{rev.product?.name || rev.productName}</td>
                       <td><span className="rating-badge">{rev.rating} <FaStar size={10} /></span></td>
                       <td className="comment-cell">{rev.comment}</td>
                       <td className="action-btns">
-                        <button className="btn-table-delete" onClick={() => handleDeleteReview(rev.id)}><FaTrash /></button>
+                        <button className="mod-btn reject" title="Xóa đánh giá" onClick={() => handleDeleteReview(rev.id)}>
+                          <FaTrash />
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -259,7 +276,6 @@ const AdminDashboard = () => {
               </div>
             </div>
 
-            {/* Clickable Card for Pending Products */}
             <div className={`metric-card ${stats.pendingProducts > 0 ? 'urgent' : ''}`} onClick={() => setActiveTab('products_mod')}>
               <div className="metric-icon pending"><FaClock /></div>
               <div className="metric-data">
@@ -268,7 +284,6 @@ const AdminDashboard = () => {
               </div>
             </div>
 
-            {/* Clickable Card for Pending Sellers */}
             <div className={`metric-card ${stats.pendingSellers > 0 ? 'urgent' : ''}`} onClick={() => setActiveTab('sellers')}>
               <div className="metric-icon sellers"><FaStore /></div>
               <div className="metric-data">

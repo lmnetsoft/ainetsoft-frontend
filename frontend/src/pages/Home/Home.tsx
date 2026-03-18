@@ -4,12 +4,15 @@ import { FaUserCircle, FaStore, FaStar } from 'react-icons/fa';
 import api from '../../services/api'; 
 import './Home.css';
 
+// 🔍 CONFIG: Connects images to the correct Backend port
+const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:8080';
+
 interface Product {
   id: string;
   name: string;
   price: number;
-  images?: string[]; // Optional for safety
-  imageUrls?: string[]; // Supporting both naming conventions
+  images?: string[]; 
+  imageUrls?: string[]; 
   imageUrl?: string; 
   category?: string;
   categoryName?: string;
@@ -25,7 +28,6 @@ const Home = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   
-  // Initialize as empty array to prevent .filter() errors
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -36,17 +38,24 @@ const Home = () => {
   const searchQuery = searchParams.get('search')?.toLowerCase() || '';
   const minRatingParam = parseFloat(searchParams.get('minRating') || '0');
 
+  // --- NEW HELPER: Fixes broken image paths ---
+  const formatMediaUrl = (url?: string) => {
+    if (!url || url === 'undefined' || url === 'null' || url === '') return "/placeholder.png";
+    if (url.startsWith('http')) return url; // Already an absolute link
+    const cleanPath = url.startsWith('/') ? url : `/${url}`;
+    return `${BASE_URL}${cleanPath}`; // Connects to http://localhost:8080
+  };
+
   // 1. Fetch Real Products from Backend
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
         const response = await api.get('/products');
-        // GUARD: Ensure products is always an array
         setProducts(Array.isArray(response.data) ? response.data : []);
       } catch (error) {
         console.error("Failed to fetch products:", error);
-        setProducts([]); // Fallback to empty list instead of crashing
+        setProducts([]); 
       } finally {
         setLoading(false);
       }
@@ -77,7 +86,6 @@ const Home = () => {
     }
   };
 
-  // Your original static categories
   const categories = [
     "Máy Tính", "TiVi", "Âm Thanh", "Điện Thoại", "Dịch Vụ IT", "Máy Ảnh", 
     "Thiết Bị VP", "Thiết Bị Mạng", "Linh Kiện", "Gia Dụng", "Thời Trang", "Sức Khỏe",
@@ -88,17 +96,12 @@ const Home = () => {
     "Máy tính xách tay", "iPhone 15", "Máy giặt Inverter", "Bàn phím cơ", "Đồng hồ thông minh"
   ];
 
-  // 3. Integrated Filtering Logic (With Array Guard)
+  // 3. Integrated Filtering Logic
   const displayProducts = Array.isArray(products) ? products.filter(p => {
-    // Robust naming check: support both 'category' and 'categoryName'
     const categoryToMatch = (p.categoryName || p.category || "").toLowerCase();
-    
     const matchesSearch = p.name.toLowerCase().includes(searchQuery) || 
                           categoryToMatch.includes(searchQuery);
-    
     const matchesRating = (p.averageRating || 0) >= minRatingParam;
-    
-    // In dev mode, allow items without status, but strictly check APPROVED for production
     const isApproved = p.status === 'APPROVED' || !p.status; 
     
     return isApproved && matchesSearch && matchesRating;
@@ -130,7 +133,6 @@ const Home = () => {
           <div className="category-wrapper">
             <button className="scroll-btn left" onClick={() => scroll('left')}>‹</button>
             <div className="category-grid" ref={scrollRef}>
-              {/* This is safe now because categories is a static array */}
               {categories.map((cat, index) => (
                 <div key={index} className="category-item" onClick={() => navigate(`/?search=${encodeURIComponent(cat)}`)}>
                   <div className="category-icon-placeholder"></div>
@@ -160,8 +162,9 @@ const Home = () => {
                 {displayProducts.map(product => (
                   <div key={product.id} className="result-card" onClick={() => navigate(`/product/${product.id}`)}>
                     <div className="product-image-wrapper">
+                       {/* 🛠️ FIXED: Added formatMediaUrl to the src attribute below */}
                        <img 
-                          src={product.imageUrls?.[0] || product.images?.[0] || product.imageUrl || "/placeholder.png"} 
+                          src={formatMediaUrl(product.imageUrls?.[0] || product.images?.[0] || product.imageUrl)} 
                           alt={product.name} 
                           onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder.png" }}
                        />

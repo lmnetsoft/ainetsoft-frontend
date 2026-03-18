@@ -2,14 +2,14 @@ import api from './api'; // BaseURL is http://localhost:8080/api
 
 /**
  * adminService fully synchronized with Backend Controllers
- * Added support for Violation Reports and Review Moderation
+ * Optimized for Violation Reports and Review Moderation
  */
 export const adminService = {
   // --- STATS & OVERVIEW ---
   
   /**
    * Fetches summary data for dashboard cards.
-   * Now includes 'totalReports' and 'pendingReviews' count.
+   * Linked to: AdminStatsController @GetMapping("/summary")
    */
   getDashboardSummary: () => api.get('/admin/stats/summary').then(res => res.data),
 
@@ -49,7 +49,7 @@ export const adminService = {
   getPendingProducts: () => api.get('/admin/products/pending').then(res => res.data),
   
   /**
-   * FIX: Added optional payload to ensure backend receives the status change.
+   * Approves a product to make it public.
    */
   approveProduct: (productId: string) => 
     api.post(`/admin/products/approve/${productId}`, { status: 'APPROVED' }).then(res => res.data),
@@ -63,9 +63,10 @@ export const adminService = {
   // --- NEW: VIOLATION REPORT MANAGEMENT (BÁO VI PHẠM) ---
 
   /**
-   * Fetches all product violation reports submitted by users.
+   * FIXED: Fetches all product violation reports.
+   * Removed '/all' to match standard REST controllers serving the collection at the base path.
    */
-  getAllReports: () => api.get('/admin/reports/all').then(res => res.data),
+  getAllReports: () => api.get('/admin/reports').then(res => res.data),
 
   /**
    * Updates report status (e.g., RESOLVED, DISMISSED).
@@ -76,7 +77,7 @@ export const adminService = {
   // --- NEW: REVIEW MODERATION (QUẢN LÝ ĐÁNH GIÁ) ---
 
   /**
-   * Fetches all reviews across the platform for moderation.
+   * Fetches all reviews across the platform.
    */
   getAllReviews: () => api.get('/admin/reviews/all').then(res => res.data),
 

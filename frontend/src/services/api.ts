@@ -91,9 +91,17 @@ export const shareProduct = async (productId: string) => {
   return await api.post(`/products/${productId}/share`);
 };
 
-// Submits a formal report (Ticket) - Requires Auth
+/**
+ * FIXED: Submits a formal report (Ticket)
+ * Added explicit object mapping to ensure backend captures all fields for the Admin Dashboard.
+ */
 export const reportProduct = async (productId: string, reportData: { reason: string; details: string; evidenceUrls?: string[] }) => {
-  return await api.post(`/products/${productId}/report`, reportData);
+  return await api.post(`/products/${productId}/report`, {
+    reason: reportData.reason,
+    details: reportData.details,
+    evidenceUrls: reportData.evidenceUrls || [],
+    createdAt: new Date().toISOString()
+  });
 };
 
 /**
