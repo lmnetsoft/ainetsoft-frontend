@@ -3,20 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { 
   FaTruck, FaShieldAlt, FaShareAlt, FaPlus, FaTrash, 
   FaClock, FaTicketAlt, FaInfoCircle, FaCheckCircle, 
-  FaMoneyBillWave, FaEdit 
+  FaMoneyBillWave, FaTimes 
 } from 'react-icons/fa';
 import api, { getCategories } from '../../services/api'; 
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import ToastNotification from '../../components/Toast/ToastNotification';
-import heic2any from 'heic2any'; // Support for iPhone HEIC photos
+import heic2any from 'heic2any'; // CRITICAL: Support for iPhone HEIC photos
 import './AddProduct.css';
 
 const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:8080';
 
-interface Category {
-  id: string;
-  name: string;
-}
+interface Category { id: string; name: string; }
 
 interface ShippingMethod {
   id: string;
@@ -39,7 +36,7 @@ const AddProduct = () => {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
-  // 1. DATA STATE
+  // --- 1. DATA STATE ---
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -52,12 +49,12 @@ const AddProduct = () => {
     allowSharing: true 
   });
 
-  // 2. PROFESSIONAL CONFIGURATION STATE (Situational Logic)
+  // --- 2. CONFIGURATION STATE (Situational Logic) ---
   const [globalShippingMethods, setGlobalShippingMethods] = useState<ShippingMethod[]>([]);
   const [selectedShipping, setSelectedShipping] = useState<SelectedShipping[]>([]);
   const [specs, setSpecs] = useState<{ key: string; value: string }[]>([{ key: '', value: '' }]);
 
-  // 3. MEDIA & UI STATE
+  // --- 3. MEDIA & UI STATE ---
   const [categories, setCategories] = useState<Category[]>([]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -68,7 +65,19 @@ const AddProduct = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
-  // 4. DATA INITIALIZATION & SECURITY
+  // --- 4. HELPERS: NUMBER FORMATTING (Visual Verification: 1 000 000) ---
+  const formatDisplayNumber = (num: number | string) => {
+    if (num === '' || num === undefined || num === null || num === 0) return '';
+    const val = num.toString().replace(/\s+/g, '');
+    return val.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  };
+
+  const parseFormattedNumber = (str: string) => {
+    const clean = str.replace(/\s+/g, '');
+    return clean === '' ? 0 : Number(clean);
+  };
+
+  // --- 5. DATA INITIALIZATION & SECURITY LOOP (Preserved) ---
   useEffect(() => {
     const checkStatusAndFetchData = async () => {
       try {
@@ -90,14 +99,12 @@ const AddProduct = () => {
           setFormData(prev => ({ ...prev, categoryId: catRes.data[0].id }));
         }
 
-        // Fetch Global Shipping Templates for the seller to choose from
         try {
             const shipRes = await api.get('/api/shipping-methods');
             setGlobalShippingMethods(shipRes.data);
         } catch (shipErr) {
-            console.warn("Lưu ý: Không thể lấy mẫu vận chuyển từ Admin. Bạn có thể thêm thủ công.");
+            console.warn("Lưu ý: Không thể lấy mẫu vận chuyển từ Admin. Chế độ thủ công đã sẵn sàng.");
         }
-
       } catch (error) {
         console.error("Auth check failed:", error);
         navigate('/login');
@@ -106,7 +113,7 @@ const AddProduct = () => {
     checkStatusAndFetchData();
   }, [navigate]);
 
-  // --- SHIPPING HANDLERS ---
+  // --- 6. SHIPPING HANDLERS ---
   const toggleShippingMethod = (method: ShippingMethod) => {
     const exists = selectedShipping.find(s => s.methodId === method.id);
     if (exists) {
@@ -137,7 +144,7 @@ const AddProduct = () => {
     }]);
   };
 
-  // --- MEDIA HANDLERS (Preserved original functions) ---
+  // --- 7. MEDIA HANDLERS (Preserved HEIC & 15MB Validation) ---
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (imageFiles.length + files.length > 5) {
@@ -145,6 +152,7 @@ const AddProduct = () => {
       setShowToast(true);
       return;
     }
+
     const processedFiles: File[] = [];
     const processedPreviews: string[] = [];
 
@@ -171,7 +179,7 @@ const AddProduct = () => {
 
   const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && file.size <= 15 * 1024 * 1024) {
+    if (file && file.size <= 15 * 1024 * 1024) { // 15MB Limit
       setVideoFile(file);
       setVideoPreview(URL.createObjectURL(file));
     } else if (file) {
@@ -180,16 +188,14 @@ const AddProduct = () => {
     }
   };
 
-  // --- SPECS HANDLERS ---
-  const addSpecField = () => setSpecs([...specs, { key: '', value: '' }]);
-  const removeSpecField = (index: number) => setSpecs(specs.filter((_, i) => i !== index));
+  // --- 8. SPECS HANDLERS ---
   const updateSpec = (index: number, field: 'key' | 'value', val: string) => {
     const newSpecs = [...specs];
     newSpecs[index][field] = val;
     setSpecs(newSpecs);
   };
 
-  // --- FINAL SUBMISSION ---
+  // --- 9. FINAL SUBMISSION ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim() || formData.price <= 0 || imageFiles.length === 0) {
@@ -220,7 +226,7 @@ const AddProduct = () => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
-      setToastMessage("Đăng sản phẩm thành công! Đang chờ Admin duyệt.");
+      setToastMessage("Đăng sản phẩm thành công! Đang chờ duyệt.");
       setShowToast(true);
       setTimeout(() => navigate('/seller/products'), 2000);
       
@@ -248,22 +254,23 @@ const AddProduct = () => {
           <form onSubmit={handleSubmit} className="product-form">
             {/* SECTION 1: MEDIA */}
             <section className="form-section">
-              <div className="section-title"><h3>Hình ảnh & Video</h3></div>
+              <div className="section-title"><h3>HÌNH ẢNH & VIDEO</h3></div>
               <div className="media-upload-area">
                 {imagePreviews.map((url, index) => (
-                  <div key={`img-${index}`} className="image-preview-item">
+                  <div key={index} className="image-preview-item">
                     <img src={url} alt="Preview" />
                     <button type="button" className="remove-img" onClick={() => {
                       setImageFiles(prev => prev.filter((_, i) => i !== index));
                       setImagePreviews(prev => prev.filter((_, i) => i !== index));
-                    }}>×</button>
+                    }}><FaTimes /></button>
                     {index === 0 && <span className="primary-badge">Ảnh chính</span>}
                   </div>
                 ))}
                 {videoPreview ? (
                   <div className="video-preview-item">
                     <video src={videoPreview} />
-                    <button type="button" className="remove-video" onClick={() => {setVideoFile(null); setVideoPreview(null);}}>×</button>
+                    <button type="button" className="remove-video" onClick={() => {setVideoFile(null); setVideoPreview(null);}}><FaTimes /></button>
+                    <div className="video-icon-overlay">▶</div>
                   </div>
                 ) : (
                   <div className="video-placeholder" onClick={() => videoInputRef.current?.click()}>
@@ -275,14 +282,14 @@ const AddProduct = () => {
                     <span>+ Thêm ảnh</span>
                   </div>
                 )}
-                <input type="file" ref={imageInputRef} multiple onChange={handleImageChange} accept="image/*,.heic,.heif" style={{ display: 'none' }} />
-                <input type="file" ref={videoInputRef} onChange={handleVideoChange} accept="video/*" style={{ display: 'none' }} />
+                <input type="file" ref={imageInputRef} multiple hidden onChange={handleImageChange} accept="image/*,.heic,.heif" />
+                <input type="file" ref={videoInputRef} hidden onChange={handleVideoChange} accept="video/*" />
               </div>
             </section>
 
             {/* SECTION 2: BASIC INFO */}
             <section className="form-section">
-              <div className="section-title"><h3>Thông tin cơ bản</h3></div>
+              <div className="section-title"><h3>THÔNG TIN CƠ BẢN</h3></div>
               <div className="input-group">
                 <label>Tên sản phẩm</label>
                 <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="Nhập tên sản phẩm (VD: iPhone 15 Pro Max)" />
@@ -305,16 +312,15 @@ const AddProduct = () => {
               </div>
             </section>
 
-            {/* SECTION 3: PROFESSIONAL SHIPPING CONFIG */}
+            {/* SECTION 3: SHIPPING CONFIGURATION */}
             <section className="form-section">
               <div className="section-header-flex">
-                <div className="section-title"><h3><FaTruck /> Cấu hình vận chuyển</h3></div>
+                <div className="section-title"><h3><FaTruck /> CẤU HÌNH VẬN CHUYỂN</h3></div>
                 <button type="button" className="btn-manual-ship" onClick={addManualShipping}><FaPlus /> Thêm mới</button>
               </div>
               <p className="sub-hint">Kích hoạt các phương thức và tùy chỉnh chi phí/thời gian cho riêng sản phẩm này.</p>
               
               <div className="shipping-config-grid">
-                {/* A. Templates from Global Admin */}
                 {globalShippingMethods.map(method => {
                   const isSel = selectedShipping.some(s => s.methodId === method.id);
                   const data = selectedShipping.find(s => s.methodId === method.id);
@@ -332,17 +338,22 @@ const AddProduct = () => {
                          <div className="card-inputs-guided animate-fade-in">
                             <div className="guided-field-row">
                                <div className="input-field-group">
-                                  <label><FaMoneyBillWave /> Phí vận chuyển (₫)</label>
-                                  <input type="number" value={data?.cost} onChange={e => updateShippingDetail(method.id, 'cost', Number(e.target.value))} placeholder="VD: 28700" />
+                                  <label><FaMoneyBillWave /> PHÍ (₫)</label>
+                                  <input 
+                                    type="text" 
+                                    value={formatDisplayNumber(data?.cost || 0)} 
+                                    onChange={e => updateShippingDetail(method.id, 'cost', parseFormattedNumber(e.target.value))} 
+                                    placeholder="VD: 30 000" 
+                                  />
                                </div>
                                <div className="input-field-group">
-                                  <label><FaClock /> Thời gian giao hàng</label>
+                                  <label><FaClock /> THỜI GIAN</label>
                                   <input type="text" value={data?.estimatedTime} onChange={e => updateShippingDetail(method.id, 'estimatedTime', e.target.value)} placeholder="VD: Ngày mai 08:00" />
                                </div>
                             </div>
                             <div className="input-field-group full-width">
-                               <label><FaTicketAlt /> Ưu đãi & Ghi chú (Sẽ hiện dưới tên phương thức)</label>
-                               <input type="text" value={data?.voucherNote} onChange={e => updateShippingDetail(method.id, 'voucherNote', e.target.value)} placeholder="VD: Tặng Voucher 20.000đ nếu đơn giao sau thời gian trên..." />
+                               <label><FaTicketAlt /> ƯU ĐÃI</label>
+                               <input type="text" value={data?.voucherNote} onChange={e => updateShippingDetail(method.id, 'voucherNote', e.target.value)} placeholder="VD: Tặng Voucher 20.000đ..." />
                             </div>
                          </div>
                        )}
@@ -350,83 +361,81 @@ const AddProduct = () => {
                   );
                 })}
 
-                {/* B. Manual Custom Rows */}
                 {selectedShipping.filter(s => s.methodId.startsWith('manual')).map(m => (
                   <div key={m.methodId} className="ship-config-card selected manual">
+                      {/* PROFESSIONAL CLOSE BUTTON INSIDE THE CARD */}
+                      <button type="button" className="btn-del-card-fixed" onClick={() => setSelectedShipping(selectedShipping.filter(s => s.methodId !== m.methodId))}>
+                        <FaTimes />
+                      </button>
+
                       <div className="card-top">
                           <div className="edit-title-group">
-                            <label className="tiny-label">Tên phương thức</label>
-                            <input type="text" className="editable-name" value={m.methodName} onChange={e => updateShippingDetail(m.methodId, 'methodName', e.target.value)} placeholder="VD: Giao hỏa tốc" />
+                            <span className="tiny-label-fixed">Tên phương thức</span>
+                            <input type="text" className="editable-name-fixed" value={m.methodName} onChange={e => updateShippingDetail(m.methodId, 'methodName', e.target.value)} />
                           </div>
-                          <button type="button" className="btn-del-card" onClick={() => setSelectedShipping(selectedShipping.filter(s => s.methodId !== m.methodId))}><FaTrash /></button>
                       </div>
                       <div className="card-inputs-guided">
                           <div className="guided-field-row">
-                              <div className="input-field-group"><label><FaMoneyBillWave /> Phí (₫)</label><input type="number" value={m.cost} onChange={e => updateShippingDetail(m.methodId, 'cost', Number(e.target.value))} /></div>
-                              <div className="input-field-group"><label><FaClock /> Thời gian</label><input type="text" value={m.estimatedTime} onChange={e => updateShippingDetail(m.methodId, 'estimatedTime', e.target.value)} /></div>
+                              <div className="input-field-group">
+                                <label><FaMoneyBillWave /> PHÍ (₫)</label>
+                                <input type="text" value={formatDisplayNumber(m.cost)} onChange={e => updateShippingDetail(m.methodId, 'cost', parseFormattedNumber(e.target.value))} />
+                              </div>
+                              <div className="input-field-group"><label><FaClock /> THỜI GIAN</label><input type="text" value={m.estimatedTime} onChange={e => updateShippingDetail(m.methodId, 'estimatedTime', e.target.value)} /></div>
                           </div>
-                          <div className="input-field-group full-width"><label><FaTicketAlt /> Ưu đãi</label><input type="text" value={m.voucherNote} onChange={e => updateShippingDetail(m.methodId, 'voucherNote', e.target.value)} /></div>
+                          <div className="input-field-group full-width"><label><FaTicketAlt /> ƯU ĐÃI</label><input type="text" value={m.voucherNote} onChange={e => updateShippingDetail(m.methodId, 'voucherNote', e.target.value)} /></div>
                       </div>
                   </div>
                 ))}
-
-                {globalShippingMethods.length === 0 && selectedShipping.length === 0 && (
-                   <div className="empty-shipping-notice">
-                      <FaInfoCircle /> <p>Vui lòng bấm <strong>"+ Thêm mới"</strong> để tự định nghĩa các phương thức vận chuyển cho sản phẩm này.</p>
-                   </div>
-                )}
               </div>
             </section>
 
             {/* SECTION 4: SPECS */}
             <section className="form-section">
-              <div className="section-title"><h3>Thông số kỹ thuật</h3></div>
+              <div className="section-title"><h3>THÔNG SỐ KỸ THUẬT</h3></div>
               <div className="specs-container">
                 {specs.map((spec, index) => (
                   <div key={index} className="spec-row">
-                    <input type="text" placeholder="Tên (VD: RAM)" value={spec.key} onChange={(e) => updateSpec(index, 'key', e.target.value)} />
-                    <input type="text" placeholder="Giá trị (VD: 16GB)" value={spec.value} onChange={(e) => updateSpec(index, 'value', e.target.value)} />
-                    {specs.length > 1 && <button type="button" className="remove-spec" onClick={() => removeSpecField(index)}><FaTrash/></button>}
+                    <input type="text" placeholder="RAM" value={spec.key} onChange={(e) => updateSpec(index, 'key', e.target.value)} />
+                    <input type="text" placeholder="16GB" value={spec.value} onChange={(e) => updateSpec(index, 'value', e.target.value)} />
+                    {specs.length > 1 && <button type="button" className="remove-spec" onClick={() => setSpecs(specs.filter((_, i) => i !== index))}><FaTrash/></button>}
                   </div>
                 ))}
-                <button type="button" className="add-spec-btn" onClick={addSpecField}>+ Thêm thuộc tính</button>
+                <button type="button" className="add-spec-btn" onClick={() => setSpecs([...specs, {key:'', value:''}])}>+ Thêm thuộc tính</button>
               </div>
             </section>
 
-            {/* SECTION 5: SALES & PROTECTION FLAGS */}
+            {/* SECTION 5: SALES & PROTECTION */}
             <section className="form-section">
-              <div className="section-title"><h3>Dịch vụ & Bảo vệ</h3></div>
+              <div className="section-title"><h3>DỊCH VỤ & BẢO VỆ</h3></div>
               <div className="row-group">
                 <div className="input-group half">
                   <label>Giá bán niêm yết (₫)</label>
-                  <input type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: Number(e.target.value)})} />
+                  <input 
+                    type="text" 
+                    value={formatDisplayNumber(formData.price)} 
+                    onChange={(e) => setFormData({...formData, price: parseFormattedNumber(e.target.value)})} 
+                    placeholder="VD: 1 000 000" 
+                  />
                 </div>
                 <div className="input-group half">
                   <label>Số lượng tồn kho</label>
-                  <input type="number" value={formData.stock} onChange={(e) => setFormData({...formData, stock: Number(e.target.value)})} />
+                  <input 
+                    type="text" 
+                    value={formatDisplayNumber(formData.stock)} 
+                    onChange={(e) => setFormData({...formData, stock: parseFormattedNumber(e.target.value)})} 
+                    placeholder="VD: 10 000"
+                  />
                 </div>
               </div>
 
               <div className="protection-toggles-row">
                 <div className="toggle-box">
-                  <div className="toggle-left">
-                    <FaShieldAlt className="icon-prot" />
-                    <div>
-                      <label>An tâm mua sắm</label>
-                      <p>Huy hiệu bảo vệ và chính sách 15 ngày trả hàng.</p>
-                    </div>
-                  </div>
+                  <div className="toggle-left"><FaShieldAlt className="icon-prot" /><div><label>An tâm mua sắm</label><p>Bảo vệ 15 ngày trả hàng.</p></div></div>
                   <input type="checkbox" checked={formData.protectionEnabled} onChange={(e) => setFormData({...formData, protectionEnabled: e.target.checked})} />
                 </div>
                 
                 <div className="toggle-box">
-                  <div className="toggle-left">
-                    <FaShareAlt className="icon-share" />
-                    <div>
-                      <label>Nút chia sẻ</label>
-                      <p>Cho phép người mua quảng bá sản phẩm lên Facebook/Zalo.</p>
-                    </div>
-                  </div>
+                  <div className="toggle-left"><FaShareAlt className="icon-share" /><div><label>Nút chia sẻ</label><p>Cho phép người mua quảng bá sản phẩm.</p></div></div>
                   <input type="checkbox" checked={formData.allowSharing} onChange={(e) => setFormData({...formData, allowSharing: e.target.checked})} />
                 </div>
               </div>

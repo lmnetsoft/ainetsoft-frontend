@@ -56,7 +56,6 @@ public class Product {
     // --- NEW PROFESSIONAL FEATURES [Fully Dynamic] ---
 
     // 1. Vận chuyển (Shipping Config)
-    // Using a List avoids the "Map key contains dots" error and allows full seller customization
     @Builder.Default
     private List<ShippingConfig> shippingOptions = new ArrayList<>();
 
@@ -70,6 +69,9 @@ public class Product {
     // 3. Social & Interaction Flags
     @Builder.Default
     private boolean allowSharing = true;
+
+    @Builder.Default
+    private int shareCount = 0; // Incremented when user clicks share buttons
 
     @Builder.Default
     private int totalReports = 0; // Incremented when users click "Tố cáo"

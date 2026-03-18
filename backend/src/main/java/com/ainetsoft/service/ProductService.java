@@ -32,6 +32,8 @@ public class ProductService {
 
     private final String uploadDir = "uploads";
 
+    // --- PRIVATE FILE HELPERS ---
+
     private String saveFile(MultipartFile file, String subFolder) {
         if (file == null || file.isEmpty()) return null;
         try {
@@ -63,6 +65,8 @@ public class ProductService {
         }
     }
 
+    // --- PUBLIC PRODUCT LOGIC ---
+
     public List<Product> getAllActiveProducts() {
         return productRepository.findByStatus("APPROVED");
     }
@@ -71,6 +75,28 @@ public class ProductService {
         return productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm!"));
     }
+
+    // --- NEW INTERACTION METHODS ---
+
+    /**
+     * Increment the share counter.
+     */
+    public void incrementShareCount(String id) {
+        Product product = getProductById(id);
+        product.setShareCount(product.getShareCount() + 1);
+        productRepository.save(product);
+    }
+
+    /**
+     * Increment the report counter.
+     */
+    public void incrementReportCount(String id) {
+        Product product = getProductById(id);
+        product.setTotalReports(product.getTotalReports() + 1);
+        productRepository.save(product);
+    }
+
+    // --- CRUD OPERATIONS ---
 
     public Product createProductWithMedia(String contactInfo, Product product, List<MultipartFile> images, MultipartFile video) {
         User user = userRepository.findByIdentifier(contactInfo)
@@ -102,8 +128,7 @@ public class ProductService {
             product.setVideoUrl(saveFile(video, sellerSubFolder));
         }
 
-        // --- DYNAMIC PROFESSIONAL FIELDS ---
-        // We trust the configured list coming from the Seller's situational settings
+        // Professional Configuration
         product.setShippingOptions(product.getShippingOptions() != null ? product.getShippingOptions() : new ArrayList<>());
         product.setProtectionEnabled(product.isProtectionEnabled());
         product.setAllowSharing(product.isAllowSharing());
@@ -136,9 +161,8 @@ public class ProductService {
             existing.setCategoryName(category.getName());
         }
 
-        // Image Handling
+        // Image Handling (Append)
         if (newImages != null && !newImages.isEmpty()) {
-            // If new images provided, we usually append or replace. Here we append.
             List<String> currentList = existing.getImageUrls() != null ? existing.getImageUrls() : new ArrayList<>();
             for (MultipartFile img : newImages) {
                 String url = saveFile(img, sellerSubFolder);
@@ -158,15 +182,11 @@ public class ProductService {
         existing.setStock(updatedData.getStock());
         existing.setSpecifications(updatedData.getSpecifications());
         
-        // --- SITUATIONAL CONFIGURATION UPDATE ---
-        // Seller can change these values based on their current situation
+        // Situational Config Update
         existing.setShippingOptions(updatedData.getShippingOptions() != null ? updatedData.getShippingOptions() : new ArrayList<>());
         existing.setProtectionEnabled(updatedData.isProtectionEnabled());
         existing.setAllowSharing(updatedData.isAllowSharing());
 
-        // Note: favoriteCount and totalReports are NOT updated here to prevent reset
-        
-        existing.setStatus("PENDING"); 
         existing.setUpdatedAt(LocalDateTime.now());
 
         return productRepository.save(existing);

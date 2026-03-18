@@ -81,4 +81,19 @@ export const getProductsByCategory = async (categoryId: string) => {
   return await api.get(`/products/category/${categoryId}`);
 };
 
+/**
+ * SOCIAL & REPORTING ENDPOINTS
+ * Linked to the professional backend Ticket System
+ */
+
+// Increments share count (Frictionless - no login required)
+export const shareProduct = async (productId: string) => {
+  return await api.post(`/products/${productId}/share`);
+};
+
+// Submits a formal report (Ticket) - Requires Auth
+export const reportProduct = async (productId: string, reportData: { reason: string; details: string; evidenceUrls?: string[] }) => {
+  return await api.post(`/products/${productId}/report`, reportData);
+};
+
 export default api;

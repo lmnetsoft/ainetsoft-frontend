@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.security.Principal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -21,12 +22,12 @@ import java.util.Map;
 public class ProductController {
 
     private final ProductService productService;
-    private final ProductReportRepository productReportRepository; // NEW: Added for Report functionality
+    private final ProductReportRepository productReportRepository;
 
     private static final long MAX_VIDEO_SIZE = 15 * 1024 * 1024; // 15MB
     private static final int MAX_IMAGE_COUNT = 5;
 
-    // --- PUBLIC ENDPOINTS ---
+    // --- 1. PUBLIC ENDPOINTS ---
 
     @GetMapping
     public ResponseEntity<List<Product>> getAllProducts() {
@@ -38,33 +39,64 @@ public class ProductController {
         return ResponseEntity.ok(productService.getProductById(id));
     }
 
-    // --- NEW: REPORT ENDPOINT ("Tố cáo") ---
+    // --- 2. SOCIAL & INTERACTION ENDPOINTS ---
+
+    /**
+     * Increment the share count for a product.
+     * Frictionless flow: No login required to share.
+     */
+    @PostMapping("/{id}/share")
+    public ResponseEntity<?> shareProduct(@PathVariable String id) {
+        log.info("Product {} shared", id);
+        productService.incrementShareCount(id);
+        return ResponseEntity.ok(Map.of("message", "Cảm ơn bạn đã chia sẻ sản phẩm này!"));
+    }
+
+    /**
+     * Submit a formal report ("Tố cáo") against a product/seller.
+     * Follows the Ticket System flow: Database record + Admin visibility.
+     */
     @PostMapping("/{id}/report")
     public ResponseEntity<?> reportProduct(
             @PathVariable String id, 
-            @RequestBody Map<String, String> reportData, 
+            @RequestBody Map<String, Object> reportData, 
             Principal principal) {
         
-        if (principal == null) return ResponseEntity.status(401).body("Bạn cần đăng nhập để báo cáo.");
+        if (principal == null) {
+            return ResponseEntity.status(401).body("Bạn cần đăng nhập để thực hiện báo cáo.");
+        }
 
-        ProductReport report = new ProductReport();
-        report.setProductId(id);
-        report.setReporterId(principal.getName()); // Stores user email/identifier
-        report.setReason(reportData.get("reason"));
-        report.setDetails(reportData.get("details"));
+        Product product = productService.getProductById(id);
+        if (product == null) {
+            return ResponseEntity.status(404).body("Sản phẩm không tồn tại.");
+        }
+
+        // Create the Ticket
+        ProductReport report = ProductReport.builder()
+                .productId(id)
+                .sellerId(product.getSellerId()) // Capturing seller context for Admin dashboard
+                .reporterId(principal.getName())
+                .reason((String) reportData.get("reason"))
+                .details((String) reportData.get("details"))
+                .evidenceUrls((List<String>) reportData.get("evidenceUrls")) // Links from frontend upload
+                .status("PENDING")
+                .createdAt(LocalDateTime.now())
+                .build();
         
         productReportRepository.save(report);
 
-        // Optional: Increment total reports on the product for Admin visibility
-        Product product = productService.getProductById(id);
-        product.setTotalReports(product.getTotalReports() + 1);
-        // We don't change status to PENDING here to avoid malicious "fake reporting" 
-        // that takes down products. Admins handle this manually.
+        // Professional logic: Increment report count but don't auto-ban.
+        // Admins take action via AdminReportController.
+        productService.incrementReportCount(id);
+
+        log.warn("User {} reported product {}. Reason: {}", principal.getName(), id, report.getReason());
         
-        return ResponseEntity.ok(Map.of("message", "Cảm ơn bạn đã báo cáo. Chúng tôi sẽ xem xét nội dung này sớm nhất."));
+        return ResponseEntity.ok(Map.of(
+            "message", "Báo cáo của bạn đã được gửi. Chúng tôi sẽ tiến hành kiểm tra nội dung này."
+        ));
     }
 
-    // --- SELLER ENDPOINTS ---
+    // --- 3. SELLER ENDPOINTS ---
 
     @PostMapping(value = "/seller/add", consumes = {"multipart/form-data"})
     public ResponseEntity<Product> createProduct(
