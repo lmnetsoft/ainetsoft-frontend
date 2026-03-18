@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -93,6 +94,19 @@ public class ProductService {
     public void incrementReportCount(String id) {
         Product product = getProductById(id);
         product.setTotalReports(product.getTotalReports() + 1);
+        productRepository.save(product);
+    }
+
+    // --- FIXED: ADDED FOR ADMIN CONTROLLER ---
+
+    /**
+     * Updates only the status and metadata of a product.
+     * Required by AdminReportController to handle BANNED/REJECTED actions.
+     */
+    @Transactional
+    public void updateProductStatus(Product product) {
+        log.info("Admin system updating status for product {}: {}", product.getId(), product.getStatus());
+        product.setUpdatedAt(LocalDateTime.now());
         productRepository.save(product);
     }
 

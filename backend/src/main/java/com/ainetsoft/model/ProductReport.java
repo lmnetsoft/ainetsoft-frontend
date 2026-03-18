@@ -17,19 +17,29 @@ import java.util.List;
 public class ProductReport {
     @Id
     private String id;
+    
     private String productId;
-    private String sellerId;   // Added: To track which shop is being reported
+    
+    // NEW: Descriptive field to fix "N/A" in the Dashboard
+    private String productName; 
+
+    private String sellerId;   // Tracks which shop is being reported
+    
     private String reporterId; // User ID of the person reporting
+    
+    // NEW: Descriptive field to fix "Người dùng ẩn" in the Dashboard
+    private String reporterName; 
+
     private String reason;     // Category (Counterfeit, Prohibited, etc.)
     private String details;    // Text explanation
     
-    private List<String> evidenceUrls; // Added: Links to uploaded screenshots/proof
+    private List<String> evidenceUrls; // Links to uploaded screenshots/proof
 
     @Builder.Default
-    private String status = "PENDING"; // PENDING, INVESTIGATING, RESOLVED, DISMISSED
+    private String status = "PENDING"; // PENDING, RESOLVED, DISMISSED
     
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    private LocalDateTime updatedAt; // Useful for tracking when Admin took action
+    private LocalDateTime updatedAt; // Tracks when Admin took action
 }

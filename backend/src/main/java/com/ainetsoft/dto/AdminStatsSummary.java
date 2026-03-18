@@ -14,10 +14,14 @@ import java.util.Map;
 public class AdminStatsSummary {
     private long totalUsers;
     private long totalSellers;
-    private long totalProducts; // ADDED THIS LINE TO FIX COMPILATION
+    private long totalProducts; 
     private long totalOrders;
     private double totalRevenue;
     private long pendingProducts;
     private long pendingSellers;
+    
+    // 🛠️ FIX: Added this field so the Frontend can see the number of violations
+    private long totalReports; 
+
     private List<Map<String, Object>> revenueHistory; 
 }

@@ -24,6 +24,9 @@ public class AdminService {
     private final OrderRepository orderRepository;
     private final NotificationService notificationService;
     private final AuditLogRepository auditLogRepository;
+    
+    // 🛠️ ADDED: Required for counting violation reports in Stats
+    private final ProductReportRepository productReportRepository;
 
     /**
      * INTERNAL HELPER: Records admin actions into the Audit Log.
@@ -87,7 +90,10 @@ public class AdminService {
         // FIXED SOURCE OF TRUTH: Now explicitly counts the users you see in the "Duyệt Shop" list
         long pendingSCount = userRepository.countBySellerVerification("PENDING");
 
-        log.info("DB Counts -> Users: {}, Sellers: {}, Pending Sellers (Shop): {}", uCount, sCount, pendingSCount);
+        // 🛠️ ADDED: Get real count of reports to fix the "0" on dashboard card
+        long reportCount = productReportRepository.count();
+
+        log.info("DB Counts -> Users: {}, Sellers: {}, Pending Sellers (Shop): {}, Reports: {}", uCount, sCount, pendingSCount, reportCount);
 
         List<Order> allOrders = orderRepository.findAll();
         List<Order> completedOrders = allOrders.stream()
@@ -106,6 +112,7 @@ public class AdminService {
                 .totalRevenue(totalRevenue)
                 .pendingProducts(pendingPCount)
                 .pendingSellers(pendingSCount)
+                .totalReports(reportCount) // 🛠️ ADDED: Map to DTO field
                 .revenueHistory(generateRevenueHistory(completedOrders))
                 .build();
     }
