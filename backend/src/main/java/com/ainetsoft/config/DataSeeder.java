@@ -22,11 +22,16 @@ public class DataSeeder implements CommandLineRunner {
     private final CategoryRepository categoryRepository;
     private final ShippingMethodRepository shippingMethodRepository;
     private final ReviewRepository reviewRepository;
-    private final ReportReasonRepository reportReasonRepository; // 🛠️ ADDED: For Dynamic Reasons
+    private final ReportReasonRepository reportReasonRepository;
+    private final ProductReportRepository productReportRepository; // 🛠️ NEW: To clear old reports
     private final PasswordEncoder passwordEncoder;
 
     @Value("${app.seed.mock-data:true}")
     private boolean seedMockData;
+
+    // 🛠️ NEW: Controlled via application.properties
+    @Value("${app.seed.force-clean:false}")
+    private boolean forceClean;
 
     @Value("${admin.setup.email:admin@ainetsoft.com}")
     private String adminEmail;
@@ -39,23 +44,45 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        // 1. Core Security: System Admin (PRESERVED)
+        log.info("--- 🚀 Data Seeder: Initializing System Core ---");
+        
+        // 1. AUTOMATION: Wipe existing data if force-clean is enabled
+        if (forceClean) {
+            cleanupDatabase();
+        }
+
+        // 2. Core Security: System Admin
         seedGlobalAdmin();
 
-        // 2. Global Logistics: Shipping Templates (PRESERVED)
+        // 3. Global Logistics: Shipping Templates
         List<ShippingMethod> globalMethods = seedShippingMethods();
         
-        // 3. 🛠️ UPDATED: Seed Dynamic Violation Reasons
+        // 4. Dynamic Violation Reasons
         seedReportReasons();
 
-        // 4. Mock Ecosystem for Development (PRESERVED)
+        // 5. Mock Ecosystem for Development (NO-PRUNING MODE)
         if (seedMockData) {
-            System.out.println("🛠 Seeding Full Mock Ecosystem with Audits...");
+            log.info("🛠 Seeding Full Mock Ecosystem for Professional Testing...");
             List<Category> savedCats = seedCategories();
             seedDefaultSeller(savedCats, globalMethods);
             seedPendingModeration(savedCats);
             seedSubAdmin();
         }
+    }
+
+    /**
+     * 🛠️ NEW: The Automated Cleanup Engine
+     * Removes all data to allow a 100% clean mock test run.
+     */
+    private void cleanupDatabase() {
+        log.warn("⚠️ FORCE CLEAN ENABLED: Wiping collections for fresh mock test...");
+        productRepository.deleteAll();
+        reviewRepository.deleteAll();
+        categoryRepository.deleteAll();
+        reportReasonRepository.deleteAll();
+        productReportRepository.deleteAll();
+        userRepository.deleteAll(); 
+        log.info("✅ Database cleaned successfully.");
     }
 
     private void seedGlobalAdmin() {
@@ -72,11 +99,10 @@ public class DataSeeder implements CommandLineRunner {
                     .updatedAt(LocalDateTime.now())
                     .build();
             userRepository.save(admin);
-            System.out.println("🚀 Global Admin born: " + adminEmail);
+            log.info("✅ Global Admin born: " + adminEmail);
         }
     }
 
-    // 🛠️ NEW: Support for Requirement 1 (Dynamic Violation Categories)
     private void seedReportReasons() {
         if (reportReasonRepository.count() == 0) {
             List<String> reasons = List.of(
@@ -91,7 +117,7 @@ public class DataSeeder implements CommandLineRunner {
                 ReportReason rr = ReportReason.builder().name(name).active(true).build();
                 reportReasonRepository.save(rr);
             });
-            System.out.println("✅ Dynamic Report Reasons Seeded.");
+            log.info("✅ 6 Dynamic Report Reasons Seeded.");
         }
     }
 
@@ -110,7 +136,7 @@ public class DataSeeder implements CommandLineRunner {
                 .estimatedTime("19 Th03 - 23 Th03").isActive(true).build()
         );
 
-        System.out.println("🚚 Global Shipping Templates Seeded.");
+        log.info("🚚 Global Shipping Templates Seeded.");
         return shippingMethodRepository.saveAll(methods);
     }
 
@@ -130,7 +156,7 @@ public class DataSeeder implements CommandLineRunner {
                     .name(name).slug(name.toLowerCase().replace(" ", "-")).active(true).build();
             savedCats.add(categoryRepository.save(c));
         }
-        System.out.println("✅ 18 Categories Seeded.");
+        log.info("✅ 18 Categories Seeded.");
         return savedCats;
     }
 
@@ -144,7 +170,7 @@ public class DataSeeder implements CommandLineRunner {
                     .sellerVerification("VERIFIED").accountStatus("ACTIVE")
                     .build();
             userRepository.save(seller);
-            System.out.println("✅ Default Seller 'AiNetsoft Mall' Created.");
+            log.info("✅ Default Seller 'AiNetsoft Mall' Created.");
             seedMockProducts(seller, savedCats, globalMethods);
         }
     }
@@ -153,7 +179,7 @@ public class DataSeeder implements CommandLineRunner {
         if (productRepository.count() > 10 || savedCats.isEmpty()) return;
 
         Random rand = new Random();
-        // 100% PRESERVED: Full 55 products with situational logic
+        // 100% PRESERVED: Full 55 products logic
         for (int i = 1; i <= 55; i++) {
             Category randomCat = savedCats.get(rand.nextInt(savedCats.size()));
             List<Product.ShippingConfig> situationalOptions = new ArrayList<>();
@@ -176,8 +202,7 @@ public class DataSeeder implements CommandLineRunner {
                     .price(100000 + (rand.nextInt(500) * 1000)).stock(rand.nextInt(100) + 10)
                     .categoryId(randomCat.getId()).categoryName(randomCat.getName())
                     .sellerId(seller.getId()).shopName(seller.getFullName())
-                    .status("APPROVED")
-                    .imageUrls(Arrays.asList("https://picsum.photos/seed/" + i + "/600/600"))
+                    .status("APPROVED").imageUrls(Arrays.asList("https://picsum.photos/seed/" + i + "/600/600"))
                     .videoUrl(i % 5 == 0 ? "https://www.w3schools.com/html/mov_bbb.mp4" : null)
                     .shippingOptions(situationalOptions).protectionEnabled(true).allowSharing(true)
                     .favoriteCount(rand.nextInt(100)).soldCount(rand.nextInt(500) + 10)
@@ -185,33 +210,32 @@ public class DataSeeder implements CommandLineRunner {
                     .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
             
             Product saved = productRepository.save(p);
-            seedMockReviews(saved, seller.getId()); // 🛠️ UPDATED: Added diversified reviews
+            seedMockReviews(saved, seller.getId());
         }
-        System.out.println("✅ 55 Professional Mock Products with Reviews Seeded.");
+        log.info("✅ 55 Professional Mock Products with Reviews Seeded.");
     }
 
     private void seedMockReviews(Product product, String sellerId) {
-        // 🛠️ UPDATED: Support for "Quản lý đánh giá" Requirement
-        
-        // 1. Positive Review (PRESERVED)
+        // Optimized with productName for dashboard clarity
         Review rev1 = Review.builder()
-                .productId(product.getId()).sellerId(sellerId).userName("tatoanhduc07").rating(5)
-                .comment("Sản phẩm tuyệt vời! Đúng với mô tả: như hình. Chất lượng tuyệt vời.")
+                .productId(product.getId()).productName(product.getName()).sellerId(sellerId)
+                .userName("tatoanhduc07").rating(5)
+                .comment("Sản phẩm tuyệt vời! Đúng với mô tả. Chất lượng tuyệt vời.")
                 .variantInfo("Phân loại hàng: Size M (53-55cm)").isVerifiedPurchase(true)
                 .sellerReply("Cảm ơn Quý khách đã tin tưởng lựa chọn sản phẩm chính hãng!")
                 .repliedAt(LocalDateTime.now()).createdAt(LocalDateTime.now().minusDays(1)).build();
         reviewRepository.save(rev1);
 
-        // 2. Toxic/Spam Review (🛠️ NEW: For Admin Delete Test)
         Review rev2 = Review.builder()
-                .productId(product.getId()).sellerId(sellerId).userName("Spam_User_99").rating(1)
+                .productId(product.getId()).productName(product.getName()).sellerId(sellerId)
+                .userName("Spam_User_99").rating(1)
                 .comment("Sản phẩm lừa đảo! Đừng mua ở đây mọi người ơi, quảng cáo láo!!!")
                 .isVerifiedPurchase(false).createdAt(LocalDateTime.now()).build();
         reviewRepository.save(rev2);
 
-        // 3. Mid Rating (PRESERVED)
         Review rev3 = Review.builder()
-                .productId(product.getId()).sellerId(sellerId).userName("lien0988324688").rating(4)
+                .productId(product.getId()).productName(product.getName()).sellerId(sellerId)
+                .userName("lien0988324688").rating(4)
                 .comment("Giao hàng nhanh, giá rẻ, chất lượng tốt và hàng đẹp.")
                 .variantInfo("Phân loại hàng: Mặc định").isVerifiedPurchase(true)
                 .createdAt(LocalDateTime.now().minusDays(3)).build();
@@ -222,13 +246,12 @@ public class DataSeeder implements CommandLineRunner {
         String modEmail = "mod@ainetsoft.com";
         if (!userRepository.existsByEmail(modEmail)) {
             User mod = User.builder()
-                    .email(modEmail).fullName("Product Moderator")
-                    .password(passwordEncoder.encode("Test1234!"))
+                    .email(modEmail).fullName("Product Moderator").password(passwordEncoder.encode("Test1234!"))
                     .roles(new HashSet<>(Set.of("ADMIN")))
                     .permissions(new HashSet<>(Set.of("MANAGE_PRODUCTS"))) 
                     .accountStatus("ACTIVE").build();
             userRepository.save(mod);
-            System.out.println("🛡 Sub-Admin (Moderator) created.");
+            log.info("🛡 Sub-Admin created.");
         }
     }
 
@@ -264,7 +287,7 @@ public class DataSeeder implements CommandLineRunner {
                 
                 productRepository.save(pendingProd);
             }
-            System.out.println("⚠️ Full Pending Data Seeded for Admin Testing.");
+            log.info("⚠️ Full Pending Data Seeded for Admin Testing.");
         }
     }
 }

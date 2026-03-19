@@ -48,7 +48,8 @@ const AdminDashboard = () => {
           totalRevenue: data.totalRevenue || 0,
           pendingProducts: data.pendingProducts || 0,
           pendingSellers: data.pendingSellers || 0,
-          totalReports: data.totalReports || 0
+          // totalReports will be handled by fetchReports to ensure badge accuracy
+          totalReports: stats.totalReports 
         });
       }
       if (showToast) toast.success("Số liệu đã được đồng bộ");
@@ -65,9 +66,13 @@ const AdminDashboard = () => {
       const response = await adminService.getAllReports();
       const data = Array.isArray(response) ? response : (response?.content || []);
       setReports(data);
-      if (data.length !== stats.totalReports) {
-        setStats(prev => ({ ...prev, totalReports: data.length }));
-      }
+
+      // 🛠️ FIX: Logic to reset badge to 0 if all reports are processed
+      const pendingCount = data.filter((r: any) => 
+        r.status !== 'RESOLVED' && r.status !== 'DISMISSED'
+      ).length;
+
+      setStats(prev => ({ ...prev, totalReports: pendingCount }));
     } catch (err) { console.error("Reports Fetch Error:", err); } 
     finally { setTabLoading(false); }
   };
@@ -88,7 +93,7 @@ const AdminDashboard = () => {
       const response = await adminService.getViolationReasons();
       const data = response.data || response;
 
-      // 🛠️ SORTING LOGIC: Extract "Lý do khác..." and push it to the bottom
+      // 🛠️ SORTING LOGIC: Keep "Lý do khác..." at the very bottom
       const mainList = data.filter((r: any) => r.name !== "Lý do khác...");
       const otherItem = data.filter((r: any) => r.name === "Lý do khác...");
       
@@ -104,19 +109,20 @@ const AdminDashboard = () => {
 
   const handleManualRefresh = async () => {
     await fetchSummary(true);
-    if (activeTab === 'reports') await fetchReports();
+    await fetchReports(); // Ensure counts are fresh
     if (activeTab === 'reviews') await fetchReviews();
     if (activeTab === 'reasons') await fetchReasons();
   };
 
   useEffect(() => {
     fetchSummary();
+    fetchReports(); // Initial fetch for badge
     const interval = setInterval(() => {
       fetchSummary();
-      if (activeTab === 'reports') fetchReports();
+      fetchReports();
     }, 120000);
     return () => clearInterval(interval);
-  }, [activeTab]);
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'reports') fetchReports();
@@ -131,7 +137,7 @@ const AdminDashboard = () => {
     try {
       await adminService.resolveReport(reportId, action);
       toast.success(action === 'RESOLVED' ? "Đã xác nhận vi phạm & Gỡ sản phẩm" : "Đã bác bỏ báo cáo");
-      fetchReports();
+      await fetchReports(); // Refresh badge count
       fetchSummary();
     } catch (err) { toast.error("Thao tác thất bại."); }
   };
@@ -141,7 +147,7 @@ const AdminDashboard = () => {
     try {
       await adminService.deleteReport(reportId);
       toast.success("Đã xóa báo cáo.");
-      fetchReports();
+      await fetchReports();
       fetchSummary();
     } catch (err) { toast.error("Không thể xóa báo cáo."); }
   };
@@ -163,7 +169,6 @@ const AdminDashboard = () => {
     
     try {
       setTabLoading(true);
-      // Explicitly send active: true so the backend enables it immediately
       await adminService.saveViolationReason({ 
         name: newReasonName.trim(),
         active: true 
@@ -171,10 +176,10 @@ const AdminDashboard = () => {
       
       setNewReasonName("");
       toast.success("Đã thêm danh mục vi phạm mới!");
-      await fetchReasons(); // Reload with the new sorted list
+      await fetchReasons(); 
     } catch (err) {
       console.error("Add Reason Error:", err);
-      toast.error("Không thể thêm lý do. Vui lòng kiểm tra quyền Admin.");
+      toast.error("Không thể thêm lý do.");
     } finally {
       setTabLoading(false);
     }
@@ -363,6 +368,7 @@ const AdminDashboard = () => {
             <button className={activeTab === 'summary' ? 'active' : ''} onClick={() => setActiveTab('summary')}>Tổng quan</button>
             <button className={activeTab === 'products_mod' ? 'active' : ''} onClick={() => setActiveTab('products_mod')}>Duyệt Sản phẩm {stats.pendingProducts > 0 && <span className="notif-badge danger">{stats.pendingProducts}</span>}</button>
             <button className={activeTab === 'sellers' ? 'active' : ''} onClick={() => setActiveTab('sellers')}>Duyệt Shop {stats.pendingSellers > 0 && <span className="notif-badge">{stats.pendingSellers}</span>}</button>
+            {/* 🛠️ UPDATED BADGE: Reflects processed status correctly */}
             <button className={activeTab === 'reports' ? 'active' : ''} onClick={() => setActiveTab('reports')}>Báo cáo vi phạm {stats.totalReports > 0 && <span className="notif-badge danger">{stats.totalReports}</span>}</button>
             <button className={activeTab === 'reviews' ? 'active' : ''} onClick={() => setActiveTab('reviews')}>Quản lý đánh giá</button>
             <button className={activeTab === 'reasons' ? 'active' : ''} onClick={() => setActiveTab('reasons')}><FaTags size={12}/> Danh mục báo cáo</button>

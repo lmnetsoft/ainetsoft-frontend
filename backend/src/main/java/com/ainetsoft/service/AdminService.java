@@ -26,12 +26,14 @@ public class AdminService {
     private final AuditLogRepository auditLogRepository;
     private final ProductReportRepository productReportRepository;
     
-    // 🛠️ INTEGRATED: Real Azure Email Engine
+    // 🛠️ ADDED: Needed for Requirement 6 & Requirement 1
+    private final ReviewRepository reviewRepository;
+    private final ReportReasonRepository reportReasonRepository;
+
     private final AzureCommunicationService azureEmailService;
 
     /**
      * INTERNAL HELPER: Records admin actions into the Audit Log.
-     * (KEPT: Essential for security tracking)
      */
     private void recordAudit(User admin, String type, String targetId, String targetName, String details) {
         if (admin == null) return;
@@ -48,10 +50,6 @@ public class AdminService {
         auditLogRepository.save(logEntry);
     }
 
-    /**
-     * NEW DELEGATION FEATURE: Promote a user to Admin with specific permissions.
-     * (KEPT: Full original logic preserved)
-     */
     @Transactional
     public String promoteToAdmin(String targetUserId, Set<String> permissions, User performingAdmin) {
         User target = userRepository.findById(targetUserId)
@@ -76,10 +74,6 @@ public class AdminService {
         return "Đã nâng cấp " + target.getEmail() + " thành Quản trị viên.";
     }
 
-    /**
-     * Aggregates Master Stats for the Global Admin Dashboard.
-     * FIXED: This now specifically counts "PENDING" to match your UI.
-     */
     public AdminStatsSummary getGlobalStats() {
         log.info("--- Dashboard Stats Sync Initiated ---");
         
@@ -114,9 +108,6 @@ public class AdminService {
                 .build();
     }
 
-    /**
-     * FIXED: Added single quotes around 'Tháng' so Java doesn't think 'T' is a command.
-     */
     private List<Map<String, Object>> generateRevenueHistory(List<Order> completedOrders) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("'Tháng' MM");
         
@@ -140,8 +131,6 @@ public class AdminService {
             .collect(Collectors.toList());
     }
 
-    // --- USER MANAGEMENT & LOGS ---
-
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
@@ -155,17 +144,12 @@ public class AdminService {
     // --- SELLER MODERATION ---
 
     public List<User> getPendingSellers() {
-        log.info("Searching for users with sellerVerification: PENDING");
         List<User> pending = userRepository.findBySellerVerification("PENDING");
-        
-        // BITNAMILEGACY FIX: Identify missing avatars
         pending.forEach(user -> {
             if (user.getAvatarUrl() == null || user.getAvatarUrl().isEmpty()) {
                 user.setAvatarUrl("DEFAULT_LOGO"); 
             }
         });
-
-        log.info("Found {} pending seller requests", pending.size());
         return pending;
     }
 
@@ -186,7 +170,6 @@ public class AdminService {
         if (request.isApproved()) {
             user.setSellerVerification("VERIFIED");
             user.setAccountStatus("ACTIVE"); 
-            user.setRejectionReason(null);
             
             Set<String> roles = user.getRoles();
             if (roles == null) roles = new HashSet<>();
@@ -201,26 +184,16 @@ public class AdminService {
                 "Chào mừng! Bạn đã chính thức trở thành Người bán.", "SELLER_APPROVAL", null
             );
 
-            // 📧 REQUIREMENT 3: Professional Azure Approval Email
             azureEmailService.sendSellerStatusEmail(user.getEmail(), user.getFullName(), true, null);
-
             recordAudit(performingAdmin, "APPROVE_SELLER", user.getId(), user.getEmail(), "Phê duyệt Shop");
             return "Người dùng " + user.getFullName() + " đã trở thành Người bán.";
         } else {
             user.setSellerVerification("REJECTED");
-            user.setAccountStatus("ACTIVE"); 
             user.setRejectionReason(request.getAdminNote());
             user.setUpdatedAt(LocalDateTime.now());
             userRepository.save(user);
 
-            notificationService.createNotification(
-                user.getId(), "Yêu cầu nâng cấp Shop bị từ chối",
-                "Lý do: " + request.getAdminNote(), "SYSTEM", null
-            );
-
-            // 📧 REQUIREMENT 3: Professional Azure Rejection Email
             azureEmailService.sendSellerStatusEmail(user.getEmail(), user.getFullName(), false, request.getAdminNote());
-
             recordAudit(performingAdmin, "REJECT_SELLER", user.getId(), user.getEmail(), "Từ chối Shop: " + request.getAdminNote());
             return "Đã từ chối yêu cầu.";
         }
@@ -241,12 +214,6 @@ public class AdminService {
         product.setUpdatedAt(LocalDateTime.now());
         productRepository.save(product);
 
-        notificationService.createNotification(
-            product.getSellerId(), "Sản phẩm đã được duyệt",
-            "Sản phẩm '" + product.getName() + "' hiện đang hiển thị.", "SYSTEM", product.getId()
-        );
-
-        // 📧 REQUIREMENT 3: Professional Azure Product Approval Email
         userRepository.findById(product.getSellerId()).ifPresent(seller -> {
             azureEmailService.sendProductStatusEmail(seller.getEmail(), seller.getFullName(), product.getName(), true, null);
         });
@@ -264,12 +231,6 @@ public class AdminService {
         product.setUpdatedAt(LocalDateTime.now());
         productRepository.save(product);
 
-        notificationService.createNotification(
-            product.getSellerId(), "Sản phẩm bị từ chối",
-            "Lý do: " + reason, "SYSTEM", product.getId()
-        );
-
-        // 📧 REQUIREMENT 3: Professional Azure Product Rejection Email
         userRepository.findById(product.getSellerId()).ifPresent(seller -> {
             azureEmailService.sendProductStatusEmail(seller.getEmail(), seller.getFullName(), product.getName(), false, reason);
         });
@@ -278,7 +239,7 @@ public class AdminService {
         return "Đã từ chối sản phẩm.";
     }
 
-    // --- 🛠️ REPORT MANAGEMENT (REQUIREMENTS 4 & 5) ---
+    // --- REPORT MANAGEMENT ---
 
     @Transactional
     public String resolveReport(String reportId, String action, User performingAdmin) {
@@ -293,11 +254,9 @@ public class AdminService {
                 recordAudit(performingAdmin, "CONFIRM_VIOLATION", product.getId(), product.getName(), "Xác nhận vi phạm & Khóa sản phẩm");
             });
         } else {
-            // 🛠️ REQUIREMENT 4: Dismiss logic (Grey-out behavior)
             report.setStatus("DISMISSED");
             recordAudit(performingAdmin, "DISMISS_REPORT", report.getId(), "Report Record", "Bác bỏ báo cáo vi phạm");
         }
-
         report.setUpdatedAt(LocalDateTime.now());
         productReportRepository.save(report);
         return "Đã xử lý báo cáo thành công.";
@@ -305,14 +264,56 @@ public class AdminService {
 
     @Transactional
     public void deleteReport(String reportId, User performingAdmin) {
-        // 🛠️ REQUIREMENT 5: Permanent Delete button logic
-        ProductReport report = productReportRepository.findById(reportId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy báo cáo!"));
-        
-        productReportRepository.delete(report);
-        recordAudit(performingAdmin, "DELETE_REPORT", reportId, "Violation Record", "Xóa vĩnh viễn bản ghi báo cáo");
+        productReportRepository.deleteById(reportId);
+        recordAudit(performingAdmin, "DELETE_REPORT", reportId, "Violation Record", "Xóa vĩnh viễn báo cáo");
     }
-    
+
+    // =======================================================
+    // 🛠️ NEW: ADDED FOR MODERATION TEST POINTS #1 & #3
+    // =======================================================
+
+    /**
+     * Requirement 6: Fetches all reviews for the Admin table.
+     */
+    public List<Review> getAllReviewsForModeration() {
+        return reviewRepository.findAll().stream()
+                .sorted(Comparator.comparing(Review::getCreatedAt).reversed())
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Requirement 6: Permanently removes a review and records it in Audit Logs.
+     */
+    @Transactional
+    public void deleteReview(String reviewId, User performingAdmin) {
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new RuntimeException("Đánh giá không tồn tại!"));
+        
+        reviewRepository.delete(review);
+        
+        recordAudit(performingAdmin, "DELETE_REVIEW", review.getId(), review.getUserName(), 
+                "Xóa đánh giá của " + review.getUserName() + " cho sản phẩm ID: " + review.getProductId());
+    }
+
+    /**
+     * Requirement 1: Save or Update a violation reason (category).
+     */
+    @Transactional
+    public ReportReason saveViolationReason(ReportReason reason, User performingAdmin) {
+        ReportReason saved = reportReasonRepository.save(reason);
+        recordAudit(performingAdmin, "MANAGE_CATEGORIES", saved.getId(), saved.getName(), "Thêm/Cập nhật danh mục vi phạm");
+        return saved;
+    }
+
+    /**
+     * Requirement 1: Delete a violation reason.
+     */
+    @Transactional
+    public void deleteViolationReason(String id, User performingAdmin) {
+        reportReasonRepository.deleteById(id);
+        recordAudit(performingAdmin, "MANAGE_CATEGORIES", id, "Category", "Xóa danh mục vi phạm");
+    }
+
     // --- MASTER USER CONTROL ---
     
     @Transactional

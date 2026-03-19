@@ -127,4 +127,25 @@ public class AdminController {
             @RequestParam String reason) {
         return ResponseEntity.ok(adminService.rejectProduct(productId, reason, getCurrentAdmin()));
     }
+
+    // =======================================================
+    // 🛠️ NEW: ADDED FOR MODERATION TEST POINTS #1 & #3
+    // =======================================================
+
+    /**
+     * Requirement 6: Fetch all reviews for the Admin table.
+     */
+    @GetMapping("/reviews/all")
+    public ResponseEntity<?> getAllReviews() {
+        return ResponseEntity.ok(adminService.getAllReviewsForModeration());
+    }
+
+    /**
+     * Requirement 6: Master delete for toxic or spam reviews.
+     */
+    @DeleteMapping("/reviews/{reviewId}")
+    public ResponseEntity<?> deleteReview(@PathVariable String reviewId) {
+        adminService.deleteReview(reviewId, getCurrentAdmin());
+        return ResponseEntity.ok().build();
+    }
 }

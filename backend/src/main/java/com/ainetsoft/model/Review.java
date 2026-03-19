@@ -20,6 +20,10 @@ public class Review {
     @Id
     private String id;
     private String productId;
+    
+    // 🛠️ ADDED: To fix the DataSeeder compilation error and show names in Admin Dashboard
+    private String productName; 
+    
     private String sellerId;
     private String userId;
     private String userName;
@@ -40,7 +44,7 @@ public class Review {
     private String variantInfo; 
 
     /**
-     * Matches the "Phản Hồi Của Người Bán" section in your screenshot.
+     * Matches the "Phản Hồi Cồi Bán" section in your screenshot.
      */
     private String sellerReply;
     private LocalDateTime repliedAt;
