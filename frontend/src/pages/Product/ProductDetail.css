@@ -332,7 +332,7 @@
 }
 
 /* =======================================================
-   PREMIUM REPORT MODAL STYLES
+   PREMIUM REPORT MODAL STYLES (UPDATED FOR WIDTH)
    ======================================================= */
 
 .product-detail-wrapper .report-modal-overlay {
@@ -342,8 +342,18 @@
 }
 
 .product-detail-wrapper .report-modal-card {
-    background: #fff; width: 450px; border-radius: 8px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.2); overflow: hidden;
+    background: #fff; 
+    width: 95%;           /* Responsive for small screens */
+    max-width: 550px;     /* 🛠️ INCREASED: From 450px to 550px for long text */
+    border-radius: 12px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); 
+    overflow: hidden;
+    animation: modalSlideUp 0.3s ease-out;
+}
+
+@keyframes modalSlideUp {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .product-detail-wrapper .report-header { padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
@@ -351,19 +361,29 @@
 
 .product-detail-wrapper .close-x { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #999; }
 
-.product-detail-wrapper .report-body { padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+.product-detail-wrapper .report-body { padding: 24px; display: flex; flex-direction: column; gap: 15px; }
 .product-detail-wrapper .report-body label { font-size: 0.85rem; font-weight: 700; color: #666; text-transform: uppercase; }
 
 .product-detail-wrapper .report-body select, 
-.product-detail-wrapper .report-body textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; outline: none; font-size: 0.95rem; }
+.product-detail-wrapper .report-body textarea { 
+    width: 100%; 
+    padding: 12px; 
+    border: 1px solid #e2e8f0; 
+    border-radius: 8px; 
+    outline: none; 
+    font-size: 0.95rem; 
+    background: #f8fafc;
+    transition: all 0.2s;
+}
 
-.product-detail-wrapper .report-body textarea:focus { border-color: #ee4d2d; }
+.product-detail-wrapper .report-body select:focus,
+.product-detail-wrapper .report-body textarea:focus { border-color: #ee4d2d; background: #fff; }
 
-.product-detail-wrapper .report-footer { padding: 15px 20px; background: #f9f9f9; display: flex; justify-content: flex-end; gap: 10px; }
+.product-detail-wrapper .report-footer { padding: 15px 24px; background: #f9f9f9; display: flex; justify-content: flex-end; gap: 12px; }
 
-.product-detail-wrapper .btn-cancel { background: #fff; border: 1px solid #ddd; padding: 10px 20px; cursor: pointer; border-radius: 4px; font-weight: 600; color: #333; }
+.product-detail-wrapper .btn-cancel { background: #fff; border: 1px solid #ddd; padding: 10px 20px; cursor: pointer; border-radius: 6px; font-weight: 600; color: #333; }
 
-.product-detail-wrapper .btn-confirm-report { background: #ee4d2d; color: #fff; border: none; padding: 10px 25px; cursor: pointer; border-radius: 4px; font-weight: 700; transition: background 0.2s; }
+.product-detail-wrapper .btn-confirm-report { background: #ee4d2d; color: #fff; border: none; padding: 10px 30px; cursor: pointer; border-radius: 6px; font-weight: 700; transition: background 0.2s; }
 .product-detail-wrapper .btn-confirm-report:hover { background: #d73211; }
 .product-detail-wrapper .btn-confirm-report:disabled { background: #ccc; cursor: not-allowed; }
 

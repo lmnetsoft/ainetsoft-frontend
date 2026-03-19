@@ -19,15 +19,7 @@ import './ProductDetail.css';
 
 const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:8080';
 
-// Professional Report Categories
-const REPORT_REASONS = [
-  "Sản phẩm giả mạo, hàng nhái",
-  "Nội dung phản cảm, khiêu dâm",
-  "Sản phẩm bị cấm kinh doanh",
-  "Dấu hiệu lừa đảo",
-  "Hình ảnh không rõ ràng/sai lệch",
-  "Lý do khác..."
-];
+// 🛠️ REMOVED: Hardcoded REPORT_REASONS constant is gone.
 
 interface ShippingConfig {
   methodId: string;
@@ -52,7 +44,7 @@ interface Product {
   shopName: string;
   averageRating?: number;
   reviewCount?: number;
-  soldCount?: number; // Added for social proof
+  soldCount?: number; 
   status?: string;
   shippingOptions?: ShippingConfig[];
   protectionEnabled?: boolean;
@@ -65,11 +57,11 @@ interface Review {
   rating: number;
   comment: string;
   userName: string;
-  userAvatar?: string; // Enhanced
+  userAvatar?: string; 
   imageUrls?: string[];
-  videoUrl?: string;   // Enhanced
-  variantInfo?: string; // Enhanced (e.g. Size M)
-  sellerReply?: string; // Enhanced
+  videoUrl?: string; 
+  variantInfo?: string; 
+  sellerReply?: string; 
   createdAt: string;
 }
 
@@ -85,8 +77,8 @@ const ProductDetail = () => {
 
   const [product, setProduct] = useState<Product | null>(location.state?.productPreview || null);
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [reviewStats, setReviewStats] = useState<any>(null); // NEW: Stat counts
-  const [selectedFilter, setSelectedFilter] = useState('all'); // NEW: Active filter
+  const [reviewStats, setReviewStats] = useState<any>(null); 
+  const [selectedFilter, setSelectedFilter] = useState('all'); 
   
   const [loading, setLoading] = useState(!location.state?.productPreview);
   const [quantity, setQuantity] = useState(1);
@@ -101,7 +93,11 @@ const ProductDetail = () => {
 
   // --- REPORT MODAL STATES ---
   const [showReportModal, setShowReportModal] = useState(false);
-  const [reportReason, setReportReason] = useState(REPORT_REASONS[0]);
+  
+  // 🛠️ UPDATED: Now initialized as empty. We will fill these from the DB.
+  const [reportReasons, setReportReasons] = useState<string[]>([]);
+  const [reportReason, setReportReason] = useState("");
+  
   const [reportDetails, setReportDetails] = useState('');
   const [isReporting, setIsReporting] = useState(false);
 
@@ -117,7 +113,6 @@ const ProductDetail = () => {
   const hasVideo = !!product?.videoUrl;
   const totalMediaCount = hasVideo ? images.length + 1 : images.length;
 
-  // --- NEW: REVIEW FILTER HANDLER ---
   const fetchFilteredReviews = async (filterType: string) => {
     if (!id) return;
     try {
@@ -135,13 +130,25 @@ const ProductDetail = () => {
     }
   };
 
-  // --- INTERACTION HANDLERS ---
+  // --- 🛠️ NEW: FETCH DYNAMIC REPORT REASONS ---
+  useEffect(() => {
+    const loadReportReasons = async () => {
+      try {
+        const res = await api.get('/report-reasons');
+        const names = res.data.map((r: any) => r.name);
+        setReportReasons(names);
+        if (names.length > 0) setReportReason(names[0]); // Set default selected
+      } catch (err) {
+        console.error("Failed to load report categories from DB");
+        setReportReasons(["Lý do khác..."]); // Fallback
+      }
+    };
+    loadReportReasons();
+  }, []);
 
   const handleShare = async (platform: 'facebook' | 'messenger' | 'link' | 'twitter') => {
     if (!product) return;
     const currentUrl = window.location.href;
-    
-    // Increment Count in Backend (Frictionless)
     try { await shareProduct(product.id); } catch (e) { console.error("Share count fail"); }
 
     if (platform === 'link') {
@@ -153,7 +160,6 @@ const ProductDetail = () => {
     } else if (platform === 'facebook') {
       window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentUrl)}`, '_blank');
     } else if (platform === 'messenger') {
-      // PRO FIX: Prevent blank screen on PC
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       if (isMobile) {
         window.location.href = `fb-messenger://share/?link=${encodeURIComponent(currentUrl)}`;
@@ -187,8 +193,6 @@ const ProductDetail = () => {
       setIsReporting(false);
     }
   };
-
-  // --- PRESERVED GALLERY & SCROLL LOGIC ---
 
   const scrollThumbnails = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
@@ -228,8 +232,6 @@ const ProductDetail = () => {
     }
   }, [activeMedia, images.length]);
 
-  // --- PRESERVED DATA FETCHING (Enhanced with Review Stats) ---
-
   useEffect(() => {
     const fetchData = async () => {
       if (location.state?.productPreview) {
@@ -239,7 +241,6 @@ const ProductDetail = () => {
       }
       try {
         setLoading(true);
-        // Step 1: Load Core Product
         const prodRes = await api.get(`/products/${id}`);
         const productData = prodRes.data;
         const storedRoles = JSON.parse(localStorage.getItem('userRoles') || '[]');
@@ -259,7 +260,6 @@ const ProductDetail = () => {
         setProduct(productData);
         document.title = `${productData.name} | AiNetsoft`;
 
-        // Step 2: Non-blocking fetch for Audit Data (Prevents failure if no reviews exist)
         try {
           const [statsRes, revRes] = await Promise.all([
             getReviewStats(id!),
@@ -268,7 +268,7 @@ const ProductDetail = () => {
           setReviewStats(statsRes.data);
           setReviews(revRes.data);
         } catch (revErr) {
-          console.warn("Review data not found for this product yet.");
+          console.warn("Review data not found yet.");
         }
 
       } catch (error) {
@@ -330,7 +330,8 @@ const ProductDetail = () => {
               <div className="report-body">
                 <label>Lý do vi phạm</label>
                 <select value={reportReason} onChange={e => setReportReason(e.target.value)}>
-                  {REPORT_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                  {/* 🛠️ UPDATED: Now maps over dynamic reasons from DB */}
+                  {reportReasons.map(r => <option key={r} value={r}>{r}</option>)}
                 </select>
                 <label>Chi tiết thêm</label>
                 <textarea 
@@ -378,7 +379,7 @@ const ProductDetail = () => {
               </div>
             </div>
             <div className="drawer-footer">
-               <button className="btn-understand" onClick={() => setShowShippingDrawer(false)}>Đã Hiểu</button>
+                <button className="btn-understand" onClick={() => setShowShippingDrawer(false)}>Đã Hiểu</button>
             </div>
           </div>
         </div>
@@ -449,7 +450,6 @@ const ProductDetail = () => {
               <button className="thumb-scroll-btn right" onClick={() => scrollThumbnails('right')}><FaChevronRight /></button>
             </div>
 
-            {/* --- 2. SOCIAL & LIKE ROW --- */}
             {product.allowSharing && (
               <div className="social-interaction-block">
                 <div className="share-section">
@@ -469,7 +469,6 @@ const ProductDetail = () => {
           </div>
 
           <div className="detail-info-section">
-            {/* SURGICAL INSERTION: TOP-RIGHT FLAG BUTTON */}
             <div className="report-link-row">
                <button className="btn-report-action" onClick={() => setShowReportModal(true)}>
                  <FaFlag /> Báo Vi Phạm
@@ -495,7 +494,6 @@ const ProductDetail = () => {
               <span className="amount">{(product.price || 0).toLocaleString()}</span>
             </div>
 
-            {/* --- 3. SHIPPING GRID ROW --- */}
             <div className="info-grid-row selectable" onClick={() => setShowShippingDrawer(true)}>
               <span className="grid-label">Vận Chuyển</span>
               <div className="grid-content">
@@ -508,7 +506,6 @@ const ProductDetail = () => {
               </div>
             </div>
 
-            {/* --- 4. PROTECTION GRID ROW --- */}
             {product.protectionEnabled && (
               <div className="info-grid-row no-border">
                 <span className="grid-label">An Tâm Mua Sắm</span>
@@ -543,7 +540,6 @@ const ProductDetail = () => {
         </div>
       </div>
 
-      {/* BOX 3: SHOP & DETAILS */}
       <div className="container sync-container">
         <div className="shop-card">
           <FaStore className="shop-icon" />
@@ -579,7 +575,6 @@ const ProductDetail = () => {
           <div className="description-content">{descriptionLines.map((line, i) => <p key={i}>{line}</p>)}</div>
         </div>
 
-        {/* --- REVIEWS SECTION [Enhanced based on image_971725.png] --- */}
         <div className="reviews-section">
           <h3 className="section-title">ĐÁNH GIÁ SẢN PHẨM</h3>
           

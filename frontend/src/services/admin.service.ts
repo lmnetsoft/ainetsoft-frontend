@@ -2,14 +2,13 @@ import api from './api'; // BaseURL is http://localhost:8080/api
 
 /**
  * adminService fully synchronized with Backend Controllers
- * Optimized for Violation Reports and Review Moderation
+ * Optimized for Violation Reports, Review Moderation, and Dynamic Categories
  */
 export const adminService = {
   // --- STATS & OVERVIEW ---
   
   /**
    * Fetches summary data for dashboard cards.
-   * Linked to: AdminStatsController @GetMapping("/summary")
    */
   getDashboardSummary: () => api.get('/admin/stats/summary').then(res => res.data),
 
@@ -60,29 +59,45 @@ export const adminService = {
   rejectProduct: (productId: string, reason: string) => 
     api.post(`/admin/products/reject/${productId}`, null, { params: { reason } }).then(res => res.data),
 
-  // --- NEW: VIOLATION REPORT MANAGEMENT (BÁO VI PHẠM) ---
+  // --- VIOLATION REPORT MANAGEMENT (BÁO VI PHẠM) ---
 
   /**
-   * FIXED: Fetches all product violation reports.
-   * Removed '/all' to match standard REST controllers serving the collection at the base path.
+   * Fetches all product violation reports.
    */
   getAllReports: () => api.get('/admin/reports').then(res => res.data),
 
   /**
    * Updates report status (e.g., RESOLVED, DISMISSED).
-   * Used for Requirement 1 & 4 (Grey-out & Dismiss)
    */
   resolveReport: (reportId: string, action: 'RESOLVED' | 'DISMISSED') => 
     api.post(`/admin/reports/${reportId}/process`, { action }).then(res => res.data),
 
   /**
-   * 🛠️ NEW: REQUIREMENT 5 (Xóa)
    * Permanently removes a violation report record from the database.
    */
   deleteReport: (reportId: string) => 
     api.delete(`/admin/reports/${reportId}`).then(res => res.data),
 
-  // --- NEW: REVIEW MODERATION (QUẢN LÝ ĐÁNH GIÁ) ---
+  // --- 🛠️ NEW: DYNAMIC VIOLATION CATEGORIES (DANH MỤC BÁO CÁO) ---
+
+  /**
+   * Fetches the list of reasons (Sản phẩm giả, Lừa đảo, v.v.) from DB.
+   */
+  getViolationReasons: () => api.get('/report-reasons'),
+
+  /**
+   * Adds or updates a violation category.
+   */
+  saveViolationReason: (data: { name: string }) => 
+    api.post('/report-reasons/admin/save', data).then(res => res.data),
+
+  /**
+   * Deletes a violation category from the DB.
+   */
+  deleteViolationReason: (id: string) => 
+    api.delete(`/report-reasons/admin/${id}`).then(res => res.data),
+
+  // --- REVIEW MODERATION (QUẢN LÝ ĐÁNH GIÁ) ---
 
   /**
    * Fetches all reviews across the platform.
