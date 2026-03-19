@@ -92,10 +92,11 @@ const SellerModeration = () => {
     }, 2000);
   };
 
-  // --- APPROVAL / REJECTION LOGIC ---
+  // --- APPROVAL / REJECTION LOGIC (MANDATORY NOTE FIX) ---
   const handleAction = async (approved: boolean) => {
-    if (!approved && !adminNote) {
-      toast.error("Vui lòng nhập lý do từ chối.");
+    // FIXED: Blocks action if note is empty, whether approving OR rejecting
+    if (!adminNote.trim()) {
+      toast.error("Vui lòng nhập nội dung phản hồi cho người dùng.");
       return;
     }
 
@@ -233,8 +234,8 @@ const SellerModeration = () => {
           <div className="admin-modal-content seller-review-modal">
             <div className="modal-header">
               <div className="header-title">
-                 <FaStore className="title-icon" />
-                 <h3>Thẩm định hồ sơ: {selectedSeller.fullName}</h3>
+                  <FaStore className="title-icon" />
+                  <h3>Thẩm định hồ sơ: {selectedSeller.fullName}</h3>
               </div>
               <button className="close-btn" onClick={() => setShowModal(false)}><FaTimes /></button>
             </div>
@@ -251,7 +252,6 @@ const SellerModeration = () => {
                   <div className="id-images-container">
                     <div className="id-image-item">
                       <span className="img-label">Mặt trước</span>
-                      {/* --- ADDED: zoomable class and click handler --- */}
                       <div className="img-wrapper zoomable" onClick={() => setZoomedImage(getFullImageUrl(selectedSeller.identityInfo?.frontImageUrl))}>
                         <div className="zoom-hint"><FaSearchPlus /></div>
                         <img 
@@ -263,7 +263,6 @@ const SellerModeration = () => {
                     </div>
                     <div className="id-image-item">
                       <span className="img-label">Mặt sau</span>
-                      {/* --- ADDED: zoomable class and click handler --- */}
                       <div className="img-wrapper zoomable" onClick={() => setZoomedImage(getFullImageUrl(selectedSeller.identityInfo?.backImageUrl))}>
                         <div className="zoom-hint"><FaSearchPlus /></div>
                         <img 
@@ -316,9 +315,10 @@ const SellerModeration = () => {
 
             <div className="modal-footer-actions">
               <div className="note-area">
-                <label>Phản hồi cho người dùng:</label>
+                {/* Visual hint: Added Red Asterisk */}
+                <label>Phản hồi cho người dùng <span style={{color: 'red'}}>*</span>:</label>
                 <textarea 
-                  placeholder="Ghi chú phản hồi (Bắt buộc nếu từ chối)..."
+                  placeholder="Ghi chú phản hồi (Bắt buộc để Phê duyệt hoặc Từ chối)..."
                   value={adminNote}
                   onChange={(e) => setAdminNote(e.target.value)}
                 />

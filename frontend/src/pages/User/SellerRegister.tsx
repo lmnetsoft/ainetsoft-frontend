@@ -95,7 +95,6 @@ const SellerRegister = () => {
   const isStepValid = () => {
     switch (step) {
       case 1: 
-        // Must have phone AND valid email format
         return formData.phone.length >= 10 && formData.email.includes('@');
       case 2: 
         return formData.cccdNumber.length === 12 && formData.frontImage !== null && formData.backImage !== null;
@@ -223,7 +222,7 @@ const SellerRegister = () => {
             {renderStepper()}
 
             <div className="step-content">
-              {/* STEP 1: CONTACT (UPDATED WITH EMAIL) */}
+              {/* STEP 1: CONTACT */}
               {step === 1 && (
                 <div className="form-step">
                   <h3><span className="step-indicator">|</span> Xác thực Liên hệ</h3>
@@ -232,7 +231,6 @@ const SellerRegister = () => {
                     <input type="text" name="phone" value={formData.phone} onChange={handleNumericInputChange} placeholder="Nhập số điện thoại" />
                   </div>
                   
-                  {/* NEW MANDATORY EMAIL FIELD */}
                   <div className="input-group">
                     <label>Email tài khoản <span className="required">*</span></label>
                     <input type="email" name="email" value={formData.email} onChange={handleInputChange} placeholder="Nhập email để nhận thông báo" />
@@ -328,27 +326,34 @@ const SellerRegister = () => {
                 </div>
               )}
 
-              {/* STEP 5: FINAL REVIEW */}
+              {/* STEP 5: FINAL REVIEW (FIXED FOR image_e23ee2.jpg) */}
               {step === 5 && (
                 <div className="form-step review-step">
                   <h3><span className="step-indicator">|</span> Xác nhận thông tin</h3>
-                  <div className="review-box">
-                    <div className="review-row"><strong>SĐT:</strong> {formData.phone}</div>
-                    <div className="review-row"><strong>Email:</strong> {formData.email}</div>
-                    <div className="review-row"><strong>CCCD:</strong> {formData.cccdNumber}</div>
-                    <div className="review-row"><strong>Shop:</strong> {formData.shopName}</div>
-                    <div className="review-row"><strong>Địa chỉ:</strong> {formData.shopAddress}</div>
-                    <div className="review-row"><strong>Ngân hàng:</strong> {formData.bankName} - {formData.accountNumber}</div>
+                  
+                  {/* 🛠️ UPDATED: Professional Review Container */}
+                  <div className="review-info-section">
+                    <div className="info-row"><span className="info-label">SĐT:</span> <span className="info-value">{formData.phone}</span></div>
+                    <div className="info-row"><span className="info-label">Email:</span> <span className="info-value">{formData.email}</span></div>
+                    <div className="info-row"><span className="info-label">CCCD:</span> <span className="info-value">{formData.cccdNumber}</span></div>
+                    <div className="info-row"><span className="info-label">Shop:</span> <span className="info-value">{formData.shopName}</span></div>
+                    <div className="info-row"><span className="info-label">Địa chỉ:</span> <span className="info-value">{formData.shopAddress}</span></div>
+                    <div className="info-row"><span className="info-label">Ngân hàng:</span> <span className="info-value">{formData.bankName} - {formData.accountNumber}</span></div>
                   </div>
                   
-                  <div className="review-images">
-                    <div className="review-img-item">
-                      <span>Mặt trước</span>
-                      <img src={previews.front} alt="Front Review" />
+                  {/* 🛠️ UPDATED: Photo outline and constraint logic */}
+                  <div className="review-image-container">
+                    <div>
+                      <div className="review-img-box">
+                        <img src={previews.front} alt="Mặt trước" />
+                      </div>
+                      <span className="review-img-label">Mặt trước CCCD</span>
                     </div>
-                    <div className="review-img-item">
-                      <span>Mặt sau</span>
-                      <img src={previews.back} alt="Back Review" />
+                    <div>
+                      <div className="review-img-box">
+                        <img src={previews.back} alt="Mặt sau" />
+                      </div>
+                      <span className="review-img-label">Mặt sau CCCD</span>
                     </div>
                   </div>
 

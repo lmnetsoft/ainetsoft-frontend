@@ -294,3 +294,66 @@
   50% { transform: scale(1.05); }
   100% { transform: scale(1); }
 }
+
+/* ... [KEEP ALL YOUR EXISTING CODE ABOVE] ... */
+
+/* --- NEW: Review Summary Styling (Fixes image_e23ee2.jpg) --- */
+
+/* Container for the final check information */
+.review-info-section {
+  background: #fdfdfd;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 25px;
+  margin-top: 20px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.info-label {
+  color: #777;
+  font-weight: 500;
+}
+
+.info-value {
+  color: #333;
+  font-weight: 700;
+}
+
+/* 🛠️ THE FIX: This constrains the huge photos in the final step */
+.review-image-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.review-img-box {
+  width: 100%;
+  height: 180px; /* Fixed height for uniformity */
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  overflow: hidden; /* Clips anything outside the border */
+  background: #f0f0f0;
+}
+
+.review-img-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* 🛠️ Crucial: Makes image fill box without stretching */
+  display: block;
+}
+
+.review-img-label {
+  display: block;
+  font-size: 0.8rem;
+  color: #888;
+  margin-top: 5px;
+  text-align: center;
+  font-weight: 600;
+}
