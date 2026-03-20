@@ -25,7 +25,7 @@ public class ProductController {
 
     private final ProductService productService;
     private final ProductReportRepository productReportRepository;
-    private final UserRepository userRepository; // 🛠️ ADDED: To find the reporter's real name
+    private final UserRepository userRepository; 
 
     private static final long MAX_VIDEO_SIZE = 15 * 1024 * 1024; // 15MB
     private static final int MAX_IMAGE_COUNT = 5;
@@ -45,6 +45,19 @@ public class ProductController {
     // --- 2. SOCIAL & INTERACTION ENDPOINTS ---
 
     /**
+     * 🛠️ NEW: Toggle Favorite (The Heart Icon)
+     * Requirement 4: Persistence fix for the 404 error.
+     */
+    @PostMapping("/{id}/favorite")
+    public ResponseEntity<?> toggleFavorite(@PathVariable String id, Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(401).body("Unauthorized: Vui lòng đăng nhập");
+        }
+        productService.toggleFavorite(id, principal.getName());
+        return ResponseEntity.ok(Map.of("message", "Đã cập nhật trạng thái yêu thích"));
+    }
+
+    /**
      * Increment the share count for a product.
      */
     @PostMapping("/{id}/share")
@@ -56,7 +69,6 @@ public class ProductController {
 
     /**
      * Submit a formal report ("Tố cáo") against a product/seller.
-     * FIXED: Now captures Real Reporter Name and Product Name for the Admin Dashboard.
      */
     @PostMapping("/{id}/report")
     public ResponseEntity<?> reportProduct(
@@ -73,20 +85,18 @@ public class ProductController {
             return ResponseEntity.status(404).body("Sản phẩm không tồn tại.");
         }
 
-        // 🛠️ NEW LOGIC: Look up the real name of the person reporting
         String reporterName = "Người dùng ẩn";
         User reporter = userRepository.findByIdentifier(principal.getName()).orElse(null);
         if (reporter != null) {
             reporterName = reporter.getFullName();
         }
 
-        // Create the Ticket with full Snapshot data
         ProductReport report = ProductReport.builder()
                 .productId(id)
-                .productName(product.getName())   // 🛠️ NEW: Capture Product Name
+                .productName(product.getName())   
                 .sellerId(product.getSellerId())
                 .reporterId(reporter != null ? reporter.getId() : principal.getName())
-                .reporterName(reporterName)       // 🛠️ NEW: Capture Real Name
+                .reporterName(reporterName)       
                 .reason((String) reportData.get("reason"))
                 .details((String) reportData.get("details"))
                 .evidenceUrls((List<String>) reportData.get("evidenceUrls"))
@@ -95,7 +105,6 @@ public class ProductController {
                 .build();
         
         productReportRepository.save(report);
-
         productService.incrementReportCount(id);
 
         log.warn("User {} reported product {}. Reason: {}", reporterName, id, report.getReason());
@@ -114,10 +123,10 @@ public class ProductController {
             @RequestPart(value = "video", required = false) MultipartFile video,
             Principal principal) {
         
-        if (principal == null) throw new RuntimeException("Bạn cần đăng nhập để thực hiện thao tác này");
+        if (principal == null) throw new RuntimeException("Unauthorized");
 
         if (images != null && images.size() > MAX_IMAGE_COUNT) {
-            throw new RuntimeException("Bạn chỉ được phép tải lên tối đa " + MAX_IMAGE_COUNT + " hình ảnh.");
+            throw new RuntimeException("Tối đa " + MAX_IMAGE_COUNT + " hình ảnh.");
         }
 
         if (video != null && !video.isEmpty()) {
@@ -126,7 +135,6 @@ public class ProductController {
             }
         }
 
-        log.info("Seller {} adding product {}", principal.getName(), product.getName());
         return ResponseEntity.ok(productService.createProductWithMedia(principal.getName(), product, images, video));
     }
 
@@ -167,6 +175,6 @@ public class ProductController {
     public ResponseEntity<?> bulkDelete(@RequestBody List<String> ids, Principal principal) {
         if (principal == null) throw new RuntimeException("Unauthorized");
         productService.bulkDeleteProducts(ids, principal.getName());
-        return ResponseEntity.ok(Map.of("message", "Đã xóa các sản phẩm được chọn thành công!"));
+        return ResponseEntity.ok(Map.of("message", "Đã xóa các sản phẩm thành công!"));
     }
 }

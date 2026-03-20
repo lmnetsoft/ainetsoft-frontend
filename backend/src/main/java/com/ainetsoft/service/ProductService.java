@@ -5,7 +5,7 @@ import com.ainetsoft.model.Product;
 import com.ainetsoft.model.ProductReport;
 import com.ainetsoft.model.User;
 import com.ainetsoft.repository.CategoryRepository;
-import com.ainetsoft.repository.ProductReportRepository; // 🛠️ NEW
+import com.ainetsoft.repository.ProductReportRepository;
 import com.ainetsoft.repository.ProductRepository;
 import com.ainetsoft.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,9 +20,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.UUID;
 
 @Slf4j
@@ -33,7 +31,7 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
-    private final ProductReportRepository productReportRepository; // 🛠️ NEW
+    private final ProductReportRepository productReportRepository;
 
     private final String uploadDir = "uploads";
 
@@ -81,12 +79,41 @@ public class ProductService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm!"));
     }
 
-    // --- 🛠️ NEW: VIOLATION REPORTING LOGIC ---
-
+    // =======================================================
+    // 🛠️ FIXED: WISHLIST PERSISTENCE LOGIC (Set<String> Fix)
+    // =======================================================
+    
     /**
-     * Professional ticket creation with Data Snapshots.
-     * Prevents "Hidden User" and "Hidden Product" issues in Admin Dashboard.
+     * Requirement 4: Fixed Compilation Error.
+     * Uses Set<String> to match the User model requirement.
      */
+    @Transactional
+    public void toggleFavorite(String productId, String userEmail) {
+        Product product = getProductById(productId);
+        User user = userRepository.findByIdentifier(userEmail)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
+
+        // 🛠️ FIX: Changed from List to Set
+        Set<String> favorites = user.getFavoriteProductIds();
+        if (favorites == null) favorites = new HashSet<>();
+
+        if (favorites.contains(productId)) {
+            favorites.remove(productId);
+            product.setFavoriteCount(Math.max(0, product.getFavoriteCount() - 1));
+            log.info("User {} removed product {} from wishlist", userEmail, productId);
+        } else {
+            favorites.add(productId);
+            product.setFavoriteCount(product.getFavoriteCount() + 1);
+            log.info("User {} added product {} to wishlist", userEmail, productId);
+        }
+
+        user.setFavoriteProductIds(favorites);
+        userRepository.save(user);
+        productRepository.save(product);
+    }
+
+    // --- VIOLATION REPORTING LOGIC ---
+
     @Transactional
     public void createProductReport(String productId, String reporterIdentifier, Map<String, Object> reportData) {
         Product product = getProductById(productId);
@@ -94,7 +121,6 @@ public class ProductService {
         User reporter = userRepository.findByIdentifier(reporterIdentifier)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
 
-        // Snapshotting data into the report
         ProductReport report = ProductReport.builder()
                 .productId(productId)
                 .productName(product.getName())
@@ -110,7 +136,6 @@ public class ProductService {
 
         productReportRepository.save(report);
 
-        // Update product counter
         product.setTotalReports(product.getTotalReports() + 1);
         productRepository.save(product);
 
@@ -123,9 +148,6 @@ public class ProductService {
         productRepository.save(product);
     }
 
-    /**
-     * Increment the report counter. (Kept for direct controller calls if needed)
-     */
     public void incrementReportCount(String id) {
         Product product = getProductById(id);
         product.setTotalReports(product.getTotalReports() + 1);
@@ -139,14 +161,14 @@ public class ProductService {
         productRepository.save(product);
     }
 
-    // --- CRUD OPERATIONS (100% RESTORED - NO PRUNING) ---
+    // --- CRUD OPERATIONS (100% RESTORED) ---
 
     public Product createProductWithMedia(String contactInfo, Product product, List<MultipartFile> images, MultipartFile video) {
         User user = userRepository.findByIdentifier(contactInfo)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
 
         if (!"VERIFIED".equals(user.getSellerVerification())) {
-            throw new RuntimeException("Tài khoản Người bán của bạn chưa được Admin phê duyệt!");
+            throw new RuntimeException("Tài khoản Người bán chưa được phê duyệt!");
         }
 
         String sellerSubFolder = "ads/" + user.getId();
@@ -170,7 +192,6 @@ public class ProductService {
             product.setVideoUrl(saveFile(video, sellerSubFolder));
         }
 
-        // FULL original configs
         product.setShippingOptions(product.getShippingOptions() != null ? product.getShippingOptions() : new ArrayList<>());
         product.setProtectionEnabled(product.isProtectionEnabled());
         product.setAllowSharing(product.isAllowSharing());
@@ -190,7 +211,7 @@ public class ProductService {
                 .orElseThrow(() -> new RuntimeException("Xác thực thất bại!"));
 
         if (!existing.getSellerId().equals(user.getId())) {
-            throw new RuntimeException("Bạn không có quyền chỉnh sửa sản phẩm này!");
+            throw new RuntimeException("Không có quyền chỉnh sửa!");
         }
 
         String sellerSubFolder = "ads/" + user.getId();
@@ -215,7 +236,6 @@ public class ProductService {
             existing.setVideoUrl(saveFile(newVideo, sellerSubFolder));
         }
 
-        // FULL RESTORE of your data fields
         existing.setName(updatedData.getName());
         existing.setDescription(updatedData.getDescription());
         existing.setPrice(updatedData.getPrice());
@@ -235,7 +255,7 @@ public class ProductService {
                 .orElseThrow(() -> new RuntimeException("Xác thực thất bại!"));
 
         if (!existing.getSellerId().equals(user.getId())) {
-            throw new RuntimeException("Bạn không có quyền xóa sản phẩm này!");
+            throw new RuntimeException("Không có quyền xóa!");
         }
 
         if (existing.getImageUrls() != null) {
@@ -259,7 +279,6 @@ public class ProductService {
         return productRepository.findBySellerId(user.getId());
     }
 
-    // Wrapper methods preserved
     public Product createProduct(String contactInfo, Product product) { return createProductWithMedia(contactInfo, product, null, null); }
     public Product updateProduct(String productId, String contactInfo, Product updatedData) { return updateProductWithMedia(productId, contactInfo, updatedData, null, null); }
 }

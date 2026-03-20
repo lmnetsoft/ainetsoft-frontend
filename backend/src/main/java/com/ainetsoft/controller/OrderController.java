@@ -19,15 +19,50 @@ import java.util.Map;
 public class OrderController {
 
     private final OrderService orderService;
-    private final UserRepository userRepository; // Added to fetch user by identifier
+    private final UserRepository userRepository;
 
     /**
      * Helper to get the logged-in User object from the Principal (JWT Token)
      */
     private User getAuthenticatedUser(Principal principal) {
         if (principal == null) return null;
-        // principal.getName() returns the identifier (email/phone) stored in the JWT
         return userRepository.findByIdentifier(principal.getName()).orElse(null);
+    }
+
+    /**
+     * 🛠️ NEW: POST /api/orders/checkout
+     * Handles creating a new order. Fixes the 404 error in the console.
+     */
+    @PostMapping("/checkout")
+    public ResponseEntity<?> checkout(@RequestBody Order orderRequest, Principal principal) {
+        User user = getAuthenticatedUser(principal);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Vui lòng đăng nhập để thanh toán"));
+        }
+
+        try {
+            // Set user info to the order before saving
+            orderRequest.setUserId(user.getId());
+            orderRequest.setUserEmail(user.getEmail());
+            
+            Order createdOrder = orderService.createOrder(orderRequest);
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdOrder);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Lỗi đặt hàng: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 🛠️ NEW: GET /api/orders/eligible-to-review/{productId}
+     * Checks if user can review. Essential for the "Write Review" button logic.
+     */
+    @GetMapping("/eligible-to-review/{productId}")
+    public ResponseEntity<?> checkReviewEligibility(@PathVariable String productId, Principal principal) {
+        User user = getAuthenticatedUser(principal);
+        if (user == null) return ResponseEntity.ok(Map.of("eligible", false));
+
+        // Returns { "eligible": true, "orderId": "..." } or { "eligible": false }
+        return ResponseEntity.ok(orderService.checkReviewEligibility(productId, user.getId()));
     }
 
     /**
@@ -36,12 +71,9 @@ public class OrderController {
     @GetMapping("/my-orders")
     public ResponseEntity<?> getMyOrders(@RequestParam(required = false) String status, Principal principal) {
         User user = getAuthenticatedUser(principal);
-        
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Vui lòng đăng nhập"));
         }
-        
-        // Use the email/identifier from the user object
         List<Order> orders = orderService.getUserOrders(user.getEmail(), status);
         return ResponseEntity.ok(orders);
     }
@@ -52,11 +84,9 @@ public class OrderController {
     @GetMapping("/seller")
     public ResponseEntity<?> getSellerOrders(@RequestParam(required = false) String status, Principal principal) {
         User seller = getAuthenticatedUser(principal);
-        
         if (seller == null || !seller.getRoles().contains("SELLER")) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Chỉ dành cho Người bán"));
         }
-        
         List<Order> orders = orderService.getOrdersBySeller(seller.getId(), status);
         return ResponseEntity.ok(orders);
     }
@@ -91,7 +121,6 @@ public class OrderController {
     @PostMapping("/cancel/{orderId}")
     public ResponseEntity<?> cancelOrder(@PathVariable String orderId, Principal principal) {
         User user = getAuthenticatedUser(principal);
-        
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Vui lòng đăng nhập"));
         }

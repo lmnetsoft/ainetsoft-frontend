@@ -6,7 +6,6 @@ import { placeOrder } from '../../services/orderService';
 import ToastNotification from '../../components/Toast/ToastNotification';
 import './Checkout.css';
 
-// Base URL for image resolution
 const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:8080';
 
 const Checkout = () => {
@@ -21,9 +20,6 @@ const Checkout = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
-  /**
-   * Resolves relative paths to full server URLs.
-   */
   const formatMediaUrl = (url?: string) => {
     if (!url || url === "/placeholder.png") return "/placeholder.png";
     return url.startsWith('http') ? url : `${BASE_URL}${url}`;
@@ -33,11 +29,9 @@ const Checkout = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // This service uses the /auth/me endpoint we verified
         const data = await getUserProfile();
         setCartItems(data.cart || []);
         
-        // Auto-select the default address
         const defaultAddr = data.addresses?.find((addr: any) => addr.isDefault);
         setSelectedAddress(defaultAddr || data.addresses?.[0]);
 
@@ -60,6 +54,7 @@ const Checkout = () => {
   const shippingFee = 30000; 
   const total = subtotal + shippingFee;
 
+  // 🛠️ FIXED: Bundling the correct data for the Backend
   const handlePlaceOrder = async () => {
     if (!selectedAddress) {
       setToastMessage("Vui lòng thêm địa chỉ giao hàng trước khi đặt hàng!");
@@ -69,13 +64,20 @@ const Checkout = () => {
 
     try {
       setIsSubmitting(true);
-      // Place order and clear cart on backend
-      await placeOrder(paymentMethod);
+
+      // 1. Create the payload that matches your Backend 'Order' model
+      const checkoutData = {
+        paymentMethod: paymentMethod,
+        shippingAddress: selectedAddress,
+        totalAmount: total
+      };
+
+      // 2. Send the bundle to the server
+      await placeOrder(checkoutData);
       
       setToastMessage("Đặt hàng thành công!");
       setShowToast(true);
       
-      // Navigate to purchase history
       setTimeout(() => navigate('/user/purchase'), 2000);
     } catch (err: any) {
       setToastMessage(err.message || "Có lỗi xảy ra khi đặt hàng.");
@@ -130,7 +132,6 @@ const Checkout = () => {
           {cartItems.map((item, idx) => (
             <div key={idx} className="checkout-item-row">
               <div className="col-prod item-meta">
-                {/* FIXED: Using formatMediaUrl and onError for safety */}
                 <img 
                   src={formatMediaUrl(item.productImage)} 
                   alt={item.productName} 

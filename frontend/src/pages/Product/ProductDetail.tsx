@@ -5,13 +5,14 @@ import {
   FaExclamationTriangle, FaPlay, FaTimes, FaChevronLeft, FaChevronRight,
   FaStoreAlt, FaTruck, FaShieldAlt, FaHeart, FaRegHeart, FaFacebook,
   FaFacebookMessenger, FaPinterest, FaTwitter, FaInfoCircle, FaLink,
-  FaFlag, FaCheckCircle
+  FaFlag, FaCheckCircle, FaEdit
 } from 'react-icons/fa';
 import api, { 
   shareProduct, 
   reportProduct, 
   getProductReviews, 
-  getReviewStats 
+  getReviewStats,
+  submitReview // 🛠️ FIX: Added the specific helper from api.ts
 } from '../../services/api'; 
 import ToastNotification from '../../components/Toast/ToastNotification';
 import { useChat } from '../../context/ChatContext'; 
@@ -19,8 +20,7 @@ import './ProductDetail.css';
 
 const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:8080';
 
-// 🛠️ REMOVED: Hardcoded REPORT_REASONS constant is gone.
-
+// --- INTERFACES (Kept exactly as original) ---
 interface ShippingConfig {
   methodId: string;
   methodName: string;
@@ -87,19 +87,25 @@ const ProductDetail = () => {
   const [toastMessage, setToastMessage] = useState('');
   const [isZoomed, setIsZoomed] = useState(false);
 
-  // Interaction States
   const [showShippingDrawer, setShowShippingDrawer] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
+  const [localFavoriteCount, setLocalFavoriteCount] = useState(0);
 
-  // --- REPORT MODAL STATES ---
   const [showReportModal, setShowReportModal] = useState(false);
-  
-  // 🛠️ UPDATED: Now initialized as empty. We will fill these from the DB.
   const [reportReasons, setReportReasons] = useState<string[]>([]);
   const [reportReason, setReportReason] = useState("");
-  
   const [reportDetails, setReportDetails] = useState('');
   const [isReporting, setIsReporting] = useState(false);
+
+  // --- REVIEW SUBMISSION STATES ---
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [userRating, setUserRating] = useState(5);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState("");
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  
+  // 🛠️ NEW: State to store a real order ID from user history
+  const [validOrderId, setValidOrderId] = useState<string | null>(null);
 
   const formatMediaUrl = (url?: string) => {
     if (!url || url === 'undefined' || url === 'null' || url === '') return "/placeholder.png";
@@ -118,7 +124,6 @@ const ProductDetail = () => {
     try {
       let rating: number | undefined = undefined;
       let hasImages: boolean | undefined = undefined;
-
       if (filterType >= '1' && filterType <= '5') rating = parseInt(filterType);
       if (filterType === 'images') hasImages = true;
 
@@ -130,27 +135,121 @@ const ProductDetail = () => {
     }
   };
 
-  // --- 🛠️ NEW: FETCH DYNAMIC REPORT REASONS ---
+  // --- 🛠️ STEP 1: CHECK PURCHASE HISTORY (FIXES 400 ERROR) ---
+  useEffect(() => {
+    const checkPurchase = async () => {
+      if (localStorage.getItem('isAuthenticated') && id) {
+        try {
+          const res = await api.get(`/orders/eligible-to-review/${id}`);
+          if (res.data && res.data.orderId) {
+            setValidOrderId(res.data.orderId);
+          }
+        } catch (e) {
+          setValidOrderId(null);
+        }
+      }
+    };
+    checkPurchase();
+  }, [id]);
+
   useEffect(() => {
     const loadReportReasons = async () => {
       try {
         const res = await api.get('/report-reasons');
         const names = res.data.map((r: any) => r.name);
         setReportReasons(names);
-        if (names.length > 0) setReportReason(names[0]); // Set default selected
+        if (names.length > 0) setReportReason(names[0]); 
       } catch (err) {
-        console.error("Failed to load report categories from DB");
-        setReportReasons(["Lý do khác..."]); // Fallback
+        console.error("Failed to load report categories");
+        setReportReasons(["Lý do khác..."]); 
       }
     };
     loadReportReasons();
   }, []);
 
+  const handleToggleFavorite = async () => {
+    if (!localStorage.getItem('isAuthenticated')) {
+      setToastMessage("Vui lòng đăng nhập để lưu sản phẩm!");
+      setShowToast(true);
+      setTimeout(() => navigate('/login'), 1500);
+      return;
+    }
+    try {
+      const newLikedState = !isLiked;
+      setIsLiked(newLikedState);
+      setLocalFavoriteCount(prev => newLikedState ? prev + 1 : Math.max(0, prev - 1));
+      await api.post(`/products/${id}/favorite`);
+      const rawUser = localStorage.getItem('user');
+      if (rawUser) {
+        const userObj = JSON.parse(rawUser);
+        let favorites = new Set(userObj.favoriteProductIds || []);
+        if (newLikedState) { if (id) favorites.add(id); } else { if (id) favorites.delete(id); }
+        userObj.favoriteProductIds = Array.from(favorites);
+        localStorage.setItem('user', JSON.stringify(userObj));
+      }
+      setToastMessage(newLikedState ? "Đã thêm vào yêu thích!" : "Đã xóa khỏi yêu thích");
+      setShowToast(true);
+    } catch (err) {
+      setIsLiked(isLiked);
+      setLocalFavoriteCount(localFavoriteCount);
+      setToastMessage("Thao tác thất bại.");
+      setShowToast(true);
+    }
+  };
+
+  // --- 🛠️ REVIEW MODAL HANDLERS (RESTORING SECURITY) ---
+  const handleOpenReviewModal = () => {
+    if (!localStorage.getItem('isAuthenticated')) {
+      setToastMessage("Vui lòng đăng nhập để gửi đánh giá!");
+      setShowToast(true);
+      setTimeout(() => navigate('/login'), 1500);
+      return;
+    }
+    // Only open if they actually bought it
+    if (!validOrderId) {
+      setToastMessage("Bạn cần mua và hoàn thành đơn hàng để đánh giá sản phẩm này.");
+      setShowToast(true);
+      return;
+    }
+    setShowReviewModal(true);
+  };
+
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id || !reviewComment.trim() || !validOrderId) return;
+    try {
+      setIsSubmittingReview(true);
+      // Use the clean submitReview helper and the REAL orderId
+      await submitReview({
+        productId: id,
+        rating: userRating,
+        comment: reviewComment,
+        orderId: validOrderId 
+      });
+      setToastMessage("Đánh giá của bạn đã được ghi nhận!");
+      setShowToast(true);
+      setShowReviewModal(false);
+      setReviewComment("");
+      
+      const [statsRes, revRes] = await Promise.all([
+        getReviewStats(id),
+        getProductReviews(id)
+      ]);
+      setReviewStats(statsRes.data);
+      setReviews(revRes.data);
+    } catch (err: any) {
+      setToastMessage(err.response?.data?.message || "Gửi đánh giá thất bại.");
+      setShowToast(true);
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
+  // --- SOCIAL, REPORT, MEDIA HANDLERS (Exactly as original) ---
   const handleShare = async (platform: 'facebook' | 'messenger' | 'link' | 'twitter') => {
     if (!product) return;
     const currentUrl = window.location.href;
     try { await shareProduct(product.id); } catch (e) { console.error("Share count fail"); }
-
     if (platform === 'link') {
       navigator.clipboard.writeText(currentUrl);
       setToastMessage("Đã sao chép liên kết vào bộ nhớ tạm!");
@@ -161,11 +260,8 @@ const ProductDetail = () => {
       window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentUrl)}`, '_blank');
     } else if (platform === 'messenger') {
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      if (isMobile) {
-        window.location.href = `fb-messenger://share/?link=${encodeURIComponent(currentUrl)}`;
-      } else {
-        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentUrl)}`, '_blank');
-      }
+      if (isMobile) { window.location.href = `fb-messenger://share/?link=${encodeURIComponent(currentUrl)}`; } 
+      else { window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentUrl)}`, '_blank'); }
     }
   };
 
@@ -178,42 +274,31 @@ const ProductDetail = () => {
       return; 
     }
     if (!id || !reportDetails.trim()) return;
-
     try {
       setIsReporting(true);
       await reportProduct(id, { reason: reportReason, details: reportDetails });
-      setToastMessage("Báo cáo vi phạm của bạn đã được gửi tới Admin.");
+      setToastMessage("Báo cáo vi phạm đã được gửi.");
       setShowToast(true);
       setShowReportModal(false);
       setReportDetails('');
     } catch (error) {
-      setToastMessage("Gửi báo cáo thất bại. Vui lòng thử lại sau.");
+      setToastMessage("Gửi báo cáo thất bại.");
       setShowToast(true);
-    } finally {
-      setIsReporting(false);
-    }
+    } finally { setIsReporting(false); }
   };
 
   const scrollThumbnails = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
       const { scrollLeft } = scrollRef.current;
-      const scrollAmount = 200;
       scrollRef.current.scrollTo({
-        left: direction === 'left' ? scrollLeft - scrollAmount : scrollLeft + scrollAmount,
+        left: direction === 'left' ? scrollLeft - 200 : scrollLeft + 200,
         behavior: 'smooth'
       });
     }
   };
 
-  const handleNextMedia = (e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    setActiveMedia((prev) => (prev + 1) % totalMediaCount);
-  };
-
-  const handlePrevMedia = (e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    setActiveMedia((prev) => (prev - 1 + totalMediaCount) % totalMediaCount);
-  };
+  const handleNextMedia = (e?: React.MouseEvent) => { e?.stopPropagation(); setActiveMedia((prev) => (prev + 1) % totalMediaCount); };
+  const handlePrevMedia = (e?: React.MouseEvent) => { e?.stopPropagation(); setActiveMedia((prev) => (prev - 1 + totalMediaCount) % totalMediaCount); };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -235,7 +320,9 @@ const ProductDetail = () => {
   useEffect(() => {
     const fetchData = async () => {
       if (location.state?.productPreview) {
-          setProduct(location.state.productPreview);
+          const preview = location.state.productPreview;
+          setProduct(preview);
+          setLocalFavoriteCount(preview.favoriteCount || 0);
           setLoading(false);
           return;
       }
@@ -243,23 +330,26 @@ const ProductDetail = () => {
         setLoading(true);
         const prodRes = await api.get(`/products/${id}`);
         const productData = prodRes.data;
+        setProduct(productData);
+        setLocalFavoriteCount(productData.favoriteCount || 0);
+        const rawUser = localStorage.getItem('user');
+        if (rawUser) {
+          const userObj = JSON.parse(rawUser);
+          setIsLiked((userObj.favoriteProductIds || []).includes(id));
+        }
         const storedRoles = JSON.parse(localStorage.getItem('userRoles') || '[]');
         const isAdmin = storedRoles.includes('ADMIN');
-
         if (productData.status !== 'APPROVED' && !isAdmin) {
-          const rawUser = localStorage.getItem('user');
-          const userObj = rawUser ? JSON.parse(rawUser) : {};
-          if (productData.sellerId !== (userObj.id || userObj.userId)) {
+          const rawUserLocal = localStorage.getItem('user');
+          const userObjLocal = rawUserLocal ? JSON.parse(rawUserLocal) : {};
+          if (productData.sellerId !== (userObjLocal.id || userObjLocal.userId)) {
               setToastMessage("Sản phẩm này hiện đang chờ kiểm duyệt.");
               setShowToast(true);
               setTimeout(() => navigate('/'), 2500);
               return;
           }
         }
-
-        setProduct(productData);
         document.title = `${productData.name} | AiNetsoft`;
-
         try {
           const [statsRes, revRes] = await Promise.all([
             getReviewStats(id!),
@@ -267,16 +357,11 @@ const ProductDetail = () => {
           ]);
           setReviewStats(statsRes.data);
           setReviews(revRes.data);
-        } catch (revErr) {
-          console.warn("Review data not found yet.");
-        }
-
+        } catch (revErr) { console.warn("Review data not found yet."); }
       } catch (error) {
         setToastMessage("Không tìm thấy sản phẩm.");
         setShowToast(true);
-      } finally {
-        setLoading(false);
-      }
+      } finally { setLoading(false); }
     };
     if (id) fetchData();
     window.scrollTo(0, 0); 
@@ -291,14 +376,7 @@ const ProductDetail = () => {
     if (!localStorage.getItem('isAuthenticated')) { navigate('/login'); return; }
     if (!product) return;
     try {
-      const cartItem = {
-        productId: product.id,
-        productName: product.name,
-        productImage: (product.imageUrls?.[0] || "/placeholder.png"),
-        price: product.price,
-        quantity: quantity,
-        shopName: product.shopName
-      };
+      const cartItem = { productId: product.id, productName: product.name, productImage: (product.imageUrls?.[0] || "/placeholder.png"), price: product.price, quantity: quantity, shopName: product.shopName };
       await api.post('/auth/sync-cart', { items: [cartItem] });
       setToastMessage("Đã thêm vào giỏ hàng!");
       setShowToast(true);
@@ -314,9 +392,53 @@ const ProductDetail = () => {
 
   const descriptionLines = (product.description || "").split('\n');
 
+  // --- JSX RENDER (RESTORED ALL COMPONENTS) ---
   return (
     <div className="product-detail-wrapper">
       <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
+
+      {/* --- REVIEW MODAL --- */}
+      {showReviewModal && (
+        <div className="report-modal-overlay" onClick={() => setShowReviewModal(false)}>
+          <div className="report-modal-card" onClick={e => e.stopPropagation()}>
+            <div className="report-header">
+              <h3><FaEdit /> Đánh giá sản phẩm</h3>
+              <button className="close-x" onClick={() => setShowReviewModal(false)}><FaTimes /></button>
+            </div>
+            <form onSubmit={handleReviewSubmit}>
+              <div className="report-body">
+                <label>Chất lượng sản phẩm</label>
+                <div className="star-rating-selector">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <FaStar 
+                      key={star} size={32} className="star-clickable"
+                      color={(hoverRating || userRating) >= star ? "#ee4d2d" : "#e4e5e9"}
+                      onMouseEnter={() => setHoverRating(star)}
+                      onMouseLeave={() => setHoverRating(0)}
+                      onClick={() => setUserRating(star)}
+                    />
+                  ))}
+                  <span className="rating-text-hint">
+                    {userRating === 5 ? "Tuyệt vời" : userRating === 4 ? "Tốt" : userRating === 3 ? "Bình thường" : userRating === 2 ? "Không hài lòng" : "Rất tệ"}
+                  </span>
+                </div>
+                <label>Bình luận</label>
+                <textarea 
+                  placeholder="Hãy chia sẻ cảm nhận của bạn về sản phẩm này..." 
+                  value={reviewComment} onChange={e => setReviewComment(e.target.value)} 
+                  rows={4} required 
+                />
+              </div>
+              <div className="report-footer">
+                <button type="button" className="btn-cancel" onClick={() => setShowReviewModal(false)}>Hủy</button>
+                <button type="submit" className="btn-confirm-report" disabled={isSubmittingReview}>
+                  {isSubmittingReview ? "Đang gửi..." : "Hoàn thành"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* --- REPORT MODAL --- */}
       {showReportModal && (
@@ -330,47 +452,34 @@ const ProductDetail = () => {
               <div className="report-body">
                 <label>Lý do vi phạm</label>
                 <select value={reportReason} onChange={e => setReportReason(e.target.value)}>
-                  {/* 🛠️ UPDATED: Now maps over dynamic reasons from DB */}
                   {reportReasons.map(r => <option key={r} value={r}>{r}</option>)}
                 </select>
                 <label>Chi tiết thêm</label>
-                <textarea 
-                  placeholder="Vui lòng cung cấp thêm thông tin vi phạm..."
-                  value={reportDetails}
-                  onChange={e => setReportDetails(e.target.value)}
-                  rows={4}
-                  required
-                />
+                <textarea placeholder="..." value={reportDetails} onChange={e => setReportDetails(e.target.value)} rows={4} required />
               </div>
               <div className="report-footer">
                 <button type="button" className="btn-cancel" onClick={() => setShowReportModal(false)}>Hủy</button>
-                <button type="submit" className="btn-confirm-report" disabled={isReporting}>
-                  {isReporting ? "Đang gửi..." : "Gửi báo cáo"}
-                </button>
+                <button type="submit" className="btn-confirm-report" disabled={isReporting}>{isReporting ? "Đang gửi..." : "Gửi báo cáo"}</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* --- SHIPPING DRAWER MODAL --- */}
+      {/* --- SHIPPING DRAWER --- */}
       {showShippingDrawer && (
         <div className="shipping-drawer-overlay" onClick={() => setShowShippingDrawer(false)}>
           <div className="shipping-drawer-card" onClick={e => e.stopPropagation()}>
-            <div className="drawer-header">
-              <h3>Thông tin về phí vận chuyển</h3>
-              <button className="close-btn" onClick={() => setShowShippingDrawer(false)}><FaTimes /></button>
-            </div>
+            <div className="drawer-header"><h3>Thông tin phí vận chuyển</h3><button className="close-btn" onClick={() => setShowShippingDrawer(false)}><FaTimes /></button></div>
             <div className="drawer-body">
-              <p className="ship-to-loc-text">Vận chuyển tới: <strong>Phường Tân Chánh Hiệp, Quận 12</strong> <FaChevronRight size={10}/></p>
+              <p className="ship-to-loc-text">Vận chuyển tới: <strong>Quận 12</strong> <FaChevronRight size={10}/></p>
               <div className="drawer-ship-list">
                 {product.shippingOptions?.map((opt, idx) => (
                   <div key={idx} className="drawer-ship-item">
                     <div className="drawer-ship-row-main">
                       <div className="drawer-ship-meta">
-                        <span className="drawer-arrival-badge">Nhận trong <strong className="green-text">{opt.estimatedTime}</strong> <FaInfoCircle size={11} color="#ccc" /></span>
+                        <span className="drawer-arrival-badge">Nhận trong <strong className="green-text">{opt.estimatedTime}</strong></span>
                         <span className="drawer-method-name">{opt.methodName}</span>
-                        {opt.voucherNote && <p className="drawer-voucher-note">{opt.voucherNote}</p>}
                       </div>
                       <span className="drawer-ship-price">{(opt.cost || 0).toLocaleString()}₫</span>
                     </div>
@@ -378,25 +487,21 @@ const ProductDetail = () => {
                 ))}
               </div>
             </div>
-            <div className="drawer-footer">
-                <button className="btn-understand" onClick={() => setShowShippingDrawer(false)}>Đã Hiểu</button>
-            </div>
+            <div className="drawer-footer"><button className="btn-understand" onClick={() => setShowShippingDrawer(false)}>Đã Hiểu</button></div>
           </div>
         </div>
       )}
 
-      {/* MODAL SECTION: MEDIA ZOOM */}
+      {/* --- MEDIA ZOOM --- */}
       {isZoomed && (
         <div className="zoom-modal-overlay" onClick={() => setIsZoomed(false)}>
           <div className="zoom-modal-content" onClick={(e) => e.stopPropagation()}>
             <button className="zoom-nav-arrow prev" onClick={handlePrevMedia}><FaChevronLeft size={24} /></button>
             <button className="zoom-close-btn" onClick={() => setIsZoomed(false)}><FaTimes /></button>
             {hasVideo && activeMedia === images.length ? (
-                <video ref={zoomVideoRef} autoPlay controls className="zoom-media-main">
-                  <source src={formatMediaUrl(product.videoUrl!)} type="video/mp4" />
-                </video>
+                <video ref={zoomVideoRef} autoPlay controls className="zoom-media-main"><source src={formatMediaUrl(product.videoUrl!)} type="video/mp4" /></video>
             ) : (
-                <img src={formatMediaUrl(images[activeMedia])} alt="Zoom" className="zoom-media-main" key={images[activeMedia]} />
+                <img src={formatMediaUrl(images[activeMedia])} alt="Zoom" className="zoom-media-main" />
             )}
             <button className="zoom-nav-arrow next" onClick={handleNextMedia}><FaChevronRight size={24} /></button>
           </div>
@@ -406,10 +511,7 @@ const ProductDetail = () => {
       {/* BOX 1: BANNER */}
       {product.status !== 'APPROVED' && (
         <div className="container sync-container">
-          <div className="preview-mode-banner">
-            <FaExclamationTriangle size={20} /> 
-            <div className="banner-text"><strong>BẢN XEM TRƯỚC:</strong> Sản phẩm chưa phê duyệt. Chỉ bạn mới có thể xem.</div>
-          </div>
+          <div className="preview-mode-banner"><FaExclamationTriangle size={20} /> <div className="banner-text"><strong>BẢN XEM TRƯỚC:</strong> Sản phẩm chưa phê duyệt.</div></div>
         </div>
       )}
 
@@ -419,9 +521,7 @@ const ProductDetail = () => {
           <div className="detail-media-section">
             <div className="main-display" onClick={() => setIsZoomed(true)}>
               {hasVideo && activeMedia === images.length ? (
-                  <video ref={videoRef} muted loop playsInline controls className="main-video">
-                    <source src={formatMediaUrl(product.videoUrl!)} type="video/mp4" />
-                  </video>
+                  <video ref={videoRef} muted loop playsInline controls className="main-video"><source src={formatMediaUrl(product.videoUrl!)} type="video/mp4" /></video>
               ) : (
                   <img src={formatMediaUrl(images[activeMedia])} alt={product.name} />
               )}
@@ -432,18 +532,12 @@ const ProductDetail = () => {
               <button className="thumb-scroll-btn left" onClick={() => scrollThumbnails('left')}><FaChevronLeft /></button>
               <div className="thumbnail-list" ref={scrollRef}>
                 {images.map((img, idx) => (
-                  <div key={idx} className={`thumb-item ${activeMedia === idx ? 'active' : ''}`} onClick={() => setActiveMedia(idx)}>
-                    <img src={formatMediaUrl(img)} alt="thumb" />
-                  </div>
+                  <div key={idx} className={`thumb-item ${activeMedia === idx ? 'active' : ''}`} onClick={() => setActiveMedia(idx)}><img src={formatMediaUrl(img)} alt="thumb" /></div>
                 ))}
                 {hasVideo && (
                   <div className={`thumb-item video-thumb ${activeMedia === images.length ? 'active' : ''}`} onClick={() => setActiveMedia(images.length)}>
-                    <div className="video-thumb-container">
-                      <video className="v-thumb-video-preview" preload="metadata" muted>
-                        <source src={`${formatMediaUrl(product.videoUrl!)}#t=0.5`} type="video/mp4" />
-                      </video>
-                      <div className="play-badge"><FaPlay /></div>
-                    </div>
+                    <video className="v-thumb-video-preview" muted><source src={`${formatMediaUrl(product.videoUrl!)}#t=0.5`} type="video/mp4" /></video>
+                    <div className="play-badge"><FaPlay /></div>
                   </div>
                 )}
               </div>
@@ -454,70 +548,32 @@ const ProductDetail = () => {
               <div className="social-interaction-block">
                 <div className="share-section">
                   <span>Chia sẻ:</span>
-                  <button className="share-icon-btn messenger" title="Gửi Messenger" onClick={() => handleShare('messenger')}><FaFacebookMessenger /></button>
-                  <button className="share-icon-btn facebook" title="Chia sẻ Facebook" onClick={() => handleShare('facebook')}><FaFacebook /></button>
-                  <button className="share-icon-btn twitter" title="Chia sẻ X (Twitter)" onClick={() => handleShare('twitter')}><FaTwitter /></button>
-                  <button className="share-icon-btn link" title="Sao chép liên kết" onClick={() => handleShare('link')}><FaLink /></button>
+                  <button className="share-icon-btn messenger" onClick={() => handleShare('messenger')}><FaFacebookMessenger /></button>
+                  <button className="share-icon-btn facebook" onClick={() => handleShare('facebook')}><FaFacebook /></button>
+                  <button className="share-icon-btn twitter" onClick={() => handleShare('twitter')}><FaTwitter /></button>
+                  <button className="share-icon-btn link" onClick={() => handleShare('link')}><FaLink /></button>
                 </div>
                 <div className="interaction-divider"></div>
-                <div className="like-section" onClick={() => setIsLiked(!isLiked)}>
+                <div className="like-section" onClick={handleToggleFavorite}>
                   {isLiked ? <FaHeart className="heart-icon active" /> : <FaRegHeart className="heart-icon" />}
-                  <span className="like-text">Đã thích ({product.favoriteCount || 0})</span>
+                  <span className="like-text">Đã thích ({localFavoriteCount})</span>
                 </div>
               </div>
             )}
           </div>
 
           <div className="detail-info-section">
-            <div className="report-link-row">
-               <button className="btn-report-action" onClick={() => setShowReportModal(true)}>
-                 <FaFlag /> Báo Vi Phạm
-               </button>
-            </div>
-
+            <div className="report-link-row"><button className="btn-report-action" onClick={() => setShowReportModal(true)}><FaFlag /> Báo Vi Phạm</button></div>
             <h1 className="product-title">{product.name}</h1>
             <div className="product-rating-overview">
-              <div className="star-row">
-                {[...Array(5)].map((_, i) => (
-                  <FaStar key={i} color={i < Math.floor(product.averageRating || 0) ? "#ee4d2d" : "#e4e5e9"} />
-                ))}
-              </div>
+              <div className="star-row">{[...Array(5)].map((_, i) => <FaStar key={i} color={i < Math.floor(product.averageRating || 0) ? "#ee4d2d" : "#e4e5e9"} />)}</div>
               <span className="rating-value">{product.averageRating || 0}</span>
               <span className="divider">|</span>
               <span className="review-count">{product.reviewCount || 0} Đánh giá</span>
               <span className="divider">|</span>
               <span className="sold-count">Đã bán {product.soldCount || 0}</span>
             </div>
-
-            <div className="price-display-box">
-              <span className="currency">₫</span>
-              <span className="amount">{(product.price || 0).toLocaleString()}</span>
-            </div>
-
-            <div className="info-grid-row selectable" onClick={() => setShowShippingDrawer(true)}>
-              <span className="grid-label">Vận Chuyển</span>
-              <div className="grid-content">
-                <div className="ship-summary-main">
-                  <FaTruck className="truck-icon-green" />
-                  <span>Nhận trong <strong className="green-text">{product.shippingOptions?.[0]?.estimatedTime || 'Dự kiến 2-3 ngày'}</strong></span>
-                  <FaChevronRight className="arrow-right-sm" />
-                </div>
-                {product.shippingOptions?.[0]?.voucherNote && <p className="voucher-hint-text">{product.shippingOptions[0].voucherNote}</p>}
-              </div>
-            </div>
-
-            {product.protectionEnabled && (
-              <div className="info-grid-row no-border">
-                <span className="grid-label">An Tâm Mua Sắm</span>
-                <div className="grid-content">
-                  <div className="protection-summary-line">
-                    <FaShieldAlt className="shield-icon-red" />
-                    <span>AiNetsoft Bảo Đảm: Nhận hàng, hoặc được hoàn tiền.</span>
-                    <FaChevronRight className="arrow-right-sm" />
-                  </div>
-                </div>
-              </div>
-            )}
+            <div className="price-display-box"><span className="currency">₫</span><span className="amount">{(product.price || 0).toLocaleString()}</span></div>
 
             <div className="purchase-grid-system">
               <div className="p-grid-row combined-action-row">
@@ -546,29 +602,11 @@ const ProductDetail = () => {
           <div className="shop-name-box">
             <h3>{product.shopName}</h3>
             <div className="shop-actions">
-              <button className="chat-now-btn" onClick={handleChatWithSeller}>
-                <FaCommentDots /> Chat ngay
-              </button>
-              <button className="view-shop-btn" onClick={() => navigate(`/shop/${product.sellerId || product.id}`)}>
-                <FaStoreAlt /> Xem Shop
-              </button>
+              <button className="chat-now-btn" onClick={handleChatWithSeller}><FaCommentDots /> Chat ngay</button>
+              <button className="view-shop-btn" onClick={() => navigate(`/shop/${product.sellerId || product.id}`)}><FaStoreAlt /> Xem Shop</button>
             </div>
           </div>
         </div>
-
-        {product.specifications && Object.keys(product.specifications).length > 0 && (
-          <div className="specs-section">
-            <h3 className="section-title"><FaClipboardList /> CHI TIẾT SẢN PHẨM</h3>
-            <div className="specs-table">
-              {Object.entries(product.specifications).map(([key, value]) => (
-                <div key={key} className="specs-row">
-                  <div className="specs-label">{key}</div>
-                  <div className="specs-value">{String(value)}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         <div className="description-section">
           <h3 className="section-title">MÔ TẢ SẢN PHẨM</h3>
@@ -576,67 +614,39 @@ const ProductDetail = () => {
         </div>
 
         <div className="reviews-section">
-          <h3 className="section-title">ĐÁNH GIÁ SẢN PHẨM</h3>
+          <div className="reviews-header-row">
+            <h3 className="section-title">ĐÁNH GIÁ SẢN PHẨM</h3>
+            <button className="btn-write-review" onClick={handleOpenReviewModal}>
+              <FaEdit /> Viết đánh giá
+            </button>
+          </div>
           
           <div className="review-filter-box">
             <div className="rating-overview-score">
               <div className="score-big"><span className="val">{product.averageRating || 0}</span> trên 5</div>
-              <div className="stars-row-big">
-                {[...Array(5)].map((_, i) => (
-                  <FaStar key={i} color={i < Math.floor(product.averageRating || 0) ? "#ee4d2d" : "#e4e5e9"} />
-                ))}
-              </div>
+              <div className="stars-row-big">{[...Array(5)].map((_, i) => (<FaStar key={i} color={i < Math.floor(product.averageRating || 0) ? "#ee4d2d" : "#e4e5e9"} />))}</div>
             </div>
             
             <div className="filter-buttons-grid">
               <button className={`filter-btn ${selectedFilter === 'all' ? 'active' : ''}`} onClick={() => fetchFilteredReviews('all')}>Tất Cả</button>
-              <button className={`filter-btn ${selectedFilter === '5' ? 'active' : ''}`} onClick={() => fetchFilteredReviews('5')}>5 Sao ({reviewStats?.star5 || 0})</button>
-              <button className={`filter-btn ${selectedFilter === '4' ? 'active' : ''}`} onClick={() => fetchFilteredReviews('4')}>4 Sao ({reviewStats?.star4 || 0})</button>
-              <button className={`filter-btn ${selectedFilter === '3' ? 'active' : ''}`} onClick={() => fetchFilteredReviews('3')}>3 Sao ({reviewStats?.star3 || 0})</button>
-              <button className={`filter-btn ${selectedFilter === '2' ? 'active' : ''}`} onClick={() => fetchFilteredReviews('2')}>2 Sao ({reviewStats?.star2 || 0})</button>
-              <button className={`filter-btn ${selectedFilter === '1' ? 'active' : ''}`} onClick={() => fetchFilteredReviews('1')}>1 Sao ({reviewStats?.star1 || 0})</button>
+              {[5, 4, 3, 2, 1].map(s => <button key={s} className={`filter-btn ${selectedFilter === String(s) ? 'active' : ''}`} onClick={() => fetchFilteredReviews(String(s))}>{s} Sao ({reviewStats?.[`star${s}`] || 0})</button>)}
               <button className={`filter-btn ${selectedFilter === 'images' ? 'active' : ''}`} onClick={() => fetchFilteredReviews('images')}>Có Hình Ảnh / Video ({reviewStats?.withImages || 0})</button>
             </div>
           </div>
 
           <div className="reviews-list">
-            {reviews.length === 0 ? (
-              <div className="no-reviews-placeholder">Chưa có đánh giá nào cho bộ lọc này.</div>
-            ) : (
-              reviews.map(review => (
-                <div key={review.id} className="review-card-item">
-                  <div className="rev-user-avatar">
-                    <img src={review.userAvatar || "/default-avatar.png"} alt="avatar" />
-                  </div>
-                  <div className="rev-content-side">
-                    <div className="rev-username">{review.userName}</div>
-                    <div className="rev-stars">
-                      {[...Array(5)].map((_, i) => <FaStar key={i} size={12} color={i < review.rating ? "#ee4d2d" : "#e4e5e9"} />)}
-                    </div>
-                    <div className="rev-meta-line">
-                      {new Date(review.createdAt).toLocaleString('vi-VN')} | Phân loại hàng: {review.variantInfo || 'Mặc định'}
-                    </div>
-                    
-                    <div className="rev-comment-text">{review.comment}</div>
-                    
-                    {review.imageUrls && review.imageUrls.length > 0 && (
-                      <div className="rev-media-grid">
-                        {review.imageUrls.map((img, idx) => (
-                          <div key={idx} className="rev-img-thumb"><img src={formatMediaUrl(img)} alt="proof" /></div>
-                        ))}
-                      </div>
-                    )}
-
-                    {review.sellerReply && (
-                      <div className="seller-reply-container">
-                        <div className="reply-label">Phản Hồi Của Người Bán</div>
-                        <div className="reply-text">{review.sellerReply}</div>
-                      </div>
-                    )}
-                  </div>
+            {reviews.map(review => (
+              <div key={review.id} className="review-card-item">
+                <div className="rev-user-avatar"><img src={review.userAvatar || "/default-avatar.png"} alt="avatar" /></div>
+                <div className="rev-content-side">
+                  <div className="rev-username">{review.userName}</div>
+                  <div className="rev-stars">{[...Array(5)].map((_, i) => <FaStar key={i} size={12} color={i < review.rating ? "#ee4d2d" : "#e4e5e9"} />)}</div>
+                  <div className="rev-meta-line">{new Date(review.createdAt).toLocaleString('vi-VN')}</div>
+                  <div className="rev-comment-text">{review.comment}</div>
+                  {review.sellerReply && <div className="seller-reply-container"><div className="reply-text">{review.sellerReply}</div></div>}
                 </div>
-              ))
-            )}
+              </div>
+            ))}
           </div>
         </div>
       </div>

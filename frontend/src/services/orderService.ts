@@ -9,11 +9,9 @@ const extractError = (error: any, defaultMsg: string): string => {
 
 /**
  * Retrieves orders for the current user.
- * Matches @GetMapping("/my-orders") in OrderController.java
  */
 export const getMyOrders = async (status: string = 'ALL'): Promise<any[]> => {
   try {
-    // We send 'ALL' or the specific status; backend filters accordingly
     const response = await api.get('/orders/my-orders', { params: { status } });
     return response.data;
   } catch (error: any) {
@@ -22,11 +20,13 @@ export const getMyOrders = async (status: string = 'ALL'): Promise<any[]> => {
 };
 
 /**
- * Creates a new order from the cart.
+ * 🛠️ FIXED: Creates a new order from the cart.
+ * Updated to accept a full data object (address, payment method, etc.)
  */
-export const placeOrder = async (paymentMethod: string): Promise<any> => {
+export const placeOrder = async (checkoutData: any): Promise<any> => {
   try {
-    const response = await api.post('/orders/checkout', { paymentMethod });
+    // Send the full object to match the @RequestBody Order in Java
+    const response = await api.post('/orders/checkout', checkoutData);
     return response.data;
   } catch (error: any) {
     throw new Error(extractError(error, "Đặt hàng thất bại."));
@@ -34,8 +34,21 @@ export const placeOrder = async (paymentMethod: string): Promise<any> => {
 };
 
 /**
- * FIX: Added the missing cancelOrder function.
- * Matches @PostMapping("/cancel/{orderId}") in OrderController.java
+ * 🛠️ NEW: Checks if a product can be reviewed.
+ * Required for the "Write Review" button logic in ProductDetail.tsx
+ */
+export const checkReviewEligibility = async (productId: string): Promise<{ eligible: boolean, orderId?: string }> => {
+  try {
+    const response = await api.get(`/orders/eligible-to-review/${productId}`);
+    return response.data;
+  } catch (error: any) {
+    console.error("Eligibility check failed", error);
+    return { eligible: false };
+  }
+};
+
+/**
+ * Cancels an order.
  */
 export const cancelOrder = async (orderId: string): Promise<any> => {
   try {

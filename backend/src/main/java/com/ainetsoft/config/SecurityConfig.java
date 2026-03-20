@@ -67,16 +67,18 @@ public class SecurityConfig {
                     "/oauth2/**",
                     "/login/oauth2/**",
                     "/error",
-                    "/api/uploads/**",    // API prefixed uploads
-                    "/uploads/**",        // FIXED: Direct uploads (Matches WebConfig)
+                    "/api/uploads/**",
+                    "/uploads/**",
                     "/api/chat/download/**",
-                    "/ws/**"
+                    "/ws/**",
+                    "/api/report-reasons" // ADDED: Required for ProductDetail to load reasons without 401
                 ).permitAll() 
 
                 .requestMatchers("/api/chat/history/**").permitAll()
                 .requestMatchers("/api/chat/read/**").permitAll()
                 .requestMatchers("/api/chat/upload").permitAll() 
-                .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll() 
+                .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/reviews/**").permitAll() // ADDED: Allow public to see reviews
 
                 // --- 2. ADMIN ONLY ENDPOINTS ---
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
@@ -91,7 +93,10 @@ public class SecurityConfig {
                     "/api/auth/upgrade-seller",
                     "/api/orders/**",
                     "/api/notifications/**",
-                    "/api/products/seller/**" // Ensure seller actions are protected
+                    "/api/products/seller/**",
+                    "/api/products/*/favorite", // ADDED: Protect favorite action
+                    "/api/products/*/report",   // ADDED: Protect report submission
+                    "/api/reviews/submit"        // ADDED: Explicitly protect review submission
                 ).authenticated() 
                 
                 .anyRequest().authenticated()
@@ -121,7 +126,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of("http://localhost:5173")); 
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD")); // Added HEAD
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "Accept"));
         config.setAllowCredentials(true); 
         

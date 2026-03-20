@@ -15,6 +15,10 @@ public class Order {
     @Id
     private String id;
     private String userId;
+
+    // 🛠️ ADDED: This resolves the "cannot find symbol: method setUserEmail" error
+    private String userEmail; 
+
     private String sellerId;
     private List<OrderItem> items;
     private double totalAmount;
