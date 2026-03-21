@@ -97,6 +97,28 @@ export const adminService = {
   deleteViolationReason: (id: string) => 
     api.delete(`/report-reasons/admin/${id}`).then(res => res.data),
 
+  // --- 🚚 NEW: DYNAMIC SHIPPING CONFIGURATION (CẤU HÌNH VẬN CHUYỂN) ---
+
+  /**
+   * Fetches all shipping methods (including inactive ones) for Admin.
+   */
+  getAllShippingMethods: () => api.get('/shipping-methods').then(res => res.data),
+
+  /**
+   * Creates a new global shipping method (Hỏa tốc, Nhanh, v.v.).
+   */
+  createShippingMethod: (data: any) => api.post('/shipping-methods', data).then(res => res.data),
+
+  /**
+   * Updates an existing shipping method or toggles its active status.
+   */
+  updateShippingMethod: (id: string, data: any) => api.put(`/shipping-methods/${id}`, data).then(res => res.data),
+
+  /**
+   * Deletes a shipping method permanently.
+   */
+  deleteShippingMethod: (id: string) => api.delete(`/shipping-methods/${id}`).then(res => res.data),
+
   // --- REVIEW MODERATION (QUẢN LÝ ĐÁNH GIÁ) ---
 
   /**

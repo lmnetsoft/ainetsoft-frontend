@@ -48,6 +48,7 @@ import SellerSettings from './pages/Seller/SellerSettings';
 // Admin Components
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import AdminChat from './pages/Admin/AdminChat'; 
+import ShippingManagement from './pages/Admin/ShippingManagement'; // NEW: Import for Shipping Config
 
 import './App.css';
 
@@ -135,7 +136,6 @@ function App() {
                   element={<ProtectedRoute allowedRoles={['SELLER']}><MyProducts /></ProtectedRoute>} 
                 />
 
-                {/* --- FIXED: Supports both Short and Long paths to prevent 404 --- */}
                 <Route 
                   path="/seller/add-product" 
                   element={<ProtectedRoute allowedRoles={['SELLER']}><AddProduct /></ProtectedRoute>} 
@@ -176,6 +176,11 @@ function App() {
                   path="/admin/chat/:recipientId" 
                   element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminChat /></ProtectedRoute>} 
                 />
+                {/* NEW: Route for Global Shipping Configuration */}
+                <Route 
+                  path="/admin/shipping" 
+                  element={<ProtectedRoute allowedRoles={['ADMIN']}><ShippingManagement /></ProtectedRoute>} 
+                />
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
@@ -183,10 +188,7 @@ function App() {
             
             <Footer />
 
-            {/* 1. PERSISTENT CHAT OVERLAY */}
             <GlobalChatOverlay />
-
-            {/* 2. PERSISTENT TRIGGER */}
             <ChatBubble />
           </div>
         </ChatProvider>

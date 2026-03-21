@@ -1,6 +1,7 @@
 package com.ainetsoft.service;
 
 import com.ainetsoft.config.JwtUtils;
+import com.ainetsoft.config.VietnamProvinceConfig;
 import com.ainetsoft.dto.*;
 import com.ainetsoft.model.User;
 import com.ainetsoft.model.CartItem;
@@ -31,40 +32,25 @@ public class AuthService {
     private final AzureCommunicationService azureService;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
-    
-    // Injected service for reusable file operations
     private final FileStorageService fileStorageService;
 
-    // Directory for file storage
     private final String UPLOAD_DIR = "uploads/cccd/";
 
-    /**
-     * Helper to save files to the local disk.
-     */
     private String saveFile(MultipartFile file, String userId, String side) throws IOException {
         if (file == null || file.isEmpty()) return null;
-
         Path uploadPath = Paths.get(UPLOAD_DIR);
         if (!Files.exists(uploadPath)) {
             Files.createDirectories(uploadPath);
         }
-
-        // Create a unique filename: userId_front_timestamp.jpg
         String originalName = file.getOriginalFilename();
         String extension = (originalName != null && originalName.contains(".")) 
                 ? originalName.substring(originalName.lastIndexOf(".")) : ".jpg";
-        
         String fileName = userId + "_" + side + "_" + System.currentTimeMillis() + extension;
-        
         Path filePath = uploadPath.resolve(fileName);
         Files.copy(file.getInputStream(), filePath);
-
-        return "/api/uploads/cccd/" + fileName; // Return the URL path
+        return "/api/uploads/cccd/" + fileName;
     }
 
-    /**
-     * Vietnamese & Global Phone Validation
-     */
     private boolean isValidPhone(String phone) {
         if (phone == null || phone.isBlank()) return true;
         String cleanPhone = phone.replaceAll("[^0-9]", "");
@@ -157,7 +143,6 @@ public class AuthService {
             }
         }
 
-        // --- FIXED: Ensures the moderation list sees the photo ---
         if (request.getAvatarUrl() != null) {
             user.setAvatarUrl(request.getAvatarUrl());
         }
@@ -232,7 +217,7 @@ public class AuthService {
 
         String providedEmail = (dto.getEmail() != null) ? dto.getEmail().trim().toLowerCase() : null;
         if (providedEmail == null || providedEmail.isEmpty()) {
-            throw new RuntimeException("Email là bắt buộc để đăng ký làm Người bán! (Hệ thống cần gửi đối soát)");
+            throw new RuntimeException("Email là bắt buộc để đăng ký làm Người bán!");
         }
 
         Optional<User> existingEmailUser = userRepository.findByEmail(providedEmail);
@@ -243,7 +228,7 @@ public class AuthService {
         user.setEmail(providedEmail);
 
         try {
-            // 1. Save CCCD Images using FileStorageService
+            // 1. Save CCCD Images
             String frontUrl = fileStorageService.saveFile(front, "cccd");
             String backUrl = fileStorageService.saveFile(back, "cccd");
 
@@ -255,15 +240,49 @@ public class AuthService {
                     .submittedAt(LocalDateTime.now())
                     .build());
 
-            // 3. Map Shop Profile
+            // 3. Map Multiple Stock Addresses (2026 Hierarchy: Province -> Ward -> Hamlet)
+            List<User.AddressInfo> addressInfos = new ArrayList<>();
+            if (dto.getStockAddresses() != null && !dto.getStockAddresses().isEmpty()) {
+                for (AddressDTO addrDto : dto.getStockAddresses()) {
+                    if (!VietnamProvinceConfig.isValid(addrDto.getProvince())) {
+                        throw new RuntimeException("Tỉnh/Thành phố '" + addrDto.getProvince() + "' không hợp lệ!");
+                    }
+                    addressInfos.add(User.AddressInfo.builder()
+                            .receiverName(addrDto.getFullName())
+                            .phone(normalizePhone(addrDto.getPhoneNumber()))
+                            .province(addrDto.getProvince())
+                            .ward(addrDto.getWard())
+                            .hamlet(addrDto.getHamlet()) // NEW: 2026 Hierarchy
+                            .detail(addrDto.getDetailAddress())
+                            .latitude(addrDto.getLatitude())
+                            .longitude(addrDto.getLongitude())
+                            .isDefault(addrDto.isDefault())
+                            .build());
+                }
+            }
+            user.setAddresses(addressInfos);
+
+            // 4. REQUIREMENT: Map Dynamic Shipping Methods (Enabled IDs)
+            List<String> enabledShippingIds = new ArrayList<>();
+            if (dto.getShippingMethods() != null) {
+                dto.getShippingMethods().forEach((methodId, isEnabled) -> {
+                    if (Boolean.TRUE.equals(isEnabled)) {
+                        enabledShippingIds.add(methodId);
+                    }
+                });
+            }
+
+            // 5. Map Shop Profile
             user.setShopProfile(User.ShopProfile.builder()
                     .shopName(dto.getShopName())
-                    .shopAddress(dto.getShopAddress())
+                    .shopAddress(!addressInfos.isEmpty() ? addressInfos.get(0).getDetail() : "Chưa cập nhật địa chỉ")
                     .taxCode(dto.getTaxCode()) 
+                    .businessEmail(providedEmail)
                     .businessPhone(dto.getPhone() != null ? normalizePhone(dto.getPhone()) : user.getPhone())
+                    .enabledShippingMethodIds(enabledShippingIds) // Integrated Dynamic Shipping
                     .build());
 
-            // 4. Map Bank Account
+            // 6. Map Bank Account
             List<User.BankInfo> banks = new ArrayList<>();
             banks.add(User.BankInfo.builder()
                     .bankName(dto.getBankName())
@@ -273,18 +292,18 @@ public class AuthService {
                     .build());
             user.setBankAccounts(banks);
 
-            // 5. Update Status
+            // 7. Update Status
             user.setSellerVerification("PENDING");
             user.setAccountStatus("PENDING_SELLER");
             user.setUpdatedAt(LocalDateTime.now());
             
             userRepository.save(user);
-            log.info("Upgrade request received. User ID: {}, Identifier: {}, Email: {}", user.getId(), identifier, providedEmail);
+            log.info("Upgrade request processed. User ID: {}, Email: {}", user.getId(), providedEmail);
             
-            return "Hồ sơ đã được gửi! Admin sẽ phản hồi qua email: " + providedEmail;
+            return "Hồ sơ đã được gửi! Chế độ vận chuyển và thông tin định danh đang chờ phê duyệt.";
             
         } catch (Exception e) {
-            log.error("File upload error: {}", e.getMessage());
+            log.error("Upgrade error: {}", e.getMessage());
             throw new RuntimeException("Lỗi khi lưu hồ sơ: " + e.getMessage());
         }
     }
@@ -306,7 +325,7 @@ public class AuthService {
     public String processForgotPassword(String contactInfo) {
         String identifier = normalizeIdentifier(contactInfo);
         userRepository.findByIdentifier(identifier)
-            .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
+                .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
         String otp = String.format("%06d", new Random().nextInt(999999));
         tokenRepository.deleteByContactInfo(identifier);
         PasswordResetToken token = PasswordResetToken.builder()
@@ -315,11 +334,6 @@ public class AuthService {
             .expiryDate(LocalDateTime.now().plusMinutes(10))
             .build();
         tokenRepository.save(token);
-
-        // --- AZURE CALL TEMPORARILY DISABLED FOR COMPILATION ---
-        // Restore this once sendEmail is made public in AzureCommunicationService
-        // azureService.sendEmail(identifier, "OTP Reset", otp);
-
         log.info("OTP generated for {}: {}", identifier, otp);
         return "Mã OTP đã được tạo.";
     }
@@ -327,10 +341,8 @@ public class AuthService {
     public Map<String, Object> toggleFavorite(String productId, String userEmail) {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại"));
-
         Set<String> favorites = user.getFavoriteProductIds();
         if (favorites == null) favorites = new HashSet<>();
-
         boolean isNowLiked;
         if (favorites.contains(productId)) {
             favorites.remove(productId);
@@ -339,15 +351,9 @@ public class AuthService {
             favorites.add(productId);
             isNowLiked = true;
         }
-
         user.setFavoriteProductIds(favorites);
         userRepository.save(user);
-
-        return Map.of(
-            "productId", productId,
-            "isLiked", isNowLiked,
-            "totalFavorites", favorites.size()
-        );
+        return Map.of("productId", productId, "isLiked", isNowLiked, "totalFavorites", favorites.size());
     }
 
     public String resetPassword(String contactInfo, String otp, String newPassword) {

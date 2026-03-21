@@ -23,17 +23,9 @@ public class User {
     @Id
     private String id;
     
-    /**
-     * FIXED: Added sparse = true to allow multiple users with NULL email 
-     * (e.g., Phone-only users like BestSeller) to coexist.
-     */
     @Indexed(unique = true, sparse = true)
     private String email;
 
-    /**
-     * FIXED: Added sparse = true to allow users with NULL phone 
-     * (e.g., Google/Facebook users) to coexist.
-     */
     @Indexed(unique = true, sparse = true)
     private String phone;
 
@@ -47,7 +39,6 @@ public class User {
         return this.avatarUrl;
     }
 
-    // Inside User.java
     @Builder.Default
     private Set<String> favoriteProductIds = new HashSet<>();
 
@@ -76,6 +67,7 @@ public class User {
     @Builder.Default
     private List<CartItem> cart = new ArrayList<>();
 
+    // Support for multiple stock addresses (Địa chỉ lấy hàng)
     @Builder.Default
     private List<AddressInfo> addresses = new ArrayList<>();
 
@@ -104,11 +96,20 @@ public class User {
     public static class ShopProfile {
         private String shopName;
         private String shopDescription;
-        private String shopAddress;
+        private String shopAddress; // Main display address derived from default stock
         private String shopLogoUrl;
-        private String businessEmail;
-        private String businessPhone;
+        private String businessEmail; 
+        private String businessPhone; 
         private String taxCode;
+        
+        /**
+         * 2026 Dynamic Shipping Requirement:
+         * Stores the list of IDs from the ShippingMethod collection 
+         * that this seller has toggled ON.
+         */
+        @Builder.Default
+        private List<String> enabledShippingMethodIds = new ArrayList<>();
+
         @Builder.Default
         private int lowStockThreshold = 5;
         @Builder.Default
@@ -126,6 +127,9 @@ public class User {
         private LocalDateTime submittedAt;
     }
 
+    /**
+     * Updated hierarchy for 2026 Map
+     */
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
@@ -133,10 +137,14 @@ public class User {
     public static class AddressInfo {
         private String receiverName;
         private String phone;
-        private String province; 
-        private String ward;
-        private String detail;
+        private String province; // Tỉnh/Thành phố (2026 Map)
+        private String ward;     // Phường/Xã
+        private String hamlet;   // Ấp/Thôn/Tổ dân phố
+        private String detail;   // Số nhà, tên đường
         private boolean isDefault;
+        private String latitude;  // GPS Latitude
+        private String longitude; // GPS Longitude
+
         public boolean isDefault() { return isDefault; }
     }
 

@@ -1,0 +1,278 @@
+/* src/pages/Admin/ShippingManagement.css */
+
+/* --- 1. Global Font Consistency --- */
+.shipping-management-page, 
+.shipping-management-page * {
+    font-family: var(--ui-font) !important;
+}
+
+/* --- 2. Layout & Descriptions --- */
+.shipping-config-section {
+    margin-top: 10px;
+}
+
+.section-desc {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 25px;
+}
+
+/* --- 3. Shipping Method List --- */
+.shipping-methods-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.shipping-method-item {
+    background: #ffffff;
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.shipping-method-item:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+/* Styling for the disabled state toggled by Admin */
+.shipping-method-item.is-disabled {
+    background: #fcfcfc;
+    border-color: #f1f2f6;
+}
+
+.shipping-method-item.is-disabled .method-info-title span {
+    color: var(--text-muted);
+    text-decoration: line-through;
+    opacity: 0.6;
+}
+
+/* --- 4. Main Row (Header of Accordion) --- */
+.method-main-row {
+    padding: 15px 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+}
+
+.method-info-title {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-weight: 700;
+    color: var(--text-dark);
+    font-size: 1.05rem;
+}
+
+.method-icon-bg {
+    color: var(--orange);
+    font-size: 1.3rem;
+}
+
+.method-controls {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.thu-gon-btn {
+    background: #f1f2f6;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.thu-gon-btn:hover {
+    background: #e4e6eb;
+}
+
+/* --- 5. Professional Slider Switch (FIXED: Vivid Green) --- */
+.admin-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+}
+
+.admin-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.admin-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.admin-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px; width: 18px;
+    left: 3px; bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .admin-slider {
+    background-color: #2ecc71; /* Vivid Shopee/Logistics Green */
+}
+
+input:checked + .admin-slider:before {
+    transform: translateX(20px);
+}
+
+/* --- 6. Details Panel (Accordion Content) --- */
+.method-details-panel {
+    padding: 20px 25px;
+    background: #fafbfc;
+    border-top: 1px solid #f1f2f6;
+    animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.details-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.detail-item label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+.detail-item p {
+    margin: 0;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.panel-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.btn-edit-ship, .btn-delete-ship {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: 0.2s;
+}
+
+.btn-edit-ship { background: white; border: 1px solid #ddd; color: var(--text-dark); }
+.btn-edit-ship:hover { background: #f8f9fa; border-color: var(--orange); color: var(--orange); }
+
+.btn-delete-ship { background: #fff5f5; border: 1px solid #ffdbd4; color: #ff4757; }
+.btn-delete-ship:hover { background: #ff4757; color: white; border-color: #ff4757; }
+
+/* --- 7. Centered Add Placeholder --- */
+.add-more-container {
+    padding: 20px 0;
+    display: flex;
+    justify-content: center;
+}
+
+.add-more-placeholder {
+    width: 100%;
+    border: 2px dashed var(--border-light);
+    padding: 35px;
+    text-align: center;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: transparent;
+}
+
+.add-more-placeholder:hover {
+    border-color: var(--orange);
+    background: #fff8f6;
+}
+
+.plus-icon-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid var(--border-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+    color: var(--text-muted);
+}
+
+.add-more-placeholder:hover .plus-icon-circle {
+    border-color: var(--orange);
+    color: var(--orange);
+}
+
+.add-more-placeholder span {
+    display: block;
+    font-weight: 800;
+    color: var(--text-dark);
+    font-size: 1.1rem;
+}
+
+.add-more-placeholder p {
+    margin: 5px 0 0 0;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+/* --- 8. Admin Modal Elements --- */
+.form-group-admin {
+    margin-bottom: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.form-group-admin label {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.form-group-admin input, 
+.form-group-admin textarea {
+    padding: 12px 15px;
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.form-group-admin input:focus {
+    border-color: var(--orange);
+}

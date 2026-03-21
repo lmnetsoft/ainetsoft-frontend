@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -23,13 +24,12 @@ public class DataSeeder implements CommandLineRunner {
     private final ShippingMethodRepository shippingMethodRepository;
     private final ReviewRepository reviewRepository;
     private final ReportReasonRepository reportReasonRepository;
-    private final ProductReportRepository productReportRepository; // 🛠️ NEW: To clear old reports
+    private final ProductReportRepository productReportRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Value("${app.seed.mock-data:true}")
     private boolean seedMockData;
 
-    // 🛠️ NEW: Controlled via application.properties
     @Value("${app.seed.force-clean:false}")
     private boolean forceClean;
 
@@ -44,36 +44,25 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        log.info("--- 🚀 Data Seeder: Initializing System Core ---");
+        log.info("--- 🚀 Data Seeder: Initializing Core (2026 Ready & Full Restore) ---");
         
-        // 1. AUTOMATION: Wipe existing data if force-clean is enabled
         if (forceClean) {
             cleanupDatabase();
         }
 
-        // 2. Core Security: System Admin
         seedGlobalAdmin();
-
-        // 3. Global Logistics: Shipping Templates
         List<ShippingMethod> globalMethods = seedShippingMethods();
-        
-        // 4. Dynamic Violation Reasons
         seedReportReasons();
 
-        // 5. Mock Ecosystem for Development (NO-PRUNING MODE)
         if (seedMockData) {
             log.info("🛠 Seeding Full Mock Ecosystem for Professional Testing...");
             List<Category> savedCats = seedCategories();
             seedDefaultSeller(savedCats, globalMethods);
-            seedPendingModeration(savedCats);
+            seedPendingModeration(savedCats, globalMethods);
             seedSubAdmin();
         }
     }
 
-    /**
-     * 🛠️ NEW: The Automated Cleanup Engine
-     * Removes all data to allow a 100% clean mock test run.
-     */
     private void cleanupDatabase() {
         log.warn("⚠️ FORCE CLEAN ENABLED: Wiping collections for fresh mock test...");
         productRepository.deleteAll();
@@ -82,6 +71,7 @@ public class DataSeeder implements CommandLineRunner {
         reportReasonRepository.deleteAll();
         productReportRepository.deleteAll();
         userRepository.deleteAll(); 
+        shippingMethodRepository.deleteAll(); // Ensure fresh shipping units
         log.info("✅ Database cleaned successfully.");
     }
 
@@ -127,23 +117,26 @@ public class DataSeeder implements CommandLineRunner {
         List<ShippingMethod> methods = Arrays.asList(
             ShippingMethod.builder()
                 .name("Hỏa Tốc").description("Nhận hàng trong 2 giờ").baseCost(208600.0)
-                .estimatedTime("Ngày mai 08:00").isActive(true).build(),
+                .estimatedTime("Trong ngày").isActive(true).build(),
             ShippingMethod.builder()
-                .name("Nhanh").description("Giao hàng tiêu chuẩn").baseCost(28700.0)
+                .name("Nhanh").description("Giao hàng tiêu chuẩn 24h").baseCost(28700.0)
                 .estimatedTime("19 Th03 - 20 Th03").isActive(true).build(),
+            // NEW: Added "Tiết Kiệm" per requirements
             ShippingMethod.builder()
-                .name("Hàng Cồng Kềnh").description("Dành cho sản phẩm lớn").baseCost(28700.0)
+                .name("Tiết Kiệm").description("Cước phí tối ưu cho đơn hàng nhỏ").baseCost(15000.0)
+                .estimatedTime("3-5 ngày").isActive(true).build(),
+            ShippingMethod.builder()
+                .name("Hàng Cồng Kềnh").description("Dành cho sản phẩm lớn").baseCost(150000.0)
                 .estimatedTime("19 Th03 - 23 Th03").isActive(true).build()
         );
 
-        log.info("🚚 Global Shipping Templates Seeded.");
+        log.info("🚚 Global Shipping Units Seeded (4 methods including Tiết Kiệm).");
         return shippingMethodRepository.saveAll(methods);
     }
 
     private List<Category> seedCategories() {
         if (categoryRepository.count() > 0) return categoryRepository.findAll();
 
-        // 100% PRESERVED: Original 18 categories
         List<String> catNames = Arrays.asList(
             "Máy Tính", "TiVi", "Âm Thanh", "Điện Thoại", "Dịch Vụ IT", "Máy Ảnh", 
             "Thiết Bị VP", "Thiết Bị Mạng", "Linh Kiện", "Gia Dụng", "Thời Trang", 
@@ -163,14 +156,44 @@ public class DataSeeder implements CommandLineRunner {
     private void seedDefaultSeller(List<Category> savedCats, List<ShippingMethod> globalMethods) {
         String sellerEmail = "seller@ainetsoft.com";
         if (!userRepository.existsByEmail(sellerEmail)) {
+            
+            // 2026 Hierarchy: Tỉnh -> Phường -> Ấp
+            User.AddressInfo stockAddr = User.AddressInfo.builder()
+                    .receiverName("AiNetsoft Manager")
+                    .phone("0909123456")
+                    .province("TP.HCM mở rộng (TP.HCM + Bình Dương + Bà Rịa–Vũng Tàu)")
+                    .ward("Phường Bến Nghé")
+                    .hamlet("Khu phố 1")
+                    .detail("Tòa nhà Bitexco, Quận 1, TP.HCM")
+                    .latitude("10.7715")
+                    .longitude("106.7043")
+                    .isDefault(true).build();
+
+            User.BankInfo bank = User.BankInfo.builder()
+                    .bankName("Vietcombank")
+                    .accountNumber("1234567890")
+                    .accountHolder("AINETSOFT MALL")
+                    .isDefault(true).build();
+
             User seller = User.builder()
                     .email(sellerEmail).fullName("AiNetsoft Mall")
                     .password(passwordEncoder.encode("Test1234!"))
                     .roles(new HashSet<>(Set.of("SELLER", "USER")))
                     .sellerVerification("VERIFIED").accountStatus("ACTIVE")
+                    .addresses(Collections.singletonList(stockAddr))
+                    .bankAccounts(Collections.singletonList(bank))
+                    .shopProfile(User.ShopProfile.builder()
+                            .shopName("AiNetsoft Mall")
+                            .businessEmail(sellerEmail)
+                            .businessPhone("0909123456")
+                            .shopAddress(stockAddr.getDetail())
+                            .taxCode("0102030405")
+                            .enabledShippingMethodIds(globalMethods.stream().map(ShippingMethod::getId).collect(Collectors.toList()))
+                            .build())
                     .build();
+
             userRepository.save(seller);
-            log.info("✅ Default Seller 'AiNetsoft Mall' Created.");
+            log.info("✅ Default Seller Created with 2026 Address & All Shipping Toggled ON.");
             seedMockProducts(seller, savedCats, globalMethods);
         }
     }
@@ -179,9 +202,10 @@ public class DataSeeder implements CommandLineRunner {
         if (productRepository.count() > 10 || savedCats.isEmpty()) return;
 
         Random rand = new Random();
-        // 100% PRESERVED: Full 55 products logic
         for (int i = 1; i <= 55; i++) {
             Category randomCat = savedCats.get(rand.nextInt(savedCats.size()));
+            
+            // RESTORED: Your original situational logic
             List<Product.ShippingConfig> situationalOptions = new ArrayList<>();
             
             situationalOptions.add(Product.ShippingConfig.builder()
@@ -212,11 +236,11 @@ public class DataSeeder implements CommandLineRunner {
             Product saved = productRepository.save(p);
             seedMockReviews(saved, seller.getId());
         }
-        log.info("✅ 55 Professional Mock Products with Reviews Seeded.");
+        log.info("✅ 55 Professional Mock Products with situational shipping logic.");
     }
 
     private void seedMockReviews(Product product, String sellerId) {
-        // Optimized with productName for dashboard clarity
+        // RESTORED: All 3 original reviews
         Review rev1 = Review.builder()
                 .productId(product.getId()).productName(product.getName()).sellerId(sellerId)
                 .userName("tatoanhduc07").rating(5)
@@ -246,7 +270,8 @@ public class DataSeeder implements CommandLineRunner {
         String modEmail = "mod@ainetsoft.com";
         if (!userRepository.existsByEmail(modEmail)) {
             User mod = User.builder()
-                    .email(modEmail).fullName("Product Moderator").password(passwordEncoder.encode("Test1234!"))
+                    .email(modEmail).fullName("Product Moderator")
+                    .password(passwordEncoder.encode("Test1234!"))
                     .roles(new HashSet<>(Set.of("ADMIN")))
                     .permissions(new HashSet<>(Set.of("MANAGE_PRODUCTS"))) 
                     .accountStatus("ACTIVE").build();
@@ -255,11 +280,22 @@ public class DataSeeder implements CommandLineRunner {
         }
     }
 
-    private void seedPendingModeration(List<Category> savedCats) {
+    private void seedPendingModeration(List<Category> savedCats, List<ShippingMethod> globalMethods) {
         String pendingSellerEmail = "pending_seller@example.com";
         if (!userRepository.existsByEmail(pendingSellerEmail)) {
+            
+            User.AddressInfo stock1 = User.AddressInfo.builder()
+                    .receiverName("Nguyễn Văn Kho")
+                    .phone("0987654321")
+                    .province("Hà Nội")
+                    .ward("Phường Hàng Đào")
+                    .hamlet("Số 1")
+                    .detail("123 Phố Cổ, Hà Nội")
+                    .latitude("21.0333").longitude("105.8500")
+                    .isDefault(true).build();
+
             User pSeller = User.builder()
-                    .email(pendingSellerEmail).fullName("Nguyễn Văn Chờ Duyệt").phone("0987654321")
+                    .email(pendingSellerEmail).fullName("Người Bán Chờ Duyệt").phone("0987654321")
                     .password(passwordEncoder.encode("Test1234!")).roles(new HashSet<>(Set.of("USER")))
                     .accountStatus("PENDING_SELLER").sellerVerification("PENDING")
                     .identityInfo(User.IdentityInfo.builder()
@@ -267,27 +303,21 @@ public class DataSeeder implements CommandLineRunner {
                             .frontImageUrl("https://picsum.photos/seed/front/400/250")
                             .backImageUrl("https://picsum.photos/seed/back/400/250")
                             .submittedAt(LocalDateTime.now()).build())
+                    .addresses(Collections.singletonList(stock1))
                     .shopProfile(User.ShopProfile.builder()
                             .shopName("Shop Đang Đợi Duyệt")
-                            .shopAddress("789 Lạc Long Quân, Tân Bình, TP.HCM").build())
+                            .businessEmail(pendingSellerEmail)
+                            .businessPhone("0987654321")
+                            .shopAddress(stock1.getDetail())
+                            // Pre-enable 'Nhanh' and 'Tiết Kiệm' for the pending seller
+                            .enabledShippingMethodIds(Arrays.asList(globalMethods.get(1).getId(), globalMethods.get(2).getId()))
+                            .build())
                     .bankAccounts(Collections.singletonList(User.BankInfo.builder()
                             .bankName("Vietcombank").accountNumber("9988776655")
                             .accountHolder("NGUYEN VAN CHO DUYET").isDefault(true).build()))
                     .build();
             userRepository.save(pSeller);
-
-            if (!savedCats.isEmpty()) {
-                Category cat = savedCats.get(0);
-                Product pendingProd = Product.builder()
-                        .name("Bản mẫu sản phẩm đang đợi duyệt").description("Sản phẩm demo cho quy trình kiểm duyệt Admin.")
-                        .price(1500000.0).stock(5).categoryId(cat.getId()).categoryName(cat.getName())
-                        .sellerId(pSeller.getId()).shopName("Shop Đang Đợi Duyệt").status("PENDING")
-                        .imageUrls(Arrays.asList("https://picsum.photos/600/600"))
-                        .protectionEnabled(true).createdAt(LocalDateTime.now()).build();
-                
-                productRepository.save(pendingProd);
-            }
-            log.info("⚠️ Full Pending Data Seeded for Admin Testing.");
+            log.info("⚠️ Full 2026-Ready Pending Data Seeded.");
         }
     }
 }

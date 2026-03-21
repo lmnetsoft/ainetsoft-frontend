@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { FaUser, FaStore, FaShoppingBag, FaShieldAlt, FaComments } from 'react-icons/fa'; 
+import { FaUser, FaStore, FaShoppingBag, FaShieldAlt, FaComments, FaTruck } from 'react-icons/fa'; 
 import api from '../../services/api'; 
 import './AccountSidebar.css';
 
@@ -30,19 +30,17 @@ const AccountSidebar = () => {
       setIsAdmin(roles.includes('ADMIN'));
     };
 
-    // --- FIXED: Changed /auth/profile to /auth/me to match backend GET endpoint ---
     const fetchLatestProfile = async () => {
       try {
         const res = await api.get('/auth/me');
         const latestUser = res.data;
 
-        // Sync fresh data back to storage
         localStorage.setItem('user', JSON.stringify(latestUser));
         localStorage.setItem('userName', latestUser.fullName || latestUser.username);
         localStorage.setItem('userAvatar', latestUser.avatarUrl || '');
         localStorage.setItem('userRoles', JSON.stringify(latestUser.roles || []));
 
-        handleSync(); // Update UI state
+        handleSync(); 
       } catch (err) {
         console.error("Sidebar background sync failed:", err);
       }
@@ -120,6 +118,10 @@ const AccountSidebar = () => {
             <div className="menu-sub-items">
               <NavLink to="/admin/dashboard" className={({isActive}) => isActive ? 'active' : ''}>
                 Tổng quan Admin
+              </NavLink>
+              <NavLink to="/admin/shipping" className={({isActive}) => isActive ? 'active' : ''}>
+                <FaTruck className="sub-menu-icon" /> 
+                Cấu hình vận chuyển
               </NavLink>
               <NavLink to="/admin/chat" className={({isActive}) => isActive ? 'active' : ''}>
                 <FaComments className="sub-menu-icon" /> 

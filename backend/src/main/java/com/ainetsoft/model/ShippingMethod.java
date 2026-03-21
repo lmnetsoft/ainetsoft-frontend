@@ -1,5 +1,7 @@
+// src/main/java/com/ainetsoft/model/ShippingMethod.java
 package com.ainetsoft.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty; // Add this import
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,11 +17,12 @@ import org.springframework.data.mongodb.core.mapping.Document;
 public class ShippingMethod {
     @Id
     private String id;
-    private String name;           // e.g., "Hỏa Tốc"
-    private String description;    // e.g., "Nhận hàng trong 2 giờ"
-    private Double baseCost;       // e.g., 208600.0
-    private String estimatedTime;  // e.g., "Ngày mai 08:00"
+    private String name;
+    private String description;
+    private Double baseCost;
+    private String estimatedTime;
     
     @Builder.Default
+    @JsonProperty("isActive") // FORCE the JSON key to match the Frontend exactly
     private boolean isActive = true;
 }
