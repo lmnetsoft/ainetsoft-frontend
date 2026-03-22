@@ -1,27 +1,124 @@
-/* --- LAYOUT & STEPPER --- */
-.onboarding-layout { display: flex; background-color: #f5f5f5; min-height: 100vh; }
-.onboarding-view { flex: 1; padding: 40px; display: flex; flex-direction: column; align-items: center; }
+/* ==========================================================================
+   LAYOUT & GLOBAL STYLING
+   ========================================================================== */
+.onboarding-layout { 
+    display: flex; 
+    background-color: #f5f5f5; 
+    min-height: 100vh; 
+    font-family: -apple-system, Helvetica Neue, Helvetica, Roboto, Arial, sans-serif;
+}
 
-.onboarding-stepper { display: flex; width: 100%; max-width: 950px; margin-bottom: 50px; justify-content: space-between; position: relative; }
-.step-node { flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; z-index: 1; }
-.node-dot { width: 10px; height: 10px; background: #dbdbdb; border-radius: 50%; margin-bottom: 12px; }
-.step-node.active .node-dot { background: #ee4d2d; box-shadow: 0 0 0 4px rgba(238, 77, 45, 0.2); }
-.step-node span { font-size: 0.8rem; color: #999; }
-.step-node.active span { color: #333; font-weight: 500; }
-.node-line { position: absolute; top: 5px; left: 50%; width: 100%; height: 1px; background: #dbdbdb; z-index: -1; }
-.node-line.active { background: #ee4d2d; }
+.onboarding-view { 
+    flex: 1; 
+    padding: 40px; 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+}
 
-/* --- MAIN CARD STYLING --- */
-.onboarding-card { width: 100%; max-width: 850px; background: white; padding: 60px 80px; box-shadow: 0 1px 1px rgba(0,0,0,0.05); border-radius: 3px; min-height: 450px; }
-.shopee-row { display: grid; grid-template-columns: 180px 1fr; gap: 30px; align-items: start; margin-bottom: 25px; }
-.shopee-row label { text-align: right; font-size: 0.95rem; color: #555; padding-top: 10px; }
+/* Stepper Styling */
+.onboarding-stepper { 
+    display: flex; 
+    width: 100%; 
+    max-width: 800px; 
+    margin-bottom: 40px; 
+    justify-content: space-between; 
+    position: relative; 
+}
+
+.step-node { 
+    flex: 1; 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    position: relative; 
+    z-index: 1; 
+}
+
+.node-dot { 
+    width: 32px; 
+    height: 32px; 
+    background: white; 
+    border: 2px solid #dbdbdb; 
+    border-radius: 50%; 
+    margin-bottom: 12px; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    color: #999;
+    transition: all 0.3s ease;
+}
+
+.step-node.active .node-dot { 
+    background: #ee4d2d; 
+    border-color: #ee4d2d;
+    color: white;
+    box-shadow: 0 0 0 4px rgba(238, 77, 45, 0.15); 
+}
+
+.step-node span { 
+    font-size: 0.85rem; 
+    color: #999; 
+    white-space: nowrap;
+}
+
+.step-node.active span { 
+    color: #333; 
+    font-weight: 500; 
+}
+
+.node-line { 
+    position: absolute; 
+    top: 16px; 
+    left: 50%; 
+    width: 100%; 
+    height: 2px; 
+    background: #dbdbdb; 
+    z-index: -1; 
+}
+
+.node-line.active { 
+    background: #ee4d2d; 
+}
+
+/* Main Card Styling */
+.onboarding-card { 
+    width: 100%; 
+    max-width: 900px; 
+    background: white; 
+    padding: 50px 70px; 
+    box-shadow: 0 1px 12px rgba(0,0,0,0.05); 
+    border-radius: 4px; 
+    min-height: 550px; 
+}
+
+.shopee-row { 
+    display: grid; 
+    grid-template-columns: 180px 1fr; 
+    gap: 30px; 
+    align-items: start; 
+    margin-bottom: 30px; 
+}
+
+.shopee-row label { 
+    text-align: right; 
+    font-size: 0.95rem; 
+    color: #555; 
+    padding-top: 10px; 
+}
+
 .req { color: #ee4d2d; margin-right: 4px; }
 
-/* --- INPUT CONSISTENCY --- */
+/* Input Styling */
+.shopee-input-group { 
+    position: relative; 
+    display: flex; 
+    flex-direction: column; 
+}
+
 .shopee-input-group input, 
-.input-with-label input, 
-.modal-field-full input, 
-.modal-field-full select {
+.shopee-input-group select {
     height: 40px;
     width: 100%;
     padding: 0 15px;
@@ -29,79 +126,230 @@
     border-radius: 2px;
     outline: none;
     font-size: 0.95rem;
-    box-sizing: border-box;
     transition: border-color 0.2s;
 }
 
-.modal-field-full textarea {
-    width: 100%;
-    min-height: 80px;
-    padding: 10px 15px;
-    border: 1px solid #dbdbdb;
-    border-radius: 2px;
-    outline: none;
-    font-size: 0.95rem;
-    box-sizing: border-box;
+.shopee-input-group input:focus { border-color: #999; }
+
+.char-counter { 
+    position: absolute; 
+    right: 12px; 
+    top: 10px; 
+    color: #ccc; 
+    font-size: 0.75rem; 
 }
 
-.shopee-input-group input:focus, 
-.modal-field-full input:focus, 
-.modal-field-full select:focus {
-    border-color: #999;
+.address-display-box { 
+    border: 1px solid #ee4d2d; 
+    background: #fff8f6; 
+    padding: 15px 20px; 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    border-radius: 2px; 
+    margin-bottom: 12px;
 }
 
-.char-counter { position: absolute; right: 12px; top: 12px; color: #ccc; font-size: 0.8rem; }
+.onboarding-footer { 
+    display: flex; 
+    justify-content: flex-end; 
+    gap: 15px; 
+    margin-top: 60px; 
+    border-top: 1px solid #f1f1f1; 
+    padding-top: 30px; 
+}
 
-/* --- ADDRESS BOXES --- */
-.address-display-box { border: 1px solid #ee4d2d; background: #fff8f6; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border-radius: 2px; }
-.addr-text p { margin: 5px 0 0 0; font-size: 0.85rem; color: #777; }
-.trash-icon { color: #999; cursor: pointer; padding: 5px; }
-.trash-icon:hover { color: #ee4d2d; }
+.btn-shopee-orange { 
+    background: #ee4d2d; 
+    color: white; 
+    border: none; 
+    height: 44px; 
+    padding: 0 50px; 
+    cursor: pointer; 
+    border-radius: 2px; 
+    font-weight: 500; 
+}
 
-.btn-add-shopee { background: #f8f8f8; border: 1px solid #dbdbdb; height: 40px; padding: 0 25px; color: #ee4d2d; font-weight: 600; cursor: pointer; display: flex; gap: 8px; align-items: center; width: fit-content; border-radius: 2px; }
+.btn-shopee-orange:disabled { background: #ffc4b6; cursor: not-allowed; }
 
-/* --- STEP 2: SHIPPING METHODS --- */
-.shipping-header-text { margin-bottom: 25px; }
-.shipping-header-text h3 { font-size: 1.1rem; font-weight: 500; color: #333; margin-bottom: 5px; }
-.shipping-header-text p { font-size: 0.85rem; color: #888; }
+.btn-shopee-lite { 
+    background: white; 
+    border: 1px solid #dbdbdb; 
+    height: 44px; 
+    padding: 0 50px; 
+    cursor: pointer; 
+    color: #555; 
+    border-radius: 2px; 
+}
+
+/* Shipping Methods Styling */
+.shipping-header-text { margin-bottom: 30px; }
+.shipping-header-text h3 { font-size: 1.2rem; font-weight: 500; color: #222; }
+.shipping-header-text p { font-size: 0.9rem; color: #777; margin-top: 5px; }
+
 .shipping-methods-list { display: flex; flex-direction: column; gap: 15px; }
-.shipping-method-item { border: 1px solid #f0f0f0; border-radius: 4px; background: #fff; overflow: hidden; }
-.method-main-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: #fafafa; border-bottom: 1px solid #f0f0f0; }
-.method-name { font-weight: 500; color: #333; font-size: 1rem; }
-.btn-collapse { background: white; border: 1px solid #dbdbdb; padding: 4px 12px; font-size: 0.8rem; color: #555; display: flex; align-items: center; gap: 5px; cursor: pointer; }
-.method-details-row { padding: 15px 20px; background: #fff; }
-.method-sub-box { display: flex; justify-content: space-between; align-items: center; background: #fff; border: 1px solid #e8e8e8; padding: 15px; border-radius: 3px; }
-.cod-tag { font-size: 0.85rem; color: #ee4d2d; margin-left: 10px; }
-.empty-shipping-msg { padding: 40px; text-align: center; color: #999; font-style: italic; font-size: 0.9rem; }
 
-/* --- SHOPEE SWITCH TOGGLE --- */
+.shipping-method-item { 
+    border: 1px solid #e8e8e8; 
+    border-radius: 4px; 
+}
+
+.method-main-row { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    padding: 15px 25px; 
+    background: #fafafa; 
+}
+
+.method-name { font-weight: 500; color: #333; }
+
+.btn-collapse { 
+    background: white; 
+    border: 1px solid #dbdbdb; 
+    padding: 5px 12px; 
+    font-size: 0.8rem; 
+    color: #555; 
+    cursor: pointer; 
+    display: flex; 
+    align-items: center; 
+    gap: 6px; 
+}
+
+.method-details-row { padding: 0 25px 20px 25px; }
+
+.method-sub-box { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    border: 1px solid #f0f0f0; 
+    padding: 15px 20px; 
+    border-radius: 4px; 
+}
+
+.sub-box-left { display: flex; align-items: center; gap: 12px; }
+
+.cod-tag { 
+    font-size: 0.75rem; 
+    color: #ee4d2d; 
+    background: #fff8f6; 
+    padding: 2px 8px; 
+    border: 1px solid rgba(238, 77, 45, 0.2);
+    border-radius: 2px;
+}
+
+.sub-box-right { display: flex; align-items: center; gap: 20px; }
+.arrow-mute { color: #ccc; font-size: 0.85rem; }
+
+/* Toggle Switch */
 .shopee-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
 .shopee-switch input { opacity: 0; width: 0; height: 0; }
-.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
-.slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+.slider { position: absolute; cursor: pointer; inset: 0; background-color: #ccc; transition: .3s; border-radius: 34px; }
+.slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
 input:checked + .slider { background-color: #2ecc71; }
 input:checked + .slider:before { transform: translateX(20px); }
 
-/* --- VALIDATION --- */
-.red-msg-inline { color: #ee4d2d; font-size: 0.75rem; margin-top: 4px; text-align: left; }
-.error-border { border-color: #ee4d2d !important; background-color: #fff8f6 !important; }
+/* Address Modal Styling */
+.shopee-modal-overlay { 
+    position: fixed; 
+    inset: 0; 
+    background: rgba(0,0,0,0.4); 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    z-index: 9999; 
+}
 
-/* --- FOOTER --- */
-.onboarding-footer { display: flex; justify-content: flex-end; gap: 15px; margin-top: 50px; border-top: 1px solid #f1f1f1; padding-top: 30px; }
-.btn-shopee-orange { background: #ee4d2d; color: white; border: none; height: 40px; padding: 0 45px; cursor: pointer; border-radius: 2px; font-weight: 500; }
-.btn-shopee-lite { background: white; border: 1px solid #dbdbdb; height: 40px; padding: 0 45px; cursor: pointer; color: #555; border-radius: 2px; }
+.shopee-modal-card { 
+    background: white; 
+    width: 600px; 
+    border-radius: 4px; 
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15); 
+}
 
-/* --- MODAL STYLING --- */
-.shopee-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 3000; }
-.shopee-modal-card { background: white; width: 520px; border-radius: 3px; overflow: hidden; }
-.modal-header { padding: 18px 25px; border-bottom: 1px solid #f1f1f1; display: flex; justify-content: space-between; align-items: center; }
-.modal-header h3 { margin: 0; font-weight: 500; color: #333; font-size: 1.1rem; }
-.close-icon { cursor: pointer; color: #bbb; }
-.modal-body { padding: 25px; display: flex; flex-direction: column; gap: 15px; }
-.row-split { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-.input-with-label label, .modal-field-full label { display: block; margin-bottom: 8px; font-size: 0.85rem; color: #555; text-align: left; }
-.gps-box-shopee { border: 1px solid #e8e8e8; padding: 15px; display: flex; align-items: center; gap: 15px; background: #fcfcfc; cursor: pointer; border-radius: 3px; }
-.gps-red { color: #ee4d2d; font-size: 1.3rem; }
-.modal-footer-shopee { padding: 15px 25px; background: #fcfcfc; display: flex; justify-content: flex-end; gap: 12px; }
-.btn-save-shopee { background: #ee4d2d; color: white; border: none; height: 36px; padding: 0 30px; cursor: pointer; border-radius: 2px; }
-.btn-cancel-shopee { background: white; border: 1px solid #dbdbdb; height: 36px; padding: 0 30px; cursor: pointer; border-radius: 2px; }
+.modal-header { 
+    padding: 20px 25px; 
+    border-bottom: 1px solid #f0f0f0; 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+}
+
+.modal-header h3 { font-weight: 500; color: #222; font-size: 1.15rem; margin: 0; }
+
+.modal-body { 
+    padding: 25px; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 20px; 
+}
+
+.row-split { 
+    display: grid; 
+    grid-template-columns: 1fr 1fr; 
+    gap: 20px; 
+}
+
+.input-with-label, .modal-field-full { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 8px; 
+}
+
+.input-with-label label, .modal-field-full label { 
+    font-size: 0.85rem; 
+    color: #555; 
+    text-align: left; 
+}
+
+.modal-body input, 
+.modal-body select, 
+.modal-body textarea { 
+    height: 40px; width: 100%; padding: 0 12px; border: 1px solid #dbdbdb; border-radius: 2px; font-size: 0.95rem; outline: none; 
+}
+
+.modal-body textarea { height: 80px; padding: 10px 12px; resize: none; }
+
+.gps-box-shopee { 
+    border: 1px solid #e8e8e8; 
+    padding: 12px 15px; 
+    display: flex; 
+    align-items: center; 
+    gap: 15px; 
+    background: #fcfcfc; 
+    cursor: pointer; 
+    border-radius: 3px; 
+}
+
+.gps-text { display: flex; flex-direction: column; text-align: left; }
+.gps-text strong { font-size: 0.9rem; color: #333; }
+.gps-text span { font-size: 0.8rem; color: #888; }
+
+.modal-footer-shopee { 
+    padding: 15px 25px; 
+    background: #fcfcfc; 
+    display: flex; 
+    justify-content: flex-end; 
+    gap: 12px; 
+    border-top: 1px solid #f0f0f0; 
+}
+
+.btn-save-shopee { background: #ee4d2d; color: white; border: none; height: 38px; padding: 0 30px; cursor: pointer; border-radius: 2px; font-weight: 500; }
+.btn-cancel-shopee { background: white; border: 1px solid #dbdbdb; height: 38px; padding: 0 30px; cursor: pointer; border-radius: 2px; color: #555; }
+
+/* Validation Styling */
+.red-msg-inline { 
+    color: #ee4d2d; 
+    font-size: 0.75rem; 
+    margin-top: 4px; 
+    text-align: left; 
+}
+
+.error-border { 
+    border-color: #ee4d2d !important; 
+    background-color: #fff8f6 !important; 
+}
+
+/* Success View */
+.success-view { text-align: center; padding: 40px 0; }
+.success-icon-big { font-size: 60px; color: #2ecc71; margin-bottom: 20px; }

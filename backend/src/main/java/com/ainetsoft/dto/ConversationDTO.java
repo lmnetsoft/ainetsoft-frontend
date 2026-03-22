@@ -9,4 +9,5 @@ public record ConversationDTO(
     LocalDateTime lastMessageAt,
     String lastMessageContent,
     long unreadCount
+    
 ) {}

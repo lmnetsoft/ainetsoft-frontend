@@ -4,12 +4,14 @@ import {
   FaStore, FaHourglassHalf, FaMapMarkerAlt, FaUniversity, FaArrowRight, 
   FaArrowLeft, FaCloudUploadAlt, FaEye, FaTimes, FaCrosshairs, 
   FaCheck, FaTruck, FaShippingFast, FaPlus, FaChevronRight, FaTrash,
-  FaChevronDown, FaChevronUp
+  FaChevronDown, FaChevronUp, FaIdCard, FaFileInvoiceDollar, FaCheckCircle
 } from 'react-icons/fa';
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import { getUserProfile, upgradeToSeller } from '../../services/authService';
 import { toast } from 'react-hot-toast';
-import axios from 'axios';
+
+import api from '../../services/api'; 
+
 import './Profile.css';
 import './SellerRegister.css';
 
@@ -25,6 +27,7 @@ const PROVINCES_2026 = [
   "Cà Mau (Bạc Liêu + Cà Mau)", "An Giang (Kiên Giang + An Giang)"
 ];
 
+// Strict Vietnamese Mobile Phone Regex (2026 Standard)
 const VN_PHONE_REGEX = /^0(3[2-9]|5[2689]|7[06-9]|8[1-9]|9[0-46-9])\d{7}$/;
 const VN_TAX_REGEX = /^\d{10}(\d{3})?$/;
 
@@ -38,7 +41,6 @@ const SellerRegister = () => {
   
   const [showAddressModal, setShowAddressModal] = useState(false);
   
-  // Data States
   const [shippingMethodsList, setShippingMethodsList] = useState<any[]>([]);
   const [expandedMethods, setExpandedMethods] = useState<Record<string, boolean>>({});
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -55,7 +57,11 @@ const SellerRegister = () => {
     accountNumber: '',
     accountHolder: '',
     cccdNumber: '',
-    shippingMethods: {} as Record<string, boolean>
+    shippingMethods: {} as Record<string, boolean>,
+    frontImage: null as File | null,
+    backImage: null as File | null,
+    frontPreview: '',
+    backPreview: ''
   });
 
   const [addressForm, setAddressForm] = useState({
@@ -70,10 +76,9 @@ const SellerRegister = () => {
         setIsShippingLoading(true);
         const [profileData, shippingRes] = await Promise.all([
           getUserProfile(),
-          axios.get('/api/shipping-methods/active')
+          api.get('/shipping-methods/active')
         ]);
 
-        console.log("Shipping Data received:", shippingRes.data);
         setShippingMethodsList(Array.isArray(shippingRes.data) ? shippingRes.data : []);
 
         const enabledMap: Record<string, boolean> = {};
@@ -101,6 +106,21 @@ const SellerRegister = () => {
     fetchData();
   }, []);
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, side: 'front' | 'back') => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({
+          ...prev,
+          [`${side}Image`]: file,
+          [`${side}Preview`]: reader.result as string
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const validateStep1 = () => {
     const errors: Record<string, string> = {};
     if (!formData.shopName.trim()) errors.shopName = "Tên Shop là bắt buộc";
@@ -121,13 +141,26 @@ const SellerRegister = () => {
     return Object.keys(errors).length === 0;
   };
 
-  const handleSaveToDatabase = async () => {
+  const handleFinalSubmit = async () => {
     try {
       setIsSaving(true);
-      const response = await upgradeToSeller(formData);
-      toast.success("Đã lưu tiến trình!");
-    } catch (error: any) {
-      toast.error(error.message || "Lỗi lưu dữ liệu");
+      const submitData = new FormData();
+      submitData.append('shopName', formData.shopName);
+      submitData.append('email', formData.email);
+      submitData.append('taxCode', formData.taxCode);
+      submitData.append('cccdNumber', formData.cccdNumber);
+      
+      const enabledIds = Object.keys(formData.shippingMethods).filter(id => formData.shippingMethods[id]);
+      submitData.append('shippingMethodIds', JSON.stringify(enabledIds));
+
+      if (formData.frontImage) submitData.append('frontImage', formData.frontImage);
+      if (formData.backImage) submitData.append('backImage', formData.backImage);
+
+      await api.post('/users/upgrade-seller-final', submitData);
+      toast.success("Đăng ký thành công!");
+      setCurrentStep(5);
+    } catch (error) {
+      toast.error("Gửi hồ sơ thất bại");
     } finally {
       setIsSaving(false);
     }
@@ -135,18 +168,46 @@ const SellerRegister = () => {
 
   const handleLocalAddressSave = () => {
     const errors: Record<string, string> = {};
-    if (!addressForm.fullName.trim()) errors.fullName = "Nhập họ tên";
+    
+    // 1. Full Name check
+    if (!addressForm.fullName.trim()) errors.fullName = "Vui lòng nhập họ và tên";
+    
+    // 2. Phone Number check with VN Regex
     const phone = addressForm.phoneNumber.trim();
-    if (!phone || !VN_PHONE_REGEX.test(phone)) errors.phoneNumber = "SĐT không hợp lệ";
-    if (!addressForm.province) errors.province = "Chọn tỉnh thành";
-    if (!addressForm.ward.trim()) errors.ward = "Nhập Phường/Xã";
-    if (!addressForm.ward.toLowerCase().includes("phường") && !addressForm.hamlet.trim()) errors.hamlet = "Bắt buộc nhập Ấp/Thôn";
+    if (!phone) {
+        errors.phoneNumber = "Vui lòng nhập số điện thoại";
+    } else if (!VN_PHONE_REGEX.test(phone)) {
+        errors.phoneNumber = "SĐT không đúng định dạng Việt Nam";
+    }
+    
+    // 3. Location check
+    if (!addressForm.province) errors.province = "Vui lòng chọn tỉnh thành";
+    if (!addressForm.ward.trim()) errors.ward = "Vui lòng nhập Phường/Xã";
+    
+    // 4. Hamlet check (Conditional)
+    if (!addressForm.ward.toLowerCase().includes("phường") && !addressForm.hamlet.trim()) {
+        errors.hamlet = "Bắt buộc nhập Ấp/Thôn cho khu vực xã";
+    }
 
-    if (Object.keys(errors).length > 0) { setAddressErrors(errors); return; }
+    // 5. Detailed Address check
+    if (!addressForm.detailAddress.trim()) errors.detailAddress = "Vui lòng nhập số nhà, tên đường";
 
-    setFormData(prev => ({ ...prev, stockAddresses: [...prev.stockAddresses, { ...addressForm, province: addressForm.province.split(' (')[0] }] }));
+    if (Object.keys(errors).length > 0) { 
+        setAddressErrors(errors); 
+        return; 
+    }
+
+    setFormData(prev => ({ 
+        ...prev, 
+        stockAddresses: [...prev.stockAddresses, { ...addressForm, province: addressForm.province.split(' (')[0] }] 
+    }));
     setShowAddressModal(false);
     setAddressErrors({});
+    // Reset modal form
+    setAddressForm({
+        fullName: '', phoneNumber: '', province: '', ward: '', hamlet: '',
+        detailAddress: '', latitude: '', longitude: '', isDefault: true
+    });
   };
 
   const getCurrentLocation = () => {
@@ -178,7 +239,7 @@ const SellerRegister = () => {
         <div className="onboarding-stepper">
           {['Thông tin Shop', 'Cài đặt vận chuyển', 'Thông tin thuế', 'Thông tin định danh', 'Hoàn tất'].map((l, i) => (
             <div key={i} className={`step-node ${currentStep > i ? 'active' : ''}`}>
-              <div className="node-dot"></div>
+              <div className="node-dot">{currentStep > i + 1 ? <FaCheck /> : i + 1}</div>
               <span>{l}</span>
               {i < 4 && <div className={`node-line ${currentStep > i + 1 ? 'active' : ''}`}></div>}
             </div>
@@ -209,11 +270,9 @@ const SellerRegister = () => {
                       <FaTrash className="trash-icon" onClick={() => setFormData({...formData, stockAddresses: formData.stockAddresses.filter((_, i) => i !== idx)})} />
                     </div>
                   ))}
-                  {formData.stockAddresses.length < 2 && (
-                    <button className="btn-add-shopee" onClick={() => { setAddressErrors({}); setShowAddressModal(true); }}>
-                      <FaPlus /> Thêm ({formData.stockAddresses.length}/2)
-                    </button>
-                  )}
+                  <button className="btn-add-shopee" onClick={() => { setAddressErrors({}); setShowAddressModal(true); }}>
+                    <FaPlus /> Thêm ({formData.stockAddresses.length}/2)
+                  </button>
                   {formErrors.addresses && <p className="red-msg-inline">{formErrors.addresses}</p>}
                 </div>
               </div>
@@ -227,7 +286,6 @@ const SellerRegister = () => {
               </div>
 
               <div className="onboarding-footer">
-                <button className="btn-shopee-lite" onClick={handleSaveToDatabase} disabled={isSaving}>Lưu</button>
                 <button className="btn-shopee-orange" onClick={() => { if(validateStep1()) setCurrentStep(2); }}>Tiếp theo</button>
               </div>
             </div>
@@ -245,7 +303,7 @@ const SellerRegister = () => {
                    <div className="red-msg-inline" style={{textAlign: 'center', padding: '20px'}}>Đang kết nối API vận chuyển...</div>
                 ) : shippingMethodsList.length > 0 ? (
                   shippingMethodsList.map((method) => {
-                    const mId = method.id || method._id;
+                    const mId = method.id;
                     return (
                       <div key={mId} className="shipping-method-item">
                         <div className="method-main-row">
@@ -276,29 +334,19 @@ const SellerRegister = () => {
                     );
                   })
                 ) : (
-                  <div className="empty-shipping-msg">Không có đơn vị vận chuyển nào khả dụng. Vui lòng kiểm tra Admin.</div>
+                  <div className="empty-shipping-msg">Không có đơn vị vận chuyển khả dụng. Vui lòng kiểm tra Admin.</div>
                 )}
               </div>
 
               <div className="onboarding-footer">
                 <button className="btn-shopee-lite" onClick={() => setCurrentStep(1)}>Quay lại</button>
-                <button className="btn-shopee-orange" onClick={() => { handleSaveToDatabase(); setCurrentStep(3); }}>Tiếp theo</button>
+                <button className="btn-shopee-orange" onClick={() => setCurrentStep(3)}>Tiếp theo</button>
               </div>
             </div>
           )}
 
           {currentStep === 3 && (
             <div className="step-content">
-              <div className="shopee-row">
-                <label><span className="req">*</span> Loại hình kinh doanh</label>
-                <div className="shopee-input-group">
-                  <select value={formData.businessType} onChange={e => setFormData({...formData, businessType: e.target.value})}>
-                    <option value="INDIVIDUAL">Cá nhân</option>
-                    <option value="ENTERPRISE">Công ty / Hộ kinh doanh</option>
-                  </select>
-                </div>
-              </div>
-
               <div className="shopee-row">
                 <label><span className="req">*</span> Mã số thuế</label>
                 <div className="shopee-input-group">
@@ -312,34 +360,133 @@ const SellerRegister = () => {
                   {formErrors.taxCode && <p className="red-msg-inline">{formErrors.taxCode}</p>}
                 </div>
               </div>
-
               <div className="onboarding-footer">
                 <button className="btn-shopee-lite" onClick={() => setCurrentStep(2)}>Quay lại</button>
-                <button className="btn-shopee-orange" onClick={() => { if(validateStep3()) { handleSaveToDatabase(); setCurrentStep(4); } }}>Tiếp theo</button>
+                <button className="btn-shopee-orange" onClick={() => { if(validateStep3()) setCurrentStep(4); }}>Tiếp theo</button>
               </div>
+            </div>
+          )}
+
+          {currentStep === 4 && (
+            <div className="step-content">
+              <h3>Định danh người bán</h3>
+              <div className="shopee-row">
+                <label><span className="req">*</span> Số CCCD</label>
+                <input value={formData.cccdNumber} onChange={e => setFormData({...formData, cccdNumber: e.target.value})} maxLength={12} placeholder="Nhập 12 số CCCD" />
+              </div>
+              <div className="id-upload-grid">
+                <div className="upload-box" onClick={() => document.getElementById('front')?.click()}>
+                  {formData.frontPreview ? <img src={formData.frontPreview} alt="Front" /> : "Mặt trước"}
+                </div>
+                <input id="front" type="file" hidden onChange={e => handleFileChange(e, 'front')} />
+                
+                <div className="upload-box" onClick={() => document.getElementById('back')?.click()}>
+                  {formData.backPreview ? <img src={formData.backPreview} alt="Back" /> : "Mặt sau"}
+                </div>
+                <input id="back" type="file" hidden onChange={e => handleFileChange(e, 'back')} />
+              </div>
+              <div className="onboarding-footer">
+                <button className="btn-shopee-lite" onClick={() => setCurrentStep(3)}>Quay lại</button>
+                <button className="btn-shopee-orange" onClick={handleFinalSubmit} disabled={isSaving}>
+                  {isSaving ? "Đang xử lý..." : "Gửi hồ sơ"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {currentStep === 5 && (
+            <div className="step-content success-view">
+              <FaCheckCircle className="success-icon-big" />
+              <h2>Đăng ký hoàn tất!</h2>
+              <p>Hồ sơ của bạn đang được xét duyệt. Vui lòng kiểm tra email trong vòng 24h.</p>
+              <button className="btn-shopee-orange" onClick={() => navigate('/user/profile')}>Về trang cá nhân</button>
             </div>
           )}
         </div>
       </main>
 
+      {/* Address Modal with Validation Messages */}
       {showAddressModal && (
         <div className="shopee-modal-overlay">
           <div className="shopee-modal-card">
-            <div className="modal-header"><h3>Thêm Địa Chỉ Mới</h3><FaTimes className="close-icon" onClick={() => setShowAddressModal(false)} /></div>
+            <div className="modal-header">
+              <h3>Thêm Địa Chỉ Mới</h3>
+              <FaTimes className="close-icon" onClick={() => setShowAddressModal(false)} />
+            </div>
             <div className="modal-body">
               <div className="row-split">
-                <div className="input-with-label"><label><span className="req">*</span> Họ & Tên</label><input value={addressForm.fullName} onChange={e => setAddressForm({...addressForm, fullName: e.target.value})} /></div>
-                <div className="input-with-label"><label><span className="req">*</span> SĐT</label><input value={addressForm.phoneNumber} onChange={e => setAddressForm({...addressForm, phoneNumber: e.target.value})} /></div>
+                <div className="input-with-label">
+                  <label><span className="req">*</span> Họ & Tên</label>
+                  <input 
+                    className={addressErrors.fullName ? "error-border" : ""}
+                    value={addressForm.fullName} 
+                    onChange={e => setAddressForm({...addressForm, fullName: e.target.value})} 
+                  />
+                  {addressErrors.fullName && <p className="red-msg-inline">{addressErrors.fullName}</p>}
+                </div>
+                <div className="input-with-label">
+                  <label><span className="req">*</span> SĐT</label>
+                  <input 
+                    className={addressErrors.phoneNumber ? "error-border" : ""}
+                    value={addressForm.phoneNumber} 
+                    onChange={e => setAddressForm({...addressForm, phoneNumber: e.target.value.replace(/\D/g, '')})} 
+                    placeholder="0xxxxxxxxx"
+                  />
+                  {addressErrors.phoneNumber && <p className="red-msg-inline">{addressErrors.phoneNumber}</p>}
+                </div>
               </div>
-              <div className="modal-field-full"><label><span className="req">*</span> Tỉnh/Thành phố</label>
-                <select value={addressForm.province} onChange={e => setAddressForm({...addressForm, province: e.target.value})}><option value="">Chọn</option>{PROVINCES_2026.map(p => <option key={p} value={p}>{p}</option>)}</select>
+              <div className="modal-field-full">
+                <label><span className="req">*</span> Tỉnh/Thành phố</label>
+                <select 
+                  className={addressErrors.province ? "error-border" : ""}
+                  value={addressForm.province} 
+                  onChange={e => setAddressForm({...addressForm, province: e.target.value})}
+                >
+                  <option value="">Chọn</option>
+                  {PROVINCES_2026.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+                {addressErrors.province && <p className="red-msg-inline">{addressErrors.province}</p>}
               </div>
-              <div className="modal-field-full"><label><span className="req">*</span> Phường/Xã</label><input value={addressForm.ward} onChange={e => setAddressForm({...addressForm, ward: e.target.value})} /></div>
-              <div className="modal-field-full"><label>{!addressForm.ward.toLowerCase().includes("phường") && <span className="req">*</span>}Ấp/Thôn/Tổ</label><input value={addressForm.hamlet} onChange={e => setAddressForm({...addressForm, hamlet: e.target.value})} /></div>
-              <div className="modal-field-full"><label>Địa chỉ chi tiết</label><textarea value={addressForm.detailAddress} onChange={e => setAddressForm({...addressForm, detailAddress: e.target.value})} /></div>
-              <div className="gps-box-shopee" onClick={getCurrentLocation}><FaMapMarkerAlt className="gps-red" /><div className="gps-text"><strong>Định vị GPS</strong><span>{addressForm.latitude ? `${addressForm.latitude}, ${addressForm.longitude}` : 'Bấm để lấy tọa độ'}</span></div></div>
+              <div className="modal-field-full">
+                <label><span className="req">*</span> Phường/Xã</label>
+                <input 
+                  className={addressErrors.ward ? "error-border" : ""}
+                  value={addressForm.ward} 
+                  onChange={e => setAddressForm({...addressForm, ward: e.target.value})} 
+                />
+                {addressErrors.ward && <p className="red-msg-inline">{addressErrors.ward}</p>}
+              </div>
+              <div className="modal-field-full">
+                <label>{!addressForm.ward.toLowerCase().includes("phường") && <span className="req">*</span>}Ấp/Thôn/Tổ</label>
+                <input 
+                  className={addressErrors.hamlet ? "error-border" : ""}
+                  value={addressForm.hamlet} 
+                  onChange={e => setAddressForm({...addressForm, hamlet: e.target.value})} 
+                />
+                {addressErrors.hamlet && <p className="red-msg-inline">{addressErrors.hamlet}</p>}
+              </div>
+              <div className="modal-field-full">
+                <label><span className="req">*</span> Địa chỉ chi tiết</label>
+                <textarea 
+                  className={addressErrors.detailAddress ? "error-border" : ""}
+                  value={addressForm.detailAddress} 
+                  onChange={e => setAddressForm({...addressForm, detailAddress: e.target.value})} 
+                  placeholder="Số nhà, tên đường, tòa nhà..."
+                />
+                {addressErrors.detailAddress && <p className="red-msg-inline">{addressErrors.detailAddress}</p>}
+              </div>
+              <div className="gps-box-shopee" onClick={getCurrentLocation}>
+                <FaMapMarkerAlt className="gps-red" />
+                <div className="gps-text">
+                  <strong>Định vị GPS</strong>
+                  <span>{addressForm.latitude ? `${addressForm.latitude}, ${addressForm.longitude}` : 'Bấm để lấy tọa độ'}</span>
+                </div>
+              </div>
             </div>
-            <div className="modal-footer-shopee"><button className="btn-cancel-shopee" onClick={() => setShowAddressModal(false)}>Hủy</button><button className="btn-save-shopee" onClick={handleLocalAddressSave}>Lưu</button></div>
+            <div className="modal-footer-shopee">
+              <button className="btn-cancel-shopee" onClick={() => setShowAddressModal(false)}>Hủy</button>
+              <button className="btn-save-shopee" onClick={handleLocalAddressSave}>Lưu</button>
+            </div>
           </div>
         </div>
       )}
