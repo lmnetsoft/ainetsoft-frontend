@@ -161,27 +161,41 @@ export const resetPassword = async (resetData: { contactInfo: string, otp: strin
 };
 
 /**
- * UPDATED: upgradeToSeller now includes mandatory 'email' in the JSON Blob
- * to support users who registered with Phone but need an Email for Seller status.
+ * NEW: Fetches only the active shipping methods for the Seller registration form.
+ */
+export const getActiveShippingMethods = async (): Promise<any> => {
+    try {
+      const response = await api.get('/shipping-methods/active');
+      return response.data;
+    } catch (error: any) {
+      throw new Error(extractError(error, "Không thể tải danh sách phương thức vận chuyển."));
+    }
+};
+
+/**
+ * UPDATED: upgradeToSeller now handles the dynamic 2026 Hierarchy (stockAddresses)
+ * and the Shipping Method toggles.
  */
 export const upgradeToSeller = async (formData: any): Promise<string> => {
   try {
     const bodyFormData = new FormData();
 
-    // Prepare JSON part - Sync with backend SellerRegistrationDTO
+    // Prepare JSON part - Strictly synced with Backend SellerRegistrationDTO
     const registrationData = {
       phone: formData.phone,
       email: formData.email, 
       cccdNumber: formData.cccdNumber,
       shopName: formData.shopName,
-      shopAddress: formData.shopAddress,
       taxCode: formData.taxCode,
       bankName: formData.bankName,
       accountNumber: formData.accountNumber,
-      accountHolder: formData.accountHolder
+      accountHolder: formData.accountHolder,
+      // NEW: Dynamic requirements
+      stockAddresses: formData.stockAddresses,
+      shippingMethods: formData.shippingMethods 
     };
 
-    // Wrap JSON in Blob to ensure Content-Type: application/json for this @RequestPart
+    // Wrap JSON in Blob to ensure Content-Type: application/json for @RequestPart
     const jsonBlob = new Blob([JSON.stringify(registrationData)], {
       type: 'application/json'
     });
@@ -197,7 +211,7 @@ export const upgradeToSeller = async (formData: any): Promise<string> => {
 
     const response = await api.post('/auth/upgrade-seller', bodyFormData);
     
-    // Crucial: Refresh profile so the UI reflects the PENDING status and updated email
+    // Crucial: Refresh profile so the UI reflects the PENDING status
     await getUserProfile(); 
     
     return response.data;

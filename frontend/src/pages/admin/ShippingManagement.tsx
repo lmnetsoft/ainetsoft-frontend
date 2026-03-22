@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  FaTruck, FaPlus, FaTrash, FaEdit, FaToggleOn, FaToggleOff, 
-  FaChevronDown, FaChevronUp, FaSave, FaTimes, FaShippingFast 
+  FaTruck, FaPlus, FaTrash, FaEdit, FaChevronDown, FaChevronUp, 
+  FaTimes, FaShippingFast 
 } from 'react-icons/fa';
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import adminService from '../../services/admin.service';
@@ -21,16 +21,16 @@ const ShippingManagement = () => {
     description: '',
     baseCost: 0,
     estimatedTime: '',
-    isActive: true
+    active: true // Unified to 'active'
   });
 
   useEffect(() => {
-    fetchData();
+    fetchData(true); // Initial load with spinner
   }, []);
 
-  const fetchData = async () => {
+  const fetchData = async (isInitialLoad = false) => {
     try {
-      setLoading(true);
+      if (isInitialLoad) setLoading(true);
       const data = await adminService.getAllShippingMethods();
       setMethods(data);
     } catch (error) {
@@ -40,14 +40,29 @@ const ShippingManagement = () => {
     }
   };
 
+  /**
+   * OPTIMISTIC UPDATE:
+   * Changes the UI state immediately so the button moves slightly/smoothly
+   * without triggering a full-page reload or list jump.
+   */
   const handleToggleActive = async (e: React.MouseEvent | null, method: any) => {
     if (e) e.stopPropagation(); 
+
+    const originalMethods = [...methods]; // Backup for rollback if API fails
+    const newStatus = !method.active;
+
+    // 1. Update UI state immediately (Smooth & Static)
+    setMethods(prev => prev.map(m => 
+      m.id === method.id ? { ...m, active: newStatus } : m
+    ));
+
     try {
-      const newStatus = !method.isActive;
-      await adminService.updateShippingMethod(method.id, { ...method, isActive: newStatus });
+      // 2. Perform background API call
+      await adminService.updateShippingMethod(method.id, { ...method, active: newStatus });
       toast.success(`Đã ${newStatus ? 'kích hoạt' : 'tắt'} ${method.name}`);
-      fetchData();
     } catch (error) {
+      // 3. Rollback if backend update fails
+      setMethods(originalMethods);
       toast.error("Lỗi cập nhật trạng thái");
     }
   };
@@ -57,7 +72,7 @@ const ShippingManagement = () => {
       setForm({ ...method });
       setEditingId(method.id);
     } else {
-      setForm({ name: '', description: '', baseCost: 0, estimatedTime: '', isActive: true });
+      setForm({ name: '', description: '', baseCost: 0, estimatedTime: '', active: true });
       setEditingId(null);
     }
     setShowModal(true);
@@ -74,7 +89,7 @@ const ShippingManagement = () => {
         toast.success("Thêm mới thành công");
       }
       setShowModal(false);
-      fetchData();
+      fetchData(false); // Silent refresh
     } catch (error) {
       toast.error("Lỗi khi lưu dữ liệu");
     }
@@ -86,7 +101,7 @@ const ShippingManagement = () => {
     try {
       await adminService.deleteShippingMethod(id);
       toast.success("Đã xóa vĩnh viễn");
-      fetchData();
+      fetchData(false); // Silent refresh
     } catch (error) {
       toast.error("Không thể xóa phương thức đang sử dụng");
     }
@@ -120,12 +135,16 @@ const ShippingManagement = () => {
           <div className="shipping-config-section">
             <p className="section-desc">Kích hoạt và cấu hình các phương thức vận chuyển phù hợp cho toàn sàn.</p>
             
-            {loading ? (
+            {/* FIXED: Conditional loading. 
+              Only shows spinner if we have NO data yet. 
+              This prevents the UI from "jumping" during toggles.
+            */}
+            {loading && methods.length === 0 ? (
               <div className="tab-loading-spinner">Đang đồng bộ dữ liệu...</div>
             ) : (
               <div className="shipping-methods-list">
                 {methods.map((m) => (
-                  <div key={m.id} className={`shipping-method-item ${!m.isActive ? 'is-disabled' : ''}`}>
+                  <div key={m.id} className={`shipping-method-item ${!m.active ? 'is-disabled' : ''}`}>
                     <div className="method-main-row" onClick={() => toggleAccordion(m.id)}>
                       <div className="method-info-title">
                         <FaShippingFast className="method-icon-bg" />
@@ -140,12 +159,11 @@ const ShippingManagement = () => {
                           </button>
                         </div>
                         
-                        {/* --- FIXED: Professional Slider Switch instead of greyed out icons --- */}
                         <div className="toggle-switch-wrapper" onClick={(e) => e.stopPropagation()}>
                           <label className="admin-switch">
                             <input 
                               type="checkbox" 
-                              checked={m.isActive} 
+                              checked={m.active} 
                               onChange={() => handleToggleActive(null, m)} 
                             />
                             <span className="admin-slider round"></span>

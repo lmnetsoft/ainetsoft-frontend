@@ -1,13 +1,13 @@
-// src/main/java/com/ainetsoft/model/ShippingMethod.java
 package com.ainetsoft.model;
 
-import com.fasterxml.jackson.annotation.JsonProperty; // Add this import
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 @Data
 @Builder
@@ -17,12 +17,38 @@ import org.springframework.data.mongodb.core.mapping.Document;
 public class ShippingMethod {
     @Id
     private String id;
-    private String name;
-    private String description;
-    private Double baseCost;
-    private String estimatedTime;
     
+    private String name;
+    
+    private String description;
+    
+    private Double baseCost;
+    
+    private String estimatedTime;
+
     @Builder.Default
-    @JsonProperty("isActive") // FORCE the JSON key to match the Frontend exactly
-    private boolean isActive = true;
+    @Field("active")           // Forces MongoDB to use "active"
+    @JsonProperty("active")    // Forces JSON to use "active"
+    private boolean active = true;
+
+    @Builder.Default
+    @Field("codEnabled")
+    @JsonProperty("codEnabled")
+    private boolean codEnabled = true;
+
+    /**
+     * Explicit getter for 'active' to ensure compatibility with 
+     * code or UI searching for 'isActive'.
+     */
+    @JsonProperty("isActive")
+    public boolean isActive() {
+        return this.active;
+    }
+
+    /**
+     * Explicit setter to handle incoming JSON 'isActive' keys
+     */
+    public void setIsActive(boolean isActive) {
+        this.active = isActive;
+    }
 }

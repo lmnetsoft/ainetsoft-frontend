@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  FaCheckCircle, FaExclamationTriangle, FaStore, FaHourglassHalf, 
-  FaIdCard, FaMapMarkerAlt, FaUniversity, FaArrowRight, FaArrowLeft, 
-  FaCloudUploadAlt, FaFileInvoice, FaEye, FaTimesCircle, FaRocket,
-  FaPlus, FaEdit, FaTrash, FaCrosshairs, FaCheck
+  FaStore, FaHourglassHalf, FaMapMarkerAlt, FaUniversity, FaArrowRight, 
+  FaArrowLeft, FaCloudUploadAlt, FaEye, FaTimes, FaCrosshairs, 
+  FaCheck, FaTruck, FaShippingFast, FaPlus, FaChevronRight, FaTrash,
+  FaChevronDown, FaChevronUp
 } from 'react-icons/fa';
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import { getUserProfile, upgradeToSeller } from '../../services/authService';
 import { toast } from 'react-hot-toast';
+import axios from 'axios';
 import './Profile.css';
 import './SellerRegister.css';
 
@@ -19,323 +20,326 @@ const PROVINCES_2026 = [
   "Hải Phòng (Hải Dương + Hải Phòng)", "Ninh Bình (Hà Nam + Nam Định + Ninh Bình)", "Quảng Trị (Quảng Bình + Quảng Trị)",
   "Đà Nẵng (Quảng Nam + Đà Nẵng)", "Quảng Ngãi (Kon Tum + Quảng Ngãi)", "Gia Lai (Bình Định + Gia Lai)",
   "Khánh Hòa (Ninh Thuận + Khánh Hòa)", "Lâm Đồng (Đắk Nông + Bình Thuận + Lâm Đồng)", "Đắk Lắk (Phú Yên + Đắk Lắk)",
-  "TP.HCM mở rộng (TP.HCM + Bình Dương + Bà Rịa–Vũng Tàu)", "Đồng Nai (Đồng Nai + Bình Phước)", "Tây Ninh (Tây Ninh + Long An)",
+  "TP.HCM (TP.HCM + Bình Dương + Bà Rịa–Vũng Tàu)", "Đồng Nai (Đồng Nai + Bình Phước)", "Tây Ninh (Tây Ninh + Long An)",
   "Cần Thơ (Cần Thơ + Sóc Trăng + Hậu Giang)", "Vĩnh Long (Bến Tre + Vĩnh Long + Trà Vinh)", "Đồng Tháp (Tiền Giang + Đồng Tháp)",
   "Cà Mau (Bạc Liêu + Cà Mau)", "An Giang (Kiên Giang + An Giang)"
 ];
 
-const FAMOUS_BANKS = ["Vietcombank", "Agribank", "BIDV", "VietinBank", "MB Bank", "Techcombank", "ACB", "VPBank", "TPBank", "Sacombank"];
+const VN_PHONE_REGEX = /^0(3[2-9]|5[2689]|7[06-9]|8[1-9]|9[0-46-9])\d{7}$/;
+const VN_TAX_REGEX = /^\d{10}(\d{3})?$/;
 
 const SellerRegister = () => {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [isUpgrading, setIsUpgrading] = useState(false);
-  const [isLocating, setIsLocating] = useState(false); // New GPS loading state
-  const [userStatus, setUserStatus] = useState<string>('NONE');
-  const [rejectionReason, setRejectionReason] = useState<string>('');
+  const [currentStep, setCurrentStep] = useState(1);
+  const [isPageLoading, setIsPageLoading] = useState(true);
+  const [isShippingLoading, setIsShippingLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
   
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
   const [showAddressModal, setShowAddressModal] = useState(false);
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [addressForm, setAddressForm] = useState({
-    fullName: '', phoneNumber: '', province: '', ward: '', hamlet: '',
-    detailAddress: '', latitude: '', longitude: '', isDefault: false
-  });
+  
+  // Data States
+  const [shippingMethodsList, setShippingMethodsList] = useState<any[]>([]);
+  const [expandedMethods, setExpandedMethods] = useState<Record<string, boolean>>({});
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [addressErrors, setAddressErrors] = useState<Record<string, string>>({});
 
   const [formData, setFormData] = useState({
-    phone: '', email: '', cccdNumber: '', frontImage: null as File | null,
-    backImage: null as File | null, shopName: '', taxCode: '', 
-    bankName: '', accountNumber: '', accountHolder: '',
-    stockAddresses: [] as any[]
+    phone: '',
+    email: '',
+    shopName: '',
+    stockAddresses: [] as any[],
+    businessType: 'INDIVIDUAL',
+    taxCode: '',
+    bankName: '',
+    accountNumber: '',
+    accountHolder: '',
+    cccdNumber: '',
+    shippingMethods: {} as Record<string, boolean>
   });
 
-  const [previews, setPreviews] = useState({ front: '', back: '' });
+  const [addressForm, setAddressForm] = useState({
+    fullName: '', phoneNumber: '', province: '', ward: '', hamlet: '',
+    detailAddress: '', latitude: '', longitude: '', isDefault: true
+  });
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setLoading(true);
-        const data = await getUserProfile();
-        setUserStatus(data.sellerVerification || 'NONE');
-        setRejectionReason(data.rejectionReason || '');
+        setIsPageLoading(true);
+        setIsShippingLoading(true);
+        const [profileData, shippingRes] = await Promise.all([
+          getUserProfile(),
+          axios.get('/api/shipping-methods/active')
+        ]);
+
+        console.log("Shipping Data received:", shippingRes.data);
+        setShippingMethodsList(Array.isArray(shippingRes.data) ? shippingRes.data : []);
+
+        const enabledMap: Record<string, boolean> = {};
+        profileData.shopProfile?.enabledShippingMethodIds?.forEach((id: string) => {
+          enabledMap[id] = true;
+        });
+
         setFormData(prev => ({
           ...prev,
-          phone: data.phone || '',
-          email: data.email || '',
-          shopName: data.shopProfile?.shopName || '',
-          taxCode: data.shopProfile?.taxCode || '',
-          bankName: data.bankAccounts?.[0]?.bankName || '',
-          accountNumber: data.bankAccounts?.[0]?.accountNumber || '',
-          accountHolder: data.bankAccounts?.[0]?.accountHolder || '',
-          stockAddresses: data.addresses || []
+          phone: profileData.phone || '',
+          email: profileData.email || '',
+          shopName: profileData.shopProfile?.shopName || '',
+          stockAddresses: profileData.addresses || [],
+          businessType: profileData.shopProfile?.businessType || 'INDIVIDUAL',
+          taxCode: profileData.shopProfile?.taxCode || '',
+          shippingMethods: enabledMap
         }));
-      } catch (error) { toast.error("Lỗi tải thông tin"); } finally { setLoading(false); }
+      } catch (error) {
+        toast.error("Lỗi kết nối hệ thống");
+      } finally {
+        setIsPageLoading(false);
+        setIsShippingLoading(false);
+      }
     };
     fetchData();
   }, []);
 
-  const validateField = (name: string, value: any) => {
-    let msg = "";
-    if (name === "phone" && !/^(0|\+84)(3[2-9]|5[2689]|7[06-9]|8[1-9]|9[0-46-9])\d{7}$/.test(value)) msg = "SĐT không hợp lệ.";
-    if (name === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) msg = "Email sai định dạng.";
-    if (name === "cccdNumber" && value.length !== 12) msg = "CCCD cần 12 số.";
-    if (name === "bankName" && !value) msg = "Hãy chọn ngân hàng.";
-    if (name === "accountNumber" && value.length < 8) msg = "Số tài khoản không hợp lệ.";
-    if (name === "shopName" && !value.trim()) msg = "Tên shop không được trống.";
-
-    setErrors(prev => ({ ...prev, [name]: msg }));
-    return msg === "";
+  const validateStep1 = () => {
+    const errors: Record<string, string> = {};
+    if (!formData.shopName.trim()) errors.shopName = "Tên Shop là bắt buộc";
+    if (formData.stockAddresses.length === 0) errors.addresses = "Cần ít nhất 1 địa chỉ lấy hàng";
+    if (!formData.email.trim()) errors.email = "Email là bắt buộc";
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    validateField(name, value);
+  const validateStep3 = () => {
+    const errors: Record<string, string> = {};
+    if (!formData.taxCode.trim()) {
+      errors.taxCode = "Mã số thuế là bắt buộc";
+    } else if (!VN_TAX_REGEX.test(formData.taxCode.trim())) {
+      errors.taxCode = "MST không hợp lệ (10 hoặc 13 chữ số)";
+    }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
-  const handleNumericInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    const clean = value.replace(/[^0-9]/g, '');
-    setFormData(prev => ({ ...prev, [name]: clean }));
-    validateField(name, clean);
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, side: 'front' | 'back') => {
-    if (e.target.files?.[0]) {
-      const file = e.target.files[0];
-      setFormData(prev => ({ ...prev, [side === 'front' ? 'frontImage' : 'backImage']: file }));
-      const reader = new FileReader();
-      reader.onloadend = () => setPreviews(prev => ({ ...prev, [side]: reader.result as string }));
-      reader.readAsDataURL(file);
+  const handleSaveToDatabase = async () => {
+    try {
+      setIsSaving(true);
+      const response = await upgradeToSeller(formData);
+      toast.success("Đã lưu tiến trình!");
+    } catch (error: any) {
+      toast.error(error.message || "Lỗi lưu dữ liệu");
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleNext = () => {
-    const currentErrors = Object.values(errors).filter(e => e !== "");
-    if (currentErrors.length > 0) return toast.error("Sửa các lỗi màu đỏ trước khi tiếp tục.");
-    if (step === 3 && formData.stockAddresses.length === 0) return toast.error("Thêm ít nhất một địa chỉ kho.");
-    setStep(step + 1);
-    window.scrollTo(0, 0);
-  };
+  const handleLocalAddressSave = () => {
+    const errors: Record<string, string> = {};
+    if (!addressForm.fullName.trim()) errors.fullName = "Nhập họ tên";
+    const phone = addressForm.phoneNumber.trim();
+    if (!phone || !VN_PHONE_REGEX.test(phone)) errors.phoneNumber = "SĐT không hợp lệ";
+    if (!addressForm.province) errors.province = "Chọn tỉnh thành";
+    if (!addressForm.ward.trim()) errors.ward = "Nhập Phường/Xã";
+    if (!addressForm.ward.toLowerCase().includes("phường") && !addressForm.hamlet.trim()) errors.hamlet = "Bắt buộc nhập Ấp/Thôn";
 
-  const openAddressModal = (index: number | null = null) => {
-    if (index !== null) {
-      setAddressForm(formData.stockAddresses[index]);
-      setEditingIndex(index);
-    } else {
-      setAddressForm({
-        fullName: '', phoneNumber: '', province: '', ward: '', hamlet: '',
-        detailAddress: '', latitude: '', longitude: '', isDefault: formData.stockAddresses.length === 0
-      });
-      setEditingIndex(null);
-    }
-    setShowAddressModal(true);
-  };
+    if (Object.keys(errors).length > 0) { setAddressErrors(errors); return; }
 
-  const saveAddress = () => {
-    if (!addressForm.fullName || !addressForm.province || !addressForm.ward || !addressForm.hamlet) {
-      return toast.error("Nhập đủ: Tên -> Tỉnh -> Phường -> Ấp");
-    }
-    const newList = [...formData.stockAddresses];
-    if (editingIndex !== null) newList[editingIndex] = addressForm;
-    else newList.push(addressForm);
-    setFormData(prev => ({ ...prev, stockAddresses: newList }));
+    setFormData(prev => ({ ...prev, stockAddresses: [...prev.stockAddresses, { ...addressForm, province: addressForm.province.split(' (')[0] }] }));
     setShowAddressModal(false);
+    setAddressErrors({});
   };
 
-  // --- FIXED: GPS with UI Visuals ---
   const getCurrentLocation = () => {
     setIsLocating(true);
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          setAddressForm(prev => ({ 
-            ...prev, 
-            latitude: pos.coords.latitude.toFixed(6), 
-            longitude: pos.coords.longitude.toFixed(6) 
-          }));
-          setIsLocating(false);
-          toast.success("Đã xác định vị trí!");
+          setAddressForm(prev => ({ ...prev, latitude: pos.coords.latitude.toFixed(6), longitude: pos.coords.longitude.toFixed(6) }));
+          setIsLocating(false); toast.success("Đã lấy tọa độ!");
         },
-        () => {
-          setIsLocating(false);
-          toast.error("Hãy bật GPS và cho phép truy cập vị trí.");
-        }
+        () => { setIsLocating(false); toast.error("Vui lòng bật GPS."); }
       );
-    } else {
-      setIsLocating(false);
-      toast.error("Trình duyệt không hỗ trợ GPS.");
     }
   };
 
-  const handleUpgrade = async () => {
-    try {
-      setIsUpgrading(true);
-      const message = await upgradeToSeller(formData); 
-      toast.success(message);
-      setUserStatus('PENDING');
-    } catch (error: any) { toast.error(error.message); } finally { setIsUpgrading(false); }
+  const toggleShipping = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      shippingMethods: { ...prev.shippingMethods, [id]: !prev.shippingMethods[id] }
+    }));
   };
 
-  if (loading) return <div className="loading-spinner">Đang tải...</div>;
-
-  if (userStatus === 'PENDING') return (
-    <div className="profile-wrapper"><div className="container profile-container"><AccountSidebar /><main className="profile-main-content">
-      <div className="seller-status-box pending"><FaHourglassHalf className="status-icon" /><h1>Đang chờ phê duyệt</h1><p>Hồ sơ đang được Admin kiểm tra. Quá trình mất 24h.</p><button onClick={() => navigate('/')} className="btn-back-home">Trang chủ</button></div>
-    </main></div></div>
-  );
+  if (isPageLoading) return <div className="loading-spinner">Đang tải hồ sơ...</div>;
 
   return (
-    <div className="profile-wrapper">
-      <div className="container profile-container">
-        <AccountSidebar />
-        <main className="profile-main-content">
-          <div className="seller-reg-card">
-            <div className="seller-reg-header">
-              <FaStore className="seller-icon" />
-              <h1>Đăng ký Trở thành Người bán</h1>
+    <div className="onboarding-layout">
+      <AccountSidebar />
+      <main className="onboarding-view">
+        <div className="onboarding-stepper">
+          {['Thông tin Shop', 'Cài đặt vận chuyển', 'Thông tin thuế', 'Thông tin định danh', 'Hoàn tất'].map((l, i) => (
+            <div key={i} className={`step-node ${currentStep > i ? 'active' : ''}`}>
+              <div className="node-dot"></div>
+              <span>{l}</span>
+              {i < 4 && <div className={`node-line ${currentStep > i + 1 ? 'active' : ''}`}></div>}
             </div>
+          ))}
+        </div>
 
-            <div className="registration-stepper">
-              {[1, 2, 3, 4, 5].map((s) => (
-                <div key={s} className={`step-item ${step >= s ? 'active' : ''}`}>
-                  <div className="step-number">{s}</div>
-                  <div className="step-label">{s === 1 ? 'Liên hệ' : s === 2 ? 'Định danh' : s === 3 ? 'Cửa hàng' : s === 4 ? 'Ngân hàng' : 'Xác nhận'}</div>
-                </div>
-              ))}
-            </div>
-
+        <div className="onboarding-card">
+          {currentStep === 1 && (
             <div className="step-content">
-              {step === 1 && (
-                <div className="form-step">
-                  <div className="input-group">
-                    <label>Số điện thoại <span className="required">*</span></label>
-                    <input type="text" name="phone" value={formData.phone} className={errors.phone ? 'error-input' : ''} onChange={handleNumericInputChange} />
-                    {errors.phone && <span className="error-text">{errors.phone}</span>}
-                  </div>
-                  <div className="input-group">
-                    <label>Email <span className="required">*</span></label>
-                    <input type="email" name="email" value={formData.email} className={errors.email ? 'error-input' : ''} onChange={handleInputChange} />
-                    {errors.email && <span className="error-text">{errors.email}</span>}
-                  </div>
-                  <button className="btn-next" onClick={handleNext}>Tiếp theo <FaArrowRight /></button>
+              <div className="shopee-row">
+                <label><span className="req">*</span> Tên Shop</label>
+                <div className="shopee-input-group">
+                  <input className={formErrors.shopName ? "error-border" : ""} value={formData.shopName} maxLength={30} onChange={e => setFormData({...formData, shopName: e.target.value})} placeholder="Nhập vào" />
+                  <span className="char-counter">{formData.shopName.length}/30</span>
+                  {formErrors.shopName && <p className="red-msg-inline">{formErrors.shopName}</p>}
                 </div>
-              )}
+              </div>
 
-              {step === 2 && (
-                <div className="form-step">
-                  <div className="input-group">
-                    <label>Số CCCD <span className="required">*</span></label>
-                    <input type="text" name="cccdNumber" value={formData.cccdNumber} maxLength={12} className={errors.cccdNumber ? 'error-input' : ''} onChange={handleNumericInputChange} />
-                    {errors.cccdNumber && <span className="error-text">{errors.cccdNumber}</span>}
-                  </div>
-                  <div className="upload-grid">
-                    <div className="upload-box" onClick={() => document.getElementById('front')?.click()}>
-                      <input type="file" id="front" hidden accept="image/*" onChange={(e) => handleFileChange(e, 'front')} />
-                      {previews.front ? <img src={previews.front} alt="Front" /> : <><FaCloudUploadAlt /><span>Mặt trước CCCD</span></>}
-                    </div>
-                    <div className="upload-box" onClick={() => document.getElementById('back')?.click()}>
-                      <input type="file" id="back" hidden accept="image/*" onChange={(e) => handleFileChange(e, 'back')} />
-                      {previews.back ? <img src={previews.back} alt="Back" /> : <><FaCloudUploadAlt /><span>Mặt sau CCCD</span></>}
-                    </div>
-                  </div>
-                  <div className="step-actions"><button className="btn-prev" onClick={() => setStep(1)}><FaArrowLeft /> Quay lại</button><button className="btn-next" onClick={handleNext}>Tiếp theo <FaArrowRight /></button></div>
-                </div>
-              )}
-
-              {step === 3 && (
-                <div className="form-step">
-                  <div className="input-group">
-                    <label>Tên Shop <span className="required">*</span></label>
-                    <input type="text" name="shopName" value={formData.shopName} className={errors.shopName ? 'error-input' : ''} onChange={handleInputChange} />
-                    {errors.shopName && <span className="error-text">{errors.shopName}</span>}
-                  </div>
-                  <div className="address-management-section">
-                    <div className="section-header">
-                      <label><FaMapMarkerAlt /> Danh sách kho</label>
-                      <button className="btn-add-plus" onClick={() => openAddressModal()}><FaPlus /> Thêm kho</button>
-                    </div>
-                    {formData.stockAddresses.map((addr, idx) => (
-                      <div key={idx} className="address-card-mini">
-                        <div className="addr-details"><strong>{addr.fullName}</strong><p>{addr.hamlet}, {addr.ward}, {addr.province}</p></div>
-                        <div className="addr-actions"><button className="btn-edit-inline" onClick={() => openAddressModal(idx)}><FaEdit /> Sửa</button><button className="btn-delete-inline" onClick={() => setFormData({...formData, stockAddresses: formData.stockAddresses.filter((_, i) => i !== idx)})}><FaTrash /></button></div>
+              <div className="shopee-row">
+                <label><span className="req">*</span> Địa chỉ lấy hàng</label>
+                <div className="shopee-input-group">
+                  {formData.stockAddresses.map((addr, idx) => (
+                    <div key={idx} className="address-display-box" style={{marginBottom: '10px'}}>
+                      <div className="addr-text">
+                        <strong>{addr.fullName} | {addr.phoneNumber}</strong>
+                        <p>{addr.detailAddress}, {addr.ward}, {addr.province}</p>
                       </div>
-                    ))}
-                  </div>
-                  <div className="step-actions"><button className="btn-prev" onClick={() => setStep(2)}><FaArrowLeft /> Quay lại</button><button className="btn-next" onClick={handleNext}>Tiếp theo <FaArrowRight /></button></div>
+                      <FaTrash className="trash-icon" onClick={() => setFormData({...formData, stockAddresses: formData.stockAddresses.filter((_, i) => i !== idx)})} />
+                    </div>
+                  ))}
+                  {formData.stockAddresses.length < 2 && (
+                    <button className="btn-add-shopee" onClick={() => { setAddressErrors({}); setShowAddressModal(true); }}>
+                      <FaPlus /> Thêm ({formData.stockAddresses.length}/2)
+                    </button>
+                  )}
+                  {formErrors.addresses && <p className="red-msg-inline">{formErrors.addresses}</p>}
                 </div>
-              )}
+              </div>
 
-              {step === 4 && (
-                <div className="form-step">
-                  <div className="input-group">
-                    <label><FaUniversity /> Ngân hàng <span className="required">*</span></label>
-                    <select name="bankName" value={formData.bankName} className={errors.bankName ? 'error-input' : ''} onChange={handleInputChange}>
-                      <option value="">-- Chọn ngân hàng --</option>
-                      {FAMOUS_BANKS.map(b => <option key={b} value={b}>{b}</option>)}
-                    </select>
-                    {errors.bankName && <span className="error-text">{errors.bankName}</span>}
-                  </div>
-                  <div className="input-group">
-                    <label>Số tài khoản <span className="required">*</span></label>
-                    <input type="text" name="accountNumber" value={formData.accountNumber} className={errors.accountNumber ? 'error-input' : ''} onChange={handleNumericInputChange} />
-                    {errors.accountNumber && <span className="error-text">{errors.accountNumber}</span>}
-                  </div>
-                  <div className="input-group">
-                    <label>Chủ tài khoản (Viết hoa)</label>
-                    <input type="text" name="accountHolder" value={formData.accountHolder} onChange={(e) => setFormData({...formData, accountHolder: e.target.value.toUpperCase()})} />
-                  </div>
-                  <div className="step-actions"><button className="btn-prev" onClick={() => setStep(3)}><FaArrowLeft /> Quay lại</button><button className="btn-next" onClick={handleNext}>Review <FaEye /></button></div>
+              <div className="shopee-row">
+                <label><span className="req">*</span> Email</label>
+                <div className="shopee-input-group">
+                  <input className={formErrors.email ? "error-border" : ""} value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                  {formErrors.email && <p className="red-msg-inline">{formErrors.email}</p>}
                 </div>
-              )}
+              </div>
 
-              {step === 5 && (
-                <div className="form-step review-step">
-                  <div className="review-info-section">
-                    <p><strong>Gian hàng:</strong> {formData.shopName}</p>
-                    <p><strong>Ngân hàng:</strong> {formData.bankName} - {formData.accountNumber}</p>
-                    <p><strong>Kho hàng:</strong> {formData.stockAddresses.length} địa chỉ</p>
-                  </div>
-                  <div className="review-image-container">
-                    <div className="review-img-box"><img src={previews.front} alt="Front" /></div>
-                    <div className="review-img-box"><img src={previews.back} alt="Back" /></div>
-                  </div>
-                  <div className="step-actions"><button className="btn-prev" onClick={() => setStep(4)}><FaArrowLeft /> Quay lại</button><button className="btn-submit" onClick={handleUpgrade} disabled={isUpgrading}>{isUpgrading ? "Đang gửi..." : "Xác nhận & Đăng ký"}</button></div>
-                </div>
-              )}
-            </div>
-          </div>
-        </main>
-      </div>
-
-      {showAddressModal && (
-        <div className="address-modal-overlay">
-          <div className="address-modal-card">
-            <div className="modal-header"><h2>{editingIndex !== null ? 'Chỉnh sửa kho' : 'Thêm kho hàng mới'}</h2><button className="close-btn" onClick={() => setShowAddressModal(false)}><FaTimesCircle /></button></div>
-            <div className="modal-body">
-              <input type="text" placeholder="Người phụ trách" value={addressForm.fullName} onChange={(e) => setAddressForm({...addressForm, fullName: e.target.value})} />
-              <input type="text" placeholder="SĐT kho" value={addressForm.phoneNumber} onChange={(e) => setAddressForm({...addressForm, phoneNumber: e.target.value})} />
-              <select value={addressForm.province} onChange={(e) => setAddressForm({...addressForm, province: e.target.value})}><option value="">-- Chọn Tỉnh (2026) --</option>{PROVINCES_2026.map(p => <option key={p} value={p}>{p}</option>)}</select>
-              <input type="text" placeholder="Phường / Xã" value={addressForm.ward} onChange={(e) => setAddressForm({...addressForm, ward: e.target.value})} />
-              <input type="text" placeholder="Ấp / Thôn" value={addressForm.hamlet} onChange={(e) => setAddressForm({...addressForm, hamlet: e.target.value})} />
-              <textarea placeholder="Số nhà, đường..." value={addressForm.detailAddress} onChange={(e) => setAddressForm({...addressForm, detailAddress: e.target.value})} />
-              
-              {/* --- REQUIREMENT: Visual GPS Data Display --- */}
-              <div className="gps-section">
-                <button className="btn-locate" onClick={getCurrentLocation} disabled={isLocating}>
-                  {isLocating ? "Đang quét..." : <><FaCrosshairs /> Định vị GPS</>}
-                </button>
-                {addressForm.latitude && (
-                  <div className="coords-display">
-                    <FaCheck className="success-icon" /> 
-                    <span>Vĩ độ: <strong>{addressForm.latitude}</strong> | Kinh độ: <strong>{addressForm.longitude}</strong></span>
-                  </div>
-                )}
+              <div className="onboarding-footer">
+                <button className="btn-shopee-lite" onClick={handleSaveToDatabase} disabled={isSaving}>Lưu</button>
+                <button className="btn-shopee-orange" onClick={() => { if(validateStep1()) setCurrentStep(2); }}>Tiếp theo</button>
               </div>
             </div>
-            <div className="modal-footer"><button className="btn-save-address" onClick={saveAddress}>Lưu địa chỉ</button></div>
+          )}
+
+          {currentStep === 2 && (
+            <div className="step-content">
+              <div className="shipping-header-text">
+                <h3>Phương thức vận chuyển</h3>
+                <p>Kích hoạt phương thức vận chuyển phù hợp cho shop của bạn.</p>
+              </div>
+
+              <div className="shipping-methods-list">
+                {isShippingLoading ? (
+                   <div className="red-msg-inline" style={{textAlign: 'center', padding: '20px'}}>Đang kết nối API vận chuyển...</div>
+                ) : shippingMethodsList.length > 0 ? (
+                  shippingMethodsList.map((method) => {
+                    const mId = method.id || method._id;
+                    return (
+                      <div key={mId} className="shipping-method-item">
+                        <div className="method-main-row">
+                          <span className="method-name">{method.name}</span>
+                          <button className="btn-collapse" onClick={() => setExpandedMethods(prev => ({...prev, [mId]: !prev[mId]}))}>
+                            {expandedMethods[mId] ? 'Mở rộng' : 'Thu gọn'} 
+                            {expandedMethods[mId] ? <FaChevronDown /> : <FaChevronUp />}
+                          </button>
+                        </div>
+                        {!expandedMethods[mId] && (
+                          <div className="method-details-row">
+                            <div className="method-sub-box">
+                              <div className="sub-box-left">
+                                <span className="sub-name">{method.name}</span>
+                                {method.codEnabled && <span className="cod-tag">[COD đã được kích hoạt]</span>}
+                              </div>
+                              <div className="sub-box-right">
+                                <label className="shopee-switch">
+                                  <input type="checkbox" checked={!!formData.shippingMethods[mId]} onChange={() => toggleShipping(mId)} />
+                                  <span className="slider round"></span>
+                                </label>
+                                <FaChevronRight className="arrow-mute" />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="empty-shipping-msg">Không có đơn vị vận chuyển nào khả dụng. Vui lòng kiểm tra Admin.</div>
+                )}
+              </div>
+
+              <div className="onboarding-footer">
+                <button className="btn-shopee-lite" onClick={() => setCurrentStep(1)}>Quay lại</button>
+                <button className="btn-shopee-orange" onClick={() => { handleSaveToDatabase(); setCurrentStep(3); }}>Tiếp theo</button>
+              </div>
+            </div>
+          )}
+
+          {currentStep === 3 && (
+            <div className="step-content">
+              <div className="shopee-row">
+                <label><span className="req">*</span> Loại hình kinh doanh</label>
+                <div className="shopee-input-group">
+                  <select value={formData.businessType} onChange={e => setFormData({...formData, businessType: e.target.value})}>
+                    <option value="INDIVIDUAL">Cá nhân</option>
+                    <option value="ENTERPRISE">Công ty / Hộ kinh doanh</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="shopee-row">
+                <label><span className="req">*</span> Mã số thuế</label>
+                <div className="shopee-input-group">
+                  <input 
+                    className={formErrors.taxCode ? "error-border" : ""}
+                    value={formData.taxCode} 
+                    onChange={e => setFormData({...formData, taxCode: e.target.value})} 
+                    placeholder="Nhập mã số thuế"
+                    maxLength={13}
+                  />
+                  {formErrors.taxCode && <p className="red-msg-inline">{formErrors.taxCode}</p>}
+                </div>
+              </div>
+
+              <div className="onboarding-footer">
+                <button className="btn-shopee-lite" onClick={() => setCurrentStep(2)}>Quay lại</button>
+                <button className="btn-shopee-orange" onClick={() => { if(validateStep3()) { handleSaveToDatabase(); setCurrentStep(4); } }}>Tiếp theo</button>
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+
+      {showAddressModal && (
+        <div className="shopee-modal-overlay">
+          <div className="shopee-modal-card">
+            <div className="modal-header"><h3>Thêm Địa Chỉ Mới</h3><FaTimes className="close-icon" onClick={() => setShowAddressModal(false)} /></div>
+            <div className="modal-body">
+              <div className="row-split">
+                <div className="input-with-label"><label><span className="req">*</span> Họ & Tên</label><input value={addressForm.fullName} onChange={e => setAddressForm({...addressForm, fullName: e.target.value})} /></div>
+                <div className="input-with-label"><label><span className="req">*</span> SĐT</label><input value={addressForm.phoneNumber} onChange={e => setAddressForm({...addressForm, phoneNumber: e.target.value})} /></div>
+              </div>
+              <div className="modal-field-full"><label><span className="req">*</span> Tỉnh/Thành phố</label>
+                <select value={addressForm.province} onChange={e => setAddressForm({...addressForm, province: e.target.value})}><option value="">Chọn</option>{PROVINCES_2026.map(p => <option key={p} value={p}>{p}</option>)}</select>
+              </div>
+              <div className="modal-field-full"><label><span className="req">*</span> Phường/Xã</label><input value={addressForm.ward} onChange={e => setAddressForm({...addressForm, ward: e.target.value})} /></div>
+              <div className="modal-field-full"><label>{!addressForm.ward.toLowerCase().includes("phường") && <span className="req">*</span>}Ấp/Thôn/Tổ</label><input value={addressForm.hamlet} onChange={e => setAddressForm({...addressForm, hamlet: e.target.value})} /></div>
+              <div className="modal-field-full"><label>Địa chỉ chi tiết</label><textarea value={addressForm.detailAddress} onChange={e => setAddressForm({...addressForm, detailAddress: e.target.value})} /></div>
+              <div className="gps-box-shopee" onClick={getCurrentLocation}><FaMapMarkerAlt className="gps-red" /><div className="gps-text"><strong>Định vị GPS</strong><span>{addressForm.latitude ? `${addressForm.latitude}, ${addressForm.longitude}` : 'Bấm để lấy tọa độ'}</span></div></div>
+            </div>
+            <div className="modal-footer-shopee"><button className="btn-cancel-shopee" onClick={() => setShowAddressModal(false)}>Hủy</button><button className="btn-save-shopee" onClick={handleLocalAddressSave}>Lưu</button></div>
           </div>
         </div>
       )}

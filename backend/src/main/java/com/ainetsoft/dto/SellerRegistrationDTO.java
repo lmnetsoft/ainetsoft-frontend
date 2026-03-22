@@ -4,6 +4,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,13 +23,9 @@ import java.util.Map;
 @Builder
 public class SellerRegistrationDTO {
 
-    // --- SECTION 1: LIÊN HỆ & BANKING (Merged) ---
+    // --- SECTION 1: LIÊN HỆ & BANKING ---
 
-    @NotBlank(message = "Số điện thoại không được để trống")
-    @Pattern(
-        regexp = "^(0|\\+84)(3[2-9]|5[2689]|7[06-9]|8[1-9]|9[0-46-9])\\d{7}$",
-        message = "Số điện thoại không đúng định dạng nhà mạng Việt Nam"
-    )
+    // REMOVED @NotBlank: Redundant phone field in main UI step
     private String phone;
 
     @NotBlank(message = "Email không được để trống")
@@ -47,14 +44,11 @@ public class SellerRegistrationDTO {
     // --- SECTION 2: ĐỊA CHỈ LẤY HÀNG (Multiple Stocks) ---
 
     @NotEmpty(message = "Phải có ít nhất một địa chỉ lấy hàng")
+    @Size(max = 2, message = "Chỉ cho phép tối đa 2 địa chỉ lấy hàng") // LIMIT: Max 2 addresses
     private List<AddressDTO> stockAddresses;
 
     // --- SECTION 3: CÀI ĐẶT VẬN CHUYỂN (Dynamic) ---
 
-    /**
-     * Key: ID or Code of the Shipping Method (e.g., from ShippingMethod model)
-     * Value: true (Enabled) / false (Disabled)
-     */
     @NotEmpty(message = "Vui lòng kích hoạt ít nhất một phương thức vận chuyển")
     private Map<String, Boolean> shippingMethods;
 
@@ -67,5 +61,5 @@ public class SellerRegistrationDTO {
     @NotBlank(message = "Tên shop không được để trống")
     private String shopName;
 
-    private String taxCode; // Optional as per requirement
+    private String taxCode; // Optional
 }

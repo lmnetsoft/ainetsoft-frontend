@@ -52,20 +52,17 @@ public class AuthService {
     }
 
     private boolean isValidPhone(String phone) {
-        if (phone == null || phone.isBlank()) return true;
+        if (phone == null || phone.isBlank()) return false;
         String cleanPhone = phone.replaceAll("[^0-9]", "");
-        if (cleanPhone.startsWith("0") || cleanPhone.startsWith("84")) {
-            String vnNormalized = cleanPhone.startsWith("84") ? "0" + cleanPhone.substring(2) : cleanPhone;
-            String vnRegex = "^(03[2-9]|086|09[6-8]|070|07[6-9]|089|090|093|08[1-5]|088|091|094|052|05[68]|092|059|099)\\d{7}$";
-            if (vnNormalized.matches(vnRegex)) return true;
-            throw new RuntimeException("Số điện thoại Việt Nam không thuộc nhà mạng được hỗ trợ!");
-        }
-        return cleanPhone.matches("^\\d{7,15}$");
+        String normalized = cleanPhone.startsWith("84") ? "0" + cleanPhone.substring(2) : cleanPhone;
+        String vnRegex = "^0(3[2-9]|5[2689]|7[06-9]|8[1-9]|9[0-46-9])\\d{7}$";
+        return normalized.matches(vnRegex);
     }
 
     private String normalizePhone(String phone) {
         if (phone == null || phone.isBlank()) return null;
-        return phone.replaceAll("[^0-9]", "");
+        String clean = phone.replaceAll("[^0-9]", "");
+        return clean.startsWith("84") ? "0" + clean.substring(2) : clean;
     }
 
     private String normalizeIdentifier(String identifier) {
@@ -229,22 +226,41 @@ public class AuthService {
 
         try {
             // 1. Save CCCD Images
-            String frontUrl = fileStorageService.saveFile(front, "cccd");
-            String backUrl = fileStorageService.saveFile(back, "cccd");
+            String frontUrl = (front != null && !front.isEmpty()) ? fileStorageService.saveFile(front, "cccd") : 
+                             (user.getIdentityInfo() != null ? user.getIdentityInfo().getFrontImageUrl() : null);
+            String backUrl = (back != null && !back.isEmpty()) ? fileStorageService.saveFile(back, "cccd") : 
+                            (user.getIdentityInfo() != null ? user.getIdentityInfo().getBackImageUrl() : null);
 
             // 2. Map Identity Info
-            user.setIdentityInfo(User.IdentityInfo.builder()
-                    .cccdNumber(dto.getCccdNumber())
-                    .frontImageUrl(frontUrl)
-                    .backImageUrl(backUrl)
-                    .submittedAt(LocalDateTime.now())
-                    .build());
+            if (dto.getCccdNumber() != null || frontUrl != null) {
+                user.setIdentityInfo(User.IdentityInfo.builder()
+                        .cccdNumber(dto.getCccdNumber())
+                        .frontImageUrl(frontUrl)
+                        .backImageUrl(backUrl)
+                        .submittedAt(LocalDateTime.now())
+                        .build());
+            }
 
-            // 3. Map Multiple Stock Addresses (2026 Hierarchy: Province -> Ward -> Hamlet)
+            // 3. Map Stock Addresses (Max 2, Unique Phones, Strict VN Providers)
             List<User.AddressInfo> addressInfos = new ArrayList<>();
             if (dto.getStockAddresses() != null && !dto.getStockAddresses().isEmpty()) {
+                if (dto.getStockAddresses().size() > 2) {
+                    throw new RuntimeException("Chỉ cho phép tối đa 2 địa chỉ lấy hàng.");
+                }
+
+                if (dto.getStockAddresses().size() == 2) {
+                    String p1 = normalizePhone(dto.getStockAddresses().get(0).getPhoneNumber());
+                    String p2 = normalizePhone(dto.getStockAddresses().get(1).getPhoneNumber());
+                    if (p1 != null && p1.equals(p2)) {
+                        throw new RuntimeException("Hai địa chỉ lấy hàng phải sử dụng số điện thoại khác nhau.");
+                    }
+                }
+
                 for (AddressDTO addrDto : dto.getStockAddresses()) {
-                    if (!VietnamProvinceConfig.isValid(addrDto.getProvince())) {
+                    if (!isValidPhone(addrDto.getPhoneNumber())) {
+                        throw new RuntimeException("SĐT '" + addrDto.getPhoneNumber() + "' không hợp lệ hoặc không thuộc nhà mạng VN!");
+                    }
+                    if (addrDto.getProvince() != null && !VietnamProvinceConfig.isValid(addrDto.getProvince())) {
                         throw new RuntimeException("Tỉnh/Thành phố '" + addrDto.getProvince() + "' không hợp lệ!");
                     }
                     addressInfos.add(User.AddressInfo.builder()
@@ -252,55 +268,61 @@ public class AuthService {
                             .phone(normalizePhone(addrDto.getPhoneNumber()))
                             .province(addrDto.getProvince())
                             .ward(addrDto.getWard())
-                            .hamlet(addrDto.getHamlet()) // NEW: 2026 Hierarchy
+                            .hamlet(addrDto.getHamlet()) 
                             .detail(addrDto.getDetailAddress())
                             .latitude(addrDto.getLatitude())
                             .longitude(addrDto.getLongitude())
                             .isDefault(addrDto.isDefault())
                             .build());
                 }
+                user.setAddresses(addressInfos);
             }
-            user.setAddresses(addressInfos);
 
-            // 4. REQUIREMENT: Map Dynamic Shipping Methods (Enabled IDs)
+            // 4. Map Dynamic Shipping Methods (REFINED for Step 2)
             List<String> enabledShippingIds = new ArrayList<>();
-            if (dto.getShippingMethods() != null) {
+            boolean shippingStepAccessed = dto.getShippingMethods() != null;
+            if (shippingStepAccessed) {
                 dto.getShippingMethods().forEach((methodId, isEnabled) -> {
-                    if (Boolean.TRUE.equals(isEnabled)) {
-                        enabledShippingIds.add(methodId);
-                    }
+                    if (Boolean.TRUE.equals(isEnabled)) enabledShippingIds.add(methodId);
                 });
             }
 
-            // 5. Map Shop Profile
+            // 5. Map Shop Profile (Incremental Update + Account Phone Fallback)
+            User.ShopProfile currentShop = user.getShopProfile() != null ? user.getShopProfile() : new User.ShopProfile();
             user.setShopProfile(User.ShopProfile.builder()
-                    .shopName(dto.getShopName())
-                    .shopAddress(!addressInfos.isEmpty() ? addressInfos.get(0).getDetail() : "Chưa cập nhật địa chỉ")
-                    .taxCode(dto.getTaxCode()) 
+                    .shopName(dto.getShopName() != null ? dto.getShopName() : currentShop.getShopName())
+                    .shopAddress(!addressInfos.isEmpty() ? addressInfos.get(0).getDetail() : 
+                                (currentShop.getShopAddress() != null ? currentShop.getShopAddress() : "Chưa cập nhật"))
+                    .taxCode(dto.getTaxCode() != null ? dto.getTaxCode() : currentShop.getTaxCode()) 
                     .businessEmail(providedEmail)
-                    .businessPhone(dto.getPhone() != null ? normalizePhone(dto.getPhone()) : user.getPhone())
-                    .enabledShippingMethodIds(enabledShippingIds) // Integrated Dynamic Shipping
+                    .businessPhone(dto.getPhone() != null && !dto.getPhone().isBlank() 
+                                  ? normalizePhone(dto.getPhone()) 
+                                  : (currentShop.getBusinessPhone() != null ? currentShop.getBusinessPhone() : user.getPhone()))
+                    // FIX: Reflect current choice exactly if Step 2 was accessed
+                    .enabledShippingMethodIds(shippingStepAccessed ? enabledShippingIds : currentShop.getEnabledShippingMethodIds())
                     .build());
 
             // 6. Map Bank Account
-            List<User.BankInfo> banks = new ArrayList<>();
-            banks.add(User.BankInfo.builder()
-                    .bankName(dto.getBankName())
-                    .accountNumber(dto.getAccountNumber())
-                    .accountHolder(dto.getAccountHolder().toUpperCase())
-                    .isDefault(true)
-                    .build());
-            user.setBankAccounts(banks);
+            if (dto.getBankName() != null && dto.getAccountNumber() != null) {
+                user.setBankAccounts(Collections.singletonList(User.BankInfo.builder()
+                        .bankName(dto.getBankName())
+                        .accountNumber(dto.getAccountNumber())
+                        .accountHolder(dto.getAccountHolder() != null ? dto.getAccountHolder().toUpperCase() : "")
+                        .isDefault(true)
+                        .build()));
+            }
 
-            // 7. Update Status
-            user.setSellerVerification("PENDING");
-            user.setAccountStatus("PENDING_SELLER");
+            // 7. Update Status logic
+            if (dto.getShopName() != null && user.getIdentityInfo() != null && user.getIdentityInfo().getCccdNumber() != null) {
+                user.setSellerVerification("PENDING");
+                user.setAccountStatus("PENDING_SELLER");
+            } else {
+                user.setSellerVerification("DRAFT"); 
+            }
+            
             user.setUpdatedAt(LocalDateTime.now());
-            
             userRepository.save(user);
-            log.info("Upgrade request processed. User ID: {}, Email: {}", user.getId(), providedEmail);
-            
-            return "Hồ sơ đã được gửi! Chế độ vận chuyển và thông tin định danh đang chờ phê duyệt.";
+            return "DRAFT".equals(user.getSellerVerification()) ? "Đã lưu tiến trình!" : "Hồ sơ đã được gửi!";
             
         } catch (Exception e) {
             log.error("Upgrade error: {}", e.getMessage());
@@ -372,7 +394,7 @@ public class AuthService {
 
     private void validatePasswordStrength(String password) {
         if (password == null || password.trim().length() < 8) {
-            throw new RuntimeException("Mật khẩu phải có ít nhất 8 ký tự!");
+            throw new RuntimeException("Mật khẩu phải có nhất 8 ký tự!");
         }
     }
 
