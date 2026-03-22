@@ -63,25 +63,28 @@ public class AuthController {
 
     /**
      * POST /api/auth/upgrade-seller
-     * UPDATED: Handles Multi-part data for CCCD images and Shop/Bank details.
-     * Maps to the frontend FormData logic.
+     * Handles Multi-part data for Step 3 (Tax/License) and Step 4 (Identity Images).
+     * Now supports the 'license' part for Enterprise/Household businesses.
      */
     @PostMapping(value = "/upgrade-seller", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<String> upgradeToSeller(
             Principal principal,
-            @RequestPart("data") SellerRegistrationDTO registrationData,
+            @Valid @RequestPart("data") SellerRegistrationDTO registrationData,
             @RequestPart(value = "frontImage", required = false) MultipartFile frontImage,
-            @RequestPart(value = "backImage", required = false) MultipartFile backImage) {
+            @RequestPart(value = "backImage", required = false) MultipartFile backImage,
+            @RequestPart(value = "license", required = false) MultipartFile license) { // NEW PART
         
         if (principal == null) throw new RuntimeException("Unauthorized");
         
-        log.info("Received seller upgrade request for: {}", principal.getName());
+        log.info("Seller Upgrade Request - User: {} - BizType: {}", 
+                 principal.getName(), registrationData.getBusinessType());
         
         return ResponseEntity.ok(authService.upgradeToSeller(
                 principal.getName(), 
                 registrationData, 
                 frontImage, 
-                backImage
+                backImage,
+                license // PASSED TO SERVICE
         ));
     }
 

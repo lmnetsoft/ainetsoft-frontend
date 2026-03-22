@@ -35,20 +35,27 @@ public class AuthService {
     private final FileStorageService fileStorageService;
 
     private final String UPLOAD_DIR = "uploads/cccd/";
+    private final String LICENSE_DIR = "uploads/license/";
 
-    private String saveFile(MultipartFile file, String userId, String side) throws IOException {
+    private String saveFile(MultipartFile file, String userId, String type) throws IOException {
         if (file == null || file.isEmpty()) return null;
-        Path uploadPath = Paths.get(UPLOAD_DIR);
+        
+        String targetDir = type.equals("license") ? LICENSE_DIR : UPLOAD_DIR;
+        Path uploadPath = Paths.get(targetDir);
+        
         if (!Files.exists(uploadPath)) {
             Files.createDirectories(uploadPath);
         }
+        
         String originalName = file.getOriginalFilename();
         String extension = (originalName != null && originalName.contains(".")) 
                 ? originalName.substring(originalName.lastIndexOf(".")) : ".jpg";
-        String fileName = userId + "_" + side + "_" + System.currentTimeMillis() + extension;
+        
+        String fileName = userId + "_" + type + "_" + System.currentTimeMillis() + extension;
         Path filePath = uploadPath.resolve(fileName);
         Files.copy(file.getInputStream(), filePath);
-        return "/api/uploads/cccd/" + fileName;
+        
+        return "/api/" + targetDir + fileName;
     }
 
     private boolean isValidPhone(String phone) {
@@ -203,7 +210,7 @@ public class AuthService {
     }
 
     @Transactional
-    public String upgradeToSeller(String contactInfo, SellerRegistrationDTO dto, MultipartFile front, MultipartFile back) {
+    public String upgradeToSeller(String contactInfo, SellerRegistrationDTO dto, MultipartFile front, MultipartFile back, MultipartFile license) {
         String identifier = normalizeIdentifier(contactInfo);
         User user = userRepository.findByIdentifier(identifier)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
@@ -225,11 +232,13 @@ public class AuthService {
         user.setEmail(providedEmail);
 
         try {
-            // 1. Save CCCD Images
-            String frontUrl = (front != null && !front.isEmpty()) ? fileStorageService.saveFile(front, "cccd") : 
+            // 1. Save Files
+            String frontUrl = (front != null && !front.isEmpty()) ? saveFile(front, user.getId(), "front") : 
                              (user.getIdentityInfo() != null ? user.getIdentityInfo().getFrontImageUrl() : null);
-            String backUrl = (back != null && !back.isEmpty()) ? fileStorageService.saveFile(back, "cccd") : 
+            String backUrl = (back != null && !back.isEmpty()) ? saveFile(back, user.getId(), "back") : 
                             (user.getIdentityInfo() != null ? user.getIdentityInfo().getBackImageUrl() : null);
+            String licenseUrl = (license != null && !license.isEmpty()) ? saveFile(license, user.getId(), "license") :
+                               (user.getShopProfile() != null ? user.getShopProfile().getBusinessLicenseUrl() : null);
 
             // 2. Map Identity Info
             if (dto.getCccdNumber() != null || frontUrl != null) {
@@ -241,28 +250,21 @@ public class AuthService {
                         .build());
             }
 
-            // 3. Map Stock Addresses (Max 2, Unique Phones, Strict VN Providers)
+            // 3. Map Stock Addresses
             List<User.AddressInfo> addressInfos = new ArrayList<>();
             if (dto.getStockAddresses() != null && !dto.getStockAddresses().isEmpty()) {
-                if (dto.getStockAddresses().size() > 2) {
-                    throw new RuntimeException("Chỉ cho phép tối đa 2 địa chỉ lấy hàng.");
-                }
-
+                if (dto.getStockAddresses().size() > 2) throw new RuntimeException("Tối đa 2 địa chỉ.");
+                
                 if (dto.getStockAddresses().size() == 2) {
                     String p1 = normalizePhone(dto.getStockAddresses().get(0).getPhoneNumber());
                     String p2 = normalizePhone(dto.getStockAddresses().get(1).getPhoneNumber());
-                    if (p1 != null && p1.equals(p2)) {
-                        throw new RuntimeException("Hai địa chỉ lấy hàng phải sử dụng số điện thoại khác nhau.");
-                    }
+                    if (p1 != null && p1.equals(p2)) throw new RuntimeException("SĐT các kho phải khác nhau.");
                 }
 
                 for (AddressDTO addrDto : dto.getStockAddresses()) {
-                    if (!isValidPhone(addrDto.getPhoneNumber())) {
-                        throw new RuntimeException("SĐT '" + addrDto.getPhoneNumber() + "' không hợp lệ hoặc không thuộc nhà mạng VN!");
-                    }
-                    if (addrDto.getProvince() != null && !VietnamProvinceConfig.isValid(addrDto.getProvince())) {
-                        throw new RuntimeException("Tỉnh/Thành phố '" + addrDto.getProvince() + "' không hợp lệ!");
-                    }
+                    if (!isValidPhone(addrDto.getPhoneNumber())) throw new RuntimeException("SĐT không hợp lệ.");
+                    if (addrDto.getProvince() != null && !VietnamProvinceConfig.isValid(addrDto.getProvince())) throw new RuntimeException("Tỉnh không hợp lệ.");
+                    
                     addressInfos.add(User.AddressInfo.builder()
                             .receiverName(addrDto.getFullName())
                             .phone(normalizePhone(addrDto.getPhoneNumber()))
@@ -278,16 +280,15 @@ public class AuthService {
                 user.setAddresses(addressInfos);
             }
 
-            // 4. Map Dynamic Shipping Methods (REFINED for Step 2)
+            // 4. Map Dynamic Shipping Methods
             List<String> enabledShippingIds = new ArrayList<>();
-            boolean shippingStepAccessed = dto.getShippingMethods() != null;
-            if (shippingStepAccessed) {
+            if (dto.getShippingMethods() != null) {
                 dto.getShippingMethods().forEach((methodId, isEnabled) -> {
                     if (Boolean.TRUE.equals(isEnabled)) enabledShippingIds.add(methodId);
                 });
             }
 
-            // 5. Map Shop Profile (Incremental Update + Account Phone Fallback)
+            // 5. Map Shop Profile
             User.ShopProfile currentShop = user.getShopProfile() != null ? user.getShopProfile() : new User.ShopProfile();
             user.setShopProfile(User.ShopProfile.builder()
                     .shopName(dto.getShopName() != null ? dto.getShopName() : currentShop.getShopName())
@@ -298,8 +299,14 @@ public class AuthService {
                     .businessPhone(dto.getPhone() != null && !dto.getPhone().isBlank() 
                                   ? normalizePhone(dto.getPhone()) 
                                   : (currentShop.getBusinessPhone() != null ? currentShop.getBusinessPhone() : user.getPhone()))
-                    // FIX: Reflect current choice exactly if Step 2 was accessed
-                    .enabledShippingMethodIds(shippingStepAccessed ? enabledShippingIds : currentShop.getEnabledShippingMethodIds())
+                    
+                    .businessType(dto.getBusinessType() != null ? dto.getBusinessType() : currentShop.getBusinessType())
+                    .companyName(dto.getCompanyName() != null ? dto.getCompanyName() : currentShop.getCompanyName())
+                    .registeredAddress(dto.getRegisteredAddress() != null ? dto.getRegisteredAddress() : currentShop.getRegisteredAddress())
+                    .invoiceEmails(dto.getInvoiceEmails() != null ? dto.getInvoiceEmails() : currentShop.getInvoiceEmails())
+                    .businessLicenseUrl(licenseUrl)
+                    
+                    .enabledShippingMethodIds(dto.getShippingMethods() != null ? enabledShippingIds : currentShop.getEnabledShippingMethodIds())
                     .build());
 
             // 6. Map Bank Account
@@ -312,8 +319,20 @@ public class AuthService {
                         .build()));
             }
 
-            // 7. Update Status logic
-            if (dto.getShopName() != null && user.getIdentityInfo() != null && user.getIdentityInfo().getCccdNumber() != null) {
+            // 7. UPDATED: Strict Multi-Step Verification Logic
+            boolean basicInfoDone = user.getShopProfile() != null && user.getShopProfile().getShopName() != null;
+            boolean identityImagesDone = user.getIdentityInfo() != null && 
+                                       user.getIdentityInfo().getFrontImageUrl() != null && 
+                                       user.getIdentityInfo().getBackImageUrl() != null;
+            boolean cccdNumberDone = user.getIdentityInfo() != null && user.getIdentityInfo().getCccdNumber() != null;
+            
+            // For companies, check the license
+            boolean licenseDone = true;
+            if (!"INDIVIDUAL".equals(user.getShopProfile().getBusinessType())) {
+                licenseDone = user.getShopProfile().getBusinessLicenseUrl() != null;
+            }
+
+            if (basicInfoDone && identityImagesDone && cccdNumberDone && licenseDone) {
                 user.setSellerVerification("PENDING");
                 user.setAccountStatus("PENDING_SELLER");
             } else {
@@ -322,7 +341,7 @@ public class AuthService {
             
             user.setUpdatedAt(LocalDateTime.now());
             userRepository.save(user);
-            return "DRAFT".equals(user.getSellerVerification()) ? "Đã lưu tiến trình!" : "Hồ sơ đã được gửi!";
+            return "PENDING".equals(user.getSellerVerification()) ? "Hồ sơ đã gửi thành công!" : "Đã lưu tiến trình!";
             
         } catch (Exception e) {
             log.error("Upgrade error: {}", e.getMessage());

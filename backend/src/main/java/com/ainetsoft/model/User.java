@@ -50,7 +50,7 @@ public class User {
     private String accountStatus = "ACTIVE"; 
 
     @Builder.Default
-    private String sellerVerification = "NONE"; 
+    private String sellerVerification = "NONE"; // NONE, PENDING, APPROVED, REJECTED
     
     private String rejectionReason;
 
@@ -77,7 +77,8 @@ public class User {
     @Builder.Default
     private boolean enabled = true;
 
-    private Set<String> roles;
+    @Builder.Default
+    private Set<String> roles = new HashSet<>();
 
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
@@ -96,11 +97,21 @@ public class User {
     public static class ShopProfile {
         private String shopName;
         private String shopDescription;
-        private String shopAddress; // Main display address derived from default stock
+        private String shopAddress; 
         private String shopLogoUrl;
         private String businessEmail; 
         private String businessPhone; 
-        private String taxCode;
+        
+        // --- Updated for Step 3: Business & Tax Information ---
+        private String businessType;      // INDIVIDUAL, HOUSEHOLD, ENTERPRISE
+        private String companyName;       // Tên công ty / Hộ kinh doanh
+        private String registeredAddress; // Địa chỉ đăng ký kinh doanh
+        
+        @Builder.Default
+        private List<String> invoiceEmails = new ArrayList<>(); // Support multiple emails (up to 5)
+        
+        private String taxCode;           // Mã số thuế
+        private String businessLicenseUrl; // URL for the uploaded business license image
         
         /**
          * 2026 Dynamic Shipping Requirement:
@@ -127,9 +138,6 @@ public class User {
         private LocalDateTime submittedAt;
     }
 
-    /**
-     * Updated hierarchy for 2026 Map
-     */
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
@@ -137,13 +145,13 @@ public class User {
     public static class AddressInfo {
         private String receiverName;
         private String phone;
-        private String province; // Tỉnh/Thành phố (2026 Map)
-        private String ward;     // Phường/Xã
-        private String hamlet;   // Ấp/Thôn/Tổ dân phố
-        private String detail;   // Số nhà, tên đường
+        private String province; 
+        private String ward;     
+        private String hamlet;   
+        private String detail;   
         private boolean isDefault;
-        private String latitude;  // GPS Latitude
-        private String longitude; // GPS Longitude
+        private String latitude;  
+        private String longitude; 
 
         public boolean isDefault() { return isDefault; }
     }

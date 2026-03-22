@@ -1,5 +1,5 @@
 /* ==========================================================================
-   LAYOUT & GLOBAL STYLING
+    LAYOUT & GLOBAL STYLING
    ========================================================================== */
 .onboarding-layout { 
     display: flex; 
@@ -93,15 +93,15 @@
     min-height: 550px; 
 }
 
-.shopee-row { 
+.ainetsoft-row { 
     display: grid; 
-    grid-template-columns: 180px 1fr; 
+    grid-template-columns: 200px 1fr; 
     gap: 30px; 
     align-items: start; 
     margin-bottom: 30px; 
 }
 
-.shopee-row label { 
+.ainetsoft-row label { 
     text-align: right; 
     font-size: 0.95rem; 
     color: #555; 
@@ -111,14 +111,14 @@
 .req { color: #ee4d2d; margin-right: 4px; }
 
 /* Input Styling */
-.shopee-input-group { 
+.ainetsoft-input-group { 
     position: relative; 
     display: flex; 
     flex-direction: column; 
 }
 
-.shopee-input-group input, 
-.shopee-input-group select {
+.ainetsoft-input-group input, 
+.ainetsoft-input-group select {
     height: 40px;
     width: 100%;
     padding: 0 15px;
@@ -129,7 +129,7 @@
     transition: border-color 0.2s;
 }
 
-.shopee-input-group input:focus { border-color: #999; }
+.ainetsoft-input-group input:focus { border-color: #999; }
 
 .char-counter { 
     position: absolute; 
@@ -139,6 +139,7 @@
     font-size: 0.75rem; 
 }
 
+/* Address Boxes in Card */
 .address-display-box { 
     border: 1px solid #ee4d2d; 
     background: #fff8f6; 
@@ -150,6 +151,21 @@
     margin-bottom: 12px;
 }
 
+.btn-add-ainetsoft {
+    background: #f8f8f8;
+    border: 1px dashed #dbdbdb;
+    height: 40px;
+    padding: 0 20px;
+    color: #ee4d2d;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: fit-content;
+    margin-top: 5px;
+}
+
 .onboarding-footer { 
     display: flex; 
     justify-content: flex-end; 
@@ -159,7 +175,7 @@
     padding-top: 30px; 
 }
 
-.btn-shopee-orange { 
+.btn-ainetsoft-primary { 
     background: #ee4d2d; 
     color: white; 
     border: none; 
@@ -170,9 +186,9 @@
     font-weight: 500; 
 }
 
-.btn-shopee-orange:disabled { background: #ffc4b6; cursor: not-allowed; }
+.btn-ainetsoft-primary:disabled { background: #ffc4b6; cursor: not-allowed; }
 
-.btn-shopee-lite { 
+.btn-ainetsoft-lite { 
     background: white; 
     border: 1px solid #dbdbdb; 
     height: 44px; 
@@ -182,7 +198,9 @@
     border-radius: 2px; 
 }
 
-/* Shipping Methods Styling */
+/* ==========================================================================
+    STEP 2: SHIPPING METHODS
+   ========================================================================== */
 .shipping-header-text { margin-bottom: 30px; }
 .shipping-header-text h3 { font-size: 1.2rem; font-weight: 500; color: #222; }
 .shipping-header-text p { font-size: 0.9rem; color: #777; margin-top: 5px; }
@@ -242,15 +260,265 @@
 .arrow-mute { color: #ccc; font-size: 0.85rem; }
 
 /* Toggle Switch */
-.shopee-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
-.shopee-switch input { opacity: 0; width: 0; height: 0; }
+.ainetsoft-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+.ainetsoft-switch input { opacity: 0; width: 0; height: 0; }
 .slider { position: absolute; cursor: pointer; inset: 0; background-color: #ccc; transition: .3s; border-radius: 34px; }
 .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
 input:checked + .slider { background-color: #2ecc71; }
 input:checked + .slider:before { transform: translateX(20px); }
 
-/* Address Modal Styling */
-.shopee-modal-overlay { 
+/* ==========================================================================
+    STEP 3: TAX & ENTERPRISE SPECIALS
+   ========================================================================== */
+.ainetsoft-alert-info {
+    display: flex;
+    gap: 15px;
+    background-color: #f8fbff;
+    border: 1px solid #d1e3f8;
+    padding: 18px 22px;
+    border-radius: 3px;
+    margin-bottom: 35px;
+}
+
+.security-icon {
+    color: #1a73e8;
+    font-size: 1.4rem;
+}
+
+.ainetsoft-alert-info p {
+    font-size: 0.88rem;
+    color: #3c4043;
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* Radio Button Styling */
+.ainetsoft-radio-group {
+    display: flex;
+    gap: 35px;
+    padding-top: 8px;
+}
+
+.radio-item {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 0.95rem;
+    color: #333;
+    position: relative;
+    padding-left: 28px;
+}
+
+.radio-item input {
+    position: absolute;
+    opacity: 0;
+}
+
+.radio-mark {
+    position: absolute;
+    left: 0;
+    height: 18px;
+    width: 18px;
+    background-color: white;
+    border: 2px solid #dbdbdb;
+    border-radius: 50%;
+}
+
+.radio-item:hover input ~ .radio-mark { border-color: #ee4d2d; }
+.radio-item input:checked ~ .radio-mark { border-color: #ee4d2d; }
+
+.radio-mark:after {
+    content: "";
+    position: absolute;
+    display: none;
+    top: 3px;
+    left: 3px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ee4d2d;
+}
+
+.radio-item input:checked ~ .radio-mark:after { display: block; }
+
+/* Dynamic Invoice Email List */
+.email-input-item {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.btn-remove-email {
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: color 0.2s;
+    padding: 5px;
+    display: flex;
+    align-items: center;
+}
+
+.btn-remove-email:hover { color: #ee4d2d; }
+
+.btn-add-email-ainetsoft {
+    background: white;
+    border: 1px solid #dbdbdb;
+    padding: 8px 15px;
+    font-size: 0.85rem;
+    color: #333;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 2px;
+    width: fit-content;
+}
+
+.btn-add-email-ainetsoft:hover { background: #fafafa; border-color: #ccc; }
+
+.input-hint {
+    font-size: 0.75rem;
+    color: #70757a;
+    margin-top: 10px;
+    font-style: italic;
+    line-height: 1.4;
+}
+
+/* Business License Upload Box */
+.license-upload-box {
+    border: 1px dashed #dbdbdb;
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: #fafafa;
+    color: #888;
+    border-radius: 4px;
+    transition: all 0.2s;
+    overflow: hidden;
+    gap: 12px;
+    padding: 15px;
+}
+
+.license-upload-box:hover {
+    border-color: #ee4d2d;
+    background: #fff8f6;
+    color: #ee4d2d;
+}
+
+.license-upload-box img {
+    max-width: 100%;
+    max-height: 180px;
+    object-fit: contain;
+}
+
+/* ==========================================================================
+    STEP 4: IDENTITY (CCCD) & GUIDELINES
+   ========================================================================== */
+.identity-header {
+    margin-bottom: 30px;
+}
+
+.guidelines-card {
+    background-color: #fffaf0;
+    border: 1px solid #ffe8cc;
+    padding: 20px;
+    border-radius: 4px;
+    margin-top: 15px;
+}
+
+.guidelines-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 500;
+    color: #e67e22;
+    margin-bottom: 12px;
+    font-size: 0.95rem;
+}
+
+.bulb-icon { font-size: 1.1rem; }
+
+.guidelines-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.guidelines-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.88rem;
+    color: #555;
+}
+
+.check-green { color: #2ecc71; font-size: 0.8rem; }
+
+.id-upload-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px;
+    margin-top: 25px;
+}
+
+.upload-box {
+    border: 2px dashed #dbdbdb;
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: #fdfdfd;
+    color: #888;
+    border-radius: 4px;
+    transition: all 0.2s;
+    overflow: hidden;
+    position: relative;
+}
+
+.upload-box:hover {
+    border-color: #ee4d2d;
+    background: #fff8f6;
+}
+
+.upload-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    text-align: center;
+}
+
+.cam-icon {
+    font-size: 2.2rem;
+    color: #ee4d2d;
+    opacity: 0.7;
+}
+
+.preview-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.error-border-dashed {
+    border-color: #ee4d2d !important;
+    background-color: #fff8f6 !important;
+}
+
+/* ==========================================================================
+    ADDRESS MODAL STYLING
+   ========================================================================== */
+.ainetsoft-modal-overlay { 
     position: fixed; 
     inset: 0; 
     background: rgba(0,0,0,0.4); 
@@ -260,7 +528,7 @@ input:checked + .slider:before { transform: translateX(20px); }
     z-index: 9999; 
 }
 
-.shopee-modal-card { 
+.ainetsoft-modal-card { 
     background: white; 
     width: 600px; 
     border-radius: 4px; 
@@ -310,7 +578,7 @@ input:checked + .slider:before { transform: translateX(20px); }
 
 .modal-body textarea { height: 80px; padding: 10px 12px; resize: none; }
 
-.gps-box-shopee { 
+.gps-box-ainetsoft { 
     border: 1px solid #e8e8e8; 
     padding: 12px 15px; 
     display: flex; 
@@ -325,7 +593,7 @@ input:checked + .slider:before { transform: translateX(20px); }
 .gps-text strong { font-size: 0.9rem; color: #333; }
 .gps-text span { font-size: 0.8rem; color: #888; }
 
-.modal-footer-shopee { 
+.modal-footer-ainetsoft { 
     padding: 15px 25px; 
     background: #fcfcfc; 
     display: flex; 
@@ -334,10 +602,12 @@ input:checked + .slider:before { transform: translateX(20px); }
     border-top: 1px solid #f0f0f0; 
 }
 
-.btn-save-shopee { background: #ee4d2d; color: white; border: none; height: 38px; padding: 0 30px; cursor: pointer; border-radius: 2px; font-weight: 500; }
-.btn-cancel-shopee { background: white; border: 1px solid #dbdbdb; height: 38px; padding: 0 30px; cursor: pointer; border-radius: 2px; color: #555; }
+.btn-save-ainetsoft { background: #ee4d2d; color: white; border: none; height: 38px; padding: 0 30px; cursor: pointer; border-radius: 2px; font-weight: 500; }
+.btn-cancel-ainetsoft { background: white; border: 1px solid #dbdbdb; height: 38px; padding: 0 30px; cursor: pointer; border-radius: 2px; color: #555; }
 
-/* Validation Styling */
+/* ==========================================================================
+    VALIDATION & FEEDBACK
+   ========================================================================== */
 .red-msg-inline { 
     color: #ee4d2d; 
     font-size: 0.75rem; 
@@ -351,5 +621,7 @@ input:checked + .slider:before { transform: translateX(20px); }
 }
 
 /* Success View */
-.success-view { text-align: center; padding: 40px 0; }
-.success-icon-big { font-size: 60px; color: #2ecc71; margin-bottom: 20px; }
+.success-view { text-align: center; padding: 50px 0; }
+.success-icon-big { font-size: 70px; color: #2ecc71; margin-bottom: 25px; }
+.success-view h2 { margin-bottom: 10px; color: #222; }
+.success-view p { color: #666; margin-bottom: 35px; }
