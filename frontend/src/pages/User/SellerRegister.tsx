@@ -71,7 +71,7 @@ const getFullImageUrl = (path?: string) => {
   return `${BACKEND_BASE}${normalized.startsWith('/') ? '' : '/'}${normalized}`;
 };
 
-/** * INTEGRATED STYLES FOR VALIDATION, CAMERA PLACEHOLDER, AND UI HINTS */
+/** * INTEGRATED STYLES FOR VALIDATION, CAMERA PLACEHOLDER, AND SUCCESS UI */
 const inlineStyles = `
   .error-border { border: 1px solid #ff4d4f !important; }
   .error-border-dashed { border: 2px dashed #ff4d4f !important; }
@@ -122,6 +122,12 @@ const inlineStyles = `
   .btn-maps-link { font-size: 11px; color: #2f54eb; text-decoration: underline; cursor: pointer; display: flex; align-items: center; gap: 4px; }
   .btn-copy-action { cursor: pointer; color: #8c8c8c; transition: color 0.2s; }
   .btn-copy-action:hover { color: #ee4d2d; }
+
+  .qr-box-summary { display: flex; align-items: center; gap: 15px; margin-top: 10px; background: #fdf2f0; padding: 10px; border-radius: 4px; border: 1px solid #f9d7d0; }
+  .qr-code-img { width: 60px; height: 60px; background: white; border: 1px solid #ddd; padding: 2px; }
+  .qr-info-text { flex: 1; }
+  .qr-info-text strong { font-size: 12px; color: #ee4d2d; display: block; }
+  .qr-info-text p { font-size: 10.5px; color: #666; margin: 2px 0 0 0; line-height: 1.3; }
 `;
 
 const PROVINCES_2026 = [
@@ -200,6 +206,7 @@ const SellerRegister = () => {
           enabledMap[id] = true;
         });
 
+        // MONGODB DATA MAPPING: Bridge DB structure to logic state
         const normalizedAddresses = (profileData.addresses || []).map((addr: any) => ({
            fullName: addr.receiverName || '',
            phoneNumber: addr.phone || '',
@@ -226,6 +233,7 @@ const SellerRegister = () => {
             : [profileData.shopProfile?.invoiceEmail || ''],
           taxCode: profileData.shopProfile?.taxCode || '',
           shippingMethods: enabledMap,
+          // DB MAPPING: Support formatted or raw mapping
           cccdNumber: profileData.identityInfo?.cccdNumber || profileData.cccdNumber || '',
           frontPreview: getFullImageUrl(profileData.identityInfo?.frontImageUrl || profileData.frontImageUrl),
           backPreview: getFullImageUrl(profileData.identityInfo?.backImageUrl || profileData.backImageUrl),
@@ -247,10 +255,6 @@ const SellerRegister = () => {
       const reader = new FileReader();
       reader.onloadend = () => {
         setFormData(prev => ({ ...prev, [`${type}Image`]: file, [`${type}Preview`]: reader.result as string }));
-        const errKey = type === 'license' ? 'license' : type === 'front' ? 'frontImage' : 'backImage';
-        if (formErrors[errKey]) {
-           setFormErrors(prev => { const newErrs = {...prev}; delete newErrs[errKey]; return newErrs; });
-        }
       };
       reader.readAsDataURL(file);
     }
@@ -300,20 +304,16 @@ const SellerRegister = () => {
       errors.registeredAddress = "Địa chỉ đăng ký là bắt buộc";
     }
     const emailEmpty = formData.invoiceEmails.some(email => !email.trim());
-    const emailInvalid = formData.invoiceEmails.some(email => email.trim() && !email.includes('@'));
-    if (emailEmpty) {
-      errors.invoiceEmail = "Vui lòng không để trống ô email";
-    } else if (emailInvalid) {
-      errors.invoiceEmail = "Email không đúng định dạng";
-    }
-    if (!formData.taxCode.trim()) {
+    if (emailEmpty) errors.invoiceEmail = "Vui lòng không để trống ô email";
+    
+    // STRICT VIETNAM TAX CODE CONSTRAINT: Strictly 10 or 13 digits. Reject 11/12.
+    const rawMST = formData.taxCode.replace(/\s|-/g, '');
+    if (!rawMST) {
       errors.taxCode = "Mã số thuế là bắt buộc";
-    } else if (!VN_TAX_REGEX.test(formData.taxCode.replace(/\s|-/g, ''))) {
-      errors.taxCode = "MST không hợp lệ (10 hoặc 13 chữ số)";
+    } else if (rawMST.length !== 10 && rawMST.length !== 13) {
+      errors.taxCode = "Mã số thuế không hợp lệ (Phải bao gồm 10 hoặc 13 chữ số)";
     }
-    if (formData.businessType !== 'INDIVIDUAL' && !formData.licensePreview) {
-      errors.license = "Vui lòng tải lên Giấy phép kinh doanh";
-    }
+    
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -350,12 +350,17 @@ const SellerRegister = () => {
     try {
       setIsSaving(true);
       const submitData = new FormData();
-      // CLEANING MASKS BEFORE SUBMITTING TO DATABASE
+      // Persistence Cleaning: Removing masks before DB storage
       const payload = {
-          ...formData,
-          phone: formData.phone.replace(/\D/g, ''),
+          shopName: formData.shopName,
+          email: formData.email,
+          businessType: formData.businessType,
+          companyName: formData.companyName,
+          registeredAddress: formData.registeredAddress,
+          invoiceEmails: formData.invoiceEmails,
           taxCode: formData.taxCode.replace(/\s|-/g, ''),
           cccdNumber: formData.cccdNumber.replace(/\s/g, ''),
+          shippingMethods: formData.shippingMethods,
           stockAddresses: formData.stockAddresses.map(a => ({...a, phoneNumber: a.phoneNumber.replace(/\D/g, '')}))
       };
 
@@ -385,7 +390,6 @@ const SellerRegister = () => {
     if (!addressForm.ward.toLowerCase().includes("phường") && !addressForm.hamlet.trim()) errors.hamlet = "Bắt buộc nhập Ấp/Thôn cho khu vực xã";
     if (!addressForm.detailAddress.trim()) errors.detailAddress = "Vui lòng nhập số nhà, tên đường";
     if (Object.keys(errors).length > 0) { setAddressErrors(errors); return; }
-    
     setFormData(prev => ({ ...prev, stockAddresses: [...prev.stockAddresses, { ...addressForm, phoneNumber: phone }] }));
     setShowAddressModal(false); setAddressErrors({}); setAddressForm({ fullName: '', phoneNumber: '', province: '', ward: '', hamlet: '', detailAddress: '', latitude: '', longitude: '', isDefault: true });
   };
@@ -409,7 +413,7 @@ const SellerRegister = () => {
   const getBusinessLabel = (type: string) => type === 'INDIVIDUAL' ? 'Cá nhân' : type === 'HOUSEHOLD' ? 'Hộ kinh doanh' : 'Công ty';
   const handlePrint = () => window.print();
 
-  if (isPageLoading) return <div className="loading-spinner">Đang tải hồ sơ...</div>;
+  if (isPageLoading) return <div className="loading-spinner">Đang tải hồ sơ Người bán...</div>;
 
   return (
     <div className="onboarding-layout">
@@ -434,7 +438,6 @@ const SellerRegister = () => {
                 <div className="ainetsoft-input-group">
                   <input className={formErrors.shopName ? "error-border" : ""} value={formData.shopName} maxLength={30} onChange={e => setFormData({...formData, shopName: e.target.value})} placeholder="Nhập tên shop" />
                   <span className="char-counter">{formData.shopName.length}/30</span>
-                  {formErrors.shopName && <p className="red-msg-inline">{formErrors.shopName}</p>}
                 </div>
               </div>
               <div className="ainetsoft-row"><label><span className="req">*</span> Địa chỉ lấy hàng</label>
@@ -448,9 +451,7 @@ const SellerRegister = () => {
                       <FaTrash className="trash-icon" onClick={() => setFormData({...formData, stockAddresses: formData.stockAddresses.filter((_, i) => i !== idx)})} />
                     </div>
                   ))}
-                  {formData.stockAddresses.length < 2 && (
-                    <button className="btn-add-ainetsoft" onClick={() => { setAddressErrors({}); setShowAddressModal(true); }}><FaPlus /> Thêm địa chỉ ({formData.stockAddresses.length}/2)</button>
-                  )}
+                  <button className="btn-add-ainetsoft" onClick={() => setShowAddressModal(true)}><FaPlus /> Thêm địa chỉ ({formData.stockAddresses.length}/2)</button>
                   {formErrors.addresses && <p className="red-msg-inline">{formErrors.addresses}</p>}
                 </div>
               </div>
@@ -519,8 +520,8 @@ const SellerRegister = () => {
               </div>
               <div className="ainetsoft-row"><label><span className="req">*</span> MST</label>
                 <div className="ainetsoft-input-group">
-                  {/* APPENDED: formatMST MASK */}
-                  <input className={formErrors.taxCode ? "error-border" : ""} value={formData.taxCode} onChange={e => setFormData({...formData, taxCode: formatMST(e.target.value)})} maxLength={15} placeholder="111 111 111 1" />
+                  {/* AUTO-MASKED MST INPUT */}
+                  <input className={formErrors.taxCode ? "error-border" : ""} value={formData.taxCode} onChange={e => setFormData({...formData, taxCode: formatMST(e.target.value)})} maxLength={17} placeholder="111 111 111 1" />
                   {formErrors.taxCode && <p className="red-msg-inline">{formErrors.taxCode}</p>}
                 </div>
               </div>
@@ -536,9 +537,9 @@ const SellerRegister = () => {
             <div className="step-content">
               <div className="ainetsoft-row"><label><span className="req">*</span> Số CCCD</label>
                 <div className="ainetsoft-input-group">
-                  {/* APPENDED: formatCCCD MASK */}
-                  <input className={formErrors.cccdNumber ? "error-border" : ""} value={formData.cccdNumber} onChange={e => setFormData({...formData, cccdNumber: formatCCCD(e.target.value)})} maxLength={15} placeholder="012 345 678 901" />
-                  {formErrors.cccdNumber && <p className="red-msg-inline">{formErrors.cccdNumber}</p>}
+                   {/* AUTO-MASKED CCCD INPUT */}
+                   <input className={formErrors.cccdNumber ? "error-border" : ""} value={formData.cccdNumber} onChange={e => setFormData({...formData, cccdNumber: formatCCCD(e.target.value)})} maxLength={15} placeholder="012 345 678 901" />
+                   {formErrors.cccdNumber && <p className="red-msg-inline">{formErrors.cccdNumber}</p>}
                 </div>
               </div>
               <div className="id-upload-grid">
@@ -555,16 +556,14 @@ const SellerRegister = () => {
             <div className="step-content success-summary-view">
               {!isSubmitted ? (
                 <div className="preview-mode-banner no-print">
-                   <h2><FaInfoCircle /> Chế độ xem trước</h2><p>Nhấn <strong>Xác nhận & Gửi hồ sơ</strong> để hoàn tất.</p>
+                   <h2><FaInfoCircle /> Chế độ xem trước</h2><p>Vui lòng kiểm tra lại thông tin. Nhấn <strong>Xác nhận & Gửi hồ sơ</strong> để hoàn tất.</p>
                 </div>
               ) : (
                 <div className="success-registration-alert no-print">
                    <div className="success-alert-icon"><FaCheckCircle /></div>
                    <div className="success-alert-content">
                       <h2>Đăng ký thành công!</h2>
-                      {/* APPENDED: Professional Success Message */}
-                      <p>Bạn đã đăng ký tài khoản Người bán thành công, vui lòng chờ xác nhận bởi hệ thống AiNetsoft.</p>
-                      <p>Hồ sơ của bạn đang được ưu tiên kiểm duyệt.</p>
+                      <p>Hồ sơ của bạn đã được gửi. Vui lòng chờ xác nhận bởi hệ thống AiNetsoft.</p>
                       <div className="timeline-note"><FaClock /> Phản hồi chậm nhất trong vòng 24h</div>
                    </div>
                 </div>
@@ -575,38 +574,19 @@ const SellerRegister = () => {
                 <div className="summary-grid">
                   <div className="summary-item"><span className="sum-label">Tên Shop:</span><span className="sum-value">{formData.shopName}</span></div>
                   <div className="summary-item"><span className="sum-label">Loại hình:</span><span className="sum-value">{getBusinessLabel(formData.businessType)}</span></div>
-                  
-                  {/* APPENDED: formatPhone Display */}
-                  <div className="summary-item"><span className="sum-label">Số ĐT liên hệ:</span><span className="sum-value">{formatPhone(formData.phone)}</span></div>
-                  
+                  <div className="summary-item"><span className="sum-label">SĐT liên hệ:</span><span className="sum-value">{formatPhone(formData.phone)}</span></div>
                   <div className="summary-item"><span className="sum-label">Email liên hệ:</span><span className="sum-value">{formData.email}</span></div>
-                  
-                  {/* APPENDED: formatMST Display */}
                   <div className="summary-item"><span className="sum-label">Mã số thuế:</span><span className="sum-value">{formatMST(formData.taxCode)}</span></div>
-                  
-                  {/* APPENDED: formatCCCD Display */}
                   <div className="summary-item"><span className="sum-label">Số CCCD:</span><span className="sum-value">{formatCCCD(formData.cccdNumber)}</span></div>
-                  
-                  <div className="summary-item"><span className="sum-label">Vận chuyển:</span><span className="sum-value">
-                      {shippingMethodsList.filter(m => formData.shippingMethods[m.id]).map(m => m.name).join(', ') || 'Chưa chọn'}
-                  </span></div>
+                  <div className="summary-item"><span className="sum-label">ĐV Vận chuyển:</span><span className="sum-value">{shippingMethodsList.filter(m => formData.shippingMethods[m.id]).map(m => m.name).join(', ') || 'N/A'}</span></div>
                   <div className="summary-item"><span className="sum-label">Ngày gửi:</span><span className="sum-value">{new Date().toLocaleDateString('vi-VN')}</span></div>
                 </div>
 
                 <div className="summary-photos-section" style={{border: '2px solid #ee4d2d', padding: '20px', marginTop: '30px', borderRadius: '4px'}}>
                    <div className="summary-photo-grid" style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', marginTop: '15px'}}>
-                      <div className="summary-photo-item" onClick={() => setZoomedImage(formData.frontPreview)}>
-                        {formData.frontPreview ? <img src={formData.frontPreview} alt="Front" /> : <div className="upload-placeholder"><FaIdCard size={40} /></div>}
-                        <span>Mặt trước CCCD</span><div className="zoom-hint"><FaSearchPlus /> Phóng to</div>
-                      </div>
-                      <div className="summary-photo-item" onClick={() => setZoomedImage(formData.backPreview)}>
-                        {formData.backPreview ? <img src={formData.backPreview} alt="Back" /> : <div className="upload-placeholder"><FaIdCard size={40} /></div>}
-                        <span>Mặt sau CCCD</span><div className="zoom-hint"><FaSearchPlus /> Phóng to</div>
-                      </div>
-                      <div className="summary-photo-item" onClick={() => setZoomedImage(formData.businessType === 'INDIVIDUAL' ? ainetsoftLogo : (formData.licensePreview || ainetsoftLogo))}>
-                         <img src={formData.businessType === 'INDIVIDUAL' ? ainetsoftLogo : (formData.licensePreview || ainetsoftLogo)} alt="Legal" />
-                         <span>{formData.businessType === 'INDIVIDUAL' ? 'Thành viên' : 'Giấy phép'}</span><div className="zoom-hint"><FaSearchPlus /> Phóng to</div>
-                      </div>
+                      <div className="summary-photo-item" onClick={() => setZoomedImage(formData.frontPreview)}>{formData.frontPreview ? <img src={formData.frontPreview} alt="Front" /> : <div className="upload-placeholder"><FaIdCard size={40} /></div>}<span>Mặt trước CCCD</span><div className="zoom-hint"><FaSearchPlus /> Phóng to</div></div>
+                      <div className="summary-photo-item" onClick={() => setZoomedImage(formData.backPreview)}>{formData.backPreview ? <img src={formData.backPreview} alt="Back" /> : <div className="upload-placeholder"><FaIdCard size={40} /></div>}<span>Mặt sau CCCD</span><div className="zoom-hint"><FaSearchPlus /> Phóng to</div></div>
+                      <div className="summary-photo-item" onClick={() => setZoomedImage(formData.businessType === 'INDIVIDUAL' ? ainetsoftLogo : (formData.licensePreview || ainetsoftLogo))}><img src={formData.businessType === 'INDIVIDUAL' ? ainetsoftLogo : (formData.licensePreview || ainetsoftLogo)} alt="Legal" /><span>{formData.businessType === 'INDIVIDUAL' ? 'Thành viên' : 'Giấy phép'}</span><div className="zoom-hint"><FaSearchPlus /> Phóng to</div></div>
                    </div>
                 </div>
 
@@ -621,14 +601,19 @@ const SellerRegister = () => {
                             <FaMapMarkedAlt style={{color: '#2f54eb'}} />
                             <div style={{flex: 1}}>
                                <span className="coord-text">{addr.latitude}, {addr.longitude}</span>
-                               <div style={{display: 'flex', alignItems: 'center', gap: '5px', fontSize: '9px', color: '#8c8c8c'}}>
-                                  <FaQrcode /> <span>Dùng camera để mở bản đồ dẫn đường</span>
+                               <div className="qr-box-summary">
+                                  {/* QR GENERATOR: Uses coords to create a clickable Google Maps search link */}
+                                  <img className="qr-code-img" 
+                                       src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`https://www.google.com/maps/search/?api=1&query=${addr.latitude},${addr.longitude}`)}`} 
+                                       alt="QR Map" />
+                                  <div className="qr-info-text">
+                                     <strong>QR Map Dẫn Đường</strong>
+                                     <p>Shipper dùng camera quét để mở Google Maps ngay lập tức.</p>
+                                  </div>
                                </div>
                             </div>
                             <div className="btn-copy-action" onClick={() => { navigator.clipboard.writeText(`${addr.latitude}, ${addr.longitude}`); toast.success("Đã sao chép tọa độ!"); }}><FaCopy title="Sao chép" /></div>
-                            <a href={`https://www.google.com/maps/search/?api=1&query=$0{addr.latitude},${addr.longitude}`} target="_blank" rel="noreferrer" className="btn-maps-link">
-                                [Bản Đồ]
-                            </a>
+                            <a href={`https://www.google.com/maps/search/?api=1&query=${addr.latitude},${addr.longitude}`} target="_blank" rel="noreferrer" className="btn-maps-link">[Bản Đồ]</a>
                          </div>
                       </div>
                     ))}
@@ -636,7 +621,14 @@ const SellerRegister = () => {
                 </div>
                 <div className="print-footer-legal"><p>© 2026 AiNetsoft E-commerce System. Tài liệu tự động từ hệ thống.</p></div>
               </div>
-              {!isSubmitted && (<div className="onboarding-footer no-print"><button className="btn-ainetsoft-lite" onClick={() => setCurrentStep(4)}>Quay lại sửa</button><button className="btn-ainetsoft-primary" onClick={handleFinalSubmit}>Xác nhận & Gửi hồ sơ</button></div>)}
+              {!isSubmitted && (
+                <div className="onboarding-footer no-print">
+                   <button className="btn-ainetsoft-lite" onClick={() => setCurrentStep(4)}>Quay lại sửa</button>
+                   <button className="btn-ainetsoft-primary" onClick={handleFinalSubmit} disabled={isSaving}>
+                      {isSaving ? "Đang gửi..." : "Xác nhận & Gửi hồ sơ"}
+                   </button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -652,7 +644,6 @@ const SellerRegister = () => {
             <div className="modal-body">
               <div className="row-split">
                 <div className="input-with-label"><label><span className="req">*</span> Họ & Tên</label><input className={addressErrors.fullName ? "error-border" : ""} value={addressForm.fullName} onChange={e => setAddressForm({...addressForm, fullName: e.target.value})} />{addressErrors.fullName && <p className="red-msg-inline">{addressErrors.fullName}</p>}</div>
-                {/* APPENDED: formatPhone MASK */}
                 <div className="input-with-label"><label><span className="req">*</span> SĐT</label><input className={addressErrors.phoneNumber ? "error-border" : ""} value={addressForm.phoneNumber} onChange={e => setAddressForm({...addressForm, phoneNumber: formatPhone(e.target.value)})} maxLength={12} placeholder="098 776 7688" />{addressErrors.phoneNumber && <p className="red-msg-inline">{addressErrors.phoneNumber}</p>}</div>
               </div>
               <div className="modal-field-full"><label><span className="req">*</span> Tỉnh/Thành phố</label><select className={addressErrors.province ? "error-border" : ""} value={addressForm.province} onChange={e => setAddressForm({...addressForm, province: e.target.value})}><option value="">Chọn</option>{PROVINCES_2026.map(p => <option key={p} value={p}>{p}</option>)}</select>{addressErrors.province && <p className="red-msg-inline">{addressErrors.province}</p>}</div>
