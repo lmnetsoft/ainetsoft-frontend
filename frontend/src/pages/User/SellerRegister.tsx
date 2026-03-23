@@ -6,7 +6,7 @@ import {
   FaCheck, FaTruck, FaShippingFast, FaPlus, FaChevronRight, FaTrash,
   FaChevronDown, FaChevronUp, FaIdCard, FaFileInvoiceDollar, FaCheckCircle,
   FaInfoCircle, FaShieldAlt, FaUpload, FaCamera, FaRegLightbulb, FaEdit, FaPrint,
-  FaSearchPlus, FaMapMarkedAlt, FaQrcode, FaCopy
+  FaSearchPlus, FaMapMarkedAlt, FaQrcode, FaCopy, FaClock
 } from 'react-icons/fa';
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import { getUserProfile } from '../../services/authService';
@@ -20,8 +20,28 @@ import './SellerRegister.css';
 // IMPORT LOGO
 import ainetsoftLogo from '../../assets/images/logo.png'; 
 
-/** CONFIGURATION: Set your backend port for images to show */
+/** CONFIGURATION: Backend Port for MongoDB image pathing */
 const BACKEND_BASE = "http://localhost:8080"; 
+
+/** * ROBUST IMAGE RESOLVER: 
+ * Converts MongoDB filesystem paths (backend\uploads\...) into browser-safe URLs
+ */
+const getFullImageUrl = (path?: string) => {
+  if (!path) return '';
+  if (/^https?:\/\//i.test(path) || path.startsWith('data:')) return path;
+  const normalized = path.replace(/\\/g, '/');
+  if (normalized.startsWith('/api/')) {
+    return `${BACKEND_BASE}${normalized}`;
+  }
+  const fileName = normalized.split('/').pop() || '';
+  if (normalized.includes('/uploads/cccd/')) {
+    return `${BACKEND_BASE}/api/uploads/cccd/${encodeURIComponent(fileName)}`;
+  }
+  if (normalized.includes('/uploads/license/')) {
+    return `${BACKEND_BASE}/api/uploads/license/${encodeURIComponent(fileName)}`;
+  }
+  return `${BACKEND_BASE}${normalized.startsWith('/') ? '' : '/'}${normalized}`;
+};
 
 /** * INTEGRATED STYLES FOR VALIDATION, CAMERA PLACEHOLDER, AND UI HINTS */
 const inlineStyles = `
@@ -51,6 +71,13 @@ const inlineStyles = `
   .zoom-close { position: absolute; top: -50px; right: 0; color: white; font-size: 2.5rem; cursor: pointer; }
   
   .gps-hint-text { font-size: 11px; color: #ee4d2d; font-style: italic; margin-top: 5px; font-weight: 500; line-height: 1.4; }
+
+  /* PROFESSIONAL SUCCESS NOTIFICATION STYLES */
+  .success-registration-alert { background: #f6ffed; border: 1px solid #b7eb8f; padding: 24px; border-radius: 8px; margin-bottom: 30px; display: flex; align-items: flex-start; gap: 16px; }
+  .success-alert-icon { color: #52c41a; font-size: 28px; margin-top: 2px; }
+  .success-alert-content h2 { color: #1f1f1f; font-size: 20px; margin: 0 0 8px 0; font-weight: 600; }
+  .success-alert-content p { color: #595959; margin: 0; font-size: 15px; line-height: 1.6; }
+  .timeline-note { display: inline-flex; align-items: center; gap: 6px; background: #fff7e6; color: #d46b08; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 500; margin-top: 10px; border: 1px solid #ffd591; }
 
   .preview-mode-banner { background: #fff7e6; border: 1px solid #ffe7ba; padding: 20px; text-align: center; border-radius: 4px; margin-bottom: 30px; }
   .preview-mode-banner h2 { color: #d46b08; margin-bottom: 5px; display: flex; align-items: center; justify-content: center; gap: 10px; }
@@ -115,25 +142,20 @@ const SellerRegister = () => {
     detailAddress: '', latitude: '', longitude: '', isDefault: true
   });
 
-  /** UTILITY: Ensures relative paths from MongoDB point to backend server */
-  const getFullImageUrl = (path: string) => {
-    if (!path) return '';
-    if (path.startsWith('http')) return path;
-    return `${BACKEND_BASE}${path}`;
-  };
-
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsPageLoading(true);
         setIsShippingLoading(true);
-        const [profileData, shippingRes] = await Promise.all([
+        const [rawProfile, shippingRes] = await Promise.all([
           getUserProfile(),
           api.get('/shipping-methods/active')
         ]);
 
+        const profileData = rawProfile?.data || rawProfile;
+
         if (profileData.roles?.includes('SELLER')) {
-            toast.success("Bạn đã là Người bán!");
+            toast.success("Chào mừng trở lại, Người bán!");
             navigate('/user/profile');
             return;
         }
@@ -150,14 +172,14 @@ const SellerRegister = () => {
           enabledMap[id] = true;
         });
 
-        // MONGODB NORMALIZER: Match DB keys to UI fields
+        // MONGODB DATA MAPPING: receiverName -> fullName, detail -> detailAddress
         const normalizedAddresses = (profileData.addresses || []).map((addr: any) => ({
-           fullName: addr.receiverName || '',   // MongoDB: receiverName
-           phoneNumber: addr.phone || '',        // MongoDB: phone
+           fullName: addr.receiverName || '',
+           phoneNumber: addr.phone || '',
            province: addr.province || '',
            ward: addr.ward || '',
            hamlet: addr.hamlet || '',
-           detailAddress: addr.detail || '',     // MongoDB: detail
+           detailAddress: addr.detail || '',
            latitude: addr.latitude || '',
            longitude: addr.longitude || '',
            isDefault: addr.isDefault || false
@@ -177,14 +199,14 @@ const SellerRegister = () => {
             : [profileData.shopProfile?.invoiceEmail || ''],
           taxCode: profileData.shopProfile?.taxCode || '',
           shippingMethods: enabledMap,
-          // DB Mapping fix: Use cccdNumber
-          cccdNumber: profileData.identityInfo?.cccdNumber || '',
-          frontPreview: getFullImageUrl(profileData.identityInfo?.frontImageUrl),
-          backPreview: getFullImageUrl(profileData.identityInfo?.backImageUrl),
-          licensePreview: getFullImageUrl(profileData.shopProfile?.businessLicenseUrl)
+          // DB MAPPING: Using cccdNumber key exactly as stored in your MongoDB
+          cccdNumber: profileData.identityInfo?.cccdNumber || profileData.cccdNumber || '',
+          frontPreview: getFullImageUrl(profileData.identityInfo?.frontImageUrl || profileData.frontImageUrl),
+          backPreview: getFullImageUrl(profileData.identityInfo?.backImageUrl || profileData.backImageUrl),
+          licensePreview: getFullImageUrl(profileData.shopProfile?.businessLicenseUrl || profileData.businessLicenseUrl)
         }));
       } catch (error) {
-        toast.error("Lỗi kết nối hệ thống");
+        toast.error("Lỗi kết nối hệ thống. Vui lòng tải lại trang.");
       } finally {
         setIsPageLoading(false);
         setIsShippingLoading(false);
@@ -281,6 +303,7 @@ const SellerRegister = () => {
     return Object.keys(errors).length === 0;
   };
 
+  /** MASTER VALIDATION: Prevents silent blocks or incomplete data being sent */
   const performFullValidation = () => {
     const s1 = validateStep1();
     const s3 = validateStep3();
@@ -288,9 +311,9 @@ const SellerRegister = () => {
     if (!s1 || !s3 || !s4) {
       const missing = [];
       if (!s1) missing.push("Thông tin Shop");
-      if (!s3) missing.push("Thông tin Thuế/Công ty");
+      if (!s3) missing.push("Thông tin Công ty/Thuế");
       if (!s4) missing.push("Thông tin Định danh");
-      toast.error(`Vui lòng hoàn tất: ${missing.join(', ')}`);
+      toast.error(`Thiếu thông tin: ${missing.join(', ')}. Vui lòng kiểm tra lại.`);
       return false;
     }
     return true;
@@ -307,12 +330,21 @@ const SellerRegister = () => {
           invoiceEmails: formData.invoiceEmails, taxCode: formData.taxCode,
           cccdNumber: formData.cccdNumber, shippingMethods: formData.shippingMethods, stockAddresses: formData.stockAddresses
       };
-      submitData.append('data', new Blob([JSON.stringify(payload)], { type: "application/json" }));
+
+      // FIX: Wrap payload in Typed Blob to satisfy Spring Boot JSON detection
+      const jsonBlob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+      submitData.append('data', jsonBlob);
+
       if (formData.frontImage) submitData.append('frontImage', formData.frontImage);
       if (formData.backImage) submitData.append('backImage', formData.backImage);
       if (formData.licenseImage) submitData.append('license', formData.licenseImage);
+      
       const res = await api.post('/auth/upgrade-seller', submitData);
-      if (res.status === 200 || res.status === 201) { toast.success("Đã gửi hồ sơ!"); setIsSubmitted(true); setCurrentStep(5); }
+      if (res.status === 200 || res.status === 201) { 
+        toast.success("Đăng ký thành công!"); 
+        setIsSubmitted(true); 
+        setCurrentStep(5); 
+      }
     } catch (error: any) { toast.error("Gửi hồ sơ thất bại"); } finally { setIsSaving(false); }
   };
 
@@ -340,11 +372,16 @@ const SellerRegister = () => {
     }
   };
 
+  const copyToClipboard = (text: string) => {
+     navigator.clipboard.writeText(text);
+     toast.success("Đã sao chép!");
+  };
+
   const toggleShipping = (id: string) => { setFormData(prev => ({ ...prev, shippingMethods: { ...prev.shippingMethods, [id]: !prev.shippingMethods[id] } })); };
   const getBusinessLabel = (type: string) => type === 'INDIVIDUAL' ? 'Cá nhân' : type === 'HOUSEHOLD' ? 'Hộ kinh doanh' : 'Công ty';
   const handlePrint = () => window.print();
 
-  if (isPageLoading) return <div className="loading-spinner">Đang tải hồ sơ...</div>;
+  if (isPageLoading) return <div className="loading-spinner">Đang tải hồ sơ Người bán...</div>;
 
   return (
     <div className="onboarding-layout">
@@ -378,9 +415,9 @@ const SellerRegister = () => {
                     <div key={idx} className="address-display-box" style={{marginBottom: '10px'}}>
                       <div className="addr-text">
                         <strong>
-                          {[addr.fullName, addr.phoneNumber].filter(val => val && val.trim() !== '').join(' | ')}
+                          {[addr.fullName, addr.phoneNumber].filter(Boolean).join(' | ')}
                         </strong>
-                        <p>{[addr.detailAddress, addr.ward, addr.province].filter(val => val && val.trim() !== '').join(', ')}</p>
+                        <p>{[addr.detailAddress, addr.ward, addr.province].filter(Boolean).join(', ')}</p>
                       </div>
                       <FaTrash className="trash-icon" onClick={() => setFormData({...formData, stockAddresses: formData.stockAddresses.filter((_, i) => i !== idx)})} />
                     </div>
@@ -418,7 +455,7 @@ const SellerRegister = () => {
                           </button>
                         </div>
                         {!expandedMethods[mId] && (
-                          <div className="method-details-row"><div className="method-sub-box"><div className="sub-box-left"><span>{method.name}</span>{method.codEnabled && <span className="cod-tag">[Hỗ trợ thu hộ COD]</span>}</div><div className="sub-box-right"><label className="ainetsoft-switch"><input type="checkbox" checked={!!formData.shippingMethods[mId]} onChange={() => toggleShipping(mId)} /><span className="slider round"></span></label><FaChevronRight className="arrow-mute" /></div></div></div>
+                          <div className="method-details-row"><div className="method-sub-box"><div className="sub-box-left"><span>{method.name}</span>{method.codEnabled && <span className="cod-tag">[COD]</span>}</div><div className="sub-box-right"><label className="ainetsoft-switch"><input type="checkbox" checked={!!formData.shippingMethods[mId]} onChange={() => toggleShipping(mId)} /><span className="slider round"></span></label><FaChevronRight className="arrow-mute" /></div></div></div>
                         )}
                       </div>
                     );
@@ -439,6 +476,12 @@ const SellerRegister = () => {
               {formData.businessType !== 'INDIVIDUAL' && (
                 <div className="ainetsoft-row"><label><span className="req">*</span> Tên công ty</label><div className="ainetsoft-input-group"><input className={formErrors.companyName ? "error-border" : ""} value={formData.companyName} onChange={e => setFormData({...formData, companyName: e.target.value})} placeholder="Tên chính thức" />{formErrors.companyName && <p className="red-msg-inline">{formErrors.companyName}</p>}</div></div>
               )}
+              <div className="ainetsoft-row"><label><span className="req">*</span> Địa chỉ đăng ký</label>
+                <div className="ainetsoft-input-group">
+                  <input className={formErrors.registeredAddress ? "error-border" : ""} value={formData.registeredAddress} onChange={e => setFormData({...formData, registeredAddress: e.target.value})} placeholder="Địa chỉ theo GPKD" />
+                  {formErrors.registeredAddress && <p className="red-msg-inline">{formErrors.registeredAddress}</p>}
+                </div>
+              </div>
               <div className="ainetsoft-row"><label><span className="req">*</span> Email nhận hóa đơn</label>
                 <div className="ainetsoft-input-group">
                   {formData.invoiceEmails.map((email, idx) => (
@@ -474,10 +517,18 @@ const SellerRegister = () => {
             <div className="step-content success-summary-view">
               {!isSubmitted ? (
                 <div className="preview-mode-banner no-print">
-                   <h2><FaInfoCircle /> Chế độ xem trước</h2><p>Kiểm tra kỹ thông tin trước khi nhấn Gửi.</p>
+                   <h2><FaInfoCircle /> Chế độ xem trước</h2><p>Nhấn <strong>Xác nhận & Gửi hồ sơ</strong> để hoàn tất.</p>
                 </div>
               ) : (
-                <div className="success-banner no-print"><FaCheckCircle className="success-icon-big" /><h2>Đăng ký thành công!</h2></div>
+                <div className="success-registration-alert no-print">
+                   <div className="success-alert-icon"><FaCheckCircle /></div>
+                   <div className="success-alert-content">
+                      <h2>Đăng ký thành công!</h2>
+                      <p>Hồ sơ đăng ký Người bán của bạn đã được gửi hệ thống AiNetsoft.</p>
+                      <p>Vui lòng chờ chúng tôi kiểm duyệt các tài liệu đính kèm.</p>
+                      <div className="timeline-note"><FaClock /> Phản hồi chậm nhất trong vòng 24h</div>
+                   </div>
+                </div>
               )}
 
               <div className="summary-section printable-area">
@@ -486,9 +537,9 @@ const SellerRegister = () => {
                   <div className="summary-item"><span className="sum-label">Tên Shop:</span><span className="sum-value">{formData.shopName}</span></div>
                   <div className="summary-item"><span className="sum-label">Loại hình:</span><span className="sum-value">{getBusinessLabel(formData.businessType)}</span></div>
                   <div className="summary-item"><span className="sum-label">Số ĐT liên hệ:</span><span className="sum-value">{formData.phone}</span></div>
+                  <div className="summary-item"><span className="sum-label">Email liên hệ:</span><span className="sum-value">{formData.email}</span></div>
                   <div className="summary-item"><span className="sum-label">Mã số thuế:</span><span className="sum-value">{formData.taxCode}</span></div>
-                  {/* FIXED: DB MAPPING FOR CCCD ID */}
-                  <div className="summary-item"><span className="sum-label">Số CCCD:</span><span className="sum-value">{formData.cccdNumber || "Chưa cập nhật"}</span></div>
+                  <div className="summary-item"><span className="sum-label">Số CCCD:</span><span className="sum-value">{formData.cccdNumber || "N/A"}</span></div>
                   <div className="summary-item"><span className="sum-label">Vận chuyển:</span><span className="sum-value">
                       {shippingMethodsList.filter(m => formData.shippingMethods[m.id]).map(m => m.name).join(', ') || 'Chưa chọn'}
                   </span></div>
@@ -497,7 +548,6 @@ const SellerRegister = () => {
 
                 <div className="summary-photos-section" style={{border: '2px solid #ee4d2d', padding: '20px', marginTop: '30px', borderRadius: '4px'}}>
                    <div className="summary-photo-grid" style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', marginTop: '15px'}}>
-                      {/* FIXED: PREVIEW FALLBACK FOR SAVED IMAGES */}
                       <div className="summary-photo-item" onClick={() => setZoomedImage(formData.frontPreview)}>
                         {formData.frontPreview ? <img src={formData.frontPreview} alt="Front" /> : <div className="upload-placeholder"><FaIdCard size={40} /></div>}
                         <span>Mặt trước CCCD</span><div className="zoom-hint"><FaSearchPlus /> Phóng to</div>
@@ -518,18 +568,18 @@ const SellerRegister = () => {
                   <div className="sum-addr-list">
                     {formData.stockAddresses.map((addr, i) => (
                       <div key={i} className="sum-addr-item" style={{border: '1px solid #eee', padding: '10px', marginBottom: '10px', borderRadius: '4px'}}>
-                         <strong>{[addr.fullName, addr.phoneNumber].filter(val => val && val.trim() !== '').join(' | ')}</strong>
-                         <p>{[addr.detailAddress, addr.ward, addr.province].filter(val => val && val.trim() !== '').join(', ')}</p>
+                         <strong>{[addr.fullName, addr.phoneNumber].filter(Boolean).join(' | ')}</strong>
+                         <p>{[addr.detailAddress, addr.ward, addr.province].filter(Boolean).join(', ')}</p>
                          <div className="preview-coords">
                             <FaMapMarkedAlt style={{color: '#2f54eb'}} />
                             <div style={{flex: 1}}>
                                <span className="coord-text">{addr.latitude}, {addr.longitude}</span>
                                <div style={{display: 'flex', alignItems: 'center', gap: '5px', fontSize: '9px', color: '#8c8c8c'}}>
-                                  <FaQrcode /> <span>Dùng camera để mở bản đồ dẫn đường</span>
+                                  <FaQrcode /> <span>Dùng camera để dẫn đường</span>
                                </div>
                             </div>
-                            <div className="btn-copy-action" onClick={() => { navigator.clipboard.writeText(`${addr.latitude}, ${addr.longitude}`); toast.success("Đã chép tọa độ!"); }}><FaCopy title="Sao chép" /></div>
-                            <a href={`https://www.google.com/maps/search/?api=1&query=${addr.latitude},${addr.longitude}`} target="_blank" rel="noreferrer" className="btn-maps-link">
+                            <div className="btn-copy-action" onClick={() => { navigator.clipboard.writeText(`${addr.latitude}, ${addr.longitude}`); toast.success("Đã sao chép!"); }}><FaCopy title="Sao chép" /></div>
+                            <a href={`https://www.google.com/maps/search/?api=1&query=$0{addr.latitude},${addr.longitude}`} target="_blank" rel="noreferrer" className="btn-maps-link">
                                 [Bản Đồ]
                             </a>
                          </div>
@@ -537,7 +587,7 @@ const SellerRegister = () => {
                     ))}
                   </div>
                 </div>
-                <div className="print-footer-legal"><p>© 2026 Ainetsoft E-commerce System. Tài liệu tự động từ hệ thống.</p></div>
+                <div className="print-footer-legal"><p>© 2026 AiNetsoft E-commerce System. Tài liệu tự động từ hệ thống.</p></div>
               </div>
               {!isSubmitted && (<div className="onboarding-footer no-print"><button className="btn-ainetsoft-lite" onClick={() => setCurrentStep(4)}>Quay lại sửa</button><button className="btn-ainetsoft-primary" onClick={handleFinalSubmit}>Xác nhận & Gửi hồ sơ</button></div>)}
             </div>
@@ -547,7 +597,7 @@ const SellerRegister = () => {
 
       {zoomedImage && (<div className="zoom-overlay" onClick={() => setZoomedImage(null)}><div className="zoom-content"><FaTimes className="zoom-close" onClick={() => setZoomedImage(null)} /><img src={zoomedImage} alt="Zoomed" /></div></div>)}
 
-      {/* ADDRESS MODAL (Full Fields Preserved) */}
+      {/* ADDRESS MODAL */}
       {showAddressModal && (
         <div className="ainetsoft-modal-overlay no-print">
           <div className="ainetsoft-modal-card">
