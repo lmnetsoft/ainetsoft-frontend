@@ -23,6 +23,34 @@ import ainetsoftLogo from '../../assets/images/logo.png';
 /** CONFIGURATION: Backend Port for MongoDB image pathing */
 const BACKEND_BASE = "http://localhost:8080"; 
 
+/** * NUMBER FORMATTING UTILITIES (Auto-masking for Octet Visibility) */
+const formatPhone = (val: string) => {
+  const s = val.replace(/\D/g, '');
+  if (s.length <= 3) return s;
+  if (s.length <= 6) return `${s.slice(0, 3)} ${s.slice(3)}`;
+  return `${s.slice(0, 3)} ${s.slice(3, 6)} ${s.slice(6, 10)}`;
+};
+
+const formatCCCD = (val: string) => {
+  const s = val.replace(/\D/g, '');
+  const groups = s.match(/.{1,3}/g);
+  return groups ? groups.join(' ') : s;
+};
+
+const formatMST = (val: string) => {
+  const s = val.replace(/\D/g, '');
+  // Group by 3s for the primary 10 digits
+  if (s.length <= 10) {
+    const groups = s.match(/.{1,3}/g);
+    return groups ? groups.join(' ') : s;
+  }
+  // For 13-digit branch codes
+  const main = s.slice(0, 10);
+  const branch = s.slice(10, 13);
+  const mainGroups = main.match(/.{1,3}/g);
+  return `${mainGroups ? mainGroups.join(' ') : main}-${branch}`;
+};
+
 /** * ROBUST IMAGE RESOLVER: 
  * Converts MongoDB filesystem paths (backend\uploads\...) into browser-safe URLs
  */
@@ -119,7 +147,7 @@ const SellerRegister = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false); 
-  
+
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   
@@ -172,7 +200,6 @@ const SellerRegister = () => {
           enabledMap[id] = true;
         });
 
-        // MONGODB DATA MAPPING: receiverName -> fullName, detail -> detailAddress
         const normalizedAddresses = (profileData.addresses || []).map((addr: any) => ({
            fullName: addr.receiverName || '',
            phoneNumber: addr.phone || '',
@@ -199,7 +226,6 @@ const SellerRegister = () => {
             : [profileData.shopProfile?.invoiceEmail || ''],
           taxCode: profileData.shopProfile?.taxCode || '',
           shippingMethods: enabledMap,
-          // DB MAPPING: Using cccdNumber key exactly as stored in your MongoDB
           cccdNumber: profileData.identityInfo?.cccdNumber || profileData.cccdNumber || '',
           frontPreview: getFullImageUrl(profileData.identityInfo?.frontImageUrl || profileData.frontImageUrl),
           backPreview: getFullImageUrl(profileData.identityInfo?.backImageUrl || profileData.backImageUrl),
@@ -282,7 +308,7 @@ const SellerRegister = () => {
     }
     if (!formData.taxCode.trim()) {
       errors.taxCode = "Mã số thuế là bắt buộc";
-    } else if (!VN_TAX_REGEX.test(formData.taxCode.trim())) {
+    } else if (!VN_TAX_REGEX.test(formData.taxCode.replace(/\s|-/g, ''))) {
       errors.taxCode = "MST không hợp lệ (10 hoặc 13 chữ số)";
     }
     if (formData.businessType !== 'INDIVIDUAL' && !formData.licensePreview) {
@@ -294,7 +320,8 @@ const SellerRegister = () => {
 
   const validateStep4 = () => {
     const errors: Record<string, string> = {};
-    if (!formData.cccdNumber.trim() || formData.cccdNumber.length !== 12) {
+    const rawCCCD = formData.cccdNumber.replace(/\s/g, '');
+    if (!rawCCCD || rawCCCD.length !== 12) {
       errors.cccdNumber = "Số CCCD phải bao gồm 12 chữ số";
     }
     if (!formData.frontPreview) errors.frontImage = "Thiếu mặt trước CCCD";
@@ -303,7 +330,6 @@ const SellerRegister = () => {
     return Object.keys(errors).length === 0;
   };
 
-  /** MASTER VALIDATION: Prevents silent blocks or incomplete data being sent */
   const performFullValidation = () => {
     const s1 = validateStep1();
     const s3 = validateStep3();
@@ -324,14 +350,15 @@ const SellerRegister = () => {
     try {
       setIsSaving(true);
       const submitData = new FormData();
+      // CLEANING MASKS BEFORE SUBMITTING TO DATABASE
       const payload = {
-          shopName: formData.shopName, email: formData.email, businessType: formData.businessType,
-          companyName: formData.companyName, registeredAddress: formData.registeredAddress,
-          invoiceEmails: formData.invoiceEmails, taxCode: formData.taxCode,
-          cccdNumber: formData.cccdNumber, shippingMethods: formData.shippingMethods, stockAddresses: formData.stockAddresses
+          ...formData,
+          phone: formData.phone.replace(/\D/g, ''),
+          taxCode: formData.taxCode.replace(/\s|-/g, ''),
+          cccdNumber: formData.cccdNumber.replace(/\s/g, ''),
+          stockAddresses: formData.stockAddresses.map(a => ({...a, phoneNumber: a.phoneNumber.replace(/\D/g, '')}))
       };
 
-      // FIX: Wrap payload in Typed Blob to satisfy Spring Boot JSON detection
       const jsonBlob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
       submitData.append('data', jsonBlob);
 
@@ -351,14 +378,15 @@ const SellerRegister = () => {
   const handleLocalAddressSave = () => {
     const errors: Record<string, string> = {};
     if (!addressForm.fullName.trim()) errors.fullName = "Vui lòng nhập họ và tên";
-    const phone = addressForm.phoneNumber.trim();
+    const phone = addressForm.phoneNumber.replace(/\D/g, '');
     if (!phone || !VN_PHONE_REGEX.test(phone)) errors.phoneNumber = "SĐT không đúng định dạng";
     if (!addressForm.province) errors.province = "Vui lòng chọn tỉnh thành";
     if (!addressForm.ward.trim()) errors.ward = "Vui lòng nhập Phường/Xã";
     if (!addressForm.ward.toLowerCase().includes("phường") && !addressForm.hamlet.trim()) errors.hamlet = "Bắt buộc nhập Ấp/Thôn cho khu vực xã";
     if (!addressForm.detailAddress.trim()) errors.detailAddress = "Vui lòng nhập số nhà, tên đường";
     if (Object.keys(errors).length > 0) { setAddressErrors(errors); return; }
-    setFormData(prev => ({ ...prev, stockAddresses: [...prev.stockAddresses, { ...addressForm, province: addressForm.province.split(' (')[0] }] }));
+    
+    setFormData(prev => ({ ...prev, stockAddresses: [...prev.stockAddresses, { ...addressForm, phoneNumber: phone }] }));
     setShowAddressModal(false); setAddressErrors({}); setAddressForm({ fullName: '', phoneNumber: '', province: '', ward: '', hamlet: '', detailAddress: '', latitude: '', longitude: '', isDefault: true });
   };
 
@@ -381,7 +409,7 @@ const SellerRegister = () => {
   const getBusinessLabel = (type: string) => type === 'INDIVIDUAL' ? 'Cá nhân' : type === 'HOUSEHOLD' ? 'Hộ kinh doanh' : 'Công ty';
   const handlePrint = () => window.print();
 
-  if (isPageLoading) return <div className="loading-spinner">Đang tải hồ sơ Người bán...</div>;
+  if (isPageLoading) return <div className="loading-spinner">Đang tải hồ sơ...</div>;
 
   return (
     <div className="onboarding-layout">
@@ -414,9 +442,7 @@ const SellerRegister = () => {
                   {formData.stockAddresses.map((addr, idx) => (
                     <div key={idx} className="address-display-box" style={{marginBottom: '10px'}}>
                       <div className="addr-text">
-                        <strong>
-                          {[addr.fullName, addr.phoneNumber].filter(Boolean).join(' | ')}
-                        </strong>
+                        <strong>{[addr.fullName, formatPhone(addr.phoneNumber)].filter(Boolean).join(' | ')}</strong>
                         <p>{[addr.detailAddress, addr.ward, addr.province].filter(Boolean).join(', ')}</p>
                       </div>
                       <FaTrash className="trash-icon" onClick={() => setFormData({...formData, stockAddresses: formData.stockAddresses.filter((_, i) => i !== idx)})} />
@@ -455,7 +481,7 @@ const SellerRegister = () => {
                           </button>
                         </div>
                         {!expandedMethods[mId] && (
-                          <div className="method-details-row"><div className="method-sub-box"><div className="sub-box-left"><span>{method.name}</span>{method.codEnabled && <span className="cod-tag">[COD]</span>}</div><div className="sub-box-right"><label className="ainetsoft-switch"><input type="checkbox" checked={!!formData.shippingMethods[mId]} onChange={() => toggleShipping(mId)} /><span className="slider round"></span></label><FaChevronRight className="arrow-mute" /></div></div></div>
+                          <div className="method-details-row"><div className="method-sub-box"><div className="sub-box-left"><span>{method.name}</span>{method.codEnabled && <span className="cod-tag">[COD]</span>}</div><div className="sub-box-right"><label className="ainetsoft-switch"><input type="checkbox" checked={!!formData.shippingMethods[mId]} onChange={() => toggleShipping(mId)} /><span className="slider round"></span></label></div></div></div>
                         )}
                       </div>
                     );
@@ -491,7 +517,13 @@ const SellerRegister = () => {
                   {formErrors.invoiceEmail && <p className="red-msg-inline">{formErrors.invoiceEmail}</p>}
                 </div>
               </div>
-              <div className="ainetsoft-row"><label><span className="req">*</span> MST</label><div className="ainetsoft-input-group"><input className={formErrors.taxCode ? "error-border" : ""} value={formData.taxCode} onChange={e => setFormData({...formData, taxCode: e.target.value.replace(/\D/g, '')})} maxLength={14} />{formErrors.taxCode && <p className="red-msg-inline">{formErrors.taxCode}</p>}</div></div>
+              <div className="ainetsoft-row"><label><span className="req">*</span> MST</label>
+                <div className="ainetsoft-input-group">
+                  {/* APPENDED: formatMST MASK */}
+                  <input className={formErrors.taxCode ? "error-border" : ""} value={formData.taxCode} onChange={e => setFormData({...formData, taxCode: formatMST(e.target.value)})} maxLength={15} placeholder="111 111 111 1" />
+                  {formErrors.taxCode && <p className="red-msg-inline">{formErrors.taxCode}</p>}
+                </div>
+              </div>
               {formData.businessType !== 'INDIVIDUAL' && (
                 <div className="ainetsoft-row"><label><span className="req">*</span> GPKD</label><div className="ainetsoft-input-group"><div className={`license-upload-box ${formErrors.license ? "error-border" : ""}`} onClick={() => document.getElementById('input-license')?.click()}>{formData.licensePreview ? (<><div className="btn-clear-img" onClick={(e) => clearImage('license', e)}><FaTimes /></div><img src={formData.licensePreview} alt="License" onError={() => setFormData(prev => ({...prev, licensePreview: ''}))} /></>) : (<div className="upload-placeholder"><FaCamera className="cam-icon" /><span>Tải lên GPKD</span></div>)}</div><input id="input-license" type="file" hidden onChange={e => handleFileChange(e, 'license')} />{formErrors.license && <p className="red-msg-inline">{formErrors.license}</p>}</div></div>
               )}
@@ -502,7 +534,13 @@ const SellerRegister = () => {
           {/* STEP 4 */}
           {currentStep === 4 && (
             <div className="step-content">
-              <div className="ainetsoft-row"><label><span className="req">*</span> Số CCCD</label><div className="ainetsoft-input-group"><input className={formErrors.cccdNumber ? "error-border" : ""} value={formData.cccdNumber} onChange={e => setFormData({...formData, cccdNumber: e.target.value.replace(/\D/g, '')})} maxLength={12} />{formErrors.cccdNumber && <p className="red-msg-inline">{formErrors.cccdNumber}</p>}</div></div>
+              <div className="ainetsoft-row"><label><span className="req">*</span> Số CCCD</label>
+                <div className="ainetsoft-input-group">
+                  {/* APPENDED: formatCCCD MASK */}
+                  <input className={formErrors.cccdNumber ? "error-border" : ""} value={formData.cccdNumber} onChange={e => setFormData({...formData, cccdNumber: formatCCCD(e.target.value)})} maxLength={15} placeholder="012 345 678 901" />
+                  {formErrors.cccdNumber && <p className="red-msg-inline">{formErrors.cccdNumber}</p>}
+                </div>
+              </div>
               <div className="id-upload-grid">
                 <div style={{display: 'flex', flexDirection: 'column'}}><div className={`upload-box ${formErrors.frontImage ? "error-border-dashed" : ""}`} onClick={() => document.getElementById('input-front')?.click()}>{formData.frontPreview ? (<div style={{position: 'relative', height: '100%'}}><div className="btn-clear-img" onClick={(e) => clearImage('front', e)}><FaTimes /></div><img src={formData.frontPreview} alt="Front" className="preview-img" onError={() => setFormData(prev => ({...prev, frontPreview: ''}))} /></div>) : (<div className="upload-placeholder"><FaCamera className="cam-icon" /><span>Mặt trước CCCD</span></div>)}</div>{formErrors.frontImage && <p className="red-msg-inline">{formErrors.frontImage}</p>}</div>
                 <div style={{display: 'flex', flexDirection: 'column'}}><div className={`upload-box ${formErrors.backImage ? "error-border-dashed" : ""}`} onClick={() => document.getElementById('input-back')?.click()}>{formData.backPreview ? (<div style={{position: 'relative', height: '100%'}}><div className="btn-clear-img" onClick={(e) => clearImage('back', e)}><FaTimes /></div><img src={formData.backPreview} alt="Back" className="preview-img" onError={() => setFormData(prev => ({...prev, backPreview: ''}))} /></div>) : (<div className="upload-placeholder"><FaCamera className="cam-icon" /><span>Mặt sau CCCD</span></div>)}</div>{formErrors.backImage && <p className="red-msg-inline">{formErrors.backImage}</p>}</div>
@@ -524,8 +562,9 @@ const SellerRegister = () => {
                    <div className="success-alert-icon"><FaCheckCircle /></div>
                    <div className="success-alert-content">
                       <h2>Đăng ký thành công!</h2>
-                      <p>Hồ sơ đăng ký Người bán của bạn đã được gửi hệ thống AiNetsoft.</p>
-                      <p>Vui lòng chờ chúng tôi kiểm duyệt các tài liệu đính kèm.</p>
+                      {/* APPENDED: Professional Success Message */}
+                      <p>Bạn đã đăng ký tài khoản Người bán thành công, vui lòng chờ xác nhận bởi hệ thống AiNetsoft.</p>
+                      <p>Hồ sơ của bạn đang được ưu tiên kiểm duyệt.</p>
                       <div className="timeline-note"><FaClock /> Phản hồi chậm nhất trong vòng 24h</div>
                    </div>
                 </div>
@@ -536,10 +575,18 @@ const SellerRegister = () => {
                 <div className="summary-grid">
                   <div className="summary-item"><span className="sum-label">Tên Shop:</span><span className="sum-value">{formData.shopName}</span></div>
                   <div className="summary-item"><span className="sum-label">Loại hình:</span><span className="sum-value">{getBusinessLabel(formData.businessType)}</span></div>
-                  <div className="summary-item"><span className="sum-label">Số ĐT liên hệ:</span><span className="sum-value">{formData.phone}</span></div>
+                  
+                  {/* APPENDED: formatPhone Display */}
+                  <div className="summary-item"><span className="sum-label">Số ĐT liên hệ:</span><span className="sum-value">{formatPhone(formData.phone)}</span></div>
+                  
                   <div className="summary-item"><span className="sum-label">Email liên hệ:</span><span className="sum-value">{formData.email}</span></div>
-                  <div className="summary-item"><span className="sum-label">Mã số thuế:</span><span className="sum-value">{formData.taxCode}</span></div>
-                  <div className="summary-item"><span className="sum-label">Số CCCD:</span><span className="sum-value">{formData.cccdNumber || "N/A"}</span></div>
+                  
+                  {/* APPENDED: formatMST Display */}
+                  <div className="summary-item"><span className="sum-label">Mã số thuế:</span><span className="sum-value">{formatMST(formData.taxCode)}</span></div>
+                  
+                  {/* APPENDED: formatCCCD Display */}
+                  <div className="summary-item"><span className="sum-label">Số CCCD:</span><span className="sum-value">{formatCCCD(formData.cccdNumber)}</span></div>
+                  
                   <div className="summary-item"><span className="sum-label">Vận chuyển:</span><span className="sum-value">
                       {shippingMethodsList.filter(m => formData.shippingMethods[m.id]).map(m => m.name).join(', ') || 'Chưa chọn'}
                   </span></div>
@@ -568,17 +615,17 @@ const SellerRegister = () => {
                   <div className="sum-addr-list">
                     {formData.stockAddresses.map((addr, i) => (
                       <div key={i} className="sum-addr-item" style={{border: '1px solid #eee', padding: '10px', marginBottom: '10px', borderRadius: '4px'}}>
-                         <strong>{[addr.fullName, addr.phoneNumber].filter(Boolean).join(' | ')}</strong>
+                         <strong>{[addr.fullName, formatPhone(addr.phoneNumber)].filter(Boolean).join(' | ')}</strong>
                          <p>{[addr.detailAddress, addr.ward, addr.province].filter(Boolean).join(', ')}</p>
                          <div className="preview-coords">
                             <FaMapMarkedAlt style={{color: '#2f54eb'}} />
                             <div style={{flex: 1}}>
                                <span className="coord-text">{addr.latitude}, {addr.longitude}</span>
                                <div style={{display: 'flex', alignItems: 'center', gap: '5px', fontSize: '9px', color: '#8c8c8c'}}>
-                                  <FaQrcode /> <span>Dùng camera để dẫn đường</span>
+                                  <FaQrcode /> <span>Dùng camera để mở bản đồ dẫn đường</span>
                                </div>
                             </div>
-                            <div className="btn-copy-action" onClick={() => { navigator.clipboard.writeText(`${addr.latitude}, ${addr.longitude}`); toast.success("Đã sao chép!"); }}><FaCopy title="Sao chép" /></div>
+                            <div className="btn-copy-action" onClick={() => { navigator.clipboard.writeText(`${addr.latitude}, ${addr.longitude}`); toast.success("Đã sao chép tọa độ!"); }}><FaCopy title="Sao chép" /></div>
                             <a href={`https://www.google.com/maps/search/?api=1&query=$0{addr.latitude},${addr.longitude}`} target="_blank" rel="noreferrer" className="btn-maps-link">
                                 [Bản Đồ]
                             </a>
@@ -605,7 +652,8 @@ const SellerRegister = () => {
             <div className="modal-body">
               <div className="row-split">
                 <div className="input-with-label"><label><span className="req">*</span> Họ & Tên</label><input className={addressErrors.fullName ? "error-border" : ""} value={addressForm.fullName} onChange={e => setAddressForm({...addressForm, fullName: e.target.value})} />{addressErrors.fullName && <p className="red-msg-inline">{addressErrors.fullName}</p>}</div>
-                <div className="input-with-label"><label><span className="req">*</span> SĐT</label><input className={addressErrors.phoneNumber ? "error-border" : ""} value={addressForm.phoneNumber} onChange={e => setAddressForm({...addressForm, phoneNumber: e.target.value.replace(/\D/g, '')})} placeholder="0xxxxxxxxx" />{addressErrors.phoneNumber && <p className="red-msg-inline">{addressErrors.phoneNumber}</p>}</div>
+                {/* APPENDED: formatPhone MASK */}
+                <div className="input-with-label"><label><span className="req">*</span> SĐT</label><input className={addressErrors.phoneNumber ? "error-border" : ""} value={addressForm.phoneNumber} onChange={e => setAddressForm({...addressForm, phoneNumber: formatPhone(e.target.value)})} maxLength={12} placeholder="098 776 7688" />{addressErrors.phoneNumber && <p className="red-msg-inline">{addressErrors.phoneNumber}</p>}</div>
               </div>
               <div className="modal-field-full"><label><span className="req">*</span> Tỉnh/Thành phố</label><select className={addressErrors.province ? "error-border" : ""} value={addressForm.province} onChange={e => setAddressForm({...addressForm, province: e.target.value})}><option value="">Chọn</option>{PROVINCES_2026.map(p => <option key={p} value={p}>{p}</option>)}</select>{addressErrors.province && <p className="red-msg-inline">{addressErrors.province}</p>}</div>
               <div className="modal-field-full"><label><span className="req">*</span> Phường/Xã</label><input className={addressErrors.ward ? "error-border" : ""} value={addressForm.ward} onChange={e => setAddressForm({...addressForm, ward: e.target.value})} />{addressErrors.ward && <p className="red-msg-inline">{addressErrors.ward}</p>}</div>
