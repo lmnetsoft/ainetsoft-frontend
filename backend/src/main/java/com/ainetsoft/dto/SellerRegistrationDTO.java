@@ -15,7 +15,7 @@ import java.util.Map;
 
 /**
  * Data Transfer Object for Seller Registration.
- * Updated to support Hộ kinh doanh & Công ty requirements (Step 3).
+ * Banking fields are now optional to allow successful submission at Step 4.
  */
 @Data
 @NoArgsConstructor
@@ -24,7 +24,6 @@ import java.util.Map;
 public class SellerRegistrationDTO {
 
     // --- STEP 1: THÔNG TIN SHOP & LIÊN HỆ ---
-
     @NotBlank(message = "Tên shop không được để trống")
     private String shopName;
 
@@ -38,25 +37,19 @@ public class SellerRegistrationDTO {
     @Size(max = 2, message = "Chỉ cho phép tối đa 2 địa chỉ lấy hàng")
     private List<AddressDTO> stockAddresses;
 
-
     // --- STEP 2: CÀI ĐẶT VẬN CHUYỂN ---
-
     @NotEmpty(message = "Vui lòng kích hoạt ít nhất một phương thức vận chuyển")
     private Map<String, Boolean> shippingMethods;
 
-
-    // --- STEP 3: THÔNG TIN THUẾ (Hộ kinh doanh / Công ty support) ---
-
+    // --- STEP 3: THÔNG TIN THUẾ ---
     @NotBlank(message = "Loại hình kinh doanh không được để trống")
-    private String businessType; // INDIVIDUAL, HOUSEHOLD, ENTERPRISE
+    private String businessType; 
 
-    // New: Only required if businessType is HOUSEHOLD or ENTERPRISE
     private String companyName; 
 
     @NotBlank(message = "Địa chỉ đăng ký kinh doanh không được để trống")
     private String registeredAddress;
 
-    // Updated: Changed to List to support "Thêm Email (1/5)"
     @NotEmpty(message = "Phải có ít nhất một email nhận hóa đơn")
     @Size(max = 5, message = "Tối đa 5 email nhận hóa đơn")
     private List<@Email(message = "Định dạng email hóa đơn không hợp lệ") String> invoiceEmails;
@@ -65,22 +58,13 @@ public class SellerRegistrationDTO {
     @Pattern(regexp = "^\\d{10}(\\d{3})?$", message = "Mã số thuế không hợp lệ (10 hoặc 13 chữ số)")
     private String taxCode;
 
-
     // --- STEP 4: THÔNG TIN ĐỊNH DANH (CCCD) ---
-
     @NotBlank(message = "Số CCCD không được để trống")
     @Pattern(regexp = "^\\d{12}$", message = "Số CCCD phải bao gồm 12 chữ số")
     private String cccdNumber;
 
-
-    // --- BANKING INFORMATION ---
-
-    @NotBlank(message = "Tên ngân hàng không được để trống")
+    // --- BANKING INFORMATION (Fix: Validation removed to prevent 400 error) ---
     private String bankName;
-
-    @NotBlank(message = "Số tài khoản không được để trống")
     private String accountNumber;
-
-    @NotBlank(message = "Tên chủ tài khoản không được để trống")
     private String accountHolder;
 }

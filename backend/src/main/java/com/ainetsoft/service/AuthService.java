@@ -241,14 +241,12 @@ public class AuthService {
                                (user.getShopProfile() != null ? user.getShopProfile().getBusinessLicenseUrl() : null);
 
             // 2. Map Identity Info
-            if (dto.getCccdNumber() != null || frontUrl != null) {
-                user.setIdentityInfo(User.IdentityInfo.builder()
-                        .cccdNumber(dto.getCccdNumber())
-                        .frontImageUrl(frontUrl)
-                        .backImageUrl(backUrl)
-                        .submittedAt(LocalDateTime.now())
-                        .build());
-            }
+            user.setIdentityInfo(User.IdentityInfo.builder()
+                    .cccdNumber(dto.getCccdNumber())
+                    .frontImageUrl(frontUrl)
+                    .backImageUrl(backUrl)
+                    .submittedAt(LocalDateTime.now())
+                    .build());
 
             // 3. Map Stock Addresses
             List<User.AddressInfo> addressInfos = new ArrayList<>();
@@ -296,16 +294,12 @@ public class AuthService {
                                 (currentShop.getShopAddress() != null ? currentShop.getShopAddress() : "Chưa cập nhật"))
                     .taxCode(dto.getTaxCode() != null ? dto.getTaxCode() : currentShop.getTaxCode()) 
                     .businessEmail(providedEmail)
-                    .businessPhone(dto.getPhone() != null && !dto.getPhone().isBlank() 
-                                  ? normalizePhone(dto.getPhone()) 
-                                  : (currentShop.getBusinessPhone() != null ? currentShop.getBusinessPhone() : user.getPhone()))
-                    
+                    .businessPhone(user.getPhone())
                     .businessType(dto.getBusinessType() != null ? dto.getBusinessType() : currentShop.getBusinessType())
                     .companyName(dto.getCompanyName() != null ? dto.getCompanyName() : currentShop.getCompanyName())
                     .registeredAddress(dto.getRegisteredAddress() != null ? dto.getRegisteredAddress() : currentShop.getRegisteredAddress())
                     .invoiceEmails(dto.getInvoiceEmails() != null ? dto.getInvoiceEmails() : currentShop.getInvoiceEmails())
                     .businessLicenseUrl(licenseUrl)
-                    
                     .enabledShippingMethodIds(dto.getShippingMethods() != null ? enabledShippingIds : currentShop.getEnabledShippingMethodIds())
                     .build());
 
@@ -319,17 +313,17 @@ public class AuthService {
                         .build()));
             }
 
-            // 7. UPDATED: Strict Multi-Step Verification Logic
-            boolean basicInfoDone = user.getShopProfile() != null && user.getShopProfile().getShopName() != null;
-            boolean identityImagesDone = user.getIdentityInfo() != null && 
-                                       user.getIdentityInfo().getFrontImageUrl() != null && 
-                                       user.getIdentityInfo().getBackImageUrl() != null;
-            boolean cccdNumberDone = user.getIdentityInfo() != null && user.getIdentityInfo().getCccdNumber() != null;
+            // 7. ROBUST STATUS LOGIC
+            User.ShopProfile profile = user.getShopProfile();
+            User.IdentityInfo identity = user.getIdentityInfo();
             
-            // For companies, check the license
+            boolean basicInfoDone = profile != null && profile.getShopName() != null && !profile.getShopName().isBlank();
+            boolean identityImagesDone = identity != null && identity.getFrontImageUrl() != null && identity.getBackImageUrl() != null;
+            boolean cccdNumberDone = identity != null && identity.getCccdNumber() != null && identity.getCccdNumber().length() == 12;
+            
             boolean licenseDone = true;
-            if (!"INDIVIDUAL".equals(user.getShopProfile().getBusinessType())) {
-                licenseDone = user.getShopProfile().getBusinessLicenseUrl() != null;
+            if (profile != null && !"INDIVIDUAL".equals(profile.getBusinessType())) {
+                licenseDone = profile.getBusinessLicenseUrl() != null;
             }
 
             if (basicInfoDone && identityImagesDone && cccdNumberDone && licenseDone) {
