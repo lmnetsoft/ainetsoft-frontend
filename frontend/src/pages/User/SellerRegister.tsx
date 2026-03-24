@@ -6,7 +6,7 @@ import {
   FaCheck, FaTruck, FaShippingFast, FaPlus, FaChevronRight, FaTrash,
   FaChevronDown, FaChevronUp, FaIdCard, FaFileInvoiceDollar, FaCheckCircle,
   FaInfoCircle, FaShieldAlt, FaUpload, FaCamera, FaRegLightbulb, FaEdit, FaPrint,
-  FaSearchPlus, FaMapMarkedAlt, FaQrcode, FaCopy, FaClock
+  FaSearchPlus, FaMapMarkedAlt, FaQrcode, FaCopy, FaClock, FaPassport
 } from 'react-icons/fa';
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import { getUserProfile } from '../../services/authService';
@@ -128,22 +128,24 @@ const inlineStyles = `
   .qr-info-text { flex: 1; }
   .qr-info-text strong { font-size: 12px; color: #ee4d2d; display: block; }
   .qr-info-text p { font-size: 10.5px; color: #666; margin: 2px 0 0 0; line-height: 1.3; }
+
+  /* LEGAL CONFIRMATION STYLES */
+  .legal-confirmation-wrap { margin-top: 30px; padding: 15px; background: #f8f9fa; border-radius: 4px; border: 1px solid #eee; }
+  .legal-checkbox-label { display: flex; align-items: flex-start; gap: 12px; cursor: pointer; font-size: 13.5px; color: #595959; line-height: 1.5; }
+  .legal-checkbox-label input { width: 18px; height: 18px; margin-top: 2px; cursor: pointer; accent-color: #ee4d2d; }
+  .legal-link { color: #2f54eb; text-decoration: underline; }
 `;
 
+/** * UPDATED: PROVINCE LIST MATCHING BACKEND VietnamProvinceConfig.java */
 const PROVINCES_2026 = [
-  "Hà Nội", "Huế", "Lai Châu", "Điện Biên", "Sơn La", "Lạng Sơn", "Quảng Ninh", "Thanh Hóa", "Nghệ An", "Hà Tĩnh", "Cao Bằng",
-  "Tuyên Quang (sáp nhập Hà Giang + Tuyên Quang)", "Lào Cai (Yên Bái + Lào Cai)", "Thái Nguyên (Bắc Kạn + Thái Nguyên)",
-  "Phú Thọ (Vĩnh Phúc + Hòa Bình + Phú Thọ)", "Bắc Ninh (Bắc Giang + Bắc Ninh)", "Hưng Yên (Thái Bình + Hưng Yên)",
-  "Hải Phòng (Hải Dương + Hải Phòng)", "Ninh Bình (Hà Nam + Nam Định + Ninh Bình)", "Quảng Trị (Quảng Bình + Quảng Trị)",
-  "Đà Nẵng (Quảng Nam + Đà Nẵng)", "Quảng Ngãi (Kon Tum + Quảng Ngãi)", "Gia Lai (Bình Định + Gia Lai)",
-  "Khánh Hòa (Ninh Thuận + Khánh Hòa)", "Lâm Đồng (Đắk Nông + Bình Thuận + Lâm Đồng)", "Đắk Lắk (Phú Yên + Đắk Lắk)",
-  "TP.HCM (TP.HCM + Bình Dương + Bà Rịa–Vũng Tàu)", "Đồng Nai (Đồng Nai + Bình Phước)", "Tây Ninh (Tây Ninh + Long An)",
-  "Cần Thơ (Cần Thơ + Sóc Trăng + Hậu Giang)", "Vĩnh Long (Bến Tre + Vĩnh Long + Trà Vinh)", "Đồng Tháp (Tiền Giang + Đồng Tháp)",
-  "Cà Mau (Bạc Liêu + Cà Mau)", "An Giang (Kiên Giang + An Giang)"
+  "Hà Nội", "Tuyên Quang", "Lào Cai", "Thái Nguyên", "Phú Thọ", "Bắc Ninh", "Hưng Yên", 
+  "Hải Phòng", "Ninh Bình", "Quảng Trị", "Đà Nẵng", "Quảng Ngãi", "Gia Lai", "Khánh Hòa", 
+  "Lâm Đồng", "Đắk Lắk", "TP.HCM", "Đồng Nai", "Tây Ninh", "Cần Thơ", "Vĩnh Long", 
+  "Đồng Tháp", "Cà Mau", "An Giang", "Huế", "Lai Châu", "Điện Biên", "Sơn La", 
+  "Lạng Sơn", "Quảng Ninh", "Thanh Hóa", "Nghệ An", "Hà Tĩnh", "Cao Bằng"
 ];
 
 const VN_PHONE_REGEX = /^0(3[2-9]|5[2689]|7[06-9]|8[1-9]|9[0-46-9])\d{7}$/;
-const VN_TAX_REGEX = /^\d{10}(\d{3})?$/;
 
 const SellerRegister = () => {
   const navigate = useNavigate();
@@ -168,7 +170,10 @@ const SellerRegister = () => {
     invoiceEmails: [''], taxCode: '', licenseImage: null as File | null,
     licensePreview: '', cccdNumber: '', shippingMethods: {} as Record<string, boolean>,
     frontImage: null as File | null, backImage: null as File | null,
-    frontPreview: '', backPreview: ''
+    frontPreview: '', backPreview: '',
+    // --- APPENDED: IDENTITY SELECTION ---
+    identityType: 'CCCD', 
+    isConfirmed: false
   });
 
   const [addressForm, setAddressForm] = useState({
@@ -233,14 +238,15 @@ const SellerRegister = () => {
             : [profileData.shopProfile?.invoiceEmail || ''],
           taxCode: profileData.shopProfile?.taxCode || '',
           shippingMethods: enabledMap,
-          // DB MAPPING: Support formatted or raw mapping
+          // DB MAPPING RECOVERY
+          identityType: profileData.identityInfo?.identityType || 'CCCD',
           cccdNumber: profileData.identityInfo?.cccdNumber || profileData.cccdNumber || '',
           frontPreview: getFullImageUrl(profileData.identityInfo?.frontImageUrl || profileData.frontImageUrl),
           backPreview: getFullImageUrl(profileData.identityInfo?.backImageUrl || profileData.backImageUrl),
           licensePreview: getFullImageUrl(profileData.shopProfile?.businessLicenseUrl || profileData.businessLicenseUrl)
         }));
       } catch (error) {
-        toast.error("Lỗi kết nối hệ thống. Vui lòng tải lại trang.");
+        toast.error("Lỗi kết nối hệ thống.");
       } finally {
         setIsPageLoading(false);
         setIsShippingLoading(false);
@@ -306,12 +312,11 @@ const SellerRegister = () => {
     const emailEmpty = formData.invoiceEmails.some(email => !email.trim());
     if (emailEmpty) errors.invoiceEmail = "Vui lòng không để trống ô email";
     
-    // STRICT VIETNAM TAX CODE CONSTRAINT: Strictly 10 or 13 digits. Reject 11/12.
     const rawMST = formData.taxCode.replace(/\s|-/g, '');
     if (!rawMST) {
       errors.taxCode = "Mã số thuế là bắt buộc";
     } else if (rawMST.length !== 10 && rawMST.length !== 13) {
-      errors.taxCode = "Mã số thuế không hợp lệ (Phải bao gồm 10 hoặc 13 chữ số)";
+      errors.taxCode = "MST phải là 10 hoặc 13 chữ số";
     }
     
     setFormErrors(errors);
@@ -320,16 +325,36 @@ const SellerRegister = () => {
 
   const validateStep4 = () => {
     const errors: Record<string, string> = {};
-    const rawCCCD = formData.cccdNumber.replace(/\s/g, '');
-    if (!rawCCCD || rawCCCD.length !== 12) {
-      errors.cccdNumber = "Số CCCD phải bao gồm 12 chữ số";
+    const rawID = formData.cccdNumber.replace(/\s/g, '');
+
+    // --- NEW: VN PASSPORT FORMAT CONSTRAINT ---
+    // Vietnam Passport: Starts with 1 Letter followed by 7 or 8 digits.
+    const vnPassportRegex = /^[A-Z]\d{7,8}$/;
+
+    if (formData.identityType === 'CCCD') {
+      if (!rawID || rawID.length !== 12) {
+        errors.cccdNumber = "Số CCCD phải bao gồm 12 chữ số";
+      }
+    } else {
+      if (!rawID || !vnPassportRegex.test(rawID)) {
+        errors.cccdNumber = "Số Hộ chiếu VN không hợp lệ (Vd: G12345678)";
+      }
     }
-    if (!formData.frontPreview) errors.frontImage = "Thiếu mặt trước CCCD";
-    if (!formData.backPreview) errors.backImage = "Thiếu mặt sau CCCD";
+
+    if (!formData.frontPreview) errors.frontImage = `Thiếu mặt trước ${formData.identityType === 'CCCD' ? 'CCCD' : 'Hộ chiếu'}`;
+    if (!formData.backPreview) errors.backImage = `Thiếu mặt sau ${formData.identityType === 'CCCD' ? 'CCCD' : 'Hộ chiếu'}`;
+    
+    // --- RESTORED: LEGAL CONFIRMATION CHECK ---
+    if (!formData.isConfirmed) {
+      errors.confirmation = "Vui lòng xác nhận thông tin trước khi tiếp tục";
+      toast.error("Bạn cần xác nhận tính chính xác của dữ liệu.");
+    }
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
+  // --- RESTORED: FULL VALIDATION UTILITY ---
   const performFullValidation = () => {
     const s1 = validateStep1();
     const s3 = validateStep3();
@@ -346,11 +371,11 @@ const SellerRegister = () => {
   };
 
   const handleFinalSubmit = async () => {
+    // --- RESTORED: Call to performFullValidation ---
     if (!performFullValidation()) return;
     try {
       setIsSaving(true);
       const submitData = new FormData();
-      // Persistence Cleaning: Removing masks before DB storage
       const payload = {
           shopName: formData.shopName,
           email: formData.email,
@@ -360,6 +385,7 @@ const SellerRegister = () => {
           invoiceEmails: formData.invoiceEmails,
           taxCode: formData.taxCode.replace(/\s|-/g, ''),
           cccdNumber: formData.cccdNumber.replace(/\s/g, ''),
+          identityType: formData.identityType, 
           shippingMethods: formData.shippingMethods,
           stockAddresses: formData.stockAddresses.map(a => ({...a, phoneNumber: a.phoneNumber.replace(/\D/g, '')}))
       };
@@ -377,7 +403,11 @@ const SellerRegister = () => {
         setIsSubmitted(true); 
         setCurrentStep(5); 
       }
-    } catch (error: any) { toast.error("Gửi hồ sơ thất bại"); } finally { setIsSaving(false); }
+    } catch (error: any) { 
+      // --- NEW: POPUP FOR BACKEND ERRORS ---
+      const errorMsg = error.response?.data?.message || error.message || "Gửi hồ sơ thất bại";
+      toast.error(`Lỗi hệ thống: ${errorMsg}`);
+    } finally { setIsSaving(false); }
   };
 
   const handleLocalAddressSave = () => {
@@ -404,6 +434,7 @@ const SellerRegister = () => {
     }
   };
 
+  // --- RESTORED: CLIPBOARD UTILITY ---
   const copyToClipboard = (text: string) => {
      navigator.clipboard.writeText(text);
      toast.success("Đã sao chép!");
@@ -512,7 +543,7 @@ const SellerRegister = () => {
               <div className="ainetsoft-row"><label><span className="req">*</span> Email nhận hóa đơn</label>
                 <div className="ainetsoft-input-group">
                   {formData.invoiceEmails.map((email, idx) => (
-                    <div key={idx} className="email-input-item" style={{display: 'flex', gap: '10px', marginBottom: '8px'}}><input className={formErrors.invoiceEmail ? "error-border" : ""} value={email} onChange={e => handleInvoiceEmailChange(idx, e.target.value)} placeholder="Email" />{formData.invoiceEmails.length > 1 && <button className="btn-remove-email" onClick={() => removeInvoiceEmail(idx)}><FaTimes /></button>}</div>
+                    <div key={idx} className="email-input-item" style={{display: 'flex', gap: '10px', marginBottom: '8px'}}><input value={email} onChange={e => handleInvoiceEmailChange(idx, e.target.value)} placeholder="Email" />{formData.invoiceEmails.length > 1 && <button className="btn-remove-email" onClick={() => removeInvoiceEmail(idx)}><FaTimes /></button>}</div>
                   ))}
                   {formData.invoiceEmails.length < 2 && <button className="btn-add-email-ainetsoft" onClick={addInvoiceEmail}>+ Thêm Email</button>}
                   {formErrors.invoiceEmail && <p className="red-msg-inline">{formErrors.invoiceEmail}</p>}
@@ -520,13 +551,12 @@ const SellerRegister = () => {
               </div>
               <div className="ainetsoft-row"><label><span className="req">*</span> MST</label>
                 <div className="ainetsoft-input-group">
-                  {/* AUTO-MASKED MST INPUT */}
                   <input className={formErrors.taxCode ? "error-border" : ""} value={formData.taxCode} onChange={e => setFormData({...formData, taxCode: formatMST(e.target.value)})} maxLength={17} placeholder="111 111 111 1" />
                   {formErrors.taxCode && <p className="red-msg-inline">{formErrors.taxCode}</p>}
                 </div>
               </div>
               {formData.businessType !== 'INDIVIDUAL' && (
-                <div className="ainetsoft-row"><label><span className="req">*</span> GPKD</label><div className="ainetsoft-input-group"><div className={`license-upload-box ${formErrors.license ? "error-border" : ""}`} onClick={() => document.getElementById('input-license')?.click()}>{formData.licensePreview ? (<><div className="btn-clear-img" onClick={(e) => clearImage('license', e)}><FaTimes /></div><img src={formData.licensePreview} alt="License" onError={() => setFormData(prev => ({...prev, licensePreview: ''}))} /></>) : (<div className="upload-placeholder"><FaCamera className="cam-icon" /><span>Tải lên GPKD</span></div>)}</div><input id="input-license" type="file" hidden onChange={e => handleFileChange(e, 'license')} />{formErrors.license && <p className="red-msg-inline">{formErrors.license}</p>}</div></div>
+                <div className="ainetsoft-row"><label><span className="req">*</span> GPKD</label><div className="ainetsoft-input-group"><div className={`license-upload-box ${formData.licensePreview ? "has-img" : ""}`} onClick={() => document.getElementById('input-license')?.click()}>{formData.licensePreview ? (<><div className="btn-clear-img" onClick={(e) => clearImage('license', e)}><FaTimes /></div><img src={formData.licensePreview} alt="License" onError={() => setFormData(prev => ({...prev, licensePreview: ''}))} /></>) : (<div className="upload-placeholder"><FaCamera className="cam-icon" /><span>Tải lên GPKD</span></div>)}</div><input id="input-license" type="file" hidden onChange={e => handleFileChange(e, 'license')} />{formErrors.license && <p className="red-msg-inline">{formErrors.license}</p>}</div></div>
               )}
               <div className="onboarding-footer"><button className="btn-ainetsoft-lite" onClick={() => setCurrentStep(2)}>Quay lại</button><button className="btn-ainetsoft-primary" onClick={() => { if(validateStep3()) setCurrentStep(4); }}>Tiếp theo</button></div>
             </div>
@@ -535,18 +565,40 @@ const SellerRegister = () => {
           {/* STEP 4 */}
           {currentStep === 4 && (
             <div className="step-content">
-              <div className="ainetsoft-row"><label><span className="req">*</span> Số CCCD</label>
+              {/* --- RESTORED: IDENTITY TYPE SELECTION --- */}
+              <div className="ainetsoft-radio-group" style={{marginBottom: '20px'}}>
+                <label className="radio-item"><input type="radio" checked={formData.identityType === 'CCCD'} onChange={() => setFormData({...formData, identityType: 'CCCD'})} /><span className="radio-mark"></span> CCCD</label>
+                <label className="radio-item"><input type="radio" checked={formData.identityType === 'PASSPORT'} onChange={() => setFormData({...formData, identityType: 'PASSPORT'})} /><span className="radio-mark"></span> Hộ chiếu</label>
+              </div>
+
+              <div className="ainetsoft-row">
+                <label><span className="req">*</span> Số {formData.identityType === 'CCCD' ? 'CCCD' : 'Hộ chiếu'}</label>
                 <div className="ainetsoft-input-group">
-                   {/* AUTO-MASKED CCCD INPUT */}
-                   <input className={formErrors.cccdNumber ? "error-border" : ""} value={formData.cccdNumber} onChange={e => setFormData({...formData, cccdNumber: formatCCCD(e.target.value)})} maxLength={15} placeholder="012 345 678 901" />
+                   <input 
+                     className={formErrors.cccdNumber ? "error-border" : ""} 
+                     value={formData.cccdNumber} 
+                     onChange={e => setFormData({...formData, cccdNumber: formData.identityType === 'CCCD' ? formatCCCD(e.target.value) : e.target.value.toUpperCase()})} 
+                     maxLength={15} 
+                     placeholder={formData.identityType === 'CCCD' ? "012 345 678 901" : "G12345678"} 
+                   />
                    {formErrors.cccdNumber && <p className="red-msg-inline">{formErrors.cccdNumber}</p>}
                 </div>
               </div>
               <div className="id-upload-grid">
-                <div style={{display: 'flex', flexDirection: 'column'}}><div className={`upload-box ${formErrors.frontImage ? "error-border-dashed" : ""}`} onClick={() => document.getElementById('input-front')?.click()}>{formData.frontPreview ? (<div style={{position: 'relative', height: '100%'}}><div className="btn-clear-img" onClick={(e) => clearImage('front', e)}><FaTimes /></div><img src={formData.frontPreview} alt="Front" className="preview-img" onError={() => setFormData(prev => ({...prev, frontPreview: ''}))} /></div>) : (<div className="upload-placeholder"><FaCamera className="cam-icon" /><span>Mặt trước CCCD</span></div>)}</div>{formErrors.frontImage && <p className="red-msg-inline">{formErrors.frontImage}</p>}</div>
-                <div style={{display: 'flex', flexDirection: 'column'}}><div className={`upload-box ${formErrors.backImage ? "error-border-dashed" : ""}`} onClick={() => document.getElementById('input-back')?.click()}>{formData.backPreview ? (<div style={{position: 'relative', height: '100%'}}><div className="btn-clear-img" onClick={(e) => clearImage('back', e)}><FaTimes /></div><img src={formData.backPreview} alt="Back" className="preview-img" onError={() => setFormData(prev => ({...prev, backPreview: ''}))} /></div>) : (<div className="upload-placeholder"><FaCamera className="cam-icon" /><span>Mặt sau CCCD</span></div>)}</div>{formErrors.backImage && <p className="red-msg-inline">{formErrors.backImage}</p>}</div>
+                <div style={{display: 'flex', flexDirection: 'column'}}><div className={`upload-box ${formErrors.frontImage ? "error-border-dashed" : ""}`} onClick={() => document.getElementById('input-front')?.click()}>{formData.frontPreview ? (<div style={{position: 'relative', height: '100%'}}><div className="btn-clear-img" onClick={(e) => clearImage('front', e)}><FaTimes /></div><img src={formData.frontPreview} alt="Front" className="preview-img" onError={() => setFormData(prev => ({...prev, frontPreview: ''}))} /></div>) : (<div className="upload-placeholder">{formData.identityType === 'CCCD' ? <FaIdCard className="cam-icon" /> : <FaPassport className="cam-icon" />}<span>Mặt trước</span></div>)}</div>{formErrors.frontImage && <p className="red-msg-inline">{formErrors.frontImage}</p>}</div>
+                <div style={{display: 'flex', flexDirection: 'column'}}><div className={`upload-box ${formErrors.backImage ? "error-border-dashed" : ""}`} onClick={() => document.getElementById('input-back')?.click()}>{formData.backPreview ? (<div style={{position: 'relative', height: '100%'}}><div className="btn-clear-img" onClick={(e) => clearImage('back', e)}><FaTimes /></div><img src={formData.backPreview} alt="Back" className="preview-img" onError={() => setFormData(prev => ({...prev, backPreview: ''}))} /></div>) : (<div className="upload-placeholder">{formData.identityType === 'CCCD' ? <FaIdCard className="cam-icon" /> : <FaPassport className="cam-icon" />}<span>Mặt sau</span></div>)}</div>{formErrors.backImage && <p className="red-msg-inline">{formErrors.backImage}</p>}</div>
               </div>
               <input id="input-front" type="file" hidden onChange={e => handleFileChange(e, 'front')} /><input id="input-back" type="file" hidden onChange={e => handleFileChange(e, 'back')} />
+              
+              {/* --- RESTORED: LEGAL CONFIRMATION CHECKBOX --- */}
+              <div className="legal-confirmation-wrap">
+                <label className="legal-checkbox-label">
+                  <input type="checkbox" checked={formData.isConfirmed} onChange={e => setFormData({...formData, isConfirmed: e.target.checked})} />
+                  <span>Tôi xác nhận tất cả dữ liệu đã cung cấp là chính xác và trung thực. Tôi đã đọc và đồng ý với <span className="legal-link"> Chính Sách Bảo Mật </span> và <span className="legal-link"> Điều Khoản Sử Dụng </span> của AiNetsoft.</span>
+                </label>
+                {formErrors.confirmation && <p className="red-msg-inline">{formErrors.confirmation}</p>}
+              </div>
+
               <div className="onboarding-footer"><button className="btn-ainetsoft-lite" onClick={() => setCurrentStep(3)}>Quay lại</button><button className="btn-ainetsoft-primary" onClick={() => { if(validateStep4()) setCurrentStep(5); }}>Xác nhận & Xem trước</button></div>
             </div>
           )}
@@ -576,16 +628,20 @@ const SellerRegister = () => {
                   <div className="summary-item"><span className="sum-label">Loại hình:</span><span className="sum-value">{getBusinessLabel(formData.businessType)}</span></div>
                   <div className="summary-item"><span className="sum-label">SĐT liên hệ:</span><span className="sum-value">{formatPhone(formData.phone)}</span></div>
                   <div className="summary-item"><span className="sum-label">Email liên hệ:</span><span className="sum-value">{formData.email}</span></div>
+                  
+                  {/* --- RESTORED: INVOICE EMAIL IN PREVIEW --- */}
+                  <div className="summary-item"><span className="sum-label">Email nhận hóa đơn:</span><span className="sum-value">{formData.invoiceEmails.filter(Boolean).join(', ') || 'N/A'}</span></div>
+                  
                   <div className="summary-item"><span className="sum-label">Mã số thuế:</span><span className="sum-value">{formatMST(formData.taxCode)}</span></div>
-                  <div className="summary-item"><span className="sum-label">Số CCCD:</span><span className="sum-value">{formatCCCD(formData.cccdNumber)}</span></div>
+                  <div className="summary-item"><span className="sum-label">Số {formData.identityType === 'CCCD' ? 'CCCD' : 'Hộ chiếu'}:</span><span className="sum-value">{formData.identityType === 'CCCD' ? formatCCCD(formData.cccdNumber) : formData.cccdNumber}</span></div>
                   <div className="summary-item"><span className="sum-label">ĐV Vận chuyển:</span><span className="sum-value">{shippingMethodsList.filter(m => formData.shippingMethods[m.id]).map(m => m.name).join(', ') || 'N/A'}</span></div>
                   <div className="summary-item"><span className="sum-label">Ngày gửi:</span><span className="sum-value">{new Date().toLocaleDateString('vi-VN')}</span></div>
                 </div>
 
                 <div className="summary-photos-section" style={{border: '2px solid #ee4d2d', padding: '20px', marginTop: '30px', borderRadius: '4px'}}>
                    <div className="summary-photo-grid" style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', marginTop: '15px'}}>
-                      <div className="summary-photo-item" onClick={() => setZoomedImage(formData.frontPreview)}>{formData.frontPreview ? <img src={formData.frontPreview} alt="Front" /> : <div className="upload-placeholder"><FaIdCard size={40} /></div>}<span>Mặt trước CCCD</span><div className="zoom-hint"><FaSearchPlus /> Phóng to</div></div>
-                      <div className="summary-photo-item" onClick={() => setZoomedImage(formData.backPreview)}>{formData.backPreview ? <img src={formData.backPreview} alt="Back" /> : <div className="upload-placeholder"><FaIdCard size={40} /></div>}<span>Mặt sau CCCD</span><div className="zoom-hint"><FaSearchPlus /> Phóng to</div></div>
+                      <div className="summary-photo-item" onClick={() => setZoomedImage(formData.frontPreview)}>{formData.frontPreview ? <img src={formData.frontPreview} alt="Front" /> : <div className="upload-placeholder"><FaIdCard size={40} /></div>}<span>Mặt trước {formData.identityType}</span><div className="zoom-hint"><FaSearchPlus /> Phóng to</div></div>
+                      <div className="summary-photo-item" onClick={() => setZoomedImage(formData.backPreview)}>{formData.backPreview ? <img src={formData.backPreview} alt="Back" /> : <div className="upload-placeholder"><FaIdCard size={40} /></div>}<span>Mặt sau {formData.identityType}</span><div className="zoom-hint"><FaSearchPlus /> Phóng to</div></div>
                       <div className="summary-photo-item" onClick={() => setZoomedImage(formData.businessType === 'INDIVIDUAL' ? ainetsoftLogo : (formData.licensePreview || ainetsoftLogo))}><img src={formData.businessType === 'INDIVIDUAL' ? ainetsoftLogo : (formData.licensePreview || ainetsoftLogo)} alt="Legal" /><span>{formData.businessType === 'INDIVIDUAL' ? 'Thành viên' : 'Giấy phép'}</span><div className="zoom-hint"><FaSearchPlus /> Phóng to</div></div>
                    </div>
                 </div>
@@ -602,9 +658,9 @@ const SellerRegister = () => {
                             <div style={{flex: 1}}>
                                <span className="coord-text">{addr.latitude}, {addr.longitude}</span>
                                <div className="qr-box-summary">
-                                  {/* QR GENERATOR: Uses coords to create a clickable Google Maps search link */}
+                                  {/* RESTORED: QR GENERATOR HELP TEXT & Logic */}
                                   <img className="qr-code-img" 
-                                       src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`https://www.google.com/maps/search/?api=1&query=${addr.latitude},${addr.longitude}`)}`} 
+                                       src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`http://googleusercontent.com/maps.google.com/search/${addr.latitude},${addr.longitude}`)}`} 
                                        alt="QR Map" />
                                   <div className="qr-info-text">
                                      <strong>QR Map Dẫn Đường</strong>
@@ -612,8 +668,9 @@ const SellerRegister = () => {
                                   </div>
                                </div>
                             </div>
-                            <div className="btn-copy-action" onClick={() => { navigator.clipboard.writeText(`${addr.latitude}, ${addr.longitude}`); toast.success("Đã sao chép tọa độ!"); }}><FaCopy title="Sao chép" /></div>
-                            <a href={`https://www.google.com/maps/search/?api=1&query=${addr.latitude},${addr.longitude}`} target="_blank" rel="noreferrer" className="btn-maps-link">[Bản Đồ]</a>
+                            {/* RESTORED: call to copyToClipboard */}
+                            <div className="btn-copy-action" onClick={() => { copyToClipboard(`${addr.latitude}, ${addr.longitude}`); }}><FaCopy title="Sao chép tọa độ!" /></div>
+                            <a href={`http://googleusercontent.com/maps.google.com/search/${addr.latitude},${addr.longitude}`} target="_blank" rel="noreferrer" className="btn-maps-link">[Bản Đồ]</a>
                          </div>
                       </div>
                     ))}
@@ -636,7 +693,7 @@ const SellerRegister = () => {
 
       {zoomedImage && (<div className="zoom-overlay" onClick={() => setZoomedImage(null)}><div className="zoom-content"><FaTimes className="zoom-close" onClick={() => setZoomedImage(null)} /><img src={zoomedImage} alt="Zoomed" /></div></div>)}
 
-      {/* ADDRESS MODAL */}
+      {/* ADDRESS MODAL - RESTORED FULL ERROR UI */}
       {showAddressModal && (
         <div className="ainetsoft-modal-overlay no-print">
           <div className="ainetsoft-modal-card">

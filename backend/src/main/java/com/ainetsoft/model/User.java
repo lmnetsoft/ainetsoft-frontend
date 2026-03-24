@@ -132,7 +132,9 @@ public class User {
     @AllArgsConstructor
     @Builder
     public static class IdentityInfo {
-        private String cccdNumber;
+        // --- SURGICAL UPDATE HERE ---
+        private String identityType; // CCCD or PASSPORT (Added to distinguish format)
+        private String cccdNumber;   // Stores the 12-digit ID or Passport number
         private String frontImageUrl; 
         private String backImageUrl;  
         private LocalDateTime submittedAt;

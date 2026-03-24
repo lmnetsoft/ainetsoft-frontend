@@ -58,9 +58,12 @@ public class SellerRegistrationDTO {
     @Pattern(regexp = "^\\d{10}(\\d{3})?$", message = "Mã số thuế không hợp lệ (10 hoặc 13 chữ số)")
     private String taxCode;
 
-    // --- STEP 4: THÔNG TIN ĐỊNH DANH (CCCD) ---
-    @NotBlank(message = "Số CCCD không được để trống")
-    @Pattern(regexp = "^\\d{12}$", message = "Số CCCD phải bao gồm 12 chữ số")
+    // --- STEP 4: THÔNG TIN ĐỊNH DANH (CCCD / HỘ CHIẾU) ---
+    private String identityType;
+
+    @NotBlank(message = "Số định danh không được để trống")
+    // UPDATED: Regex now allows 12 digits (CCCD) OR 1 Letter + 7-8 digits (VN Passport)
+    @Pattern(regexp = "^(\\d{12}|[A-Z]\\d{7,8})$", message = "Số CCCD (12 chữ số) hoặc Hộ chiếu (Vd: G1234567) không hợp lệ")
     private String cccdNumber;
 
     // --- BANKING INFORMATION (Fix: Validation removed to prevent 400 error) ---

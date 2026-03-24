@@ -242,12 +242,14 @@ public UserResponse getUserProfile(String contactInfo) {
                                (user.getShopProfile() != null ? user.getShopProfile().getBusinessLicenseUrl() : null);
 
             // 2. Map Identity Info
+
             user.setIdentityInfo(User.IdentityInfo.builder()
-                    .cccdNumber(dto.getCccdNumber())
-                    .frontImageUrl(frontUrl)
-                    .backImageUrl(backUrl)
-                    .submittedAt(LocalDateTime.now())
-                    .build());
+                .identityType(dto.getIdentityType()) // ADDED: Capture selection from frontend
+                .cccdNumber(dto.getCccdNumber())
+                .frontImageUrl(frontUrl)
+                .backImageUrl(backUrl)
+                .submittedAt(LocalDateTime.now())
+                .build());
 
             // 3. Map Stock Addresses
             List<User.AddressInfo> addressInfos = new ArrayList<>();
@@ -320,8 +322,16 @@ public UserResponse getUserProfile(String contactInfo) {
             
             boolean basicInfoDone = profile != null && profile.getShopName() != null && !profile.getShopName().isBlank();
             boolean identityImagesDone = identity != null && identity.getFrontImageUrl() != null && identity.getBackImageUrl() != null;
-            boolean cccdNumberDone = identity != null && identity.getCccdNumber() != null && identity.getCccdNumber().length() == 12;
-            
+            // FIX: Allow 12 digits for CCCD OR valid Passport format (1 Letter + 7-8 digits)
+            boolean cccdNumberDone = false;
+            if (identity != null && identity.getCccdNumber() != null) {
+                String num = identity.getCccdNumber();
+                if ("PASSPORT".equals(dto.getIdentityType())) {
+                    cccdNumberDone = num.matches("^[A-Z]\\d{7,8}$"); // Validates Passport
+                } else {
+                    cccdNumberDone = num.length() == 12; // Validates CCCD
+                }
+            }            
             boolean licenseDone = true;
             if (profile != null && !"INDIVIDUAL".equals(profile.getBusinessType())) {
                 licenseDone = profile.getBusinessLicenseUrl() != null;

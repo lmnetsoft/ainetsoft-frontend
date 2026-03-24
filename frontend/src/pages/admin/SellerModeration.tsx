@@ -5,7 +5,7 @@ import {
   FaEye, FaCheck, FaTimes, FaIdCard, FaUniversity, 
   FaStore, FaFileInvoice, FaUserClock, FaHistory, FaSearchPlus,
   FaMapMarkedAlt, FaQrcode, FaCopy, FaDownload, FaPrint, FaEnvelope,
-  FaFileInvoiceDollar // Added this icon for the Invoice Email field
+  FaFileInvoiceDollar, FaPassport // ADDED: Icon for Passport
 } from 'react-icons/fa';
 import './AdminDashboard.css'; 
 
@@ -23,6 +23,8 @@ const formatPhone = (val: string) => {
 
 const formatCCCD = (val: string) => {
   if (!val) return 'N/A';
+  // FIX: Only strip non-digits if we know it's a CCCD. 
+  // (Handling logic moved to the component level for safety)
   const s = val.replace(/\D/g, '');
   const groups = s.match(/.{1,3}/g);
   return groups ? groups.join(' ') : s;
@@ -63,14 +65,18 @@ const SellerModeration = () => {
   };
 
   /**
-   * SAFE APPEND: PDF SUMMARY GENERATOR
-   * Added the Invoice Email field to the document layout.
+   * PDF SUMMARY GENERATOR
+   * FIXED: Correct Labeling for Passport in PDF
    */
   const printApprovalSummary = (seller: any, note: string) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
     const dateStr = new Date().toLocaleString('vi-VN');
+    const isPassport = seller.identityInfo?.identityType === 'PASSPORT';
+    const idLabel = isPassport ? "Hộ chiếu" : "CCCD";
+    const idValue = isPassport ? seller.identityInfo?.cccdNumber : formatCCCD(seller.identityInfo?.cccdNumber);
+
     const addressesHtml = (seller.addresses || []).map((addr: any, i: number) => `
       <div style="border: 1px solid #eee; padding: 10px; margin-top: 10px;">
         <strong>Kho ${i + 1}:</strong> ${addr.receiverName} | ${formatPhone(addr.phone)}<br/>
@@ -110,12 +116,11 @@ const SellerModeration = () => {
               <p><strong>Họ tên:</strong> ${seller.fullName}</p>
               <p><strong>Email đăng ký:</strong> ${seller.email}</p>
               <p><strong>SĐT:</strong> ${formatPhone(seller.phone)}</p>
-              <p><strong>Số CCCD:</strong> ${formatCCCD(seller.identityInfo?.cccdNumber)}</p>
+              <p><strong>Số ${idLabel}:</strong> ${idValue}</p>
             </section>
             <section>
               <h2>Thông tin Kinh doanh</h2>
               <p><strong>Tên Shop:</strong> ${seller.shopProfile?.shopName}</p>
-              <p><strong>Email liên hệ:</strong> ${seller.shopProfile?.businessEmail || seller.email}</p>
               <p><strong>Email nhận hóa đơn:</strong> ${seller.shopProfile?.invoiceEmails?.join(', ') || 'Chưa cung cấp'}</p>
               <p><strong>Mã số thuế:</strong> ${formatMST(seller.shopProfile?.taxCode)}</p>
               <p><strong>Loại hình:</strong> ${getBusinessLabel(seller.shopProfile?.businessType)}</p>
@@ -282,11 +287,21 @@ const SellerModeration = () => {
             <div className="modal-body review-grid">
               {/* Identity Section */}
               <div className="review-section">
-                <h4 className="section-title"><FaIdCard /> Hồ sơ Định danh</h4>
+                {/* FIXED: DYNAMIC HEADER BASED ON ID TYPE */}
+                <h4 className="section-title">
+                   {selectedSeller.identityInfo?.identityType === 'PASSPORT' ? <FaPassport /> : <FaIdCard />}
+                   {selectedSeller.identityInfo?.identityType === 'PASSPORT' ? ' Hồ sơ Hộ chiếu' : ' Hồ sơ CCCD'}
+                </h4>
                 <div className="review-data-card">
                   <div className="data-row">
-                    <span className="label">Số CCCD:</span>
-                    <span className="value highlight">{formatCCCD(selectedSeller.identityInfo?.cccdNumber)}</span>
+                    {/* FIXED: DYNAMIC LABEL */}
+                    <span className="label">Số {selectedSeller.identityInfo?.identityType === 'PASSPORT' ? 'Hộ chiếu' : 'CCCD'}:</span>
+                    <span className="value highlight">
+                       {/* FIXED: DO NOT format if it's a Passport (prevent stripping 'G') */}
+                       {selectedSeller.identityInfo?.identityType === 'PASSPORT' 
+                         ? selectedSeller.identityInfo?.cccdNumber 
+                         : formatCCCD(selectedSeller.identityInfo?.cccdNumber)}
+                    </span>
                   </div>
                   <div className="id-images-container">
                     {['front', 'back'].map(side => (
@@ -294,7 +309,7 @@ const SellerModeration = () => {
                         <span className="img-label">{side === 'front' ? 'Mặt trước' : 'Mặt sau'}</span>
                         <div className="img-wrapper zoomable" onClick={() => setZoomedImage(getFullImageUrl(selectedSeller.identityInfo?.[`${side}ImageUrl`]))}>
                           <div className="zoom-hint"><FaSearchPlus /></div>
-                          <img src={getFullImageUrl(selectedSeller.identityInfo?.[`${side}ImageUrl`])} alt="CCCD" />
+                          <img src={getFullImageUrl(selectedSeller.identityInfo?.[`${side}ImageUrl`])} alt="Identity" />
                         </div>
                       </div>
                     ))}
@@ -305,6 +320,7 @@ const SellerModeration = () => {
                 <div className="address-review-list">
                   {(selectedSeller.addresses || []).map((addr: any, idx: number) => (
                     <div key={idx} className="review-data-card mb-10" style={{borderLeft: '4px solid #1d39c4'}}>
+                      {/* FIXED: REMOVED STRAY "$" BY USING CORRECT JSX SYNTAX */}
                       <strong>Kho {idx + 1}: {addr.receiverName} | {formatPhone(addr.phone)}</strong>
                       <p style={{fontSize: '12px', margin: '5px 0'}}>{[addr.detail, addr.ward, addr.province].filter(Boolean).join(', ')}</p>
                       
@@ -315,8 +331,8 @@ const SellerModeration = () => {
                              alt="QR" />
                         <div className="qr-info-text">
                            <strong style={{color: '#1d39c4', fontSize: '12px'}}>Tọa độ: {addr.latitude}, {addr.longitude}</strong>
-                           <p style={{fontSize: '10px', color: '#666', margin: '4px 0'}}>Quét QR để đối soát vị trí thực tế.</p>
-                           <span className="btn-copy-action" style={{fontSize: '11px', cursor: 'pointer', color: '#2f54eb', textDecoration: 'underline'}} onClick={() => { navigator.clipboard.writeText(`${addr.latitude}, ${addr.longitude}`); toast.success("Đã chép!"); }}>[Chép tọa độ]</span>
+                           <p style={{fontSize: '10px', color: '#666', margin: '4px 0'}}>Quét QR để đối soát vị trí thực tế trên Google Maps.</p>
+                           <span className="btn-copy-action" style={{fontSize: '11px', cursor: 'pointer', color: '#2f54eb', textDecoration: 'underline'}} onClick={() => { navigator.clipboard.writeText(`${addr.latitude}, ${addr.longitude}`); toast.success("Đã chép tọa độ!"); }}>[Chép tọa độ]</span>
                         </div>
                       </div>
                     </div>
@@ -331,10 +347,8 @@ const SellerModeration = () => {
                   <div className="data-row"><span className="label">Tên Shop:</span><span className="value">{selectedSeller.shopProfile?.shopName}</span></div>
                   <div className="data-row"><span className="label">Loại hình:</span><span className="value">{getBusinessLabel(selectedSeller.shopProfile?.businessType)}</span></div>
                   
-                  {/* Email Section */}
                   <div className="data-row"><span className="label"><FaEnvelope /> Email liên hệ:</span><span className="value">{selectedSeller.shopProfile?.businessEmail || selectedSeller.email}</span></div>
                   
-                  {/* --- NEW: INVOICE EMAIL DISPLAY --- */}
                   <div className="data-row">
                     <span className="label"><FaFileInvoiceDollar /> Email nhận hóa đơn:</span>
                     <span className="value" style={{fontSize: '12px', color: '#ee4d2d'}}>
