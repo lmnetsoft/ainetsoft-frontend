@@ -79,36 +79,37 @@ public class AuthService {
         return normalizePhone(trimmed);
     }
 
-    public UserResponse getUserProfile(String contactInfo) {
-        String identifier = normalizeIdentifier(contactInfo);
-        User user = userRepository.findByIdentifier(identifier)
-                .orElseThrow(() -> new RuntimeException("Tài khoản '" + contactInfo + "' không tồn tại!"));
+public UserResponse getUserProfile(String contactInfo) {
+    String identifier = normalizeIdentifier(contactInfo);
+    User user = userRepository.findByIdentifier(identifier)
+            .orElseThrow(() -> new RuntimeException("Tài khoản '" + contactInfo + "' không tồn tại!"));
 
-        String displayName = user.getFullName();
-        if (displayName == null || displayName.isBlank()) {
-            displayName = (user.getEmail() != null) ? user.getEmail().split("@")[0] : "Thành viên";
-        }
-
-        return UserResponse.builder()
-                .email(user.getEmail())
-                .phone(user.getPhone())
-                .fullName(displayName)
-                .gender(user.getGender())
-                .birthDate(user.getBirthDate())
-                .avatarUrl(user.getAvatarUrl())
-                .roles(user.getRoles())
-                .isGlobalAdmin(user.isGlobalAdmin())
-                .permissions(user.getPermissions() != null ? user.getPermissions() : new HashSet<>())
-                .provider(user.getProvider() != null ? user.getProvider().toString() : "LOCAL")
-                .shopProfile(user.getShopProfile()) 
-                .addresses(user.getAddresses() != null ? user.getAddresses() : new ArrayList<>())
-                .bankAccounts(user.getBankAccounts() != null ? (List)user.getBankAccounts() : new ArrayList<>())
-                .cart(user.getCart() != null ? user.getCart() : new ArrayList<>())
-                .sellerVerification(user.getSellerVerification())
-                .rejectionReason(user.getRejectionReason())
-                .build();
+    String displayName = user.getFullName();
+    if (displayName == null || displayName.isBlank()) {
+        displayName = (user.getEmail() != null) ? user.getEmail().split("@")[0] : "Thành viên";
     }
 
+    return UserResponse.builder()
+            .email(user.getEmail())
+            .phone(user.getPhone())
+            .fullName(displayName)
+            .gender(user.getGender())
+            .birthDate(user.getBirthDate())
+            .avatarUrl(user.getAvatarUrl())
+            .roles(user.getRoles())
+            .isGlobalAdmin(user.isGlobalAdmin())
+            .permissions(user.getPermissions() != null ? user.getPermissions() : new HashSet<>())
+            .provider(user.getProvider() != null ? user.getProvider().toString() : "LOCAL")
+            .shopProfile(user.getShopProfile()) 
+            .identityInfo(user.getIdentityInfo()) 
+
+            .addresses(user.getAddresses() != null ? user.getAddresses() : new ArrayList<>())
+            .bankAccounts(user.getBankAccounts() != null ? (List)user.getBankAccounts() : new ArrayList<>())
+            .cart(user.getCart() != null ? user.getCart() : new ArrayList<>())
+            .sellerVerification(user.getSellerVerification())
+            .rejectionReason(user.getRejectionReason())
+            .build();
+}
     @Transactional
     public String updateProfile(String contactInfo, UpdateProfileRequest request) {
         String identifier = normalizeIdentifier(contactInfo);

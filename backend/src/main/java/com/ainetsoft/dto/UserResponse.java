@@ -30,6 +30,11 @@ public class UserResponse {
     private String rejectionReason;
     private User.ShopProfile shopProfile;
     
+    // --- APPENDED FIX START ---
+    // This allows the CCCD number and front/back images to reach your React app
+    private User.IdentityInfo identityInfo; 
+    // --- APPENDED FIX END ---
+    
     private List<User.AddressInfo> addresses;
     private List<User.BankInfo> bankAccounts;
     private List<com.ainetsoft.model.CartItem> cart;
