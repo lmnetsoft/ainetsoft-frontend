@@ -5,7 +5,7 @@ import {
   FaEye, FaCheck, FaTimes, FaIdCard, FaUniversity, 
   FaStore, FaFileInvoice, FaUserClock, FaHistory, FaSearchPlus,
   FaMapMarkedAlt, FaQrcode, FaCopy, FaDownload, FaPrint, FaEnvelope,
-  FaFileInvoiceDollar, FaPassport // ADDED: Icon for Passport
+  FaFileInvoiceDollar, FaPassport 
 } from 'react-icons/fa';
 import './AdminDashboard.css'; 
 
@@ -23,11 +23,20 @@ const formatPhone = (val: string) => {
 
 const formatCCCD = (val: string) => {
   if (!val) return 'N/A';
-  // FIX: Only strip non-digits if we know it's a CCCD. 
-  // (Handling logic moved to the component level for safety)
   const s = val.replace(/\D/g, '');
   const groups = s.match(/.{1,3}/g);
   return groups ? groups.join(' ') : s;
+};
+
+// --- NEW: PASSPORT FORMATTER (J-1111-1111) ---
+const formatPassport = (val: string) => {
+  if (!val) return 'N/A';
+  const s = val.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+  if (s.length === 0) return '';
+  let res = s.charAt(0); // The leading letter
+  if (s.length > 1) res += '-' + s.slice(1, 5); // Dash then 4 digits
+  if (s.length > 5) res += '-' + s.slice(5, 9); // Dash then remaining digits
+  return res;
 };
 
 const formatMST = (val: string) => {
@@ -66,7 +75,7 @@ const SellerModeration = () => {
 
   /**
    * PDF SUMMARY GENERATOR
-   * FIXED: Correct Labeling for Passport in PDF
+   * FIXED: Correct Labeling for Passport in PDF and working QR URL
    */
   const printApprovalSummary = (seller: any, note: string) => {
     const printWindow = window.open('', '_blank');
@@ -75,15 +84,35 @@ const SellerModeration = () => {
     const dateStr = new Date().toLocaleString('vi-VN');
     const isPassport = seller.identityInfo?.identityType === 'PASSPORT';
     const idLabel = isPassport ? "Hộ chiếu" : "CCCD";
-    const idValue = isPassport ? seller.identityInfo?.cccdNumber : formatCCCD(seller.identityInfo?.cccdNumber);
+    
+    // RESTORED: PASSPORT MASKING IN PDF
+    const idValue = isPassport 
+      ? formatPassport(seller.identityInfo?.cccdNumber) 
+      : formatCCCD(seller.identityInfo?.cccdNumber);
 
-    const addressesHtml = (seller.addresses || []).map((addr: any, i: number) => `
-      <div style="border: 1px solid #eee; padding: 10px; margin-top: 10px;">
-        <strong>Kho ${i + 1}:</strong> ${addr.receiverName} | ${formatPhone(addr.phone)}<br/>
-        ${addr.detail}, ${addr.ward}, ${addr.province}<br/>
-        <span style="color: #1d39c4;">GPS: ${addr.latitude}, ${addr.longitude}</span>
-      </div>
-    `).join('');
+    const addressesHtml = (seller.addresses || []).map((addr: any, i: number) => {
+      const hasGPS = addr.latitude && String(addr.latitude).trim() !== '' && 
+                     addr.longitude && String(addr.longitude).trim() !== '';
+      
+      // FIXED: Official Google Maps Search URL to prevent 404
+      const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${addr.latitude},${addr.longitude}`;
+
+      const gpsContent = hasGPS ? `
+        <span style="color: #1d39c4;">GPS: ${addr.latitude}, ${addr.longitude}</span><br/>
+        <div style="margin-top: 10px;">
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(mapsUrl)}" 
+               style="width: 70px; height: 70px; border: 1px solid #ddd; padding: 2px;" />
+        </div>
+      ` : '';
+
+      return `
+        <div style="border: 1px solid #eee; padding: 10px; margin-top: 10px;">
+          <strong>Kho ${i + 1}:</strong> ${addr.receiverName} | ${formatPhone(addr.phone)}<br/>
+          ${addr.detail}, ${addr.ward}, ${addr.province}<br/>
+          ${gpsContent}
+        </div>
+      `;
+    }).join('');
 
     printWindow.document.write(`
       <html>
@@ -104,12 +133,10 @@ const SellerModeration = () => {
             <div><h1 style="margin:0; color:#ee4d2d;">AiNetsoft</h1><p style="margin:0;">Hệ thống Thương mại Điện tử</p></div>
             <div class="status-stamp">Đã Phê Duyệt</div>
           </div>
-          
           <section>
             <p><strong>Ngày thực hiện:</strong> ${dateStr}</p>
             <p><strong>Mã định danh hệ thống:</strong> ${seller.id}</p>
           </section>
-
           <div class="grid">
             <section>
               <h2>Thông tin Người bán</h2>
@@ -126,17 +153,14 @@ const SellerModeration = () => {
               <p><strong>Loại hình:</strong> ${getBusinessLabel(seller.shopProfile?.businessType)}</p>
             </section>
           </div>
-
           <section>
             <h2>Vị trí Kho hàng & GPS</h2>
             ${addressesHtml}
           </section>
-
           <section style="background: #f9f9f9; padding: 20px; border-radius: 4px; border-left: 4px solid #8c8c8c;">
             <h2>Ghi chú của Admin</h2>
             <p>${note}</p>
           </section>
-
           <div class="footer">Tài liệu được tạo tự động bởi Hệ thống AiNetsoft.<br/>Người phê duyệt: Quản trị viên Toàn cầu</div>
           <script>window.onload = function() { window.print(); setTimeout(function() { window.close(); }, 500); };</script>
         </body>
@@ -287,19 +311,17 @@ const SellerModeration = () => {
             <div className="modal-body review-grid">
               {/* Identity Section */}
               <div className="review-section">
-                {/* FIXED: DYNAMIC HEADER BASED ON ID TYPE */}
                 <h4 className="section-title">
                    {selectedSeller.identityInfo?.identityType === 'PASSPORT' ? <FaPassport /> : <FaIdCard />}
                    {selectedSeller.identityInfo?.identityType === 'PASSPORT' ? ' Hồ sơ Hộ chiếu' : ' Hồ sơ CCCD'}
                 </h4>
                 <div className="review-data-card">
                   <div className="data-row">
-                    {/* FIXED: DYNAMIC LABEL */}
                     <span className="label">Số {selectedSeller.identityInfo?.identityType === 'PASSPORT' ? 'Hộ chiếu' : 'CCCD'}:</span>
                     <span className="value highlight">
-                       {/* FIXED: DO NOT format if it's a Passport (prevent stripping 'G') */}
+                       {/* FIXED: DYNAMIC PASSPORT FORMATTING */}
                        {selectedSeller.identityInfo?.identityType === 'PASSPORT' 
-                         ? selectedSeller.identityInfo?.cccdNumber 
+                         ? formatPassport(selectedSeller.identityInfo?.cccdNumber) 
                          : formatCCCD(selectedSeller.identityInfo?.cccdNumber)}
                     </span>
                   </div>
@@ -318,25 +340,34 @@ const SellerModeration = () => {
 
                 <h4 className="section-title" style={{marginTop: '25px'}}><FaMapMarkedAlt /> KHO LẤY HÀNG & TỌA ĐỘ GPS</h4>
                 <div className="address-review-list">
-                  {(selectedSeller.addresses || []).map((addr: any, idx: number) => (
-                    <div key={idx} className="review-data-card mb-10" style={{borderLeft: '4px solid #1d39c4'}}>
-                      {/* FIXED: REMOVED STRAY "$" BY USING CORRECT JSX SYNTAX */}
-                      <strong>Kho {idx + 1}: {addr.receiverName} | {formatPhone(addr.phone)}</strong>
-                      <p style={{fontSize: '12px', margin: '5px 0'}}>{[addr.detail, addr.ward, addr.province].filter(Boolean).join(', ')}</p>
-                      
-                      <div className="qr-box-summary" style={{background: '#f0f5ff', border: '1px solid #adc6ff', display: 'flex', alignItems: 'center', padding: '10px', gap: '15px', borderRadius: '4px'}}>
-                        <img className="qr-code-img" 
-                             style={{width: '70px', height: '70px', background: 'white', padding: '2px'}}
-                             src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(`http://googleusercontent.com/maps.google.com/search/${addr.latitude},${addr.longitude}`)}`} 
-                             alt="QR" />
-                        <div className="qr-info-text">
-                           <strong style={{color: '#1d39c4', fontSize: '12px'}}>Tọa độ: {addr.latitude}, {addr.longitude}</strong>
-                           <p style={{fontSize: '10px', color: '#666', margin: '4px 0'}}>Quét QR để đối soát vị trí thực tế trên Google Maps.</p>
-                           <span className="btn-copy-action" style={{fontSize: '11px', cursor: 'pointer', color: '#2f54eb', textDecoration: 'underline'}} onClick={() => { navigator.clipboard.writeText(`${addr.latitude}, ${addr.longitude}`); toast.success("Đã chép tọa độ!"); }}>[Chép tọa độ]</span>
-                        </div>
+                  {(selectedSeller.addresses || []).map((addr: any, idx: number) => {
+                    const hasCoords = addr.latitude && String(addr.latitude).trim() !== '' && 
+                                      addr.longitude && String(addr.longitude).trim() !== '';
+
+                    return (
+                      <div key={idx} className="review-data-card mb-10" style={{borderLeft: '4px solid #1d39c4'}}>
+                        <strong>Kho {idx + 1}: {addr.receiverName} | {formatPhone(addr.phone)}</strong>
+                        <p style={{fontSize: '12px', margin: '5px 0'}}>{[addr.detail, addr.ward, addr.province].filter(Boolean).join(', ')}</p>
+                        
+                        {hasCoords ? (
+                          <div className="qr-box-summary" style={{background: '#f0f5ff', border: '1px solid #adc6ff', display: 'flex', alignItems: 'center', padding: '10px', gap: '15px', borderRadius: '4px'}}>
+                            {/* FIXED: Official Google Maps Search URL for mobile scanning */}
+                            <img className="qr-code-img" 
+                                 style={{width: '70px', height: '70px', background: 'white', padding: '2px'}}
+                                 src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`https://www.google.com/maps/search/?api=1&query=${addr.latitude},${addr.longitude}`)}`} 
+                                 alt="QR" />
+                            <div className="qr-info-text">
+                               <strong style={{color: '#1d39c4', fontSize: '12px'}}>Tọa độ: {addr.latitude}, {addr.longitude}</strong>
+                               <p style={{fontSize: '10px', color: '#666', margin: '4px 0'}}>Quét QR để đối soát vị trí thực tế trên Google Maps.</p>
+                               <span className="btn-copy-action" style={{fontSize: '11px', cursor: 'pointer', color: '#2f54eb', textDecoration: 'underline'}} onClick={() => { navigator.clipboard.writeText(`${addr.latitude}, ${addr.longitude}`); toast.success("Đã chép tọa độ!"); }}>[Chép tọa độ]</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <p style={{fontSize: '11px', color: '#999', fontStyle: 'italic', marginTop: '5px'}}>(Chưa cập nhật tọa độ GPS)</p>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
