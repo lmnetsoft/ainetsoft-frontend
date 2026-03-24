@@ -228,7 +228,19 @@
 
 /* --- 10. Master Review Modal Styling --- */
 .admin-modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
-.seller-review-modal { width: 100%; max-width: 900px; max-height: 90vh; background: var(--white); border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); display: flex; flex-direction: column; overflow: hidden; animation: modalSlideUp 0.3s ease-out; }
+.seller-review-modal { 
+  width: 100%; 
+  max-width: 1200px; /* CHANGE: Increased from 900px to 1200px for more width */
+  max-height: 95vh;   /* CHANGE: Increased from 90vh to 95vh to utilize more screen height */
+  background: var(--white); 
+  border-radius: 16px; 
+  box-shadow: 0 20px 50px rgba(0,0,0,0.2); 
+  display: flex; 
+  flex-direction: column; 
+  overflow: hidden; 
+  animation: modalSlideUp 0.3s ease-out; 
+}
+
 @keyframes modalSlideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
 .modal-header { padding: 20px 25px; border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; background: #fafbfc; }
@@ -243,7 +255,13 @@
   color: var(--text-dark);
 }
 
-.review-grid { padding: 25px; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+.review-grid { 
+  padding: 30px; /* CHANGE: Increased padding slightly for better breathing room */
+  overflow-y: auto; 
+  display: grid; 
+  grid-template-columns: 1.1fr 0.9fr; /* CHANGE: Slightly wider left column for the maps/addresses */
+  gap: 40px; /* CHANGE: Increased gap from 30px to 40px to separate sections better */
+}
 .section-title { font-size: 0.9rem; font-weight: 700; color: var(--text-dark); margin-bottom: 15px; display: flex; align-items: center; gap: 8px; text-transform: uppercase; }
 .review-data-card { background: #f8f9fa; padding: 18px; border-radius: 12px; border: 1px solid var(--border-light); }
 .data-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.9rem; }

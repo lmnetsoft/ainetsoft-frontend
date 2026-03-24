@@ -3,9 +3,43 @@ import adminService from '../../services/admin.service';
 import { toast } from 'react-hot-toast';
 import { 
   FaEye, FaCheck, FaTimes, FaIdCard, FaUniversity, 
-  FaStore, FaFileInvoice, FaUserClock, FaHistory, FaSearchPlus 
+  FaStore, FaFileInvoice, FaUserClock, FaHistory, FaSearchPlus,
+  FaMapMarkedAlt, FaQrcode, FaCopy, FaDownload, FaPrint, FaEnvelope,
+  FaFileInvoiceDollar // Added this icon for the Invoice Email field
 } from 'react-icons/fa';
 import './AdminDashboard.css'; 
+
+// Import logo for fallback and PDF header
+import ainetsoftLogo from '../../assets/images/logo.png'; 
+
+/** * NUMBER FORMATTING UTILITIES */
+const formatPhone = (val: string) => {
+  if (!val) return 'N/A';
+  const s = val.replace(/\D/g, '');
+  if (s.length <= 3) return s;
+  if (s.length <= 6) return `${s.slice(0, 3)} ${s.slice(3)}`;
+  return `${s.slice(0, 3)} ${s.slice(3, 6)} ${s.slice(6, 10)}`;
+};
+
+const formatCCCD = (val: string) => {
+  if (!val) return 'N/A';
+  const s = val.replace(/\D/g, '');
+  const groups = s.match(/.{1,3}/g);
+  return groups ? groups.join(' ') : s;
+};
+
+const formatMST = (val: string) => {
+  if (!val) return 'N/A';
+  const s = val.replace(/\D/g, '');
+  if (s.length <= 10) {
+    const groups = s.match(/.{1,3}/g);
+    return groups ? groups.join(' ') : s;
+  }
+  const main = s.slice(0, 10);
+  const branch = s.slice(10, 13);
+  const mainGroups = main.match(/.{1,3}/g);
+  return `${mainGroups ? mainGroups.join(' ') : main}-${branch}`;
+};
 
 const SellerModeration = () => {
   const [pendingSellers, setPendingSellers] = useState<any[]>([]);
@@ -15,154 +49,172 @@ const SellerModeration = () => {
   const [adminNote, setAdminNote] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   
-  // --- State for Image Zoom ---
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
-
-  // Success Animation States
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
 
-  // --- CONFIG ---
   const API_BASE_URL = "http://localhost:8080";
 
-  /**
-   * FIXED HELPER:
-   * 1. Handles Base64 strings (data:image...) from MongoDB.
-   * 2. Handles "DEFAULT_LOGO" fallback.
-   * 3. Handles standard file paths (/api/uploads/...).
-   */
   const getFullImageUrl = (path: string | null | undefined) => {
-    // Case 1: Empty or Fallback flag
-    if (!path || path === "DEFAULT_LOGO" || path.trim() === "") {
-      return '/logo.svg'; 
-    }
-    
-    // Case 2: Base64 Data URI
-    if (path.startsWith('data:image')) {
-      return path; 
-    }
-
-    // Case 3: External URL (Google/FB)
-    if (path.startsWith('http')) {
-      return path;
-    }
-    
-    // Case 4: Backend File Path
+    if (!path || path === "DEFAULT_LOGO" || path.trim() === "") return ainetsoftLogo; 
+    if (path.startsWith('data:image') || path.startsWith('http')) return path;
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
     return `${API_BASE_URL}${cleanPath}`;
   };
 
-  // --- FETCH DATA ---
+  /**
+   * SAFE APPEND: PDF SUMMARY GENERATOR
+   * Added the Invoice Email field to the document layout.
+   */
+  const printApprovalSummary = (seller: any, note: string) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const dateStr = new Date().toLocaleString('vi-VN');
+    const addressesHtml = (seller.addresses || []).map((addr: any, i: number) => `
+      <div style="border: 1px solid #eee; padding: 10px; margin-top: 10px;">
+        <strong>Kho ${i + 1}:</strong> ${addr.receiverName} | ${formatPhone(addr.phone)}<br/>
+        ${addr.detail}, ${addr.ward}, ${addr.province}<br/>
+        <span style="color: #1d39c4;">GPS: ${addr.latitude}, ${addr.longitude}</span>
+      </div>
+    `).join('');
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Biên Bản Phê Duyệt - ${seller.fullName}</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; line-height: 1.5; }
+            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ee4d2d; padding-bottom: 20px; }
+            .status-stamp { color: #52c41a; border: 3px solid #52c41a; padding: 10px 20px; font-weight: bold; text-transform: uppercase; border-radius: 8px; transform: rotate(-5deg); }
+            section { margin-top: 30px; }
+            h2 { color: #ee4d2d; font-size: 18px; border-left: 4px solid #ee4d2d; padding-left: 10px; }
+            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+            .footer { margin-top: 50px; text-align: right; font-style: italic; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div><h1 style="margin:0; color:#ee4d2d;">AiNetsoft</h1><p style="margin:0;">Hệ thống Thương mại Điện tử</p></div>
+            <div class="status-stamp">Đã Phê Duyệt</div>
+          </div>
+          
+          <section>
+            <p><strong>Ngày thực hiện:</strong> ${dateStr}</p>
+            <p><strong>Mã định danh hệ thống:</strong> ${seller.id}</p>
+          </section>
+
+          <div class="grid">
+            <section>
+              <h2>Thông tin Người bán</h2>
+              <p><strong>Họ tên:</strong> ${seller.fullName}</p>
+              <p><strong>Email đăng ký:</strong> ${seller.email}</p>
+              <p><strong>SĐT:</strong> ${formatPhone(seller.phone)}</p>
+              <p><strong>Số CCCD:</strong> ${formatCCCD(seller.identityInfo?.cccdNumber)}</p>
+            </section>
+            <section>
+              <h2>Thông tin Kinh doanh</h2>
+              <p><strong>Tên Shop:</strong> ${seller.shopProfile?.shopName}</p>
+              <p><strong>Email liên hệ:</strong> ${seller.shopProfile?.businessEmail || seller.email}</p>
+              <p><strong>Email nhận hóa đơn:</strong> ${seller.shopProfile?.invoiceEmails?.join(', ') || 'Chưa cung cấp'}</p>
+              <p><strong>Mã số thuế:</strong> ${formatMST(seller.shopProfile?.taxCode)}</p>
+              <p><strong>Loại hình:</strong> ${getBusinessLabel(seller.shopProfile?.businessType)}</p>
+            </section>
+          </div>
+
+          <section>
+            <h2>Vị trí Kho hàng & GPS</h2>
+            ${addressesHtml}
+          </section>
+
+          <section style="background: #f9f9f9; padding: 20px; border-radius: 4px; border-left: 4px solid #8c8c8c;">
+            <h2>Ghi chú của Admin</h2>
+            <p>${note}</p>
+          </section>
+
+          <div class="footer">Tài liệu được tạo tự động bởi Hệ thống AiNetsoft.<br/>Người phê duyệt: Quản trị viên Toàn cầu</div>
+          <script>window.onload = function() { window.print(); setTimeout(function() { window.close(); }, 500); };</script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   const fetchPending = async () => {
     try {
       setLoading(true);
       const data = await adminService.getPendingSellers();
-      
-      if (Array.isArray(data)) {
-        setPendingSellers(data);
-      } else if (data && data.users) {
-        setPendingSellers(data.users);
-      } else {
-        setPendingSellers([]);
-      }
-    } catch (err) {
-      console.error("Fetch Error:", err);
-      toast.error("Không thể tải danh sách duyệt.");
-    } finally {
-      setLoading(false);
-    }
+      setPendingSellers(Array.isArray(data) ? data : data?.users || []);
+    } catch (err) { toast.error("Lỗi tải danh sách."); } finally { setLoading(false); }
   };
 
-  // --- REVIEW MODAL LOGIC ---
   const openReview = async (userId: string) => {
     try {
       const details = await adminService.getSellerDetails(userId);
       setSelectedSeller(details);
       setShowModal(true);
-    } catch (err) {
-      toast.error("Không thể tải chi tiết hồ sơ.");
-    }
+    } catch (err) { toast.error("Lỗi tải chi tiết."); }
   };
 
   const triggerSuccessAnimation = (msg: string) => {
     setSuccessMsg(msg);
     setShowSuccess(true);
-    setTimeout(() => {
-      setShowSuccess(false);
-    }, 2000);
+    setTimeout(() => setShowSuccess(false), 2000);
   };
 
-  // --- APPROVAL / REJECTION LOGIC (MANDATORY NOTE FIX) ---
   const handleAction = async (approved: boolean) => {
-    // FIXED: Blocks action if note is empty, whether approving OR rejecting
     if (!adminNote.trim()) {
-      toast.error("Vui lòng nhập nội dung phản hồi cho người dùng.");
+      toast.error("Vui lòng nhập nội dung phản hồi.");
       return;
     }
-
     try {
       setIsProcessing(true);
       await adminService.approveSeller(selectedSeller.id, approved, adminNote);
-      
+      if (approved) printApprovalSummary(selectedSeller, adminNote);
       setShowModal(false);
       triggerSuccessAnimation(approved ? "Đã phê duyệt người bán!" : "Đã từ chối hồ sơ");
-      
       setAdminNote('');
       fetchPending(); 
     } catch (err) {
-      console.error("Action Error:", err);
       toast.error("Thao tác thất bại.");
     } finally {
       setIsProcessing(false);
     }
   };
 
-  useEffect(() => { 
-    fetchPending(); 
-  }, []);
+  useEffect(() => { fetchPending(); }, []);
 
   return (
     <div className="admin-moderation-page">
-      {/* --- FULL SCREEN ZOOM OVERLAY --- */}
       {zoomedImage && (
         <div className="image-zoom-overlay" onClick={() => setZoomedImage(null)}>
           <div className="zoom-content-wrapper">
              <button className="close-zoom-btn" onClick={() => setZoomedImage(null)}><FaTimes /></button>
-             <img src={zoomedImage} alt="Phóng to" />
+             <img src={zoomedImage} alt="Zoom" />
           </div>
         </div>
       )}
 
-      {/* --- SUCCESS ANIMATION OVERLAY --- */}
       {showSuccess && (
         <div className="success-animation-overlay">
           <div className="success-checkmark-card">
-            <div className="check-icon-wrapper">
-              <FaCheck />
-            </div>
+            <div className="check-icon-wrapper"><FaCheck /></div>
             <h3>Hoàn tất!</h3>
             <p>{successMsg}</p>
           </div>
         </div>
       )}
 
-      {/* --- PAGE HEADER --- */}
       <div className="admin-page-header">
-        <div className="header-icon-wrap">
-          <FaUserClock className="main-icon" />
-        </div>
+        <div className="header-icon-wrap"><FaUserClock className="main-icon" /></div>
         <div className="header-text">
           <h2>Phê duyệt Người bán</h2>
-          <p>Đối soát thông tin định danh, mã số thuế và tài khoản ngân hàng</p>
+          <p>Đối soát định danh, mã số thuế và vị trí kho hàng GPS</p>
         </div>
       </div>
 
-      {/* --- TABLE CONTENT --- */}
       {loading ? (
-        <div className="loading-spinner-wrap">
-          <div className="spinner"></div>
-          <p>Đang tải danh sách chờ...</p>
-        </div>
+        <div className="loading-spinner-wrap"><div className="spinner"></div><p>Đang tải...</p></div>
       ) : (
         <div className="admin-table-container">
           <table className="admin-table">
@@ -180,36 +232,23 @@ const SellerModeration = () => {
                 <tr key={seller.id}>
                   <td>
                     <div className="user-profile-cell">
-                      <div className="moderation-avatar-wrapper">
-                        <img 
-                          src={getFullImageUrl(seller.avatarUrl)} 
-                          alt="avatar" 
-                          onError={(e) => { e.currentTarget.src = '/logo.svg'; }}
-                        />
-                      </div>
+                      <div className="moderation-avatar-wrapper"><img src={getFullImageUrl(seller.avatarUrl)} alt="avatar" /></div>
                       <div className="user-meta-info">
-                        <strong className="user-full-name">{seller.fullName || 'Người dùng'}</strong>
-                        <span className="user-uid-text">ID: {seller.id?.substring(0, 8)}</span>
+                        <strong>{seller.fullName || 'Người dùng'}</strong>
+                        <span>ID: {seller.id?.substring(0, 8)}</span>
                       </div>
                     </div>
                   </td>
                   <td>
                     <div className="contact-details-box">
                       <p className="contact-email">{seller.email}</p>
-                      <p className="contact-phone">{seller.phone || 'Chưa cập nhật'}</p>
+                      <p className="contact-phone">{formatPhone(seller.phone)}</p>
                     </div>
                   </td>
                   <td>
-                    <div className="moderation-date-cell">
-                      <FaHistory className="date-icon" /> 
-                      {new Date(seller.updatedAt || seller.createdAt || Date.now()).toLocaleDateString('vi-VN')}
-                    </div>
+                    <div className="moderation-date-cell"><FaHistory className="date-icon" /> {new Date(seller.updatedAt || seller.createdAt || Date.now()).toLocaleDateString('vi-VN')}</div>
                   </td>
-                  <td>
-                    <div className="status-badge-container">
-                        <span className="status-badge-pending">Chờ duyệt</span>
-                    </div>
-                  </td>
+                  <td><span className="status-badge-pending">Chờ duyệt</span></td>
                   <td>
                     <button onClick={() => openReview(seller.id)} className="btn-action-view">
                       <FaEye /> <span>Xem hồ sơ</span>
@@ -217,27 +256,27 @@ const SellerModeration = () => {
                   </td>
                 </tr>
               )) : (
-                <tr>
-                  <td colSpan={5} className="empty-table-msg">
-                    <p>Hiện không có yêu cầu nâng cấp nào cần xử lý.</p>
-                  </td>
-                </tr>
+                <tr><td colSpan={5} className="empty-table-msg">Hiện không có yêu cầu nâng cấp nào.</td></tr>
               )}
             </tbody>
           </table>
         </div>
       )}
 
-      {/* --- MASTER REVIEW MODAL --- */}
       {showModal && selectedSeller && (
         <div className="admin-modal-overlay">
           <div className="admin-modal-content seller-review-modal">
             <div className="modal-header">
               <div className="header-title">
-                  <FaStore className="title-icon" />
-                  <h3>Thẩm định hồ sơ: {selectedSeller.fullName}</h3>
+                <FaStore className="title-icon" />
+                <h3>Thẩm định hồ sơ: {selectedSeller.fullName}</h3>
               </div>
-              <button className="close-btn" onClick={() => setShowModal(false)}><FaTimes /></button>
+              <div style={{display:'flex', gap: '10px'}}>
+                <button className="btn-print-summary" title="Tải biên bản" onClick={() => printApprovalSummary(selectedSeller, adminNote)}>
+                  <FaDownload />
+                </button>
+                <button className="close-btn" onClick={() => setShowModal(false)}><FaTimes /></button>
+              </div>
             </div>
 
             <div className="modal-body review-grid">
@@ -247,97 +286,99 @@ const SellerModeration = () => {
                 <div className="review-data-card">
                   <div className="data-row">
                     <span className="label">Số CCCD:</span>
-                    <span className="value highlight">{selectedSeller.identityInfo?.cccdNumber}</span>
+                    <span className="value highlight">{formatCCCD(selectedSeller.identityInfo?.cccdNumber)}</span>
                   </div>
                   <div className="id-images-container">
-                    <div className="id-image-item">
-                      <span className="img-label">Mặt trước</span>
-                      <div className="img-wrapper zoomable" onClick={() => setZoomedImage(getFullImageUrl(selectedSeller.identityInfo?.frontImageUrl))}>
-                        <div className="zoom-hint"><FaSearchPlus /></div>
-                        <img 
-                            src={getFullImageUrl(selectedSeller.identityInfo?.frontImageUrl)} 
-                            alt="Mặt trước CCCD" 
-                            onError={(e) => { e.currentTarget.src = '/default-placeholder.png'; }}
-                        />
+                    {['front', 'back'].map(side => (
+                      <div key={side} className="id-image-item">
+                        <span className="img-label">{side === 'front' ? 'Mặt trước' : 'Mặt sau'}</span>
+                        <div className="img-wrapper zoomable" onClick={() => setZoomedImage(getFullImageUrl(selectedSeller.identityInfo?.[`${side}ImageUrl`]))}>
+                          <div className="zoom-hint"><FaSearchPlus /></div>
+                          <img src={getFullImageUrl(selectedSeller.identityInfo?.[`${side}ImageUrl`])} alt="CCCD" />
+                        </div>
                       </div>
-                    </div>
-                    <div className="id-image-item">
-                      <span className="img-label">Mặt sau</span>
-                      <div className="img-wrapper zoomable" onClick={() => setZoomedImage(getFullImageUrl(selectedSeller.identityInfo?.backImageUrl))}>
-                        <div className="zoom-hint"><FaSearchPlus /></div>
-                        <img 
-                            src={getFullImageUrl(selectedSeller.identityInfo?.backImageUrl)} 
-                            alt="Mặt sau CCCD" 
-                            onError={(e) => { e.currentTarget.src = '/default-placeholder.png'; }}
-                        />
-                      </div>
-                    </div>
+                    ))}
                   </div>
+                </div>
+
+                <h4 className="section-title" style={{marginTop: '25px'}}><FaMapMarkedAlt /> KHO LẤY HÀNG & TỌA ĐỘ GPS</h4>
+                <div className="address-review-list">
+                  {(selectedSeller.addresses || []).map((addr: any, idx: number) => (
+                    <div key={idx} className="review-data-card mb-10" style={{borderLeft: '4px solid #1d39c4'}}>
+                      <strong>Kho {idx + 1}: {addr.receiverName} | {formatPhone(addr.phone)}</strong>
+                      <p style={{fontSize: '12px', margin: '5px 0'}}>{[addr.detail, addr.ward, addr.province].filter(Boolean).join(', ')}</p>
+                      
+                      <div className="qr-box-summary" style={{background: '#f0f5ff', border: '1px solid #adc6ff', display: 'flex', alignItems: 'center', padding: '10px', gap: '15px', borderRadius: '4px'}}>
+                        <img className="qr-code-img" 
+                             style={{width: '70px', height: '70px', background: 'white', padding: '2px'}}
+                             src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(`http://googleusercontent.com/maps.google.com/search/${addr.latitude},${addr.longitude}`)}`} 
+                             alt="QR" />
+                        <div className="qr-info-text">
+                           <strong style={{color: '#1d39c4', fontSize: '12px'}}>Tọa độ: {addr.latitude}, {addr.longitude}</strong>
+                           <p style={{fontSize: '10px', color: '#666', margin: '4px 0'}}>Quét QR để đối soát vị trí thực tế.</p>
+                           <span className="btn-copy-action" style={{fontSize: '11px', cursor: 'pointer', color: '#2f54eb', textDecoration: 'underline'}} onClick={() => { navigator.clipboard.writeText(`${addr.latitude}, ${addr.longitude}`); toast.success("Đã chép!"); }}>[Chép tọa độ]</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
               {/* Business Section */}
               <div className="review-section">
-                <h4 className="section-title"><FaStore /> Thông tin Kinh doanh</h4>
+                <h4 className="section-title"><FaStore /> THÔNG TIN KINH DOANH</h4>
                 <div className="review-data-card mb-20">
+                  <div className="data-row"><span className="label">Tên Shop:</span><span className="value">{selectedSeller.shopProfile?.shopName}</span></div>
+                  <div className="data-row"><span className="label">Loại hình:</span><span className="value">{getBusinessLabel(selectedSeller.shopProfile?.businessType)}</span></div>
+                  
+                  {/* Email Section */}
+                  <div className="data-row"><span className="label"><FaEnvelope /> Email liên hệ:</span><span className="value">{selectedSeller.shopProfile?.businessEmail || selectedSeller.email}</span></div>
+                  
+                  {/* --- NEW: INVOICE EMAIL DISPLAY --- */}
                   <div className="data-row">
-                    <span className="label">Tên cửa hàng:</span>
-                    <span className="value">{selectedSeller.shopProfile?.shopName}</span>
+                    <span className="label"><FaFileInvoiceDollar /> Email nhận hóa đơn:</span>
+                    <span className="value" style={{fontSize: '12px', color: '#ee4d2d'}}>
+                      {selectedSeller.shopProfile?.invoiceEmails?.length > 0 ? selectedSeller.shopProfile.invoiceEmails.join(', ') : 'Chưa cung cấp'}
+                    </span>
                   </div>
-                  <div className="data-row">
-                    <span className="label">Địa chỉ:</span>
-                    <span className="value address">{selectedSeller.shopProfile?.shopAddress}</span>
-                  </div>
-                  <div className="data-row tax-row">
-                    <span className="label"><FaFileInvoice /> Mã số thuế:</span>
-                    <span className="value text-success">{selectedSeller.shopProfile?.taxCode || 'Không cung cấp'}</span>
+
+                  <div className="data-row"><span className="label"><FaFileInvoice /> Mã số thuế:</span><span className="value highlight-green">{formatMST(selectedSeller.shopProfile?.taxCode)}</span></div>
+                  
+                  <div className="license-inspect-box" style={{marginTop: '15px'}}>
+                     <span className="img-label">Giấy phép kinh doanh:</span>
+                     <div className="img-wrapper zoomable" style={{height: '140px', border: '1px dashed #ddd', borderRadius: '4px', overflow: 'hidden'}} onClick={() => setZoomedImage(getFullImageUrl(selectedSeller.shopProfile?.businessLicenseUrl))}>
+                        <div className="zoom-hint"><FaSearchPlus /></div>
+                        <img 
+                          src={selectedSeller.shopProfile?.businessType === 'INDIVIDUAL' ? ainetsoftLogo : (selectedSeller.shopProfile?.businessLicenseUrl ? getFullImageUrl(selectedSeller.shopProfile.businessLicenseUrl) : ainetsoftLogo)} 
+                          alt="License" 
+                          style={{width: '100%', height: '100%', objectFit: 'contain'}} 
+                          onError={(e) => { e.currentTarget.src = ainetsoftLogo; }}
+                        />
+                     </div>
                   </div>
                 </div>
 
-                {/* Bank Section */}
-                <h4 className="section-title"><FaUniversity /> Tài khoản nhận tiền</h4>
+                <h4 className="section-title"><FaUniversity /> TÀI KHOẢN THỤ HƯỞNG</h4>
                 <div className="review-data-card bank-card">
-                  <div className="data-row">
-                    <span className="label">Ngân hàng:</span>
-                    <span className="value">{selectedSeller.bankAccounts?.[0]?.bankName}</span>
-                  </div>
-                  <div className="data-row">
-                    <span className="label">Số tài khoản:</span>
-                    <span className="value mono">{selectedSeller.bankAccounts?.[0]?.accountNumber}</span>
-                  </div>
-                  <div className="data-row">
-                    <span className="label">Chủ tài khoản:</span>
-                    <span className="value uppercase">{selectedSeller.bankAccounts?.[0]?.accountHolder}</span>
-                  </div>
+                  {selectedSeller.bankAccounts?.length > 0 ? (
+                    <>
+                      <div className="data-row"><span className="label">Ngân hàng:</span><span className="value">{selectedSeller.bankAccounts[0].bankName}</span></div>
+                      <div className="data-row"><span className="label">Số tài khoản:</span><span className="value mono">{selectedSeller.bankAccounts[0].accountNumber}</span></div>
+                      <div className="data-row"><span className="label">Chủ tài khoản:</span><span className="value uppercase">{selectedSeller.bankAccounts[0].accountHolder}</span></div>
+                    </>
+                  ) : <p className="empty-text">Chưa cung cấp</p>}
                 </div>
               </div>
             </div>
 
             <div className="modal-footer-actions">
               <div className="note-area">
-                {/* Visual hint: Added Red Asterisk */}
                 <label>Phản hồi cho người dùng <span style={{color: 'red'}}>*</span>:</label>
-                <textarea 
-                  placeholder="Ghi chú phản hồi (Bắt buộc để Phê duyệt hoặc Từ chối)..."
-                  value={adminNote}
-                  onChange={(e) => setAdminNote(e.target.value)}
-                />
+                <textarea placeholder="Ghi chú phản hồi (Bắt buộc)..." value={adminNote} onChange={(e) => setAdminNote(e.target.value)} />
               </div>
               <div className="button-group">
-                <button 
-                  className="btn-reject-modal" 
-                  onClick={() => handleAction(false)} 
-                  disabled={isProcessing}
-                >
-                  Từ chối
-                </button>
-                <button 
-                  className="btn-approve-modal" 
-                  onClick={() => handleAction(true)} 
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? 'Đang xử lý...' : 'Phê duyệt'}
-                </button>
+                <button className="btn-reject-modal" onClick={() => handleAction(false)} disabled={isProcessing}>Từ chối</button>
+                <button className="btn-approve-modal" onClick={() => handleAction(true)} disabled={isProcessing}>{isProcessing ? 'Đang xử lý...' : 'Phê duyệt & Tải biên bản'}</button>
               </div>
             </div>
           </div>
@@ -345,6 +386,13 @@ const SellerModeration = () => {
       )}
     </div>
   );
+};
+
+const getBusinessLabel = (type: string) => {
+  if (type === 'INDIVIDUAL') return 'Cá nhân';
+  if (type === 'HOUSEHOLD') return 'Hộ kinh doanh';
+  if (type === 'ENTERPRISE') return 'Công ty';
+  return type;
 };
 
 export default SellerModeration;
