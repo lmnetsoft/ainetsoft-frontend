@@ -25,12 +25,12 @@ public class AdminService {
     private final NotificationService notificationService;
     private final AuditLogRepository auditLogRepository;
     private final ProductReportRepository productReportRepository;
-    
-    // 🛠️ ADDED: Needed for Requirement 6 & Requirement 1
     private final ReviewRepository reviewRepository;
     private final ReportReasonRepository reportReasonRepository;
-
     private final AzureCommunicationService azureEmailService;
+    
+    // 🚀 NEW: Added for Quick Response Templates
+    private final FeedbackTemplateRepository feedbackTemplateRepository;
 
     /**
      * INTERNAL HELPER: Records admin actions into the Audit Log.
@@ -43,7 +43,7 @@ public class AdminService {
                 .adminName(admin.getFullName())
                 .actionType(type)
                 .targetId(targetId)
-                .targetName(targetName)
+                .targetName(targetName != null ? targetName : "N/A")
                 .description(details)
                 .timestamp(LocalDateTime.now())
                 .build();
@@ -81,7 +81,9 @@ public class AdminService {
         long sCount = userRepository.countByRolesContaining("SELLER");
         long pCount = productRepository.count();
         long pendingPCount = productRepository.countByStatus("PENDING");
-        long pendingSCount = userRepository.countBySellerVerification("PENDING");
+        
+        long pendingSCount = userRepository.countBySellerVerificationOrAccountStatus("PENDING", "PENDING_SELLER");
+        
         long reportCount = productReportRepository.count();
 
         log.info("DB Counts -> Users: {}, Sellers: {}, Reports: {}", uCount, sCount, reportCount);
@@ -144,7 +146,7 @@ public class AdminService {
     // --- SELLER MODERATION ---
 
     public List<User> getPendingSellers() {
-        List<User> pending = userRepository.findBySellerVerification("PENDING");
+        List<User> pending = userRepository.findBySellerVerificationOrAccountStatus("PENDING", "PENDING_SELLER");
         pending.forEach(user -> {
             if (user.getAvatarUrl() == null || user.getAvatarUrl().isEmpty()) {
                 user.setAvatarUrl("DEFAULT_LOGO"); 
@@ -170,36 +172,53 @@ public class AdminService {
         if (request.isApproved()) {
             user.setSellerVerification("VERIFIED");
             user.setAccountStatus("ACTIVE"); 
-            
+            user.setRejectionReason(null);
+
             Set<String> roles = user.getRoles();
             if (roles == null) roles = new HashSet<>();
             roles.add("SELLER");
             user.setRoles(roles);
-            
             user.setUpdatedAt(LocalDateTime.now());
             userRepository.save(user);
 
             notificationService.createNotification(
                 user.getId(), "Yêu cầu nâng cấp Shop thành công",
-                "Chào mừng! Bạn đã chính thức trở thành Người bán.", "SELLER_APPROVAL", null
+                "Chúc mừng! Bạn đã chính thức trở thành Người bán.", "SELLER_APPROVAL", null
             );
 
-            azureEmailService.sendSellerStatusEmail(user.getEmail(), user.getFullName(), true, null);
+            try {
+                azureEmailService.sendSellerStatusEmail(user.getEmail(), user.getFullName(), true, null);
+            } catch (Exception e) {
+                log.warn("Approval notification email failed for {}: {}", user.getEmail(), e.getMessage());
+            }
+
             recordAudit(performingAdmin, "APPROVE_SELLER", user.getId(), user.getEmail(), "Phê duyệt Shop");
             return "Người dùng " + user.getFullName() + " đã trở thành Người bán.";
         } else {
             user.setSellerVerification("REJECTED");
+            user.setAccountStatus("ACTIVE"); 
             user.setRejectionReason(request.getAdminNote());
             user.setUpdatedAt(LocalDateTime.now());
             userRepository.save(user);
 
-            azureEmailService.sendSellerStatusEmail(user.getEmail(), user.getFullName(), false, request.getAdminNote());
+            notificationService.createNotification(
+                user.getId(), "Yêu cầu nâng cấp Shop bị từ chối",
+                "Lý do: " + request.getAdminNote(), 
+                "SELLER_REJECTION", null
+            );
+
             recordAudit(performingAdmin, "REJECT_SELLER", user.getId(), user.getEmail(), "Từ chối Shop: " + request.getAdminNote());
-            return "Đã từ chối yêu cầu.";
+
+            try {
+                azureEmailService.sendSellerStatusEmail(user.getEmail(), user.getFullName(), false, request.getAdminNote());
+            } catch (Exception e) {
+                log.warn("Rejection notification email failed for {}: {}", user.getEmail(), e.getMessage());
+            }
+            return "Đã từ chối yêu cầu thành công.";
         }
     }
 
-    // --- PRODUCT MODERATION ---
+    // --- PRODUCT MODERATION (100% PRESERVED) ---
 
     public List<Product> getPendingProducts() {
         return productRepository.findByStatus("PENDING");
@@ -215,7 +234,11 @@ public class AdminService {
         productRepository.save(product);
 
         userRepository.findById(product.getSellerId()).ifPresent(seller -> {
-            azureEmailService.sendProductStatusEmail(seller.getEmail(), seller.getFullName(), product.getName(), true, null);
+            try {
+                azureEmailService.sendProductStatusEmail(seller.getEmail(), seller.getFullName(), product.getName(), true, null);
+            } catch (Exception e) {
+                log.warn("Email duyệt SP lỗi: {}", e.getMessage());
+            }
         });
         
         recordAudit(performingAdmin, "APPROVE_PRODUCT", product.getId(), product.getName(), "Duyệt sản phẩm");
@@ -232,14 +255,18 @@ public class AdminService {
         productRepository.save(product);
 
         userRepository.findById(product.getSellerId()).ifPresent(seller -> {
-            azureEmailService.sendProductStatusEmail(seller.getEmail(), seller.getFullName(), product.getName(), false, reason);
+            try {
+                azureEmailService.sendProductStatusEmail(seller.getEmail(), seller.getFullName(), product.getName(), false, reason);
+            } catch (Exception e) {
+                log.warn("Email từ chối SP lỗi: {}", e.getMessage());
+            }
         });
         
         recordAudit(performingAdmin, "REJECT_PRODUCT", product.getId(), product.getName(), "Từ chối: " + reason);
         return "Đã từ chối sản phẩm.";
     }
 
-    // --- REPORT MANAGEMENT ---
+    // --- REPORT MANAGEMENT (100% PRESERVED) ---
 
     @Transactional
     public String resolveReport(String reportId, String action, User performingAdmin) {
@@ -250,7 +277,7 @@ public class AdminService {
             report.setStatus("RESOLVED");
             productRepository.findById(report.getProductId()).ifPresent(product -> {
                 product.setStatus("BANNED");
-                productRepository.save(product);
+                productRepository.save(product); 
                 recordAudit(performingAdmin, "CONFIRM_VIOLATION", product.getId(), product.getName(), "Xác nhận vi phạm & Khóa sản phẩm");
             });
         } else {
@@ -268,22 +295,14 @@ public class AdminService {
         recordAudit(performingAdmin, "DELETE_REPORT", reportId, "Violation Record", "Xóa vĩnh viễn báo cáo");
     }
 
-    // =======================================================
-    // 🛠️ NEW: ADDED FOR MODERATION TEST POINTS #1 & #3
-    // =======================================================
+    // --- REVIEW MODERATION (100% PRESERVED) ---
 
-    /**
-     * Requirement 6: Fetches all reviews for the Admin table.
-     */
     public List<Review> getAllReviewsForModeration() {
         return reviewRepository.findAll().stream()
                 .sorted(Comparator.comparing(Review::getCreatedAt).reversed())
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Requirement 6: Permanently removes a review and records it in Audit Logs.
-     */
     @Transactional
     public void deleteReview(String reviewId, User performingAdmin) {
         Review review = reviewRepository.findById(reviewId)
@@ -295,9 +314,8 @@ public class AdminService {
                 "Xóa đánh giá của " + review.getUserName() + " cho sản phẩm ID: " + review.getProductId());
     }
 
-    /**
-     * Requirement 1: Save or Update a violation reason (category).
-     */
+    // --- VIOLATION CATEGORIES (100% PRESERVED) ---
+
     @Transactional
     public ReportReason saveViolationReason(ReportReason reason, User performingAdmin) {
         ReportReason saved = reportReasonRepository.save(reason);
@@ -305,16 +323,13 @@ public class AdminService {
         return saved;
     }
 
-    /**
-     * Requirement 1: Delete a violation reason.
-     */
     @Transactional
     public void deleteViolationReason(String id, User performingAdmin) {
         reportReasonRepository.deleteById(id);
         recordAudit(performingAdmin, "MANAGE_CATEGORIES", id, "Category", "Xóa danh mục vi phạm");
     }
 
-    // --- MASTER USER CONTROL ---
+    // --- MASTER USER CONTROL (100% PRESERVED) ---
     
     @Transactional
     public String banUser(String userId, User performingAdmin) {
@@ -331,5 +346,35 @@ public class AdminService {
         
         recordAudit(performingAdmin, "BAN_USER", user.getId(), user.getEmail(), "Khóa tài khoản");
         return "Tài khoản " + user.getEmail() + " đã bị khóa.";
+    }
+
+    // --- 🚀 NEW: FEEDBACK TEMPLATE MANAGEMENT ---
+
+    /**
+     * Fetch templates for quick response buttons.
+     * @param type e.g., "SELLER_REJECTION"
+     */
+    public List<FeedbackTemplate> getTemplatesByType(String type) {
+        return feedbackTemplateRepository.findByType(type);
+    }
+
+    /**
+     * Saves or updates a professional response template.
+     */
+    @Transactional
+    public FeedbackTemplate saveFeedbackTemplate(FeedbackTemplate template, User performingAdmin) {
+        FeedbackTemplate saved = feedbackTemplateRepository.save(template);
+        recordAudit(performingAdmin, "MANAGE_TEMPLATES", saved.getId(), saved.getTitle(), 
+                "Add/Update response template for " + template.getType());
+        return saved;
+    }
+
+    /**
+     * Deletes a response template.
+     */
+    @Transactional
+    public void deleteFeedbackTemplate(String id, User performingAdmin) {
+        feedbackTemplateRepository.deleteById(id);
+        recordAudit(performingAdmin, "DELETE_TEMPLATE", id, "Template", "Remove quick response template");
     }
 }

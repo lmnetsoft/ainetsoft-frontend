@@ -20,10 +20,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * AdminReportController - Handles detailed violation reporting.
+ * FIXED: hasRole security and ID String conversion to prevent 400 Bad Request.
+ */
 @RestController
 @RequestMapping("/api/admin/reports")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasRole('ADMIN')") // FIXED: Synchronized with ROLE_ADMIN prefixing
 @Slf4j
 public class AdminReportController {
 
@@ -33,7 +37,7 @@ public class AdminReportController {
     private final UserRepository userRepository;
 
     /**
-     * HELPER: Gets the currently logged-in Admin object for Audit Logs.
+     * HELPER: Gets the currently logged-in Admin safely.
      */
     private User getAuthenticatedAdmin() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -42,15 +46,12 @@ public class AdminReportController {
 
     /**
      * GET all reports.
-     * UPDATED: 
-     * 1. Sorts by CreatedAt (Newest first).
-     * 2. Performs User Lookup to resolve the "Người dùng ẩn" issue.
+     * Enriches ID data into readable Names.
      */
     @GetMapping
     public ResponseEntity<List<Map<String, Object>>> getAllReports() {
-        log.info("Admin fetching enriched product violation reports");
+        log.info("[ADMIN] Fetching enriched violation reports...");
         
-        // 🛠️ FIX 2: Sorting - Get all and sort by CreatedAt DESC (Newest on top)
         List<ProductReport> reports = productReportRepository.findAll().stream()
                 .sorted(Comparator.comparing(ProductReport::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
                 .collect(Collectors.toList());
@@ -64,27 +65,26 @@ public class AdminReportController {
                 Product p = productService.getProductById(report.getProductId());
                 if (p != null) prodName = p.getName();
             } catch (Exception e) {
-                log.warn("Report {}: Linked product not found", report.getId());
+                log.warn("Report {}: Product ID {} not found", report.getId(), report.getProductId());
             }
 
-            // 🛠️ FIX 1: REPORTER LOOKUP (Fixes "Người dùng ẩn")
+            // 2. REPORTER LOOKUP
             String reporterDisplayName = "Người dùng ẩn";
             if (report.getReporterName() != null && !report.getReporterName().trim().isEmpty()) {
                 reporterDisplayName = report.getReporterName();
             } else if (report.getReporterId() != null) {
-                // If name is missing, use the ID to find the real User in the database
                 reporterDisplayName = userRepository.findById(report.getReporterId())
                         .map(User::getFullName)
                         .orElse("Người dùng ẩn");
             }
 
-            map.put("id", report.getId());
+            // FIX: Convert IDs to Strings explicitly to prevent serialization issues (400 Error)
+            map.put("id", report.getId().toString());
             map.put("productId", report.getProductId());
             map.put("productName", prodName);
             map.put("reason", report.getReason());
             map.put("details", report.getDetails() != null ? report.getDetails() : "Không có mô tả chi tiết.");
-            
-            map.put("reporterName", reporterDisplayName); // Now shows real name if available
+            map.put("reporterName", reporterDisplayName);
             map.put("status", report.getStatus());
             map.put("createdAt", report.getCreatedAt());
             return map;
@@ -94,18 +94,17 @@ public class AdminReportController {
     }
 
     /**
-     * POST: Process a report (Xác nhận / Bác bỏ).
+     * POST: Process a report (RESOLVED / DISMISSED).
      */
     @PostMapping("/{reportId}/process")
     public ResponseEntity<?> processReport(
             @PathVariable String reportId,
             @RequestBody Map<String, String> payload) {
         
-        log.info("Admin processing report {} with action: {}", reportId, payload.get("action"));
+        String action = payload.get("action");
+        log.info("[ADMIN] Processing report {} -> Action: {}", reportId, action);
         
         User currentAdmin = getAuthenticatedAdmin();
-        String action = payload.get("action");
-
         String message = adminService.resolveReport(reportId, action, currentAdmin);
 
         return ResponseEntity.ok(Map.of(
@@ -115,11 +114,11 @@ public class AdminReportController {
     }
 
     /**
-     * DELETE: Permanent cleanup.
+     * DELETE: Permanent record removal.
      */
     @DeleteMapping("/{reportId}")
     public ResponseEntity<?> deleteReport(@PathVariable String reportId) {
-        log.info("Admin deleting violation report record: {}", reportId);
+        log.info("[ADMIN] Deleting report record: {}", reportId);
         
         User currentAdmin = getAuthenticatedAdmin();
         adminService.deleteReport(reportId, currentAdmin);
@@ -128,7 +127,7 @@ public class AdminReportController {
     }
 
     /**
-     * PRESERVED: Legacy PatchMapping for specific status updates.
+     * PATCH: Legacy / Specific field updates.
      */
     @PatchMapping("/{reportId}")
     public ResponseEntity<?> handleReport(

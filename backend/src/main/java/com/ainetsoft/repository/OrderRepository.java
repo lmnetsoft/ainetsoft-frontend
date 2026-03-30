@@ -9,24 +9,39 @@ import java.util.List;
 
 @Repository
 public interface OrderRepository extends MongoRepository<Order, String> {
+    
+    // --- USER ORDER HISTORY ---
     List<Order> findByUserIdOrderByCreatedAtDesc(String userId);
     List<Order> findByUserIdAndStatusOrderByCreatedAtDesc(String userId, String status);
     
-    // For Admin Stats and Review logic
+    // --- ADMIN DASHBOARD & REVENUE (Fixes the "Đang tải" issue) ---
+    /**
+     * Fetches only orders with a specific status (e.g., COMPLETED).
+     * Used by AdminService to calculate revenue without loading every order in the DB.
+     */
     List<Order> findByStatus(String status);
-    
-    // For Seller specifically
-    List<Order> findBySellerIdAndStatus(String sellerId, String status);
 
     /**
-     * CHAT PERMISSION CHECK: 
-     * Checks if a buyer has an active or completed order with a specific seller.
-     * We use a collection of statuses to exclude "CANCELLED" orders if desired.
+     * Optimized count for specific order states (e.g., PENDING_PAYMENT).
+     */
+    long countByStatus(String status);
+
+    /**
+     * Total order count for the "Tổng đơn hàng" dashboard card.
+     */
+    long count();
+    
+    // --- SELLER DASHBOARD ---
+    List<Order> findBySellerIdAndStatus(String sellerId, String status);
+
+    // --- CHAT & PERMISSIONS ---
+    /**
+     * Checks if a buyer has a valid history with a seller to allow chatting.
      */
     boolean existsByUserIdAndSellerIdAndStatusIn(String userId, String sellerId, Collection<String> statuses);
 
     /**
-     * Simple check to see if any order exists between buyer and seller.
+     * Simple check to see if any connection exists between buyer and seller.
      */
     boolean existsByUserIdAndSellerId(String userId, String sellerId);
 }

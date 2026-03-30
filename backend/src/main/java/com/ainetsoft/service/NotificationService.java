@@ -3,11 +3,14 @@ package com.ainetsoft.service;
 import com.ainetsoft.model.Notification;
 import com.ainetsoft.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class NotificationService {
@@ -15,38 +18,49 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
 
     /**
-     * Creates and saves a notification with a timestamp.
+     * 🚀 CREATE NOTIFICATION
+     * Used by OrderService, AdminService, etc.
      */
+    @Transactional
     public void createNotification(String userId, String title, String message, String type, String relatedId) {
-        Notification notification = Notification.builder()
-                .userId(userId)
-                .title(title)
-                .message(message)
-                .type(type)
-                .relatedId(relatedId)
-                .isRead(false) // Explicitly set to false for new notifications
-                .createdAt(LocalDateTime.now()) // Ensure timestamping
-                .build();
-        notificationRepository.save(notification);
+        try {
+            Notification notification = Notification.builder()
+                    .userId(userId)
+                    .title(title)
+                    .message(message)
+                    .type(type)
+                    .relatedId(relatedId)
+                    .isRead(false)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
+            notificationRepository.save(notification);
+            log.info("Notification created for user {}: {}", userId, title);
+        } catch (Exception e) {
+            log.error("Failed to create notification: {}", e.getMessage());
+        }
     }
 
     /**
-     * Retrieves all notifications for a specific user, newest first.
-     */
-    public List<Notification> getMyNotifications(String userId) {
-        return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
-    }
-
-    /**
-     * Efficiently counts unread items without loading them into RAM.
+     * 🔔 GET UNREAD COUNT
+     * Used by the Bell icon in the header.
      */
     public long getUnreadCount(String userId) {
         return notificationRepository.countByUserIdAndIsReadFalse(userId);
     }
 
     /**
-     * Marks a single notification as read.
+     * 📜 GET NOTIFICATION LIST
+     * Used by the Notification Page.
      */
+    public List<Notification> getMyNotifications(String userId) {
+        return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
+    }
+
+    /**
+     * ✅ MARK AS READ
+     */
+    @Transactional
     public void markAsRead(String notificationId) {
         notificationRepository.findById(notificationId).ifPresent(n -> {
             n.setRead(true);
@@ -55,14 +69,12 @@ public class NotificationService {
     }
 
     /**
-     * OPTIMIZED: Marks ALL notifications for a user as read.
-     * Uses a specific repository query to avoid loading the whole history into Java RAM.
+     * ✅ MARK ALL AS READ
      */
+    @Transactional
     public void markAllAsRead(String userId) {
         List<Notification> unread = notificationRepository.findAllByUserIdAndIsReadFalse(userId);
-        if (!unread.isEmpty()) {
-            unread.forEach(n -> n.setRead(true));
-            notificationRepository.saveAll(unread);
-        }
+        unread.forEach(n -> n.setRead(true));
+        notificationRepository.saveAll(unread);
     }
 }

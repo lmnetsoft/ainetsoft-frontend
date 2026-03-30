@@ -2,6 +2,7 @@ package com.ainetsoft.controller;
 
 import com.ainetsoft.dto.*;
 import com.ainetsoft.service.AuthService;
+import com.ainetsoft.model.User;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -53,6 +54,41 @@ public class AuthController {
     }
 
     /**
+     * NEW: PUT /api/auth/seller/settings
+     * Professional Admin Board update for Sellers.
+     * Supports Slug sync, 30-day name cooldown, and Legal Safety Lock.
+     */
+    @PutMapping(value = "/seller/settings", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> updateShopSettings(
+            Principal principal,
+            @RequestPart("data") ShopSettingsUpdateRequest request,
+            @RequestPart(value = "license", required = false) MultipartFile license) {
+        
+        if (principal == null) throw new RuntimeException("Unauthorized");
+        
+        try {
+            User updatedUser = authService.updateShopSettings(principal.getName(), request, license);
+            return ResponseEntity.ok(Map.of(
+                "message", "Cập nhật thiết lập Shop thành công!",
+                "user", updatedUser
+            ));
+        } catch (Exception e) {
+            log.error("Error updating shop settings for {}: {}", principal.getName(), e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    /**
+     * NEW: GET /api/auth/public/shop/{slug}
+     * Public endpoint to find a shop by its Nice URL (Slug).
+     */
+    @GetMapping("/public/shop/{slug}")
+    public ResponseEntity<?> getShopBySlug(@PathVariable String slug) {
+        // This leverages the new findByShopProfile_ShopSlug in Repository
+        return ResponseEntity.ok(authService.getUserProfileBySlug(slug));
+    }
+
+    /**
      * POST /api/auth/sync-cart
      */
     @PostMapping("/sync-cart")
@@ -64,7 +100,6 @@ public class AuthController {
     /**
      * POST /api/auth/upgrade-seller
      * Handles Multi-part data for Step 3 (Tax/License) and Step 4 (Identity Images).
-     * Now supports the 'license' part for Enterprise/Household businesses.
      */
     @PostMapping(value = "/upgrade-seller", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<String> upgradeToSeller(
@@ -72,7 +107,7 @@ public class AuthController {
             @Valid @RequestPart("data") SellerRegistrationDTO registrationData,
             @RequestPart(value = "frontImage", required = false) MultipartFile frontImage,
             @RequestPart(value = "backImage", required = false) MultipartFile backImage,
-            @RequestPart(value = "license", required = false) MultipartFile license) { // NEW PART
+            @RequestPart(value = "license", required = false) MultipartFile license) {
         
         if (principal == null) throw new RuntimeException("Unauthorized");
         
@@ -84,7 +119,7 @@ public class AuthController {
                 registrationData, 
                 frontImage, 
                 backImage,
-                license // PASSED TO SERVICE
+                license 
         ));
     }
 

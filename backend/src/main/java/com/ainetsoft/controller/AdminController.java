@@ -1,6 +1,7 @@
 package com.ainetsoft.controller;
 
 import com.ainetsoft.dto.SellerApprovalRequest;
+import com.ainetsoft.model.FeedbackTemplate;
 import com.ainetsoft.model.User;
 import com.ainetsoft.repository.UserRepository;
 import com.ainetsoft.service.AdminService;
@@ -11,18 +12,23 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Set;
+import java.util.List;
 
+/**
+ * AdminController - Main Administration Hub.
+ * Handles Users, Sellers, Products, Reviews, and Feedback Templates.
+ */
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')") // Master lock for all admin routes
+@PreAuthorize("hasRole('ADMIN')") // Matches ROLE_ADMIN from CustomUserDetailsService
 public class AdminController {
 
     private final AdminService adminService;
     private final UserRepository userRepository;
 
     /**
-     * Helper to get the Admin currently making the request from the Security Context.
+     * Helper to get the Admin currently making the request.
      */
     private User getCurrentAdmin() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -30,13 +36,9 @@ public class AdminController {
                 .orElseThrow(() -> new RuntimeException("Phiên làm việc của Admin không tìm thấy"));
     }
 
-    /**
-     * Ensures only the root admin (admin@ainetsoft.com) can perform critical actions 
-     * like promoting other admins or banning users.
-     */
     private void validateGlobalAdmin(User admin) {
         if (!"admin@ainetsoft.com".equals(admin.getEmail()) && !admin.isGlobalAdmin()) {
-            throw new RuntimeException("Truy cập bị từ chối: Chỉ Quản trị viên Toàn cầu mới có quyền thực hiện.");
+            throw new RuntimeException("Truy cập bị từ chối: Chỉ Quản trị viên Toàn cầu mới có quyền.");
         }
     }
 
@@ -47,10 +49,6 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getAllUsers());
     }
 
-    /**
-     * Promote a user to Admin and assign specific permissions.
-     * Restricted to the Master Admin account.
-     */
     @PostMapping("/users/promote/{userId}")
     public ResponseEntity<?> promoteToAdmin(
             @PathVariable String userId,
@@ -60,19 +58,11 @@ public class AdminController {
         return ResponseEntity.ok(adminService.promoteToAdmin(userId, permissions, currentAdmin));
     }
 
-    /**
-     * POST /api/admin/users/ban/{userId}
-     * Completely blocks a user from the platform.
-     */
     @PostMapping("/users/ban/{userId}")
     public ResponseEntity<?> banUser(@PathVariable String userId) {
         return ResponseEntity.ok(adminService.banUser(userId, getCurrentAdmin()));
     }
 
-    /**
-     * GET /api/admin/audit-logs
-     * Returns a history of all administrative actions.
-     */
     @GetMapping("/audit-logs")
     public ResponseEntity<?> getAuditLogs() {
         return ResponseEntity.ok(adminService.getAuditLogs());
@@ -80,28 +70,16 @@ public class AdminController {
 
     // --- SELLER MODERATION ---
 
-    /**
-     * GET /api/admin/sellers/pending
-     * Lists all users currently in the PENDING state.
-     */
     @GetMapping("/sellers/pending")
     public ResponseEntity<?> getPendingSellers() {
         return ResponseEntity.ok(adminService.getPendingSellers());
     }
 
-    /**
-     * GET /api/admin/sellers/review/{userId}
-     * Fetches full identity data (CCCD images, Bank Info) for the review modal.
-     */
     @GetMapping("/sellers/review/{userId}")
     public ResponseEntity<?> getSellerVerificationDetails(@PathVariable String userId) {
         return ResponseEntity.ok(adminService.getSellerVerificationDetails(userId));
     }
 
-    /**
-     * POST /api/admin/sellers/process/{userId}
-     * Approves or Rejects a seller registration.
-     */
     @PostMapping("/sellers/process/{userId}")
     public ResponseEntity<?> processSellerUpgrade(
             @PathVariable String userId, 
@@ -128,24 +106,44 @@ public class AdminController {
         return ResponseEntity.ok(adminService.rejectProduct(productId, reason, getCurrentAdmin()));
     }
 
-    // =======================================================
-    // 🛠️ NEW: ADDED FOR MODERATION TEST POINTS #1 & #3
-    // =======================================================
+    // --- REVIEW MODERATION ---
 
-    /**
-     * Requirement 6: Fetch all reviews for the Admin table.
-     */
     @GetMapping("/reviews/all")
     public ResponseEntity<?> getAllReviews() {
         return ResponseEntity.ok(adminService.getAllReviewsForModeration());
     }
 
-    /**
-     * Requirement 6: Master delete for toxic or spam reviews.
-     */
     @DeleteMapping("/reviews/{reviewId}")
     public ResponseEntity<?> deleteReview(@PathVariable String reviewId) {
         adminService.deleteReview(reviewId, getCurrentAdmin());
+        return ResponseEntity.ok().build();
+    }
+
+    // --- 🚀 NEW: QUICK RESPONSE TEMPLATES ---
+
+    /**
+     * GET predefined feedback templates for quick responses.
+     * @param type e.g., "SELLER_REJECTION"
+     */
+    @GetMapping("/feedback-templates")
+    public ResponseEntity<List<FeedbackTemplate>> getFeedbackTemplates(@RequestParam String type) {
+        return ResponseEntity.ok(adminService.getTemplatesByType(type));
+    }
+
+    /**
+     * POST a new response template.
+     */
+    @PostMapping("/feedback-templates")
+    public ResponseEntity<FeedbackTemplate> createTemplate(@RequestBody FeedbackTemplate template) {
+        return ResponseEntity.ok(adminService.saveFeedbackTemplate(template, getCurrentAdmin()));
+    }
+
+    /**
+     * DELETE a response template.
+     */
+    @DeleteMapping("/feedback-templates/{id}")
+    public ResponseEntity<?> deleteTemplate(@PathVariable String id) {
+        adminService.deleteFeedbackTemplate(id, getCurrentAdmin());
         return ResponseEntity.ok().build();
     }
 }

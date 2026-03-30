@@ -1,6 +1,9 @@
 package com.ainetsoft.model;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 @Builder
@@ -8,6 +11,7 @@ import lombok.*;
 @AllArgsConstructor
 public class OrderItem {
     private String productId;
+    private String sellerId; // 🛠️ ADDED: To track revenue per shop
     private String productName;
     private int quantity;
     private double price;

@@ -7,56 +7,45 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 import java.util.List;
 
+/**
+ * UserRepository for Ainetsoft.
+ * Handles both standard User Management and E-commerce Seller functionality.
+ */
 @Repository
 public interface UserRepository extends MongoRepository<User, String> {
     
+    // --- BASIC AUTH CHECKS ---
     Boolean existsByEmail(String email);
     Boolean existsByPhone(String phone);
 
+    // --- 🚀 NEW: EMAIL VERIFICATION FLOW ---
     /**
-     * Counts users who have a specific role in their roles set.
+     * Finds a user by the unique token sent to their email during registration.
      */
+    Optional<User> findByVerificationToken(String verificationToken);
+
+    // --- SELLER SHOP PROFILE & SLUG CHECKS ---
+    Boolean existsByShopProfile_ShopSlug(String shopSlug);
+    Optional<User> findByShopProfile_ShopSlug(String shopSlug);
+
+    // --- ADMIN DASHBOARD STATS ---
     long countByRolesContaining(String role);
-
-    /**
-     * FIXED SOURCE OF TRUTH: Query by sellerVerification.
-     * This is what shows the "1" on your dashboard card for Bestseller.
-     */
     long countBySellerVerification(String status);
-
-    /**
-     * FIXED SOURCE OF TRUTH: Find the list of users for the "Duyệt Shop" table.
-     */
     List<User> findBySellerVerification(String status);
-
-    /**
-     * KEPT: Counts users by their specific account status.
-     * (e.g., ACTIVE, BANNED, PENDING_SELLER)
-     */
     long countByAccountStatus(String accountStatus);
-
-    /**
-     * KEPT: Finds the actual list of users by status.
-     */
     List<User> findByAccountStatus(String accountStatus);
 
-    /**
-     * FIND BY IDENTIFIER
-     * UPDATED: Uses a regex-based case-insensitive match.
-     */
+    // --- MULTI-FIELD PENDING QUEUE SUPPORT ---
+    List<User> findBySellerVerificationOrAccountStatus(String verification, String status);
+    long countBySellerVerificationOrAccountStatus(String verification, String status);
+
+    // --- ADVANCED LOOKUPS ---
     @Query("{ '$or': [ { 'email': { $regex: '^?0$', $options: 'i' } }, { 'phone': ?0 } ] }")
     Optional<User> findByIdentifier(String identifier);
 
-    /**
-     * Robust lookup by email with case-insensitivity.
-     */
     @Query("{ 'email': { $regex: '^?0$', $options: 'i' } }")
     Optional<User> findByEmail(String email);
 
     Optional<User> findByPhone(String phone);
-
-    /**
-     * Added for Social Login stability: Find user by their social provider ID.
-     */
     Optional<User> findByProviderId(String providerId);
 }

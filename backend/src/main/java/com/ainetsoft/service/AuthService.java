@@ -3,6 +3,7 @@ package com.ainetsoft.service;
 import com.ainetsoft.config.JwtUtils;
 import com.ainetsoft.config.VietnamProvinceConfig;
 import com.ainetsoft.dto.*;
+import com.ainetsoft.service.NotificationService;
 import com.ainetsoft.model.User;
 import com.ainetsoft.model.CartItem;
 import com.ainetsoft.model.PasswordResetToken;
@@ -19,8 +20,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.Normalizer;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
@@ -33,28 +37,52 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
     private final FileStorageService fileStorageService;
+    private final NotificationService notificationService;
 
     private final String UPLOAD_DIR = "uploads/cccd/";
     private final String LICENSE_DIR = "uploads/license/";
 
+    // --- SLUG GENERATOR UTILITY (PRESERVED) ---
+    private String generateSlug(String input) {
+        if (input == null || input.isEmpty()) return "";
+        String normalized = Normalizer.normalize(input, Normalizer.Form.NFD);
+        Pattern pattern = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
+        return pattern.matcher(normalized).replaceAll("")
+                .toLowerCase()
+                .replaceAll("đ", "d")
+                .replaceAll("[^a-z0-9\\s]", "")
+                .replaceAll("\\s+", "-")
+                .replaceAll("-+", "-")
+                .replaceAll("^-|-$", "");
+    }
+
+    private String generateUniqueSlug(String shopName, String userId) {
+        String baseSlug = generateSlug(shopName);
+        if (baseSlug.isEmpty()) baseSlug = "shop-" + System.currentTimeMillis();
+        String finalSlug = baseSlug;
+        int count = 1;
+        while (true) {
+            Optional<User> existing = userRepository.findByShopProfile_ShopSlug(finalSlug);
+            if (existing.isEmpty() || existing.get().getId().equals(userId)) {
+                return finalSlug;
+            }
+            finalSlug = baseSlug + "-" + count++;
+        }
+    }
+
     private String saveFile(MultipartFile file, String userId, String type) throws IOException {
         if (file == null || file.isEmpty()) return null;
-        
         String targetDir = type.equals("license") ? LICENSE_DIR : UPLOAD_DIR;
         Path uploadPath = Paths.get(targetDir);
-        
         if (!Files.exists(uploadPath)) {
             Files.createDirectories(uploadPath);
         }
-        
         String originalName = file.getOriginalFilename();
         String extension = (originalName != null && originalName.contains(".")) 
                 ? originalName.substring(originalName.lastIndexOf(".")) : ".jpg";
-        
         String fileName = userId + "_" + type + "_" + System.currentTimeMillis() + extension;
         Path filePath = uploadPath.resolve(fileName);
         Files.copy(file.getInputStream(), filePath);
-        
         return "/api/" + targetDir + fileName;
     }
 
@@ -79,37 +107,37 @@ public class AuthService {
         return normalizePhone(trimmed);
     }
 
-public UserResponse getUserProfile(String contactInfo) {
-    String identifier = normalizeIdentifier(contactInfo);
-    User user = userRepository.findByIdentifier(identifier)
-            .orElseThrow(() -> new RuntimeException("Tài khoản '" + contactInfo + "' không tồn tại!"));
+    public UserResponse getUserProfile(String contactInfo) {
+        String identifier = normalizeIdentifier(contactInfo);
+        User user = userRepository.findByIdentifier(identifier)
+                .orElseThrow(() -> new RuntimeException("Tài khoản '" + contactInfo + "' không tồn tại!"));
 
-    String displayName = user.getFullName();
-    if (displayName == null || displayName.isBlank()) {
-        displayName = (user.getEmail() != null) ? user.getEmail().split("@")[0] : "Thành viên";
+        String displayName = user.getFullName();
+        if (displayName == null || displayName.isBlank()) {
+            displayName = (user.getEmail() != null) ? user.getEmail().split("@")[0] : "Thành viên";
+        }
+
+        return UserResponse.builder()
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .fullName(displayName)
+                .gender(user.getGender())
+                .birthDate(user.getBirthDate())
+                .avatarUrl(user.getAvatarUrl())
+                .roles(user.getRoles())
+                .isGlobalAdmin(user.isGlobalAdmin())
+                .permissions(user.getPermissions() != null ? user.getPermissions() : new HashSet<>())
+                .provider(user.getProvider() != null ? user.getProvider().toString() : "LOCAL")
+                .shopProfile(user.getShopProfile()) 
+                .identityInfo(user.getIdentityInfo()) 
+                .addresses(user.getAddresses() != null ? user.getAddresses() : new ArrayList<>())
+                .bankAccounts(user.getBankAccounts() != null ? (List)user.getBankAccounts() : new ArrayList<>())
+                .cart(user.getCart() != null ? user.getCart() : new ArrayList<>())
+                .sellerVerification(user.getSellerVerification())
+                .rejectionReason(user.getRejectionReason())
+                .build();
     }
 
-    return UserResponse.builder()
-            .email(user.getEmail())
-            .phone(user.getPhone())
-            .fullName(displayName)
-            .gender(user.getGender())
-            .birthDate(user.getBirthDate())
-            .avatarUrl(user.getAvatarUrl())
-            .roles(user.getRoles())
-            .isGlobalAdmin(user.isGlobalAdmin())
-            .permissions(user.getPermissions() != null ? user.getPermissions() : new HashSet<>())
-            .provider(user.getProvider() != null ? user.getProvider().toString() : "LOCAL")
-            .shopProfile(user.getShopProfile()) 
-            .identityInfo(user.getIdentityInfo()) 
-
-            .addresses(user.getAddresses() != null ? user.getAddresses() : new ArrayList<>())
-            .bankAccounts(user.getBankAccounts() != null ? (List)user.getBankAccounts() : new ArrayList<>())
-            .cart(user.getCart() != null ? user.getCart() : new ArrayList<>())
-            .sellerVerification(user.getSellerVerification())
-            .rejectionReason(user.getRejectionReason())
-            .build();
-}
     @Transactional
     public String updateProfile(String contactInfo, UpdateProfileRequest request) {
         String identifier = normalizeIdentifier(contactInfo);
@@ -131,6 +159,7 @@ public UserResponse getUserProfile(String contactInfo) {
                         throw new RuntimeException("Email '" + newEmail + "' đã được sử dụng bởi tài khoản khác!");
                     }
                     user.setEmail(newEmail);
+                    // 🚀 REMOVED: SMART FIX related to [Lỗi Email] - this is now handled by verified flow
                 }
             }
         }
@@ -148,14 +177,8 @@ public UserResponse getUserProfile(String contactInfo) {
             }
         }
 
-        if (request.getAvatarUrl() != null) {
-            user.setAvatarUrl(request.getAvatarUrl());
-        }
-
-        if (request.getShopProfile() != null) {
-            user.setShopProfile(request.getShopProfile());
-        }
-
+        if (request.getAvatarUrl() != null) user.setAvatarUrl(request.getAvatarUrl());
+        if (request.getShopProfile() != null) user.setShopProfile(request.getShopProfile());
         if (request.getAddresses() != null) user.setAddresses(request.getAddresses());
         if (request.getBankAccounts() != null) {
             user.setBankAccounts((List)request.getBankAccounts());
@@ -170,7 +193,6 @@ public UserResponse getUserProfile(String contactInfo) {
         validatePasswordStrength(request.getPassword());
         String email = (request.getEmail() == null || request.getEmail().isBlank()) ? null : request.getEmail().trim().toLowerCase();
         String phone = normalizePhone(request.getPhone());
-
         if (email != null && userRepository.existsByEmail(email)) throw new RuntimeException("Email đã tồn tại!");
         if (phone != null && userRepository.existsByPhone(phone)) throw new RuntimeException("SĐT đã tồn tại!");
 
@@ -216,6 +238,7 @@ public UserResponse getUserProfile(String contactInfo) {
         User user = userRepository.findByIdentifier(identifier)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
         
+        // 🚀 CLEANED: Role check only
         if (user.getRoles() != null && user.getRoles().contains("SELLER")) {
             return "Bạn đã là Người bán rồi!";
         }
@@ -230,10 +253,11 @@ public UserResponse getUserProfile(String contactInfo) {
             throw new RuntimeException("Email '" + providedEmail + "' đã được sử dụng bởi một tài khoản khác!");
         }
         
-        user.setEmail(providedEmail);
+        if (!providedEmail.equals(user.getEmail())) {
+            user.setEmail(providedEmail);
+        }
 
         try {
-            // 1. Save Files
             String frontUrl = (front != null && !front.isEmpty()) ? saveFile(front, user.getId(), "front") : 
                              (user.getIdentityInfo() != null ? user.getIdentityInfo().getFrontImageUrl() : null);
             String backUrl = (back != null && !back.isEmpty()) ? saveFile(back, user.getId(), "back") : 
@@ -241,19 +265,17 @@ public UserResponse getUserProfile(String contactInfo) {
             String licenseUrl = (license != null && !license.isEmpty()) ? saveFile(license, user.getId(), "license") :
                                (user.getShopProfile() != null ? user.getShopProfile().getBusinessLicenseUrl() : null);
 
-            // 2. Map Identity Info
-
             user.setIdentityInfo(User.IdentityInfo.builder()
-                .identityType(dto.getIdentityType()) // ADDED: Capture selection from frontend
+                .identityType(dto.getIdentityType()) 
                 .cccdNumber(dto.getCccdNumber())
                 .frontImageUrl(frontUrl)
                 .backImageUrl(backUrl)
                 .submittedAt(LocalDateTime.now())
                 .build());
 
-            // 3. Map Stock Addresses
             List<User.AddressInfo> addressInfos = new ArrayList<>();
             if (dto.getStockAddresses() != null && !dto.getStockAddresses().isEmpty()) {
+                // 🚀 PRESERVED: Constraints for address size and unique phone
                 if (dto.getStockAddresses().size() > 2) throw new RuntimeException("Tối đa 2 địa chỉ.");
                 
                 if (dto.getStockAddresses().size() == 2) {
@@ -281,7 +303,6 @@ public UserResponse getUserProfile(String contactInfo) {
                 user.setAddresses(addressInfos);
             }
 
-            // 4. Map Dynamic Shipping Methods
             List<String> enabledShippingIds = new ArrayList<>();
             if (dto.getShippingMethods() != null) {
                 dto.getShippingMethods().forEach((methodId, isEnabled) -> {
@@ -289,10 +310,11 @@ public UserResponse getUserProfile(String contactInfo) {
                 });
             }
 
-            // 5. Map Shop Profile
             User.ShopProfile currentShop = user.getShopProfile() != null ? user.getShopProfile() : new User.ShopProfile();
             user.setShopProfile(User.ShopProfile.builder()
                     .shopName(dto.getShopName() != null ? dto.getShopName() : currentShop.getShopName())
+                    .shopSlug(generateUniqueSlug(dto.getShopName(), user.getId()))
+                    .lastShopNameChange(LocalDateTime.now())
                     .shopAddress(!addressInfos.isEmpty() ? addressInfos.get(0).getDetail() : 
                                 (currentShop.getShopAddress() != null ? currentShop.getShopAddress() : "Chưa cập nhật"))
                     .taxCode(dto.getTaxCode() != null ? dto.getTaxCode() : currentShop.getTaxCode()) 
@@ -306,7 +328,6 @@ public UserResponse getUserProfile(String contactInfo) {
                     .enabledShippingMethodIds(dto.getShippingMethods() != null ? enabledShippingIds : currentShop.getEnabledShippingMethodIds())
                     .build());
 
-            // 6. Map Bank Account
             if (dto.getBankName() != null && dto.getAccountNumber() != null) {
                 user.setBankAccounts(Collections.singletonList(User.BankInfo.builder()
                         .bankName(dto.getBankName())
@@ -316,20 +337,17 @@ public UserResponse getUserProfile(String contactInfo) {
                         .build()));
             }
 
-            // 7. ROBUST STATUS LOGIC
             User.ShopProfile profile = user.getShopProfile();
             User.IdentityInfo identity = user.getIdentityInfo();
-            
             boolean basicInfoDone = profile != null && profile.getShopName() != null && !profile.getShopName().isBlank();
             boolean identityImagesDone = identity != null && identity.getFrontImageUrl() != null && identity.getBackImageUrl() != null;
-            // FIX: Allow 12 digits for CCCD OR valid Passport format (1 Letter + 7-8 digits)
             boolean cccdNumberDone = false;
             if (identity != null && identity.getCccdNumber() != null) {
                 String num = identity.getCccdNumber();
                 if ("PASSPORT".equals(dto.getIdentityType())) {
-                    cccdNumberDone = num.matches("^[A-Z]\\d{7,8}$"); // Validates Passport
+                    cccdNumberDone = num.matches("^[A-Z]\\d{7,8}$");
                 } else {
-                    cccdNumberDone = num.length() == 12; // Validates CCCD
+                    cccdNumberDone = num.length() == 12;
                 }
             }            
             boolean licenseDone = true;
@@ -346,12 +364,75 @@ public UserResponse getUserProfile(String contactInfo) {
             
             user.setUpdatedAt(LocalDateTime.now());
             userRepository.save(user);
+
+            if ("PENDING".equals(user.getSellerVerification())) {
+                try {
+                    // 🚀 Phase 1: Call your NEW professional receipt method
+                    azureService.sendSellerSubmissionReceivedEmail(user.getEmail(), user.getFullName());
+                } catch (Exception emailEx) {
+                    log.error("Initial Seller Email failed for {}: {}", user.getEmail(), emailEx.getMessage());
+                }
+            }
+
             return "PENDING".equals(user.getSellerVerification()) ? "Hồ sơ đã gửi thành công!" : "Đã lưu tiến trình!";
             
         } catch (Exception e) {
             log.error("Upgrade error: {}", e.getMessage());
             throw new RuntimeException("Lỗi khi lưu hồ sơ: " + e.getMessage());
         }
+    }
+
+    @Transactional
+    public User updateShopSettings(String userId, ShopSettingsUpdateRequest request, MultipartFile newLicense) throws IOException {
+        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+        User.ShopProfile profile = user.getShopProfile();
+        if (profile == null) throw new RuntimeException("Tài khoản chưa có thông tin Shop.");
+
+        if (request.getShopName() != null && !request.getShopName().equals(profile.getShopName())) {
+            LocalDateTime lastChange = profile.getLastShopNameChange();
+            if (lastChange != null && lastChange.plusMonths(1).isAfter(LocalDateTime.now())) {
+                long days = ChronoUnit.DAYS.between(LocalDateTime.now(), lastChange.plusMonths(1));
+                throw new RuntimeException("Đổi tên Shop tối đa 1 lần/tháng. Vui lòng chờ: " + days + " ngày.");
+            }
+            String newSlug = generateUniqueSlug(request.getShopName(), user.getId());
+            profile.setShopName(request.getShopName());
+            profile.setShopSlug(newSlug);
+            profile.setLastShopNameChange(LocalDateTime.now());
+        }
+
+        boolean resetRequired = false;
+        if (request.getTaxCode() != null && !request.getTaxCode().equals(profile.getTaxCode())) {
+            profile.setTaxCode(request.getTaxCode());
+            resetRequired = true;
+        }
+        if (newLicense != null && !newLicense.isEmpty()) {
+            profile.setBusinessLicenseUrl(saveFile(newLicense, user.getId(), "license"));
+            resetRequired = true;
+        }
+        if (resetRequired) user.setSellerVerification("PENDING");
+
+        profile.setShopDescription(request.getShopBio());
+        profile.setInvoiceEmails(request.getInvoiceEmails());
+        profile.setLowStockThreshold(request.getLowStockThreshold());
+        profile.setHolidayMode(request.isHolidayMode());
+
+        if (request.getStockAddresses() != null) {
+            List<User.AddressInfo> newAddrs = new ArrayList<>();
+            Set<String> phones = new HashSet<>();
+            for (AddressDTO aDto : request.getStockAddresses()) {
+                String p = normalizePhone(aDto.getPhoneNumber());
+                if (!phones.add(p)) throw new RuntimeException("SĐT giữa các kho phải khác nhau.");
+                newAddrs.add(User.AddressInfo.builder()
+                        .receiverName(aDto.getFullName()).phone(p).province(aDto.getProvince())
+                        .ward(aDto.getWard()).hamlet(aDto.getHamlet()).detail(aDto.getDetailAddress())
+                        .latitude(aDto.getLatitude()).longitude(aDto.getLongitude()).isDefault(aDto.isDefault())
+                        .build());
+            }
+            user.setAddresses(newAddrs);
+        }
+
+        user.setUpdatedAt(LocalDateTime.now());
+        return userRepository.save(user);
     }
 
     public String changePassword(String contactInfo, ChangePasswordRequest request) {
@@ -372,16 +453,19 @@ public UserResponse getUserProfile(String contactInfo) {
         String identifier = normalizeIdentifier(contactInfo);
         userRepository.findByIdentifier(identifier)
                 .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
+        
         String otp = String.format("%06d", new Random().nextInt(999999));
         tokenRepository.deleteByContactInfo(identifier);
+        
         PasswordResetToken token = PasswordResetToken.builder()
             .contactInfo(identifier)
             .otpCode(otp)
             .expiryDate(LocalDateTime.now().plusMinutes(10))
             .build();
         tokenRepository.save(token);
-        log.info("OTP generated for {}: {}", identifier, otp);
-        return "Mã OTP đã được tạo.";
+
+        azureService.sendResetEmail(identifier, otp);
+        return "Mã OTP đã được gửi đến email của bạn.";
     }
     
     public Map<String, Object> toggleFavorite(String productId, String userEmail) {
@@ -430,4 +514,21 @@ public UserResponse getUserProfile(String contactInfo) {
         userRepository.save(user);
         return "Giỏ hàng đã được đồng bộ.";
     }
+
+    public UserResponse getUserProfileBySlug(String slug) {
+        User user = userRepository.findByShopProfile_ShopSlug(slug)
+                .orElseThrow(() -> new RuntimeException("Cửa hàng với link '" + slug + "' không tồn tại!"));
+
+        return UserResponse.builder()
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .fullName(user.getFullName())
+                .avatarUrl(user.getAvatarUrl())
+                .roles(user.getRoles())
+                .shopProfile(user.getShopProfile()) 
+                .identityInfo(user.getIdentityInfo()) 
+                .addresses(user.getAddresses())
+                .sellerVerification(user.getSellerVerification())
+                .build();
+    }    
 }

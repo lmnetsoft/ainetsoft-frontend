@@ -16,9 +16,9 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -42,16 +42,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     String username = jwtUtils.getUsernameFromToken(token);
 
                     if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                        
                         UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
                         if (userDetails != null) {
-                            // --- FIX: Ensure authorities is NEVER null or empty ---
                             Collection<? extends GrantedAuthority> authorities = userDetails.getAuthorities();
                             
+                            // 🔍 DEBUG LOG: See what roles are coming from the UserDetailsService
+                            log.info("[AUTH CHECK] User: '{}' | Roles from DB: {}", 
+                                username, 
+                                authorities.stream().map(GrantedAuthority::getAuthority).collect(Collectors.joining(", ")));
+
+                            // Improved Safety Net: If DB roles are empty, we still log it as a warning
                             if (authorities == null || authorities.isEmpty()) {
-                                log.warn("User '{}' has no authorities assigned. Assigning default ROLE_USER to prevent crash.", username);
-                                authorities = List.of(new SimpleGrantedAuthority("ROLE_USER"));
+                                log.warn("[AUTH WARN] User '{}' has NO roles in DB! Defaulting to USER.", username);
+                                authorities = List.of(new SimpleGrantedAuthority("USER"));
                             }
 
                             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
@@ -64,8 +68,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
         } catch (Exception e) {
-            // This catch prevents the 500 error, but we log the specific cause
-            log.error("Authentication system error for request {}: {}", request.getRequestURI(), e.getMessage());
+            log.error("[AUTH ERROR] Failed for URI {}: {}", request.getRequestURI(), e.getMessage());
         }
 
         filterChain.doFilter(request, response);

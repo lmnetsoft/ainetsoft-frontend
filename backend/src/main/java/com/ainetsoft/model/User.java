@@ -35,6 +35,13 @@ public class User {
     private LocalDate birthDate; 
     private String avatarUrl; 
 
+    // --- 🚀 NEW: EMAIL VERIFICATION FLOW ---
+    @Builder.Default
+    private boolean emailVerified = false; // Prevents "Fake" accounts from accessing Seller features
+    
+    private String verificationToken;      // Token sent via Azure email link
+    // ---------------------------------------
+
     public String getAvatar() {
         return this.avatarUrl;
     }
@@ -96,6 +103,12 @@ public class User {
     @Builder
     public static class ShopProfile {
         private String shopName;
+
+        // --- NEW: NICE URL & COOLDOWN LOGIC ---
+        @Indexed(unique = true, sparse = true)
+        private String shopSlug;              // URL-friendly name (e.g., thanh-nguyen)
+        private LocalDateTime lastShopNameChange; // Tracks the 30-day constraint
+        
         private String shopDescription;
         private String shopAddress; 
         private String shopLogoUrl;
@@ -132,8 +145,7 @@ public class User {
     @AllArgsConstructor
     @Builder
     public static class IdentityInfo {
-        // --- SURGICAL UPDATE HERE ---
-        private String identityType; // CCCD or PASSPORT (Added to distinguish format)
+        private String identityType; // CCCD or PASSPORT
         private String cccdNumber;   // Stores the 12-digit ID or Passport number
         private String frontImageUrl; 
         private String backImageUrl;  

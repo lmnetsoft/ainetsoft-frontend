@@ -3,9 +3,13 @@ package com.ainetsoft.service;
 import com.azure.communication.email.*;
 import com.azure.communication.email.models.*;
 import com.azure.core.util.polling.SyncPoller;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+
+@Slf4j
 @Service
 public class AzureCommunicationService {
 
@@ -13,7 +17,7 @@ public class AzureCommunicationService {
     private String connectionString;
 
     @Value("${azure.communication.email-from-address}")
-    private String fromEmail;
+    private String fromAddress;
 
     /**
      * Preserved OTP logic for password recovery.
@@ -31,7 +35,31 @@ public class AzureCommunicationService {
     }
 
     /**
-     * 🛠️ UPDATED: Professional Seller Approval/Rejection with dynamic subjects.
+     * ✅ NEW: Phase 1 - Professional Submission Confirmation Email.
+     * Sent immediately after the user submits the Seller registration form.
+     */
+    public void sendSellerSubmissionReceivedEmail(String targetEmail, String fullName) {
+        String subject = "[AiNetSoft] Xác nhận đã nhận hồ sơ đăng ký Người bán";
+        String body = "<html><body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>" +
+                      "<h2 style='color: #2980b9;'>XÁC NHẬN TIẾP NHẬN HỒ SƠ</h2>" +
+                      "<p>Xin chào <strong>" + fullName + "</strong>,</p>" +
+                      "<p>Cảm ơn bạn đã quan tâm và gửi hồ sơ đăng ký kinh doanh trên hệ thống <b>AiNetSoft</b>.</p>" +
+                      "<p>Chúng tôi xác nhận đã nhận được yêu cầu của bạn. Đội ngũ kiểm soát hiện đang tiến hành thẩm định thông tin và hồ sơ theo quy trình.</p>" +
+                      "<p style='background-color: #f8f9fa; padding: 15px; border-left: 4px solid #2980b9;'>" +
+                      "<strong>Thông tin quan trọng:</strong> Hệ thống đang trong quá trình xác thực thông tin. " +
+                      "Kết quả thẩm định chính thức sẽ được phản hồi tới bạn trong vòng <b>24 giờ làm việc</b>." +
+                      "</p>" +
+                      "<p>Bạn có thể theo dõi trạng thái phê duyệt trực tiếp trong phần 'Hồ sơ người bán' trên ứng dụng của chúng tôi.</p>" +
+                      "<hr style='border: 0; border-top: 1px solid #eee; margin: 20px 0;'>" +
+                      "<p style='font-size: 13px; color: #888;'>Đây là email tự động từ hệ thống AiNetSoft. Vui lòng không phản hồi email này.</p>" +
+                      "</body></html>";
+
+        sendEmail(targetEmail, subject, body);
+    }
+
+    /**
+     * ✅ Phase 2 - Final Decision Email (Approve/Reject).
+     * Used ONLY when the Admin clicks Approve or Reject.
      */
     public void sendSellerStatusEmail(String targetEmail, String fullName, boolean approved, String reason) {
         String subject = approved 
@@ -60,11 +88,11 @@ public class AzureCommunicationService {
     }
 
     /**
-     * 🛠️ UPDATED: Professional Product Approval with dynamic subjects.
+     * Professional Product Approval with dynamic subjects.
      */
     public void sendProductStatusEmail(String targetEmail, String fullName, String productName, boolean approved, String reason) {
         String subject = approved
-            ? "[AiNetSoft] Sản phẩm của bạn đã được phê duyệt và niêm yết thành công"
+            ? "[AiNetSoft] Sản phẩm của bạn đã được phê duyệt thành công"
             : "[AiNetSoft] Thông báo từ chối phê duyệt nội dung sản phẩm";
 
         String body = "<html><body style='font-family: Arial, sans-serif; line-height: 1.6;'>" +
@@ -82,7 +110,9 @@ public class AzureCommunicationService {
         sendEmail(targetEmail, subject, body);
     }
 
-    // --- PRIVATE CORE ENGINE (PRESERVED) ---
+    /**
+     * --- PRIVATE CORE ENGINE ---
+     */
     private void sendEmail(String targetEmail, String subject, String htmlContent) {
         try {
             EmailClient emailClient = new EmailClientBuilder()
@@ -90,17 +120,22 @@ public class AzureCommunicationService {
                 .buildClient();
 
             EmailMessage emailMessage = new EmailMessage()
-                .setSenderAddress(fromEmail)
+                .setSenderAddress(fromAddress)
                 .setToRecipients(new EmailAddress(targetEmail))
                 .setSubject(subject)
                 .setBodyHtml(htmlContent);
 
+            log.info("Attempting to send email to: {}", targetEmail);
+
             SyncPoller<EmailSendResult, EmailSendResult> poller = emailClient.beginSend(emailMessage, null);
-            poller.waitForCompletion();
-            System.out.println("Azure Email Sent: " + poller.getFinalResult().getId());
+            poller.waitForCompletion(Duration.ofSeconds(10));
+
+            EmailSendResult result = poller.getFinalResult();
+            log.info("Azure Email Success. MessageID: {}", result.getId());
+
         } catch (Exception e) {
-            System.err.println("Azure SDK Error: " + e.getMessage());
-            throw new RuntimeException("Lỗi gửi email: " + e.getMessage());
+            log.error("Azure SDK Error sending to {}: {}", targetEmail, e.getMessage());
+            throw new RuntimeException("EMAIL_SERVICE_ERROR: " + e.getMessage());
         }
     }
 }

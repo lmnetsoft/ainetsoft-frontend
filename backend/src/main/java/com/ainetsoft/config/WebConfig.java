@@ -17,36 +17,36 @@ public class WebConfig implements WebMvcConfigurer {
         // 1. Ensure the directory structure exists on startup
         File uploadFolder = new File(dirName);
         File cccdFolder = new File(dirName + "/cccd");
-        File adsFolder = new File(dirName + "/ads"); // Added for product photos
+        File adsFolder = new File(dirName + "/ads");
+        File licenseFolder = new File(dirName + "/license"); // FIXED: Added for Business Licenses
         
         if (!uploadFolder.exists()) uploadFolder.mkdirs();
         if (!cccdFolder.exists()) cccdFolder.mkdirs();
         if (!adsFolder.exists()) adsFolder.mkdirs();
+        if (!licenseFolder.exists()) licenseFolder.mkdirs(); // Ensure this exists!
 
         Path uploadDir = Paths.get(dirName).toAbsolutePath();
+        // Ensure trailing slash for Spring Resource locations
         String uploadPath = "file:" + uploadDir.toString() + File.separator;
 
         /**
          * 2. REGISTER THE MAPPINGS
-         * We map BOTH standard and API paths to the physical folder.
-         * This ensures /uploads/ads/... works for the frontend components.
          */
         
-        // Standard Mapping (Matches your current Frontend format)
+        // Standard Mapping: /uploads/**
         registry.addResourceHandler("/" + dirName + "/**")
                 .addResourceLocations(uploadPath)
-                .setCachePeriod(0);
+                .setCachePeriod(3600); // Added slight caching for better performance
 
-        // Legacy/API Mapping (Ensures backward compatibility)
+        // API Mapping: /api/uploads/** (Matches your AuthService return values)
         registry.addResourceHandler("/api/" + dirName + "/**")
                 .addResourceLocations(uploadPath)
-                .setCachePeriod(0);
+                .setCachePeriod(3600);
 
         // 3. Debug Print
         System.out.println("=================================================");
         System.out.println("SYSTEM MEDIA STORAGE ACTIVE");
-        System.out.println("Standard Mapping: /" + dirName + "/**");
-        System.out.println("API Mapping: /api/" + dirName + "/**");
+        System.out.println("Mapped Route: /api/" + dirName + "/**");
         System.out.println("Physical Path: " + uploadPath);
         System.out.println("=================================================");
     }

@@ -1,6 +1,10 @@
 package com.ainetsoft.service;
 
-import com.ainetsoft.model.*;
+import com.ainetsoft.model.Order;
+import com.ainetsoft.model.OrderItem;
+import com.ainetsoft.model.User;
+import com.ainetsoft.model.Product;
+import com.ainetsoft.model.CartItem;
 import com.ainetsoft.repository.OrderRepository;
 import com.ainetsoft.repository.ProductRepository;
 import com.ainetsoft.repository.UserRepository;
@@ -27,9 +31,38 @@ public class OrderService {
     private final NotificationService notificationService;
 
     /**
-     * 🛠️ NEW: Handles logic for the /api/orders/checkout endpoint.
-     * Uses the incoming orderRequest but validates against the database for security.
+     * Calculates statistics for a specific seller.
+     * Fixes the 404 error by providing data for the Seller Dashboard.
      */
+    public Map<String, Object> getSellerStats(String sellerId) {
+        List<Order> allOrders = orderRepository.findAll();
+        
+        // Filter orders that contain at least one item from this seller
+        List<Order> sellerOrders = allOrders.stream()
+                .filter(o -> o.getItems().stream().anyMatch(i -> sellerId.equals(i.getSellerId())))
+                .collect(Collectors.toList());
+
+        long totalOrders = sellerOrders.size();
+        
+        // Revenue is ONLY the sum of items belonging to this seller in COMPLETED orders
+        double totalRevenue = sellerOrders.stream()
+                .filter(o -> "COMPLETED".equals(o.getStatus()))
+                .flatMap(o -> o.getItems().stream())
+                .filter(i -> sellerId.equals(i.getSellerId()))
+                .mapToDouble(i -> i.getPrice() * i.getQuantity())
+                .sum();
+
+        long pendingOrders = sellerOrders.stream()
+                .filter(o -> "PENDING".equals(o.getStatus()))
+                .count();
+
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("totalOrders", totalOrders);
+        stats.put("totalRevenue", totalRevenue);
+        stats.put("pendingOrders", pendingOrders);
+        return stats;
+    }
+
     @Transactional
     public Order createOrder(Order orderRequest) {
         User user = userRepository.findById(orderRequest.getUserId())
@@ -39,7 +72,6 @@ public class OrderService {
             throw new RuntimeException("Giỏ hàng trống!");
         }
 
-        // 1. Validate Stock and Calculate Total (Same as your placeOrder logic)
         double totalAmount = 0;
         List<OrderItem> orderItems = new ArrayList<>();
 
@@ -51,12 +83,12 @@ public class OrderService {
                 throw new RuntimeException("Sản phẩm " + product.getName() + " hết hàng!");
             }
 
-            // Deduct Stock
             product.setStock(product.getStock() - cartItem.getQuantity());
             productRepository.save(product);
 
             orderItems.add(OrderItem.builder()
                     .productId(cartItem.getProductId())
+                    .sellerId(product.getSellerId()) 
                     .productName(cartItem.getProductName())
                     .quantity(cartItem.getQuantity())
                     .price(cartItem.getPrice())
@@ -66,7 +98,6 @@ public class OrderService {
 
             totalAmount += (cartItem.getPrice() * cartItem.getQuantity());
 
-            // Notify Seller
             notificationService.createNotification(
                 product.getSellerId(),
                 "Đơn hàng mới từ " + user.getFullName(),
@@ -76,7 +107,6 @@ public class OrderService {
             );
         }
 
-        // 2. Build and Save Order
         orderRequest.setItems(orderItems);
         orderRequest.setTotalAmount(totalAmount);
         orderRequest.setStatus("PENDING");
@@ -85,7 +115,6 @@ public class OrderService {
 
         Order savedOrder = orderRepository.save(orderRequest);
 
-        // 3. Post-save logic: Notification & Clear Cart
         notificationService.createNotification(user.getId(), "Đặt hàng thành công", "Mã đơn: " + savedOrder.getId(), "ORDER", savedOrder.getId());
         
         user.setCart(new ArrayList<>());
@@ -94,13 +123,8 @@ public class OrderService {
         return savedOrder;
     }
 
-    /**
-     * 🛠️ NEW: Checks if a user has a completed order for a product that hasn't been reviewed.
-     */
     public Map<String, Object> checkReviewEligibility(String productId, String userId) {
         Map<String, Object> result = new HashMap<>();
-        
-        // Find orders: same user, status COMPLETED, contains productId, not yet reviewed
         List<Order> eligibleOrders = orderRepository.findByUserIdAndStatusOrderByCreatedAtDesc(userId, "COMPLETED")
                 .stream()
                 .filter(o -> !o.isReviewed())
@@ -109,18 +133,15 @@ public class OrderService {
 
         if (!eligibleOrders.isEmpty()) {
             result.put("eligible", true);
-            result.put("orderId", eligibleOrders.get(0).getId()); // Return the latest valid order ID
+            result.put("orderId", eligibleOrders.get(0).getId());
         } else {
             result.put("eligible", false);
         }
         return result;
     }
 
-    // --- KEEPING ALL YOUR ORIGINAL METHODS BELOW ---
-
     @Transactional
     public Order placeOrder(String contactInfo, String paymentMethod) {
-        // (Your original placeOrder logic remains exactly the same here...)
         User user = userRepository.findByIdentifier(contactInfo)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
 
@@ -145,6 +166,7 @@ public class OrderService {
 
             orderItems.add(OrderItem.builder()
                     .productId(cartItem.getProductId())
+                    .sellerId(product.getSellerId())
                     .productName(cartItem.getProductName())
                     .quantity(cartItem.getQuantity())
                     .price(cartItem.getPrice())
@@ -241,6 +263,7 @@ public class OrderService {
 
         order.setStatus("CANCELLED");
         order.setUpdatedAt(LocalDateTime.now());
+        order.setReviewed(false); 
         orderRepository.save(order);
     }
 
@@ -257,9 +280,12 @@ public class OrderService {
     public List<Order> getOrdersBySeller(String sellerId, String status) {
         if (status == null || status.equalsIgnoreCase("ALL") || status.isBlank()) {
             return orderRepository.findAll().stream()
-                    .filter(o -> o.getItems().stream().anyMatch(i -> sellerId.equals(i.getProductId())))
+                    .filter(o -> o.getItems().stream().anyMatch(i -> sellerId.equals(i.getSellerId())))
                     .collect(Collectors.toList());
         }
-        return orderRepository.findByStatus(status.toUpperCase());
+        return orderRepository.findAll().stream()
+                .filter(o -> status.equalsIgnoreCase(o.getStatus()))
+                .filter(o -> o.getItems().stream().anyMatch(i -> sellerId.equals(i.getSellerId())))
+                .collect(Collectors.toList());
     }
 }

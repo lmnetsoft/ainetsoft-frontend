@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -23,6 +24,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity // Enables @PreAuthorize support across controllers
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -71,16 +73,18 @@ public class SecurityConfig {
                     "/uploads/**",
                     "/api/chat/download/**",
                     "/ws/**",
-                    "/api/report-reasons" // ADDED: Required for ProductDetail to load reasons without 401
+                    "/api/report-reasons"
                 ).permitAll() 
 
                 .requestMatchers("/api/chat/history/**").permitAll()
                 .requestMatchers("/api/chat/read/**").permitAll()
                 .requestMatchers("/api/chat/upload").permitAll() 
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/reviews/**").permitAll() // ADDED: Allow public to see reviews
+                .requestMatchers(HttpMethod.GET, "/api/reviews/**").permitAll()
 
                 // --- 2. ADMIN ONLY ENDPOINTS ---
+                // FIXED: Changed from .hasAuthority("ADMIN") to .hasRole("ADMIN")
+                // hasRole automatically looks for "ROLE_ADMIN" which matches your CustomUserDetailsService
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/chat/admin/**").hasRole("ADMIN")
 
@@ -94,9 +98,9 @@ public class SecurityConfig {
                     "/api/orders/**",
                     "/api/notifications/**",
                     "/api/products/seller/**",
-                    "/api/products/*/favorite", // ADDED: Protect favorite action
-                    "/api/products/*/report",   // ADDED: Protect report submission
-                    "/api/reviews/submit"        // ADDED: Explicitly protect review submission
+                    "/api/products/*/favorite",
+                    "/api/products/*/report",
+                    "/api/reviews/submit"
                 ).authenticated() 
                 
                 .anyRequest().authenticated()
@@ -127,7 +131,7 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of("http://localhost:5173")); 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "Accept"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin"));
         config.setAllowCredentials(true); 
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

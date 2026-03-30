@@ -26,6 +26,9 @@ public class DataSeeder implements CommandLineRunner {
     private final ReportReasonRepository reportReasonRepository;
     private final ProductReportRepository productReportRepository;
     private final PasswordEncoder passwordEncoder;
+    
+    // 🚀 NEW: Integrated for Quick Response Templates
+    private final FeedbackTemplateRepository feedbackTemplateRepository;
 
     @Value("${app.seed.mock-data:true}")
     private boolean seedMockData;
@@ -53,6 +56,9 @@ public class DataSeeder implements CommandLineRunner {
         seedGlobalAdmin();
         List<ShippingMethod> globalMethods = seedShippingMethods();
         seedReportReasons();
+        
+        // 🚀 NEW: Seed Vietnamese Templates
+        seedFeedbackTemplates();
 
         if (seedMockData) {
             log.info("🛠 Seeding Full Mock Ecosystem for Professional Testing...");
@@ -72,6 +78,10 @@ public class DataSeeder implements CommandLineRunner {
         productReportRepository.deleteAll();
         userRepository.deleteAll(); 
         shippingMethodRepository.deleteAll(); 
+        
+        // 🚀 NEW: Cleanup templates
+        feedbackTemplateRepository.deleteAll();
+        
         log.info("✅ Database cleaned successfully.");
     }
 
@@ -152,6 +162,57 @@ public class DataSeeder implements CommandLineRunner {
         return savedCats;
     }
 
+    // --- 🚀 NEW: VIETNAMESE FEEDBACK TEMPLATE SEEDER ---
+    private void seedFeedbackTemplates() {
+        if (feedbackTemplateRepository.count() == 0) {
+            log.info("Initializing professional Vietnamese feedback templates...");
+
+            List<FeedbackTemplate> templates = Arrays.asList(
+                // SELLER MODERATION TEMPLATES
+                FeedbackTemplate.builder()
+                        .title("Hồ sơ hợp lệ")
+                        .content("Hồ sơ và các chứng từ bạn cung cấp hoàn toàn hợp lệ và đầy đủ. Chào mừng bạn gia nhập cộng đồng người bán của AiNetSoft!")
+                        .type("SELLER_REJECTION")
+                        .build(),
+                FeedbackTemplate.builder()
+                        .title("Ảnh CCCD mờ")
+                        .content("Hình ảnh CCCD bạn cung cấp bị mờ, lóa sáng hoặc không rõ số. Vui lòng tải lên ảnh chụp bản gốc rõ nét và đủ ánh sáng.")
+                        .type("SELLER_REJECTION")
+                        .build(),
+                FeedbackTemplate.builder()
+                        .title("Thiếu GPKD")
+                        .content("Tài khoản của bạn được đăng ký là Hộ kinh doanh/Doanh nghiệp nhưng đang thiếu ảnh Giấy phép kinh doanh. Vui lòng bổ sung để tiếp tục.")
+                        .type("SELLER_REJECTION")
+                        .build(),
+                FeedbackTemplate.builder()
+                        .title("Mã số thuế sai")
+                        .content("Mã số thuế (MST) bạn cung cấp không khớp với thông tin trên trang tra cứu của Tổng cục Thuế. Vui lòng kiểm tra và cập nhật lại.")
+                        .type("SELLER_REJECTION")
+                        .build(),
+                FeedbackTemplate.builder()
+                        .title("Tọa độ GPS sai")
+                        .content("Tọa độ GPS của kho hàng không trùng khớp với địa chỉ thực tế bạn đã nhập. Vui lòng định vị lại vị trí chính xác trên bản đồ.")
+                        .type("SELLER_REJECTION")
+                        .build(),
+
+                // PRODUCT MODERATION TEMPLATES
+                FeedbackTemplate.builder()
+                        .title("Sản phẩm bị cấm")
+                        .content("Sản phẩm này thuộc danh mục hàng hóa bị cấm kinh doanh theo quy định pháp luật và tiêu chuẩn cộng đồng của AiNetSoft.")
+                        .type("PRODUCT_REJECTION")
+                        .build(),
+                FeedbackTemplate.builder()
+                        .title("Ảnh chất lượng kém")
+                        .content("Hình ảnh sản phẩm có chất lượng thấp, bị vỡ nét hoặc chứa logo/hình mờ của sàn thương mại điện tử khác.")
+                        .type("PRODUCT_REJECTION")
+                        .build()
+            );
+
+            feedbackTemplateRepository.saveAll(templates);
+            log.info("✅ Seeded {} Vietnamese Quick Response Templates.", templates.size());
+        }
+    }
+
     private void seedDefaultSeller(List<Category> savedCats, List<ShippingMethod> globalMethods) {
         String sellerEmail = "seller@ainetsoft.com";
         if (!userRepository.existsByEmail(sellerEmail)) {
@@ -182,6 +243,8 @@ public class DataSeeder implements CommandLineRunner {
                     .bankAccounts(Collections.singletonList(bank))
                     .shopProfile(User.ShopProfile.builder()
                             .shopName("AiNetsoft Mall")
+                            .shopSlug("ainetsoft-mall")
+                            .lastShopNameChange(LocalDateTime.now())
                             .businessEmail(sellerEmail)
                             .businessPhone("0909123456")
                             .shopAddress(stockAddr.getDetail())
@@ -191,7 +254,7 @@ public class DataSeeder implements CommandLineRunner {
                     .build();
 
             userRepository.save(seller);
-            log.info("✅ Default Seller Created.");
+            log.info("✅ Default Seller Created with Slug: ainetsoft-mall");
             seedMockProducts(seller, savedCats, globalMethods);
         }
     }
@@ -204,7 +267,6 @@ public class DataSeeder implements CommandLineRunner {
             Category randomCat = savedCats.get(rand.nextInt(savedCats.size()));
             List<Product.ShippingConfig> situationalOptions = new ArrayList<>();
             
-            // Safety check for shipping method list size
             if (globalMethods.size() >= 2) {
                 situationalOptions.add(Product.ShippingConfig.builder()
                         .methodId(globalMethods.get(1).getId()).methodName(globalMethods.get(1).getName())
@@ -238,7 +300,6 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private void seedMockReviews(Product product, String sellerId) {
-        // Reduced repetition logic: seeds 3 high-quality reviews per product
         Review rev1 = Review.builder()
                 .productId(product.getId()).productName(product.getName()).sellerId(sellerId)
                 .userName("tatoanhduc07").rating(5)
@@ -279,8 +340,12 @@ public class DataSeeder implements CommandLineRunner {
         String pendingSellerEmail = "pending_seller@example.com";
         if (!userRepository.existsByEmail(pendingSellerEmail)) {
             User.AddressInfo stock1 = User.AddressInfo.builder()
-                    .receiverName("Nguyễn Văn Kho").phone("0987654321").province("Hà Nội")
-                    .ward("Phường Hàng Đào").hamlet("Số 1").detail("123 Phố Cổ, Hà Nội")
+                    .receiverName("Nguyễn Văn Kho")
+                    .phone("0987654321")
+                    .province("Hà Nội")
+                    .ward("Phường Hàng Đào")
+                    .hamlet("Số 1")
+                    .detail("123 Phố Cổ, Hà Nội")
                     .isDefault(true).build();
 
             User pSeller = User.builder()
@@ -294,7 +359,10 @@ public class DataSeeder implements CommandLineRunner {
                             .submittedAt(LocalDateTime.now()).build())
                     .addresses(Collections.singletonList(stock1))
                     .shopProfile(User.ShopProfile.builder()
-                            .shopName("Shop Đang Đợi Duyệt").businessEmail(pendingSellerEmail)
+                            .shopName("Shop Đang Đợi Duyệt")
+                            .shopSlug("shop-dang-doi-duyet")
+                            .lastShopNameChange(LocalDateTime.now())
+                            .businessEmail(pendingSellerEmail)
                             .businessPhone("0987654321").shopAddress(stock1.getDetail())
                             .enabledShippingMethodIds(globalMethods.size() > 2 ? 
                                 Arrays.asList(globalMethods.get(1).getId(), globalMethods.get(2).getId()) : new ArrayList<>())
@@ -304,7 +372,7 @@ public class DataSeeder implements CommandLineRunner {
                             .accountHolder("NGUYEN VAN CHO DUYET").isDefault(true).build()))
                     .build();
             userRepository.save(pSeller);
-            log.info("⚠️ Pending Data Seeded.");
+            log.info("⚠️ Pending Data Seeded with Slug: shop-dang-doi-duyet");
         }
     }
 }
