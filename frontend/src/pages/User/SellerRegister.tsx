@@ -6,7 +6,7 @@ import {
   FaCheck, FaTruck, FaShippingFast, FaPlus, FaChevronRight, FaTrash,
   FaChevronDown, FaChevronUp, FaIdCard, FaFileInvoiceDollar, FaCheckCircle,
   FaInfoCircle, FaShieldAlt, FaUpload, FaCamera, FaRegLightbulb, FaEdit, FaPrint,
-  FaSearchPlus, FaMapMarkedAlt, FaQrcode, FaCopy, FaClock, FaPassport
+  FaSearchPlus, FaMapMarkedAlt, FaQrcode, FaCopy, FaClock, FaPassport, FaTimesCircle
 } from 'react-icons/fa';
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import { getUserProfile } from '../../services/authService';
@@ -37,7 +37,6 @@ const formatCCCD = (val: string) => {
   return groups ? groups.join(' ') : s;
 };
 
-// Passport format: J-1234 5678
 const formatPassport = (val: string) => {
   const s = val.replace(/[^A-Z0-9]/gi, '').toUpperCase();
   if (s.length === 0) return '';
@@ -99,7 +98,7 @@ const inlineStyles = `
   .success-alert-icon { color: #52c41a; font-size: 28px; margin-top: 2px; }
   .success-alert-content h2 { color: #1f1f1f; font-size: 20px; margin: 0 0 8px 0; font-weight: 600; }
   .success-alert-content p { color: #595959; margin: 0; font-size: 15px; line-height: 1.6; }
-  .timeline-note { display: inline-flex; align-items: center; gap: 6px; background: #fff7e6; color: #d46b08; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 500; margin-top: 10px; border: 1px solid #ffd591; }
+  .timeline-note { display: inline-flex; align-items: center; gap: 6px; background: #e6f7ff; color: #1890ff; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 500; margin-top: 10px; border: 1px solid #91d5ff; }
 
   .preview-mode-banner { background: #fff7e6; border: 1px solid #ffe7ba; padding: 20px; text-align: center; border-radius: 4px; margin-bottom: 30px; }
   .preview-mode-banner h2 { color: #d46b08; margin-bottom: 5px; display: flex; align-items: center; justify-content: center; gap: 10px; }
@@ -128,7 +127,6 @@ const inlineStyles = `
   .legal-checkbox-label input { width: 18px; height: 18px; margin-top: 2px; cursor: pointer; accent-color: #ee4d2d; }
   .legal-link { color: #2f54eb; text-decoration: underline; }
 
-  /* IMPROVED DELETE BUTTON UI */
   .address-display-box { position: relative; padding-right: 45px !important; }
   .trash-action-area { 
     position: absolute; right: 0; top: 0; bottom: 0; width: 40px; 
@@ -161,6 +159,9 @@ const SellerRegister = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false); 
+
+  const [isRejected, setIsRejected] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
@@ -207,6 +208,9 @@ const SellerRegister = () => {
         if (profileData.sellerVerification === 'PENDING') {
             setIsSubmitted(true);
             setCurrentStep(5);
+        } else if (profileData.sellerVerification === 'REJECTED') {
+            setIsRejected(true);
+            setRejectionReason(profileData.rejectionReason || "Thông tin hồ sơ chưa hợp lệ.");
         }
 
         setShippingMethodsList(Array.isArray(shippingRes.data) ? shippingRes.data : []);
@@ -265,6 +269,13 @@ const SellerRegister = () => {
     fetchData();
   }, [navigate]);
 
+  const handleStartFromScratch = () => {
+    setIsRejected(false);
+    setRejectionReason('');
+    setCurrentStep(1);
+    toast.info("Vui lòng cập nhật thông tin chính xác và gửi lại yêu cầu mới.");
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'front' | 'back' | 'license') => {
     const file = e.target.files?.[0];
     if (file) {
@@ -315,6 +326,20 @@ const SellerRegister = () => {
     if (!formData.email.trim()) errors.email = "Email là bắt buộc";
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
+  };
+
+  const validateStep2 = () => {
+    const errors: Record<string, string> = {};
+    const hasAtLeastOne = Object.values(formData.shippingMethods).some(v => v === true);
+    
+    if (!hasAtLeastOne) {
+      errors.shippingMethods = "Vui lòng kích hoạt ít nhất 1 phương thức vận chuyển để tiếp tục.";
+      setFormErrors(errors);
+      return false;
+    }
+    
+    setFormErrors({}); 
+    return true;
   };
 
   const validateStep3 = () => {
@@ -373,12 +398,13 @@ const SellerRegister = () => {
 
   const performFullValidation = () => {
     const s1 = validateStep1();
+    const s2 = validateStep2(); 
     const s3 = validateStep3();
     const s4 = validateStep4();
-    // FIXED LOGIC: Strict check (!s1 || !s3 || !s4)
-    if (!s1 || !s3 || !s4) {
+    if (!s1 || !s2 || !s3 || !s4) {
       const missing = [];
       if (!s1) missing.push("Thông tin Shop");
+      if (!s2) missing.push("Cài đặt vận chuyển");
       if (!s3) missing.push("Thông tin Công ty/Thuế");
       if (!s4) missing.push("Thông tin Định danh");
       toast.error(`Thiếu thông tin: ${missing.join(', ')}. Vui lòng kiểm tra lại.`);
@@ -415,7 +441,7 @@ const SellerRegister = () => {
       
       const res = await api.post('/auth/upgrade-seller', submitData);
       if (res.status === 200 || res.status === 201) { 
-        toast.success("Đăng ký thành công!"); 
+        toast.success("Hồ sơ đã được gửi thành công!"); 
         setIsSubmitted(true); 
         setCurrentStep(5); 
       }
@@ -466,13 +492,103 @@ const SellerRegister = () => {
   };
 
   const copyToClipboard = (text: string) => {
-     navigator.clipboard.writeText(text);
-     toast.success("Đã sao chép!");
+        navigator.clipboard.writeText(text);
+        toast.success("Đã sao chép!");
   };
 
   const toggleShipping = (id: string) => { setFormData(prev => ({ ...prev, shippingMethods: { ...prev.shippingMethods, [id]: !prev.shippingMethods[id] } })); };
   const getBusinessLabel = (type: string) => type === 'INDIVIDUAL' ? 'Cá nhân' : type === 'HOUSEHOLD' ? 'Hộ kinh doanh' : 'Công ty';
   const handlePrint = () => window.print();
+
+  const printApprovalSummary = (seller: any, note: string) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const dateStr = new Date().toLocaleString('vi-VN');
+    const isPassport = seller.identityInfo?.identityType === 'PASSPORT';
+    const idLabel = isPassport ? "Hộ chiếu" : "CCCD";
+    
+    const idValue = isPassport 
+      ? formatPassport(seller.identityInfo?.cccdNumber) 
+      : formatCCCD(seller.identityInfo?.cccdNumber);
+
+    const addressesHtml = (seller.addresses || []).map((addr: any, i: number) => {
+      const hasGPS = addr.latitude && String(addr.latitude).trim() !== '' && 
+                      addr.longitude && String(addr.longitude).trim() !== '';
+      
+      const mapsUrl = `https://www.google.com/maps?q=${addr.latitude},${addr.longitude}`;
+
+      const gpsContent = hasGPS ? `
+        <span style="color: #1d39c4;">GPS: ${addr.latitude}, ${addr.longitude}</span><br/>
+        <div style="margin-top: 10px;">
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(mapsUrl)}" 
+               style="width: 70px; height: 70px; border: 1px solid #ddd; padding: 2px;" />
+        </div>
+      ` : '';
+
+      return `
+        <div style="border: 1px solid #eee; padding: 10px; margin-top: 10px;">
+          <strong>Kho ${i + 1}:</strong> ${addr.receiverName} | ${formatPhone(addr.phone)}<br/>
+          ${addr.detail}, ${addr.ward}, ${addr.province}<br/>
+          ${gpsContent}
+        </div>
+      `;
+    }).join('');
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Biên Bản Phê Duyệt - ${seller.fullName}</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; line-height: 1.5; }
+            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ee4d2d; padding-bottom: 20px; }
+            .status-stamp { color: #52c41a; border: 3px solid #52c41a; padding: 10px 20px; font-weight: bold; text-transform: uppercase; border-radius: 8px; transform: rotate(-5deg); }
+            section { margin-top: 30px; }
+            h2 { color: #ee4d2d; font-size: 18px; border-left: 4px solid #ee4d2d; padding-left: 10px; }
+            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+            .footer { margin-top: 50px; text-align: right; font-style: italic; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div><h1 style="margin:0; color:#ee4d2d;">AiNetsoft</h1><p style="margin:0;">Hệ thống Thương mại Điện tử</p></div>
+            <div class="status-stamp">Đã Phê Duyệt</div>
+          </div>
+          <section>
+            <p><strong>Ngày thực hiện:</strong> ${dateStr}</p>
+            <p><strong>Mã định danh hệ thống:</strong> ${seller.id}</p>
+          </section>
+          <div class="grid">
+            <section>
+              <h2>Thông tin Người bán</h2>
+              <p><strong>Họ tên:</strong> ${seller.fullName}</p>
+              <p><strong>Email đăng ký:</strong> ${seller.email}</p>
+              <p><strong>SĐT:</strong> ${formatPhone(seller.phone)}</p>
+              <p><strong>Số ${idLabel}:</strong> ${idValue}</p>
+            </section>
+            <section>
+              <h2>Thông tin Kinh doanh</h2>
+              <p><strong>Tên Shop:</strong> ${seller.shopProfile?.shopName}</p>
+              <p><strong>Email nhận hóa đơn:</strong> ${seller.shopProfile?.invoiceEmails?.join(', ') || 'Chưa cung cấp'}</p>
+              <p><strong>Mã số thuế:</strong> ${formatMST(seller.shopProfile?.taxCode)}</p>
+              <p><strong>Loại hình:</strong> ${getBusinessLabel(seller.shopProfile?.businessType)}</p>
+            </section>
+          </div>
+          <section>
+            <h2>Vị trí Kho hàng & GPS</h2>
+            ${addressesHtml}
+          </section>
+          <section style="background: #f9f9f9; padding: 20px; border-radius: 4px; border-left: 4px solid #8c8c8c;">
+            <h2>Ghi chú của Admin</h2>
+            <p>${note}</p>
+          </section>
+          <div class="footer">Tài liệu được tạo tự động bởi Hệ thống AiNetsoft.<br/>Người phê duyệt: Quản trị viên Toàn cầu</div>
+          <script>window.onload = function() { window.print(); setTimeout(function() { window.close(); }, 500); };</script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   if (isPageLoading) return <div className="loading-spinner">Đang tải hồ sơ Người bán...</div>;
 
@@ -481,269 +597,287 @@ const SellerRegister = () => {
       <style>{inlineStyles}</style>
       <AccountSidebar />
       <main className="onboarding-view">
-        <div className="onboarding-stepper no-print">
-          {['Thông tin Shop', 'Cài đặt vận chuyển', 'Thông tin thuế', 'Thông tin định danh', 'Hoàn tất'].map((l, i) => (
-            <div key={i} className={`step-node ${currentStep > i ? 'active' : ''}`}>
-              <div className="node-dot">{currentStep > i + 1 ? <FaCheck /> : i + 1}</div>
-              <span>{l}</span>
-              {i < 4 && <div className={`node-line ${currentStep > i + 1 ? 'active' : ''}`}></div>}
+        
+        {/* 🚀 UPDATED: PROFESSIONAL REJECTION BANNER (No legacy markers) */}
+        {isRejected && (
+          <div className="preview-mode-banner no-print" style={{background: '#fff1f0', border: '1px solid #ffccc7', padding: '25px'}}>
+            <h2 style={{color: '#cf1322', margin: '0 0 10px 0'}}><FaTimesCircle /> Hồ sơ chưa được phê duyệt</h2>
+            <div style={{color: '#595959', fontSize: '15px', lineHeight: '1.6', marginBottom: '20px'}}>
+               <p>Rất tiếc, hồ sơ đăng ký Người bán của bạn hiện chưa được phê duyệt.</p>
+               <p><strong>Lý do từ Admin:</strong> <span style={{color: '#cf1322', fontWeight: 'bold'}}>{rejectionReason}</span></p>
+               <p style={{marginTop: '10px'}}>Vui lòng kiểm tra kỹ lý do nêu trên, cập nhật thông tin chính xác trong hồ sơ và thực hiện gửi lại yêu cầu mới để chúng tôi thẩm định lại.</p>
             </div>
-          ))}
-        </div>
+            <button className="btn-ainetsoft-primary" onClick={handleStartFromScratch} style={{background: '#cf1322', borderColor: '#cf1322'}}>
+               Cập nhật thông tin & Gửi lại yêu cầu
+            </button>
+          </div>
+        )}
 
-        <div className="onboarding-card">
-          {/* STEP 1 */}
-          {currentStep === 1 && (
-            <div className="step-content">
-              <div className="ainetsoft-row"><label><span className="req">*</span> Tên Shop</label>
-                <div className="ainetsoft-input-group">
-                  <input className={formErrors.shopName ? "error-border" : ""} value={formData.shopName} maxLength={30} onChange={e => setFormData({...formData, shopName: e.target.value})} placeholder="Nhập tên shop" />
-                  <span className="char-counter">{formData.shopName.length}/30</span>
-                </div>
+        {!isRejected && (
+          <div className="onboarding-stepper no-print">
+            {['Thông tin Shop', 'Cài đặt vận chuyển', 'Thông tin thuế', 'Thông tin định danh', 'Hoàn tất'].map((l, i) => (
+              <div key={i} className={`step-node ${currentStep > i ? 'active' : ''}`}>
+                <div className="node-dot">{currentStep > i + 1 ? <FaCheck /> : i + 1}</div>
+                <span>{l}</span>
+                {i < 4 && <div className={`node-line ${currentStep > i + 1 ? 'active' : ''}`}></div>}
               </div>
-              <div className="ainetsoft-row"><label><span className="req">*</span> Địa chỉ lấy hàng</label>
-                <div className="ainetsoft-input-group">
-                  {formData.stockAddresses.map((addr, idx) => (
-                    <div key={idx} className="address-display-box" style={{marginBottom: '10px'}}>
-                      <div className="addr-text">
-                        <strong>{[addr.fullName, formatPhone(addr.phoneNumber)].filter(Boolean).join(' | ')}</strong>
-                        <p>{[addr.detailAddress, addr.ward, addr.province].filter(Boolean).join(', ')}</p>
-                      </div>
-                      <div className="trash-action-area" onClick={() => setFormData({...formData, stockAddresses: formData.stockAddresses.filter((_, i) => i !== idx)})}>
-                         <FaTrash className="trash-icon" />
-                      </div>
-                    </div>
-                  ))}
-                  <button 
-                    className="btn-add-ainetsoft" 
-                    onClick={() => setShowAddressModal(true)}
-                    disabled={formData.stockAddresses.length >= 2}
-                  >
-                    <FaPlus /> Thêm địa chỉ ({formData.stockAddresses.length}/2)
-                  </button>
-                  {formErrors.addresses && <p className="red-msg-inline">{formErrors.addresses}</p>}
-                </div>
-              </div>
-              <div className="ainetsoft-row"><label><span className="req">*</span> Email liên hệ</label>
-                <div className="ainetsoft-input-group">
-                  <input className={formErrors.email ? "error-border" : ""} value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
-                  {formErrors.email && <p className="red-msg-inline">{formErrors.email}</p>}
-                </div>
-              </div>
-              <div className="onboarding-footer"><button className="btn-ainetsoft-primary" onClick={() => { if(validateStep1()) setCurrentStep(2); }}>Tiếp theo</button></div>
-            </div>
-          )}
+            ))}
+          </div>
+        )}
 
-          {/* STEP 2 */}
-          {currentStep === 2 && (
-            <div className="step-content">
-              <div className="shipping-header-text"><h3>Phương thức vận chuyển</h3><p>Kích hoạt các đơn vị vận chuyển hỗ trợ.</p></div>
-              <div className="shipping-methods-list">
-                {shippingMethodsList.map((method) => {
-                    const mId = method.id;
-                    return (
-                      <div key={mId} className="shipping-method-item">
-                        <div className="method-main-row"><span>{method.name}</span>
-                          <button className="btn-collapse" onClick={() => setExpandedMethods(prev => ({...prev, [mId]: !prev[mId]}))}>
-                             {expandedMethods[mId] ? 'Mở rộng' : 'Thu gọn'} {expandedMethods[mId] ? <FaChevronDown /> : <FaChevronUp />}
-                          </button>
-                        </div>
-                        {!expandedMethods[mId] && (
-                          <div className="method-details-row">
-                             <div className="method-sub-box">
-                                <div className="sub-box-left"><span>{method.name}</span>{method.codEnabled && <span className="cod-tag"> [COD được kích hoạt]</span>}</div>
-                                <div className="sub-box-right"><label className="ainetsoft-switch"><input type="checkbox" checked={!!formData.shippingMethods[mId]} onChange={() => toggleShipping(mId)} /><span className="slider round"></span></label></div>
-                             </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-              </div>
-              <div className="onboarding-footer"><button className="btn-ainetsoft-lite" onClick={() => setCurrentStep(1)}>Quay lại</button><button className="btn-ainetsoft-primary" onClick={() => setCurrentStep(3)}>Tiếp theo</button></div>
-            </div>
-          )}
-
-          {/* STEP 3 */}
-          {currentStep === 3 && (
-            <div className="step-content">
-              <div className="ainetsoft-radio-group" style={{marginBottom: '25px'}}>
-                {['INDIVIDUAL', 'HOUSEHOLD', 'ENTERPRISE'].map(t => (
-                  <label key={t} className="radio-item"><input type="radio" checked={formData.businessType === t} onChange={() => setFormData({...formData, businessType: t})} /><span className="radio-mark"></span> {getBusinessLabel(t)}</label>
-                ))}
-              </div>
-              {formData.businessType !== 'INDIVIDUAL' && (
-                <div className="ainetsoft-row"><label><span className="req">*</span> Tên công ty</label><div className="ainetsoft-input-group"><input className={formErrors.companyName ? "error-border" : ""} value={formData.companyName} onChange={e => setFormData({...formData, companyName: e.target.value})} placeholder="Tên chính thức" />{formErrors.companyName && <p className="red-msg-inline">{formErrors.companyName}</p>}</div></div>
-              )}
-              <div className="ainetsoft-row"><label><span className="req">*</span> Địa chỉ đăng ký</label>
-                <div className="ainetsoft-input-group">
-                  <input className={formErrors.registeredAddress ? "error-border" : ""} value={formData.registeredAddress} onChange={e => setFormData({...formData, registeredAddress: e.target.value})} placeholder="Địa chỉ theo GPKD" />
-                  {formErrors.registeredAddress && <p className="red-msg-inline">{formErrors.registeredAddress}</p>}
-                </div>
-              </div>
-              <div className="ainetsoft-row"><label><span className="req">*</span> Email nhận hóa đơn</label>
-                <div className="ainetsoft-input-group">
-                  {formData.invoiceEmails.map((email, idx) => (
-                    <div key={idx} className="email-input-item" style={{display: 'flex', gap: '10px', marginBottom: '8px'}}><input value={email} onChange={e => handleInvoiceEmailChange(idx, e.target.value)} placeholder="Email" />{formData.invoiceEmails.length > 1 && <button className="btn-remove-email" onClick={() => removeInvoiceEmail(idx)}><FaTimes /></button>}</div>
-                  ))}
-                  {formData.invoiceEmails.length < 2 && <button className="btn-add-email-ainetsoft" onClick={addInvoiceEmail}>+ Thêm Email</button>}
-                  {formErrors.invoiceEmail && <p className="red-msg-inline">{formErrors.invoiceEmail}</p>}
-                </div>
-              </div>
-              <div className="ainetsoft-row"><label><span className="req">*</span> MST</label>
-                <div className="ainetsoft-input-group">
-                  <input className={formErrors.taxCode ? "error-border" : ""} value={formData.taxCode} onChange={e => setFormData({...formData, taxCode: formatMST(e.target.value)})} maxLength={17} placeholder="111 111 111 1" />
-                  {formErrors.taxCode && <p className="red-msg-inline">{formErrors.taxCode}</p>}
-                </div>
-              </div>
-              {formData.businessType !== 'INDIVIDUAL' && (
-                <div className="ainetsoft-row"><label><span className="req">*</span> GPKD</label>
+        {!isRejected && (
+          <div className="onboarding-card">
+            {/* STEP 1 */}
+            {currentStep === 1 && (
+              <div className="step-content">
+                <div className="ainetsoft-row"><label><span className="req">*</span> Tên Shop</label>
                   <div className="ainetsoft-input-group">
-                    <div 
-                      className={`license-upload-box ${formData.licensePreview ? "has-img" : ""} ${formErrors.license ? "error-border-dashed" : ""}`} 
-                      onClick={() => document.getElementById('input-license')?.click()}
-                    >
-                      {formData.licensePreview ? (
-                        <>
-                          <div className="btn-clear-img" onClick={(e) => clearImage('license', e)}><FaTimes /></div>
-                          <img src={formData.licensePreview} alt="License" />
-                        </>
-                      ) : (
-                        <div className="upload-placeholder"><FaCamera className="cam-icon" /><span>Tải lên GPKD</span></div>
-                      )}
-                    </div>
-                    <input id="input-license" type="file" hidden onChange={e => handleFileChange(e, 'license')} />
-                    {formErrors.license && <p className="red-msg-inline">{formErrors.license}</p>}
+                    <input className={formErrors.shopName ? "error-border" : ""} value={formData.shopName} maxLength={30} onChange={e => setFormData({...formData, shopName: e.target.value})} placeholder="Nhập tên shop" />
+                    <span className="char-counter">{formData.shopName.length}/30</span>
                   </div>
                 </div>
-              )}
-              <div className="onboarding-footer"><button className="btn-ainetsoft-lite" onClick={() => setCurrentStep(2)}>Quay lại</button><button className="btn-ainetsoft-primary" onClick={() => { if(validateStep3()) setCurrentStep(4); }}>Tiếp theo</button></div>
-            </div>
-          )}
-
-          {/* STEP 4 */}
-          {currentStep === 4 && (
-            <div className="step-content">
-              <div className="ainetsoft-radio-group" style={{marginBottom: '20px'}}>
-                <label className="radio-item"><input type="radio" checked={formData.identityType === 'CCCD'} onChange={() => setFormData({...formData, identityType: 'CCCD'})} /><span className="radio-mark"></span> CCCD</label>
-                <label className="radio-item"><input type="radio" checked={formData.identityType === 'PASSPORT'} onChange={() => setFormData({...formData, identityType: 'PASSPORT'})} /><span className="radio-mark"></span> Hộ chiếu</label>
+                <div className="ainetsoft-row"><label><span className="req">*</span> Địa chỉ lấy hàng</label>
+                  <div className="ainetsoft-input-group">
+                    {formData.stockAddresses.map((addr, idx) => (
+                      <div key={idx} className="address-display-box" style={{marginBottom: '10px'}}>
+                        <div className="addr-text">
+                          <strong>{[addr.fullName, formatPhone(addr.phoneNumber)].filter(Boolean).join(' | ')}</strong>
+                          <p>{[addr.detailAddress, addr.ward, addr.province].filter(Boolean).join(', ')}</p>
+                        </div>
+                        <div className="trash-action-area" onClick={() => setFormData({...formData, stockAddresses: formData.stockAddresses.filter((_, i) => i !== idx)})}>
+                           <FaTrash className="trash-icon" />
+                        </div>
+                      </div>
+                    ))}
+                    <button className="btn-add-ainetsoft" onClick={() => setShowAddressModal(true)} disabled={formData.stockAddresses.length >= 2} >
+                      <FaPlus /> Thêm địa chỉ ({formData.stockAddresses.length}/2)
+                    </button>
+                    {formErrors.addresses && <p className="red-msg-inline">{formErrors.addresses}</p>}
+                  </div>
+                </div>
+                <div className="ainetsoft-row"><label><span className="req">*</span> Email liên hệ</label>
+                  <div className="ainetsoft-input-group">
+                    <input className={formErrors.email ? "error-border" : ""} value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                    {formErrors.email && <p className="red-msg-inline">{formErrors.email}</p>}
+                  </div>
+                </div>
+                <div className="onboarding-footer"><button className="btn-ainetsoft-primary" onClick={() => { if(validateStep1()) setCurrentStep(2); }}>Tiếp theo</button></div>
               </div>
+            )}
 
-              <div className="ainetsoft-row">
-                <label><span className="req">*</span> Số {formData.identityType === 'CCCD' ? 'CCCD' : 'Hộ chiếu'}</label>
-                <div className="ainetsoft-input-group">
-                   <input 
-                     className={formErrors.cccdNumber ? "error-border" : ""} 
-                     value={formData.cccdNumber} 
-                     onChange={e => setFormData({...formData, cccdNumber: formData.identityType === 'CCCD' ? formatCCCD(e.target.value) : formatPassport(e.target.value)})} 
-                     maxLength={15} 
-                     placeholder={formData.identityType === 'CCCD' ? "012 345 678 901" : "G-1234 5678"} 
-                   />
-                   {formErrors.cccdNumber && <p className="red-msg-inline">{formErrors.cccdNumber}</p>}
+            {/* STEP 2 */}
+            {currentStep === 2 && (
+              <div className="step-content">
+                <div className="shipping-header-text"><h3>Phương thức vận chuyển</h3><p>Kích hoạt các đơn vị vận chuyển hỗ trợ.</p></div>
+                <div className="shipping-methods-list">
+                  {shippingMethodsList.map((method) => {
+                      const mId = method.id;
+                      return (
+                        <div key={mId} className="shipping-method-item">
+                          <div className="method-main-row"><span>{method.name}</span>
+                            <button className="btn-collapse" onClick={() => setExpandedMethods(prev => ({...prev, [mId]: !prev[mId]}))}>
+                               {expandedMethods[mId] ? 'Mở rộng' : 'Thu gọn'} {expandedMethods[mId] ? <FaChevronDown /> : <FaChevronUp />}
+                            </button>
+                          </div>
+                          {!expandedMethods[mId] && (
+                            <div className="method-details-row">
+                               <div className="method-sub-box">
+                                  <div className="sub-box-left"><span>{method.name}</span>{method.codEnabled && <span className="cod-tag"> [COD được kích hoạt]</span>}</div>
+                                  <div className="sub-box-right"><label className="ainetsoft-switch"><input type="checkbox" checked={!!formData.shippingMethods[mId]} onChange={() => toggleShipping(mId)} /><span className="slider round"></span></label></div>
+                               </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+                {formErrors.shippingMethods && <p className="red-msg-inline" style={{padding: '0 20px'}}>{formErrors.shippingMethods}</p>}
+                
+                <div className="onboarding-footer">
+                  <button className="btn-ainetsoft-lite" onClick={() => setCurrentStep(1)}>Quay lại</button>
+                  <button className="btn-ainetsoft-primary" onClick={() => { if(validateStep2()) setCurrentStep(3); }}>Tiếp theo</button>
                 </div>
               </div>
-              <div className="id-upload-grid">
-                <div style={{display: 'flex', flexDirection: 'column'}}><div className={`upload-box ${formErrors.frontImage ? "error-border-dashed" : ""}`} onClick={() => document.getElementById('input-front')?.click()}>{formData.frontPreview ? (<div style={{position: 'relative', height: '100%'}}><div className="btn-clear-img" onClick={(e) => clearImage('front', e)}><FaTimes /></div><img src={formData.frontPreview} alt="Front" className="preview-img" onError={() => setFormData(prev => ({...prev, frontPreview: ''}))} /></div>) : (<div className="upload-placeholder">{formData.identityType === 'CCCD' ? <FaIdCard className="cam-icon" /> : <FaPassport className="cam-icon" />}<span>Mặt trước {formData.identityType === 'CCCD' ? 'CCCD' : 'Hộ chiếu'}</span></div>)}</div>{formErrors.frontImage && <p className="red-msg-inline">{formErrors.frontImage}</p>}</div>
-                <div style={{display: 'flex', flexDirection: 'column'}}><div className={`upload-box ${formErrors.backImage ? "error-border-dashed" : ""}`} onClick={() => document.getElementById('input-back')?.click()}>{formData.backPreview ? (<div style={{position: 'relative', height: '100%'}}><div className="btn-clear-img" onClick={(e) => clearImage('back', e)}><FaTimes /></div><img src={formData.backPreview} alt="Back" className="preview-img" onError={() => setFormData(prev => ({...prev, backPreview: ''}))} /></div>) : (<div className="upload-placeholder">{formData.identityType === 'CCCD' ? <FaIdCard className="cam-icon" /> : <FaPassport className="cam-icon" />}<span>Mặt sau {formData.identityType === 'CCCD' ? 'CCCD' : 'Hộ chiếu'}</span></div>)}</div>{formErrors.backImage && <p className="red-msg-inline">{formErrors.backImage}</p>}</div>
-              </div>
-              <input id="input-front" type="file" hidden onChange={e => handleFileChange(e, 'front')} /><input id="input-back" type="file" hidden onChange={e => handleFileChange(e, 'back')} />
-              
-              <div className="legal-confirmation-wrap">
-                <label className="legal-checkbox-label">
-                  <input type="checkbox" checked={formData.isConfirmed} onChange={e => setFormData({...formData, isConfirmed: e.target.checked})} />
-                  <span>Tôi xác nhận tất cả dữ liệu đã cung cấp là chính xác và trung thực. Tôi đã đọc và đồng ý với <span className="legal-link"> Chính Sách Bảo Mật </span> và <span className="legal-link"> Điều Khoản Sử Dụng </span> của AiNetsoft.</span>
-                </label>
-                {formErrors.confirmation && <p className="red-msg-inline">{formErrors.confirmation}</p>}
-              </div>
+            )}
 
-              <div className="onboarding-footer"><button className="btn-ainetsoft-lite" onClick={() => setCurrentStep(3)}>Quay lại</button><button className="btn-ainetsoft-primary" onClick={() => { if(validateStep4()) setCurrentStep(5); }}>Xác nhận & Xem trước</button></div>
-            </div>
-          )}
-
-          {/* STEP 5 */}
-          {currentStep === 5 && (
-            <div className="step-content success-summary-view">
-              {!isSubmitted ? (
-                <div className="preview-mode-banner no-print"><h2><FaInfoCircle /> Chế độ xem trước</h2><p>Vui lòng kiểm tra lại thông tin. Nhấn <strong>Xác nhận & Gửi hồ sơ</strong> để hoàn tất.</p></div>
-              ) : (
-                <div className="success-registration-alert no-print">
-                   <div className="success-alert-icon"><FaCheckCircle /></div>
-                   <div className="success-alert-content"><h2>Đăng ký thành công!</h2><p>Hồ sơ của bạn đã được gửi. Vui lòng chờ xác nhận bởi hệ thống AiNetsoft.</p><div className="timeline-note"><FaClock /> Phản hồi chậm nhất trong vòng 24h</div></div>
+            {/* STEP 3 */}
+            {currentStep === 3 && (
+              <div className="step-content">
+                <div className="ainetsoft-radio-group" style={{marginBottom: '25px'}}>
+                  {['INDIVIDUAL', 'HOUSEHOLD', 'ENTERPRISE'].map(t => (
+                    <label key={t} className="radio-item"><input type="radio" checked={formData.businessType === t} onChange={() => setFormData({...formData, businessType: t})} /><span className="radio-mark"></span> {getBusinessLabel(t)}</label>
+                  ))}
                 </div>
-              )}
-
-              <div className="summary-section printable-area">
-                <div className="summary-header"><h3>Phiếu Đăng Ký Người Bán Ainetsoft</h3><button className="btn-print no-print" onClick={handlePrint}><FaPrint /> In hồ sơ</button></div>
-                <div className="summary-grid">
-                  <div className="summary-item"><span className="sum-label">Tên Shop:</span><span className="sum-value">{formData.shopName}</span></div>
-                  <div className="summary-item"><span className="sum-label">Loại hình:</span><span className="sum-value">{getBusinessLabel(formData.businessType)}</span></div>
-                  <div className="summary-item"><span className="sum-label">SĐT liên hệ:</span><span className="sum-value">{formatPhone(formData.phone)}</span></div>
-                  <div className="summary-item"><span className="sum-label">Email liên hệ:</span><span className="sum-value">{formData.email}</span></div>
-                  <div className="summary-item"><span className="sum-label">Email nhận hóa đơn:</span><span className="sum-value">{formData.invoiceEmails.filter(Boolean).join(', ') || 'N/A'}</span></div>
-                  <div className="summary-item"><span className="sum-label">Mã số thuế:</span><span className="sum-value">{formatMST(formData.taxCode)}</span></div>
-                  <div className="summary-item"><span className="sum-label">Số {formData.identityType === 'CCCD' ? 'CCCD' : 'Hộ chiếu'}:</span><span className="sum-value">{formData.identityType === 'CCCD' ? formatCCCD(formData.cccdNumber) : formData.cccdNumber}</span></div>
-                  <div className="summary-item"><span className="sum-label">ĐV Vận chuyển:</span><span className="sum-value">{shippingMethodsList.filter(m => formData.shippingMethods[m.id]).map(m => m.name).join(', ') || 'N/A'}</span></div>
-                  <div className="summary-item"><span className="sum-label">Ngày gửi:</span><span className="sum-value">{new Date().toLocaleDateString('vi-VN')}</span></div>
+                {formData.businessType !== 'INDIVIDUAL' && (
+                  <div className="ainetsoft-row"><label><span className="req">*</span> Tên công ty</label><div className="ainetsoft-input-group"><input className={formErrors.companyName ? "error-border" : ""} value={formData.companyName} onChange={e => setFormData({...formData, companyName: e.target.value})} placeholder="Tên chính thức" />{formErrors.companyName && <p className="red-msg-inline">{formErrors.companyName}</p>}</div></div>
+                )}
+                <div className="ainetsoft-row"><label><span className="req">*</span> Địa chỉ đăng ký</label>
+                  <div className="ainetsoft-input-group">
+                    <input className={formErrors.registeredAddress ? "error-border" : ""} value={formData.registeredAddress} onChange={e => setFormData({...formData, registeredAddress: e.target.value})} placeholder="Địa chỉ theo GPKD" />
+                    {formErrors.registeredAddress && <p className="red-msg-inline">{formErrors.registeredAddress}</p>}
+                  </div>
                 </div>
+                <div className="ainetsoft-row"><label><span className="req">*</span> Email nhận hóa đơn</label>
+                  <div className="ainetsoft-input-group">
+                    {formData.invoiceEmails.map((email, idx) => (
+                      <div key={idx} className="email-input-item" style={{display: 'flex', gap: '10px', marginBottom: '8px'}}><input value={email} onChange={e => handleInvoiceEmailChange(idx, e.target.value)} placeholder="Email" />{formData.invoiceEmails.length > 1 && <button className="btn-remove-email" onClick={() => removeInvoiceEmail(idx)}><FaTimes /></button>}</div>
+                    ))}
+                    {formData.invoiceEmails.length < 2 && <button className="btn-add-email-ainetsoft" onClick={addInvoiceEmail}>+ Thêm Email</button>}
+                    {formErrors.invoiceEmail && <p className="red-msg-inline">{formErrors.invoiceEmail}</p>}
+                  </div>
+                </div>
+                <div className="ainetsoft-row"><label><span className="req">*</span> MST</label>
+                  <div className="ainetsoft-input-group">
+                    <input className={formErrors.taxCode ? "error-border" : ""} value={formData.taxCode} onChange={e => setFormData({...formData, taxCode: formatMST(e.target.value)})} maxLength={17} placeholder="111 111 111 1" />
+                    {formErrors.taxCode && <p className="red-msg-inline">{formErrors.taxCode}</p>}
+                  </div>
+                </div>
+                {formData.businessType !== 'INDIVIDUAL' && (
+                  <div className="ainetsoft-row"><label><span className="req">*</span> GPKD</label>
+                    <div className="ainetsoft-input-group">
+                      <div className={`license-upload-box ${formData.licensePreview ? "has-img" : ""} ${formErrors.license ? "error-border-dashed" : ""}`} onClick={() => document.getElementById('input-license')?.click()} >
+                        {formData.licensePreview ? (
+                          <>
+                            <div className="btn-clear-img" onClick={(e) => clearImage('license', e)}><FaTimes /></div>
+                            <img src={formData.licensePreview} alt="License" />
+                          </>
+                        ) : (
+                          <div className="upload-placeholder"><FaCamera className="cam-icon" /><span>Tải lên GPKD</span></div>
+                        )}
+                      </div>
+                      <input id="input-license" type="file" hidden onChange={e => handleFileChange(e, 'license')} />
+                      {formErrors.license && <p className="red-msg-inline">{formErrors.license}</p>}
+                    </div>
+                  </div>
+                )}
+                <div className="onboarding-footer"><button className="btn-ainetsoft-lite" onClick={() => setCurrentStep(2)}>Quay lại</button><button className="btn-ainetsoft-primary" onClick={() => { if(validateStep3()) setCurrentStep(4); }}>Tiếp theo</button></div>
+              </div>
+            )}
 
-                <div className="summary-photos-section" style={{border: '2px solid #ee4d2d', padding: '20px', marginTop: '30px', borderRadius: '4px'}}>
-                   <div className="summary-photo-grid" style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', marginTop: '15px'}}>
+            {/* STEP 4 */}
+            {currentStep === 4 && (
+              <div className="step-content">
+                <div className="ainetsoft-radio-group" style={{marginBottom: '20px'}}>
+                  <label className="radio-item"><input type="radio" checked={formData.identityType === 'CCCD'} onChange={() => setFormData({...formData, identityType: 'CCCD'})} /><span className="radio-mark"></span> CCCD</label>
+                  <label className="radio-item"><input type="radio" checked={formData.identityType === 'PASSPORT'} onChange={() => setFormData({...formData, identityType: 'PASSPORT'})} /><span className="radio-mark"></span> Hộ chiếu</label>
+                </div>
+                <div className="ainetsoft-row"><label><span className="req">*</span> Số {formData.identityType === 'CCCD' ? 'CCCD' : 'Hộ chiếu'}</label>
+                  <div className="ainetsoft-input-group"><input className={formErrors.cccdNumber ? "error-border" : ""} value={formData.cccdNumber} onChange={e => setFormData({...formData, cccdNumber: formData.identityType === 'CCCD' ? formatCCCD(e.target.value) : formatPassport(e.target.value)})} maxLength={15} placeholder={formData.identityType === 'CCCD' ? "012 345 678 901" : "G-1234 5678"} />{formErrors.cccdNumber && <p className="red-msg-inline">{formErrors.cccdNumber}</p>}</div>
+                </div>
+                <div className="id-upload-grid">
+                  <div style={{display: 'flex', flexDirection: 'column'}}><div className={`upload-box ${formErrors.frontImage ? "error-border-dashed" : ""}`} onClick={() => document.getElementById('input-front')?.click()}>{formData.frontPreview ? (<div style={{position: 'relative', height: '100%'}}><div className="btn-clear-img" onClick={(e) => clearImage('front', e)}><FaTimes /></div><img src={formData.frontPreview} alt="Front" className="preview-img" /></div>) : (<div className="upload-placeholder">{formData.identityType === 'CCCD' ? <FaIdCard className="cam-icon" /> : <FaPassport className="cam-icon" />}<span>Mặt trước {formData.identityType === 'CCCD' ? 'CCCD' : 'Hộ chiếu'}</span></div>)}</div>{formErrors.frontImage && <p className="red-msg-inline">{formErrors.frontImage}</p>}</div>
+                  <div style={{display: 'flex', flexDirection: 'column'}}><div className={`upload-box ${formErrors.backImage ? "error-border-dashed" : ""}`} onClick={() => document.getElementById('input-back')?.click()}>{formData.backPreview ? (<div style={{position: 'relative', height: '100%'}}><div className="btn-clear-img" onClick={(e) => clearImage('back', e)}><FaTimes /></div><img src={formData.backPreview} alt="Back" className="preview-img" /></div>) : (<div className="upload-placeholder">{formData.identityType === 'CCCD' ? <FaIdCard className="cam-icon" /> : <FaPassport className="cam-icon" />}<span>Mặt sau {formData.identityType === 'CCCD' ? 'CCCD' : 'Hộ chiếu'}</span></div>)}</div>{formErrors.backImage && <p className="red-msg-inline">{formErrors.backImage}</p>}</div>
+                </div>
+                <input id="input-front" type="file" hidden onChange={e => handleFileChange(e, 'front')} /><input id="input-back" type="file" hidden onChange={e => handleFileChange(e, 'back')} />
+                <div className="legal-confirmation-wrap">
+                  <label className="legal-checkbox-label">
+                    <input 
+                      type="checkbox" 
+                      checked={formData.isConfirmed} 
+                      onChange={e => setFormData({...formData, isConfirmed: e.target.checked})} 
+                    />
+                    <span>
+                      Tôi <strong>cam kết</strong> các dữ liệu đã cung cấp là chính xác. 
+                      Tôi đã đọc và đồng ý với 
+                      <span className="legal-link"> Chính Sách Bảo Mật </span> 
+                      và 
+                      <span className="legal-link"> Điều Khoản Sử Dụng </span> 
+                      của AiNetsoft.
+                    </span>
+                  </label>
+                  {formErrors.confirmation && <p className="red-msg-inline">{formErrors.confirmation}</p>}
+                </div>
+                <div className="onboarding-footer"><button className="btn-ainetsoft-lite" onClick={() => setCurrentStep(3)}>Quay lại</button><button className="btn-ainetsoft-primary" onClick={() => { if(validateStep4()) setCurrentStep(5); }}>Xác nhận & Xem trước</button></div>
+              </div>
+            )}
+
+            {/* STEP 5 */}
+            {currentStep === 5 && (
+              <div className="step-content success-summary-view">
+                {!isSubmitted ? (
+                  <div className="preview-mode-banner no-print"><h2><FaInfoCircle /> Chế độ xem trước</h2><p>Vui lòng kiểm tra lại thông tin. Nhấn <strong>Xác nhận & Gửi hồ sơ</strong> để hoàn tất.</p></div>
+                ) : (
+                  /* 🚀 NEW: PROFESSIONAL SUCCESS ALERT (Matching Backend behavior) */
+                  <div className="success-registration-alert no-print">
+                    <div className="success-alert-icon"><FaCheckCircle /></div>
+                    <div className="success-alert-content">
+                      <h2>Đã nhận hồ sơ đăng ký!</h2>
+                      <p>Hệ thống đã ghi nhận hồ sơ của bạn thành công. Đội ngũ thẩm định đang tiến hành xác thực dữ liệu.</p>
+                      <div className="timeline-note"><FaClock /> Kết quả sẽ được phản hồi trong vòng 24 giờ làm việc.</div>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="summary-section printable-area">
+                  <div className="summary-header"><h3>Phiếu Đăng Ký Người Bán Ainetsoft</h3><button className="btn-print no-print" onClick={handlePrint}><FaPrint /> In hồ sơ</button></div>
+                  <div className="summary-grid">
+                    <div className="summary-item"><span className="sum-label">Tên Shop:</span><span className="sum-value">{formData.shopName}</span></div>
+                    <div className="summary-item"><span className="sum-label">Loại hình:</span><span className="sum-value">{getBusinessLabel(formData.businessType)}</span></div>
+                    <div className="summary-item"><span className="sum-label">SĐT liên hệ:</span><span className="sum-value">{formatPhone(formData.phone)}</span></div>
+                    <div className="summary-item"><span className="sum-label">Email liên hệ:</span><span className="sum-value">{formData.email}</span></div>
+                    <div className="summary-item"><span className="sum-label">Email nhận hóa đơn:</span><span className="sum-value">{formData.invoiceEmails.filter(Boolean).join(', ') || 'N/A'}</span></div>
+                    <div className="summary-item"><span className="sum-label">Mã số thuế:</span><span className="sum-value">{formatMST(formData.taxCode)}</span></div>
+                    <div className="summary-item"><span className="sum-label">Số {formData.identityType === 'CCCD' ? 'CCCD' : 'Hộ chiếu'}:</span><span className="sum-value">{formData.identityType === 'CCCD' ? formatCCCD(formData.cccdNumber) : formData.cccdNumber}</span></div>
+                    <div className="summary-item"><span className="sum-label">ĐV Vận chuyển:</span><span className="sum-value">{shippingMethodsList.filter(m => formData.shippingMethods[m.id]).map(m => m.name).join(', ') || 'N/A'}</span></div>
+                    <div className="summary-item"><span className="sum-label">Ngày gửi:</span><span className="sum-value">{new Date().toLocaleDateString('vi-VN')}</span></div>
+                  </div>
+
+                  <div className="summary-photos-section" style={{border: '2px solid #ee4d2d', padding: '20px', marginTop: '30px', borderRadius: '4px'}}>
+                    <div className="summary-photo-grid" style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', marginTop: '15px'}}>
                       <div className="summary-photo-item" onClick={() => setZoomedImage(formData.frontPreview)}>{formData.frontPreview ? <img src={formData.frontPreview} alt="Front" /> : <div className="upload-placeholder"><FaIdCard size={40} /></div>}<span>Mặt trước {formData.identityType}</span><div className="zoom-hint"><FaSearchPlus /> Phóng to</div></div>
                       <div className="summary-photo-item" onClick={() => setZoomedImage(formData.backPreview)}>{formData.backPreview ? <img src={formData.backPreview} alt="Back" /> : <div className="upload-placeholder"><FaIdCard size={40} /></div>}<span>Mặt sau {formData.identityType}</span><div className="zoom-hint"><FaSearchPlus /> Phóng to</div></div>
                       <div className="summary-photo-item" onClick={() => setZoomedImage(formData.businessType === 'INDIVIDUAL' ? ainetsoftLogo : (formData.licensePreview || ainetsoftLogo))}><img src={formData.businessType === 'INDIVIDUAL' ? ainetsoftLogo : (formData.licensePreview || ainetsoftLogo)} alt="Legal" /><span>{formData.businessType === 'INDIVIDUAL' ? 'Thành viên' : 'Giấy phép'}</span><div className="zoom-hint"><FaSearchPlus /> Phóng to</div></div>
-                   </div>
+                    </div>
+                  </div>
+
+                  <div className="summary-addresses">
+                    <span className="sum-label">Địa chỉ lấy hàng & Tọa độ (Dành cho Shipper):</span>
+                    <div className="sum-addr-list">
+                      {formData.stockAddresses.map((addr, i) => (
+                        <div key={i} className="sum-addr-item" style={{border: '1px solid #eee', padding: '10px', marginBottom: '10px', borderRadius: '4px'}}>
+                           <strong>{[addr.fullName, formatPhone(addr.phoneNumber)].filter(Boolean).join(' | ')}</strong>
+                           <p>{[addr.detailAddress, addr.ward, addr.province].filter(Boolean).join(', ')}</p>
+                           {addr.latitude && String(addr.latitude).trim() !== '' && addr.longitude && String(addr.longitude).trim() !== '' && (
+                             <div className="preview-coords">
+                                <FaMapMarkedAlt style={{color: '#2f54eb'}} />
+                                <div style={{flex: 1}}>
+                                   <span className="coord-text">{addr.latitude}, {addr.longitude}</span>
+                                   <div className="qr-box-summary">
+                                      <img 
+                                        className="qr-code-img" 
+                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`https://www.google.com/maps?q=${addr.latitude},${addr.longitude}`)}`} 
+                                        alt="QR Map" 
+                                      />
+                                      <div className="qr-info-text"><strong>QR Map Dẫn Đường</strong><p>Shipper dùng camera quét để mở Google Maps ngay lập tức.</p></div>
+                                   </div>
+                                </div>
+                                <div className="btn-copy-action" onClick={() => { copyToClipboard(`${addr.latitude}, ${addr.longitude}`); }}><FaCopy title="Sao chép tọa độ!" /></div>
+                                <a href={`https://www.google.com/maps?q=${addr.latitude},${addr.longitude}`} target="_blank" rel="noreferrer" className="btn-maps-link">[Bản Đồ]</a>
+                             </div>
+                           )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="print-footer-legal"><p>© 2026 AiNetsoft E-commerce System. Tài liệu tự động từ hệ thống.</p></div>
                 </div>
 
-                <div className="summary-addresses">
-                  <span className="sum-label">Địa chỉ lấy hàng & Tọa độ (Dành cho Shipper):</span>
-                  <div className="sum-addr-list">
-                    {formData.stockAddresses.map((addr, i) => (
-                      <div key={i} className="sum-addr-item" style={{border: '1px solid #eee', padding: '10px', marginBottom: '10px', borderRadius: '4px'}}>
-                         <strong>{[addr.fullName, formatPhone(addr.phoneNumber)].filter(Boolean).join(' | ')}</strong>
-                         <p>{[addr.detailAddress, addr.ward, addr.province].filter(Boolean).join(', ')}</p>
-                         
-                         {addr.latitude && String(addr.latitude).trim() !== '' && addr.longitude && String(addr.longitude).trim() !== '' && (
-                           <div className="preview-coords">
-                              <FaMapMarkedAlt style={{color: '#2f54eb'}} />
-                              <div style={{flex: 1}}>
-                                 <span className="coord-text">{addr.latitude}, {addr.longitude}</span>
-                                 <div className="qr-box-summary">
-                                    {/* FIXED: Official Google Maps Search URL */}
-                                    <img className="qr-code-img" 
-                                         src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`https://www.google.com/maps/search/?api=1&query=${addr.latitude},${addr.longitude}`)}`} 
-                                         alt="QR Map" />
-                                    <div className="qr-info-text">
-                                       <strong>QR Map Dẫn Đường</strong>
-                                       <p>Shipper dùng camera quét để mở Google Maps ngay lập tức.</p>
-                                    </div>
-                                 </div>
-                              </div>
-                              <div className="btn-copy-action" onClick={() => { copyToClipboard(`${addr.latitude}, ${addr.longitude}`); }}><FaCopy title="Sao chép tọa độ!" /></div>
-                              <a href={`https://www.google.com/maps/search/?api=1&query=${addr.latitude},${addr.longitude}`} target="_blank" rel="noreferrer" className="btn-maps-link">[Bản Đồ]</a>
-                           </div>
-                         )}
-                      </div>
-                    ))}
+                {!isSubmitted && (
+                  <div className="onboarding-footer no-print">
+                     <button className="btn-ainetsoft-lite" onClick={() => setCurrentStep(4)}>Quay lại sửa</button>
+                     <button className="btn-ainetsoft-primary" onClick={handleFinalSubmit} disabled={isSaving}>
+                        {isSaving ? "Đang gửi..." : "Xác nhận & Gửi hồ sơ"}
+                     </button>
                   </div>
-                </div>
-                <div className="print-footer-legal"><p>© 2026 AiNetsoft E-commerce System. Tài liệu tự động từ hệ thống.</p></div>
+                )}
               </div>
-              {!isSubmitted && (
-                <div className="onboarding-footer no-print">
-                   <button className="btn-ainetsoft-lite" onClick={() => setCurrentStep(4)}>Quay lại sửa</button>
-                   <button className="btn-ainetsoft-primary" onClick={handleFinalSubmit} disabled={isSaving}>
-                      {isSaving ? "Đang gửi..." : "Xác nhận & Gửi hồ sơ"}
-                   </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </main>
 
       {zoomedImage && (<div className="zoom-overlay" onClick={() => setZoomedImage(null)}><div className="zoom-content"><FaTimes className="zoom-close" onClick={() => setZoomedImage(null)} /><img src={zoomedImage} alt="Zoomed" /></div></div>)}
 
-      {/* ADDRESS MODAL */}
       {showAddressModal && (
         <div className="ainetsoft-modal-overlay no-print">
           <div className="ainetsoft-modal-card">

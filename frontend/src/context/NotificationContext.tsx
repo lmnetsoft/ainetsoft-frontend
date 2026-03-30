@@ -1,8 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { getUnreadCount } from '../services/notificationService';
 
 interface NotificationContextType {
-  notificationCount: number; // Renamed to avoid conflict with Chat unreadCount
+  notificationCount: number;
   refreshNotificationCount: () => Promise<void>;
 }
 
@@ -11,10 +11,15 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notificationCount, setNotificationCount] = useState(0);
   
-  // We determine auth status dynamically to handle login/logout without refresh
+  // Track auth status to control polling
   const [isAuthenticated, setIsAuthenticated] = useState(localStorage.getItem('isAuthenticated') === 'true');
+  
+  // 🛠️ USE A REF: Prevents concurrent API calls if multiple events fire at once (fixes request storm)
+  const isFetching = useRef(false);
 
   const refreshNotificationCount = useCallback(async () => {
+    if (isFetching.current) return;
+
     const authStatus = localStorage.getItem('isAuthenticated') === 'true';
     if (!authStatus) {
       setNotificationCount(0);
@@ -22,44 +27,57 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
 
     try {
+      isFetching.current = true;
       const count = await getUnreadCount();
+      // Ensure we set the raw number directly
       setNotificationCount(count);
     } catch (error) {
       console.error("Failed to fetch notification count", error);
+    } finally {
+      isFetching.current = false;
     }
   }, []);
 
-  // Update auth state and fetch count when login/logout events happen
-  const handleAuthChange = useCallback(() => {
-    const status = localStorage.getItem('isAuthenticated') === 'true';
-    setIsAuthenticated(status);
-    if (status) {
-      refreshNotificationCount();
-    } else {
-      setNotificationCount(0);
-    }
-  }, [refreshNotificationCount]);
-
+  // 🛠️ EFFECT 1: EVENT LISTENERS
+  // Listens for changes in login status or profile updates
   useEffect(() => {
-    // Initial check
-    handleAuthChange();
+    const handleAuthChange = () => {
+      const status = localStorage.getItem('isAuthenticated') === 'true';
+      
+      // Only update state if it actually changed to prevent re-render loops
+      setIsAuthenticated(prev => (prev !== status ? status : prev));
+      
+      if (status) {
+        refreshNotificationCount();
+      } else {
+        setNotificationCount(0);
+      }
+    };
 
-    // Polling every 60 seconds
-    let interval: NodeJS.Timeout;
-    if (isAuthenticated) {
-      interval = setInterval(refreshNotificationCount, 60000);
-    }
-
-    // Listen for custom login/profile events
     window.addEventListener('profileUpdate', handleAuthChange);
     window.addEventListener('storage', handleAuthChange);
 
     return () => {
-      if (interval) clearInterval(interval);
       window.removeEventListener('profileUpdate', handleAuthChange);
       window.removeEventListener('storage', handleAuthChange);
     };
-  }, [isAuthenticated, refreshNotificationCount, handleAuthChange]);
+  }, [refreshNotificationCount]);
+
+  // 🛠️ EFFECT 2: INITIAL FETCH & POLLING
+  // Controls the background timer (60s)
+  useEffect(() => {
+    if (isAuthenticated) {
+      // Fetch once immediately on mount or login
+      refreshNotificationCount();
+
+      // Set polling interval
+      const interval = setInterval(refreshNotificationCount, 60000);
+      
+      return () => clearInterval(interval);
+    } else {
+      setNotificationCount(0);
+    }
+  }, [isAuthenticated, refreshNotificationCount]);
 
   return (
     <NotificationContext.Provider value={{ notificationCount, refreshNotificationCount }}>

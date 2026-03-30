@@ -31,12 +31,14 @@ export const adminService = {
   
   /**
    * Approves or Rejects a seller upgrade request.
+   * NOTE: Backend returns a string. If the email is invalid, the string contains a warning.
    */
   approveSeller: (userId: string, approved: boolean, note: string = "") => {
     const payload = { 
       approved, 
       adminNote: note || (approved ? "Hồ sơ hợp lệ" : "Hồ sơ không đạt yêu cầu") 
     };
+    // .then(res => res.data) captures the backend's success or warning message string
     return api.post(`/admin/sellers/process/${userId}`, payload).then(res => res.data);
   },
 
@@ -49,9 +51,11 @@ export const adminService = {
   
   /**
    * Approves a product to make it public.
+   * FIXED: Removed body payload because the backend @PostMapping for approve 
+   * does not accept a RequestBody.
    */
   approveProduct: (productId: string) => 
-    api.post(`/admin/products/approve/${productId}`, { status: 'APPROVED' }).then(res => res.data),
+    api.post(`/admin/products/approve/${productId}`).then(res => res.data),
 
   /**
    * Rejects a product with a reason.
@@ -143,6 +147,27 @@ export const adminService = {
     api.post(`/admin/users/ban/${userId}`).then(res => res.data),
     
   getAuditLogs: () => api.get('/admin/audit-logs').then(res => res.data),
+
+  // --- 🚀 NEW: QUICK RESPONSE TEMPLATES (PHẢN HỒI NHANH) ---
+
+  /**
+   * Fetches predefined feedback templates for quick moderation responses.
+   * @param type e.g., 'SELLER_REJECTION' or 'PRODUCT_REJECTION'
+   */
+  getFeedbackTemplates: (type: string) => 
+    api.get('/admin/feedback-templates', { params: { type } }).then(res => res.data),
+
+  /**
+   * Creates or updates a response template.
+   */
+  saveFeedbackTemplate: (data: any) => 
+    api.post('/admin/feedback-templates', data).then(res => res.data),
+
+  /**
+   * Deletes a response template by ID.
+   */
+  deleteFeedbackTemplate: (id: string) => 
+    api.delete(`/admin/feedback-templates/${id}`).then(res => res.data),
 };
 
 export default adminService;

@@ -48,7 +48,11 @@ import SellerSettings from './pages/Seller/SellerSettings';
 // Admin Components
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import AdminChat from './pages/Admin/AdminChat'; 
-import ShippingManagement from './pages/Admin/ShippingManagement'; // NEW: Import for Shipping Config
+import ShippingManagement from './pages/Admin/ShippingManagement'; 
+
+// 🛠️ ADDED: Legal Components
+import PrivacyPolicy from './pages/Legal/PrivacyPolicy';
+import TermsOfUse from './pages/Legal/TermsOfUse';
 
 import './App.css';
 
@@ -113,7 +117,12 @@ function App() {
                 <Route path="/regulations" element={<ContentPage type="regulations" />} />
                 <Route path="/contact" element={<ContentPage type="contact" />} />
                 
-                <Route path="/shop/:id" element={<PublicShop />} />
+                {/* 🛠️ ADDED: Legal Research Pages */}
+                <Route path="/privacy" element={<PrivacyPolicy />} />
+                <Route path="/terms" element={<TermsOfUse />} />
+                
+                {/* UPDATED: Path handles both ID and Slug under prefix */}
+                <Route path="/shop/:identifier" element={<PublicShop />} />
                 <Route path="/my-shop" element={<PublicShop />} />
 
                 {/* --- PROTECTED USER ROUTES --- */}
@@ -176,11 +185,14 @@ function App() {
                   path="/admin/chat/:recipientId" 
                   element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminChat /></ProtectedRoute>} 
                 />
-                {/* NEW: Route for Global Shipping Configuration */}
                 <Route 
                   path="/admin/shipping" 
                   element={<ProtectedRoute allowedRoles={['ADMIN']}><ShippingManagement /></ProtectedRoute>} 
                 />
+
+                {/* THE "NICE URL" ROOT ROUTE
+                    This MUST be at the bottom so it doesn't conflict with specific paths. */}
+                <Route path="/:shopSlug" element={<PublicShop />} />
 
                 <Route path="*" element={<NotFound />} />
               </Routes>

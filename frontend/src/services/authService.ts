@@ -14,13 +14,12 @@ const extractError = (error: any, defaultMsg: string): string => {
 
 /**
  * Utility to clear ONLY authentication data.
- * Preserves 'chatGuestId' so visitors don't lose chat history during logout/expiry.
  */
 const clearAuthData = () => {
     const keysToRemove = [
         'jwt_token', 
         'isAuthenticated', 
-        'user', // FIX: Added to clear the master object
+        'user', 
         'userName', 
         'userEmail', 
         'userPhone', 
@@ -38,12 +37,8 @@ export const getUserProfile = async (): Promise<any> => {
     
     if (response.data) {
       const name = response.data.fullName;
-      const email = response.data.email;
-
-      if (name || email) {
-        // FIX: Save the full object so AddProduct.tsx can see the 'VERIFIED' status
+      if (name || response.data.email) {
         localStorage.setItem('user', JSON.stringify(response.data));
-
         localStorage.setItem('isAuthenticated', 'true');
         localStorage.setItem('userName', name || 'Thành viên');
         localStorage.setItem('userEmail', response.data.email || '');
@@ -55,10 +50,8 @@ export const getUserProfile = async (): Promise<any> => {
       } else {
         clearAuthData();
       }
-
       window.dispatchEvent(new Event('profileUpdate'));
     }
-    
     return response.data;
   } catch (error: any) {
     if (error.response?.status === 401) {
@@ -69,11 +62,23 @@ export const getUserProfile = async (): Promise<any> => {
   }
 };
 
+/**
+ * NEW: Public lookup for Nice URLs (localhost:5173/shop-name)
+ */
+export const getUserProfileBySlug = async (slug: string): Promise<any> => {
+  try {
+    const response = await api.get(`/auth/public/shop/${slug}`);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(extractError(error, "Không tìm thấy gian hàng này."));
+  }
+};
+
 export const logoutUser = async (): Promise<void> => {
   try {
     await api.post('/auth/logout');
   } catch (err) {
-    console.error("Backend logout failed, clearing local state anyway.");
+    console.error("Backend logout failed.");
   } finally {
     clearAuthData();
     window.dispatchEvent(new Event('profileUpdate'));
@@ -83,21 +88,28 @@ export const logoutUser = async (): Promise<void> => {
 export const updateProfile = async (profileData: any): Promise<string> => {
   try {
     const response = await api.put('/auth/profile', profileData);
-    
-    // FIX: Re-fetch profile after update to ensure storage is 100% in sync
     await getUserProfile();
-
-    if (profileData.fullName) localStorage.setItem('userName', profileData.fullName);
-    if (profileData.avatarUrl) localStorage.setItem('userAvatar', profileData.avatarUrl);
-
-    window.dispatchEvent(new Event('profileUpdate'));
     return response.data;
   } catch (error: any) {
     throw new Error(extractError(error, "Cập nhật hồ sơ thất bại."));
   }
 };
 
-export const changePasswordUser = async (passwordData: { currentPassword: string, newPassword: string }): Promise<string> => {
+/**
+ * NEW: Specifically for the 'Thiết lập Shop' Admin Board.
+ * Handles text updates + Business License file upload.
+ */
+export const updateShopSettings = async (formData: FormData): Promise<any> => {
+  try {
+    const response = await api.put('/auth/seller/settings', formData);
+    await getUserProfile(); // Refresh storage
+    return response.data;
+  } catch (error: any) {
+    throw new Error(extractError(error, "Cập nhật thiết lập Shop thất bại."));
+  }
+};
+
+export const changePasswordUser = async (passwordData: any): Promise<string> => {
   try {
     const response = await api.post('/auth/change-password', passwordData);
     return response.data;
@@ -109,14 +121,8 @@ export const changePasswordUser = async (passwordData: { currentPassword: string
 export const loginUser = async (loginData: any): Promise<any> => {
   try {
     const response = await api.post('/auth/login', loginData);
-    
-    if (response.data.token) {
-      localStorage.setItem('jwt_token', response.data.token);
-    }
-    
-    // FIX: Save initial user state including verification status
+    if (response.data.token) localStorage.setItem('jwt_token', response.data.token);
     localStorage.setItem('user', JSON.stringify(response.data));
-
     localStorage.setItem('isAuthenticated', 'true');
     localStorage.setItem('userName', response.data.fullName || 'Thành viên');
     localStorage.setItem('userEmail', response.data.email || '');
@@ -125,7 +131,6 @@ export const loginUser = async (loginData: any): Promise<any> => {
     localStorage.setItem('userRoles', JSON.stringify(response.data.roles || []));
     localStorage.setItem('userPermissions', JSON.stringify(response.data.permissions || []));
     localStorage.setItem('isGlobalAdmin', response.data.isGlobalAdmin ? 'true' : 'false');
-    
     window.dispatchEvent(new Event('profileUpdate'));
     return response.data;
   } catch (error: any) {
@@ -151,7 +156,7 @@ export const requestPasswordReset = async (contactInfo: string): Promise<string>
   }
 };
 
-export const resetPassword = async (resetData: { contactInfo: string, otp: string, newPassword: string }): Promise<string> => {
+export const resetPassword = async (resetData: any): Promise<string> => {
   try {
     const response = await api.post('/auth/reset-password', resetData);
     return response.data;
@@ -160,27 +165,9 @@ export const resetPassword = async (resetData: { contactInfo: string, otp: strin
   }
 };
 
-/**
- * NEW: Fetches only the active shipping methods for the Seller registration form.
- */
-export const getActiveShippingMethods = async (): Promise<any> => {
-    try {
-      const response = await api.get('/shipping-methods/active');
-      return response.data;
-    } catch (error: any) {
-      throw new Error(extractError(error, "Không thể tải danh sách phương thức vận chuyển."));
-    }
-};
-
-/**
- * UPDATED: upgradeToSeller now handles the dynamic 2026 Hierarchy (stockAddresses)
- * and the Shipping Method toggles.
- */
 export const upgradeToSeller = async (formData: any): Promise<string> => {
   try {
     const bodyFormData = new FormData();
-
-    // Prepare JSON part - Strictly synced with Backend SellerRegistrationDTO
     const registrationData = {
       phone: formData.phone,
       email: formData.email, 
@@ -190,30 +177,19 @@ export const upgradeToSeller = async (formData: any): Promise<string> => {
       bankName: formData.bankName,
       accountNumber: formData.accountNumber,
       accountHolder: formData.accountHolder,
-      // NEW: Dynamic requirements
       stockAddresses: formData.stockAddresses,
       shippingMethods: formData.shippingMethods 
     };
 
-    // Wrap JSON in Blob to ensure Content-Type: application/json for @RequestPart
-    const jsonBlob = new Blob([JSON.stringify(registrationData)], {
-      type: 'application/json'
-    });
+    const jsonBlob = new Blob([JSON.stringify(registrationData)], { type: 'application/json' });
     bodyFormData.append('data', jsonBlob);
 
-    // Append images
-    if (formData.frontImage) {
-      bodyFormData.append('frontImage', formData.frontImage);
-    }
-    if (formData.backImage) {
-      bodyFormData.append('backImage', formData.backImage);
-    }
+    if (formData.frontImage) bodyFormData.append('frontImage', formData.frontImage);
+    if (formData.backImage) bodyFormData.append('backImage', formData.backImage);
+    if (formData.license) bodyFormData.append('license', formData.license);
 
     const response = await api.post('/auth/upgrade-seller', bodyFormData);
-    
-    // Crucial: Refresh profile so the UI reflects the PENDING status
     await getUserProfile(); 
-    
     return response.data;
   } catch (error: any) {
     throw new Error(extractError(error, "Gửi hồ sơ Người bán thất bại."));

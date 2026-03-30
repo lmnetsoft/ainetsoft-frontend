@@ -5,14 +5,15 @@ import {
   FaEye, FaCheck, FaTimes, FaIdCard, FaUniversity, 
   FaStore, FaFileInvoice, FaUserClock, FaHistory, FaSearchPlus,
   FaMapMarkedAlt, FaQrcode, FaCopy, FaDownload, FaPrint, FaEnvelope,
-  FaFileInvoiceDollar, FaPassport 
+  FaFileInvoiceDollar, FaPassport, 
+  FaRegLightbulb // 🚀 ADDED
 } from 'react-icons/fa';
 import './AdminDashboard.css'; 
 
 // Import logo for fallback and PDF header
 import ainetsoftLogo from '../../assets/images/logo.png'; 
 
-/** * NUMBER FORMATTING UTILITIES */
+/** * NUMBER FORMATTING UTILITIES (100% PRESERVED) */
 const formatPhone = (val: string) => {
   if (!val) return 'N/A';
   const s = val.replace(/\D/g, '');
@@ -64,6 +65,9 @@ const SellerModeration = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
 
+  // 🚀 NEW: State for Quick Response Templates
+  const [templates, setTemplates] = useState<any[]>([]);
+
   const API_BASE_URL = "http://localhost:8080";
 
   const getFullImageUrl = (path: string | null | undefined) => {
@@ -73,9 +77,18 @@ const SellerModeration = () => {
     return `${API_BASE_URL}${cleanPath}`;
   };
 
+  /** 🚀 NEW: Fetch templates logic */
+  const fetchTemplates = async () => {
+    try {
+      const data = await adminService.getFeedbackTemplates("SELLER_REJECTION");
+      setTemplates(data);
+    } catch (err) {
+      console.error("Templates fetch error:", err);
+    }
+  };
+
   /**
-   * PDF SUMMARY GENERATOR
-   * FIXED: Correct Labeling for Passport in PDF and working QR URL
+   * PDF SUMMARY GENERATOR (100% PRESERVED ORIGINAL)
    */
   const printApprovalSummary = (seller: any, note: string) => {
     const printWindow = window.open('', '_blank');
@@ -85,7 +98,6 @@ const SellerModeration = () => {
     const isPassport = seller.identityInfo?.identityType === 'PASSPORT';
     const idLabel = isPassport ? "Hộ chiếu" : "CCCD";
     
-    // RESTORED: PASSPORT MASKING IN PDF
     const idValue = isPassport 
       ? formatPassport(seller.identityInfo?.cccdNumber) 
       : formatCCCD(seller.identityInfo?.cccdNumber);
@@ -94,7 +106,6 @@ const SellerModeration = () => {
       const hasGPS = addr.latitude && String(addr.latitude).trim() !== '' && 
                      addr.longitude && String(addr.longitude).trim() !== '';
       
-      // FIXED: Official Google Maps Search URL to prevent 404
       const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${addr.latitude},${addr.longitude}`;
 
       const gpsContent = hasGPS ? `
@@ -196,22 +207,37 @@ const SellerModeration = () => {
       toast.error("Vui lòng nhập nội dung phản hồi.");
       return;
     }
+
     try {
       setIsProcessing(true);
-      await adminService.approveSeller(selectedSeller.id, approved, adminNote);
-      if (approved) printApprovalSummary(selectedSeller, adminNote);
+      const message = await adminService.approveSeller(selectedSeller.id, approved, adminNote);
+      if (approved) {
+        printApprovalSummary(selectedSeller, adminNote);
+      }
       setShowModal(false);
-      triggerSuccessAnimation(approved ? "Đã phê duyệt người bán!" : "Đã từ chối hồ sơ");
       setAdminNote('');
+      
+      if (message.toLowerCase().includes("email") && message.toLowerCase().includes("không hợp lệ")) {
+        toast.error(message, { duration: 6000, icon: '⚠️' });
+        triggerSuccessAnimation("Đã Từ Chối (Email Ảo)");
+      } else {
+        toast.success(message);
+        triggerSuccessAnimation(approved ? "Đã phê duyệt người bán!" : "Đã từ chối hồ sơ");
+      }
       fetchPending(); 
-    } catch (err) {
-      toast.error("Thao tác thất bại.");
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || "Thao tác thất bại. Vui lòng kiểm tra lại.";
+      toast.error(errorMsg);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  useEffect(() => { fetchPending(); }, []);
+  // 🚀 UPDATED: Fetch both sets of data
+  useEffect(() => { 
+    fetchPending(); 
+    fetchTemplates();
+  }, []);
 
   return (
     <div className="admin-moderation-page">
@@ -309,7 +335,6 @@ const SellerModeration = () => {
             </div>
 
             <div className="modal-body review-grid">
-              {/* Identity Section */}
               <div className="review-section">
                 <h4 className="section-title">
                    {selectedSeller.identityInfo?.identityType === 'PASSPORT' ? <FaPassport /> : <FaIdCard />}
@@ -319,7 +344,6 @@ const SellerModeration = () => {
                   <div className="data-row">
                     <span className="label">Số {selectedSeller.identityInfo?.identityType === 'PASSPORT' ? 'Hộ chiếu' : 'CCCD'}:</span>
                     <span className="value highlight">
-                       {/* FIXED: DYNAMIC PASSPORT FORMATTING */}
                        {selectedSeller.identityInfo?.identityType === 'PASSPORT' 
                          ? formatPassport(selectedSeller.identityInfo?.cccdNumber) 
                          : formatCCCD(selectedSeller.identityInfo?.cccdNumber)}
@@ -351,7 +375,6 @@ const SellerModeration = () => {
                         
                         {hasCoords ? (
                           <div className="qr-box-summary" style={{background: '#f0f5ff', border: '1px solid #adc6ff', display: 'flex', alignItems: 'center', padding: '10px', gap: '15px', borderRadius: '4px'}}>
-                            {/* FIXED: Official Google Maps Search URL for mobile scanning */}
                             <img className="qr-code-img" 
                                  style={{width: '70px', height: '70px', background: 'white', padding: '2px'}}
                                  src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`https://www.google.com/maps/search/?api=1&query=${addr.latitude},${addr.longitude}`)}`} 
@@ -371,34 +394,24 @@ const SellerModeration = () => {
                 </div>
               </div>
 
-              {/* Business Section */}
               <div className="review-section">
                 <h4 className="section-title"><FaStore /> THÔNG TIN KINH DOANH</h4>
                 <div className="review-data-card mb-20">
                   <div className="data-row"><span className="label">Tên Shop:</span><span className="value">{selectedSeller.shopProfile?.shopName}</span></div>
                   <div className="data-row"><span className="label">Loại hình:</span><span className="value">{getBusinessLabel(selectedSeller.shopProfile?.businessType)}</span></div>
-                  
                   <div className="data-row"><span className="label"><FaEnvelope /> Email liên hệ:</span><span className="value">{selectedSeller.shopProfile?.businessEmail || selectedSeller.email}</span></div>
-                  
                   <div className="data-row">
                     <span className="label"><FaFileInvoiceDollar /> Email nhận hóa đơn:</span>
                     <span className="value" style={{fontSize: '12px', color: '#ee4d2d'}}>
                       {selectedSeller.shopProfile?.invoiceEmails?.length > 0 ? selectedSeller.shopProfile.invoiceEmails.join(', ') : 'Chưa cung cấp'}
                     </span>
                   </div>
-
                   <div className="data-row"><span className="label"><FaFileInvoice /> Mã số thuế:</span><span className="value highlight-green">{formatMST(selectedSeller.shopProfile?.taxCode)}</span></div>
-                  
                   <div className="license-inspect-box" style={{marginTop: '15px'}}>
                      <span className="img-label">Giấy phép kinh doanh:</span>
                      <div className="img-wrapper zoomable" style={{height: '140px', border: '1px dashed #ddd', borderRadius: '4px', overflow: 'hidden'}} onClick={() => setZoomedImage(getFullImageUrl(selectedSeller.shopProfile?.businessLicenseUrl))}>
                         <div className="zoom-hint"><FaSearchPlus /></div>
-                        <img 
-                          src={selectedSeller.shopProfile?.businessType === 'INDIVIDUAL' ? ainetsoftLogo : (selectedSeller.shopProfile?.businessLicenseUrl ? getFullImageUrl(selectedSeller.shopProfile.businessLicenseUrl) : ainetsoftLogo)} 
-                          alt="License" 
-                          style={{width: '100%', height: '100%', objectFit: 'contain'}} 
-                          onError={(e) => { e.currentTarget.src = ainetsoftLogo; }}
-                        />
+                        <img src={selectedSeller.shopProfile?.businessType === 'INDIVIDUAL' ? ainetsoftLogo : (selectedSeller.shopProfile?.businessLicenseUrl ? getFullImageUrl(selectedSeller.shopProfile.businessLicenseUrl) : ainetsoftLogo)} alt="License" style={{width: '100%', height: '100%', objectFit: 'contain'}} onError={(e) => { e.currentTarget.src = ainetsoftLogo; }} />
                      </div>
                   </div>
                 </div>
@@ -419,6 +432,29 @@ const SellerModeration = () => {
             <div className="modal-footer-actions">
               <div className="note-area">
                 <label>Phản hồi cho người dùng <span style={{color: 'red'}}>*</span>:</label>
+                
+                {/* 🚀 NEW: Quick Response Bar Integrated exactly into the original layout */}
+                <div className="quick-templates-wrapper" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                  <span style={{ fontSize: '11px', color: '#8c8c8c', alignSelf: 'center', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <FaRegLightbulb style={{color: '#faad14'}} /> Phản hồi nhanh:
+                  </span>
+                  {templates.map((tpl) => (
+                    <button
+                      key={tpl.id}
+                      className="template-chip"
+                      onClick={() => setAdminNote(tpl.content)}
+                      style={{
+                        fontSize: '11px', background: '#f5f5f5', border: '1px solid #d9d9d9', borderRadius: '15px', padding: '2px 10px', cursor: 'pointer', transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#ee4d2d'; e.currentTarget.style.color = '#ee4d2d'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#d9d9d9'; e.currentTarget.style.color = 'inherit'; }}
+                    >
+                      {tpl.title}
+                    </button>
+                  ))}
+                  {templates.length === 0 && <span style={{fontSize: '11px', color: '#bfbfbf', fontStyle: 'italic'}}>(Chưa có mẫu sẵn)</span>}
+                </div>
+
                 <textarea placeholder="Ghi chú phản hồi (Bắt buộc)..." value={adminNote} onChange={(e) => setAdminNote(e.target.value)} />
               </div>
               <div className="button-group">

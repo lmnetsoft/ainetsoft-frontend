@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-// 1. ADDED FaCrown to imports
 import { FaSearch, FaChevronDown, FaShoppingCart, FaBell, FaUserShield, FaCrown } from 'react-icons/fa';
 import logoImg from '../../assets/images/logo.png';
 import { getUserProfile, logoutUser } from '../../services/authService';
@@ -21,7 +20,6 @@ const Header: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isSeller, setIsSeller] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false); 
-  // 2. ADDED state for Global Admin
   const [isGlobalAdmin, setIsGlobalAdmin] = useState(false); 
   const [userName, setUserName] = useState('');
   const [userAvatar, setUserAvatar] = useState('');
@@ -35,11 +33,8 @@ const Header: React.FC = () => {
     const rawName = localStorage.getItem('userName') || '';
     const rawAvatar = localStorage.getItem('userAvatar') || '';
     const storedRoles = JSON.parse(localStorage.getItem('userRoles') || '[]');
-    // 3. READ Global Admin flag from storage
     const isGlobal = localStorage.getItem('isGlobalAdmin') === 'true';
 
-    // FIXED: Removed the check that blocked "Thành viên" 
-    // This allows the UI to show correctly for new users/admins
     const isValidName =
       !!rawName &&
       rawName !== 'undefined' &&
@@ -74,8 +69,6 @@ const Header: React.FC = () => {
           localStorage.setItem('userName', profile.fullName);
           localStorage.setItem('userAvatar', profile.avatarUrl || profile.avatar || '');
           localStorage.setItem('userRoles', JSON.stringify(profile.roles || []));
-          
-          // 4. SYNC Admin flags on verify
           localStorage.setItem('userPermissions', JSON.stringify(profile.permissions || []));
           localStorage.setItem('isGlobalAdmin', profile.isGlobalAdmin ? 'true' : 'false');
           
@@ -84,8 +77,7 @@ const Header: React.FC = () => {
           clearStorage();
         }
       } catch (err) {
-        // PRESERVED: Error handling for session
-        // Only clear if absolutely necessary
+        // Silently fail to allow offline mode or handle in interceptors
       }
     };
 
@@ -110,7 +102,6 @@ const Header: React.FC = () => {
     };
   }, []);
 
-  // PRESERVED: handleLogout exactly as you wrote it
   const handleLogout = async () => {
     try {
       await logoutUser();
@@ -138,7 +129,6 @@ const Header: React.FC = () => {
     }
   };
 
-  // PRESERVED: Search and Notification click logic
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -150,16 +140,19 @@ const Header: React.FC = () => {
 
   const handleNotificationClick = () => {
     if (isAdmin) {
+      // Admins go to Chat if they have messages, otherwise Dashboard
       if (unreadCount > 0) {
         navigate('/admin/chat');
       } else {
         navigate('/admin/dashboard');
       }
     } else {
+      // Users/Sellers go to the unified notification list
       navigate('/user/notifications');
     }
   };
 
+  // 🛠️ LOGIC: Combine chat messages + system warnings (fake email alerts)
   const totalAlerts = unreadCount + (systemCount || 0);
 
   return (
@@ -185,19 +178,27 @@ const Header: React.FC = () => {
               </>
             )}
 
-            <div
-              className={`notification-wrapper ${totalAlerts > 0 ? 'active-alerts' : ''}`}
-              onClick={handleNotificationClick}
-              style={{ cursor: 'pointer' }}
-            >
-              <FaBell className="nav-icon" />
-              <span className="blue-link">Thông báo</span>
-              {totalAlerts > 0 && (
-                <span className="notification-badge">
-                  {totalAlerts > 99 ? '99+' : totalAlerts}
+              {/* 🛠️ NOTIFICATION BELL: Pickups SYSTEM_WARNINGS from DB automatically */}
+              <div
+                className={`notification-wrapper ${totalAlerts > 0 ? 'active-alerts' : ''}`}
+                onClick={handleNotificationClick}
+                style={{ cursor: 'pointer' }}
+              >
+                {/* Icon pulses if there are critical system warnings */}
+                <FaBell className={`nav-icon ${systemCount > 0 ? 'pulse-animation' : ''}`} />
+                
+                {/* 🔴 Text turns red if there are ANY alerts (Chat or System) */}
+                <span className={`blue-link ${totalAlerts > 0 ? 'alert-red-text' : ''}`}>
+                  Thông báo
                 </span>
-              )}
-            </div>
+
+                {/* Badge logic - showing the total count */}
+                {totalAlerts > 0 && (
+                  <span className={`notification-badge ${systemCount > 0 ? 'pulse' : ''}`}>
+                    {totalAlerts > 99 ? '99+' : totalAlerts}
+                  </span>
+                )}
+              </div>
 
             <span>|</span>
             <a href="#" className="blue-link">Thông tin khác...</a>
@@ -241,7 +242,6 @@ const Header: React.FC = () => {
                       onError={(e) => { (e.target as HTMLImageElement).src = avatarFallback; }}
                     />
                     <span className="user-name-text">
-                        {/* CROWN INJECTED HERE */}
                         {isGlobalAdmin && <FaCrown className="global-crown-icon" style={{color: '#FFD700', marginRight: '5px'}} />}
                         {userName}
                     </span>
@@ -253,7 +253,6 @@ const Header: React.FC = () => {
                       {isAdmin && (
                         <>
                           <li onClick={() => navigate('/admin/dashboard')} className="admin-menu-item">
-                            {/* UPDATED TEXT HERE */}
                             <FaUserShield /> {isGlobalAdmin ? 'Quản trị Hệ thống' : 'Tổng quan Admin'}
                           </li>
                           <li onClick={() => navigate('/admin/chat')}>Quản lý Chat</li>

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   FaUsers, FaBox, FaStore, FaClock, 
   FaChartBar, FaSync, FaHistory, FaShieldAlt,
-  FaExclamationTriangle, FaStar, FaTrash, FaCheck, FaTimes, FaListUl, FaTags, FaPlus
+  FaExclamationTriangle, FaStar, FaTrash, FaCheck, FaTimes, FaListUl, FaTags, FaPlus, FaSearch
 } from 'react-icons/fa';
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import adminService from '../../services/admin.service';
@@ -27,10 +27,13 @@ const AdminDashboard = () => {
   const [reports, setReports] = useState<any[]>([]); 
   const [allReviews, setAllReviews] = useState<any[]>([]); 
   const [reasons, setReasons] = useState<any[]>([]); 
+  const [users, setUsers] = useState<any[]>([]); 
+  const [logs, setLogs] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
   const [tabLoading, setTabLoading] = useState(false);
 
-  // For adding new reasons
+  // 🛠️ NEW: Search filter for Users
+  const [userSearchTerm, setUserSearchTerm] = useState("");
   const [newReasonName, setNewReasonName] = useState("");
 
   // --- 1. DATA FETCHERS ---
@@ -40,7 +43,8 @@ const AdminDashboard = () => {
       if (showToast) setLoading(true);
       const data = await adminService.getDashboardSummary(); 
       if (data) {
-        setStats({
+        setStats(prev => ({
+          ...prev,
           totalUsers: data.totalUsers || 0,
           totalSellers: data.totalSellers || 0,
           totalProducts: data.totalProducts || 0,
@@ -48,9 +52,8 @@ const AdminDashboard = () => {
           totalRevenue: data.totalRevenue || 0,
           pendingProducts: data.pendingProducts || 0,
           pendingSellers: data.pendingSellers || 0,
-          // totalReports will be handled by fetchReports to ensure badge accuracy
-          totalReports: stats.totalReports 
-        });
+          // Let fetchReports handle the report badge for accuracy
+        }));
       }
       if (showToast) toast.success("Số liệu đã được đồng bộ");
     } catch (err) {
@@ -60,6 +63,24 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchUsers = async () => {
+    try {
+      setTabLoading(true);
+      const data = await adminService.getAllUsers();
+      setUsers(data || []);
+    } catch (err) { console.error("Users Fetch Error:", err); } 
+    finally { setTabLoading(false); }
+  };
+
+  const fetchLogs = async () => {
+    try {
+      setTabLoading(true);
+      const data = await adminService.getAuditLogs();
+      setLogs(data || []);
+    } catch (err) { console.error("Logs Fetch Error:", err); } 
+    finally { setTabLoading(false); }
+  };
+
   const fetchReports = async () => {
     try {
       setTabLoading(true);
@@ -67,7 +88,6 @@ const AdminDashboard = () => {
       const data = Array.isArray(response) ? response : (response?.content || []);
       setReports(data);
 
-      // 🛠️ FIX: Logic to reset badge to 0 if all reports are processed
       const pendingCount = data.filter((r: any) => 
         r.status !== 'RESOLVED' && r.status !== 'DISMISSED'
       ).length;
@@ -92,42 +112,37 @@ const AdminDashboard = () => {
       setTabLoading(true);
       const response = await adminService.getViolationReasons();
       const data = response.data || response;
-
-      // 🛠️ SORTING LOGIC: Keep "Lý do khác..." at the very bottom
       const mainList = data.filter((r: any) => r.name !== "Lý do khác...");
       const otherItem = data.filter((r: any) => r.name === "Lý do khác...");
-      
       setReasons([...mainList, ...otherItem]);
-    } catch (err) { 
-        console.error("Reasons Fetch Error:", err); 
-    } finally { 
-        setTabLoading(false); 
-    }
+    } catch (err) { console.error("Reasons Fetch Error:", err); } 
+    finally { setTabLoading(false); }
   };
 
   // --- 2. THE REFRESH ENGINE ---
 
   const handleManualRefresh = async () => {
     await fetchSummary(true);
-    await fetchReports(); // Ensure counts are fresh
+    if (activeTab === 'users') await fetchUsers();
+    if (activeTab === 'reports') await fetchReports();
     if (activeTab === 'reviews') await fetchReviews();
     if (activeTab === 'reasons') await fetchReasons();
+    if (activeTab === 'logs') await fetchLogs();
   };
 
   useEffect(() => {
     fetchSummary();
-    fetchReports(); // Initial fetch for badge
-    const interval = setInterval(() => {
-      fetchSummary();
-      fetchReports();
-    }, 120000);
+    fetchReports();
+    const interval = setInterval(() => { fetchSummary(); }, 120000);
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
+    if (activeTab === 'users') fetchUsers();
     if (activeTab === 'reports') fetchReports();
     if (activeTab === 'reviews') fetchReviews();
     if (activeTab === 'reasons') fetchReasons();
+    if (activeTab === 'logs') fetchLogs();
   }, [activeTab]);
 
 
@@ -137,7 +152,7 @@ const AdminDashboard = () => {
     try {
       await adminService.resolveReport(reportId, action);
       toast.success(action === 'RESOLVED' ? "Đã xác nhận vi phạm & Gỡ sản phẩm" : "Đã bác bỏ báo cáo");
-      await fetchReports(); // Refresh badge count
+      await fetchReports();
       fetchSummary();
     } catch (err) { toast.error("Thao tác thất bại."); }
   };
@@ -162,27 +177,15 @@ const AdminDashboard = () => {
   };
 
   const handleAddReason = async () => {
-    if (!newReasonName.trim()) {
-      toast.error("Vui lòng nhập tên lý do");
-      return;
-    }
-    
+    if (!newReasonName.trim()) { toast.error("Vui lòng nhập tên lý do"); return; }
     try {
       setTabLoading(true);
-      await adminService.saveViolationReason({ 
-        name: newReasonName.trim(),
-        active: true 
-      });
-      
+      await adminService.saveViolationReason({ name: newReasonName.trim(), active: true });
       setNewReasonName("");
       toast.success("Đã thêm danh mục vi phạm mới!");
       await fetchReasons(); 
-    } catch (err) {
-      console.error("Add Reason Error:", err);
-      toast.error("Không thể thêm lý do.");
-    } finally {
-      setTabLoading(false);
-    }
+    } catch (err) { toast.error("Không thể thêm lý do."); } 
+    finally { setTabLoading(false); }
   };
 
   const handleDeleteReason = async (id: string) => {
@@ -194,11 +197,60 @@ const AdminDashboard = () => {
     } catch (err) { toast.error("Không thể xóa"); }
   };
 
+  // --- 4. RENDERER ---
+
   const renderContent = () => {
     if (tabLoading) return <div className="tab-loading-spinner">Đang xử lý dữ liệu...</div>;
 
     switch (activeTab) {
+      case 'users': 
+        const filteredUsers = users.filter(u => 
+          u.fullName?.toLowerCase().includes(userSearchTerm.toLowerCase()) || 
+          u.email?.toLowerCase().includes(userSearchTerm.toLowerCase())
+        );
+        return (
+          <div className="admin-table-container">
+            <div className="table-filter-header">
+              <div className="search-box-wrapper">
+                <FaSearch className="search-icon" />
+                <input 
+                  type="text" 
+                  placeholder="Tìm kiếm người dùng theo tên hoặc email..." 
+                  value={userSearchTerm}
+                  onChange={(e) => setUserSearchTerm(e.target.value)}
+                />
+              </div>
+            </div>
+            <table className="admin-data-table">
+              <thead>
+                <tr>
+                  <th>Họ tên</th>
+                  <th>Email / SĐT</th>
+                  <th>Vai trò</th>
+                  <th>Trạng thái</th>
+                  <th>Ngày tham gia</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.length === 0 ? <tr><td colSpan={5} className="empty-row">Không tìm thấy người dùng phù hợp.</td></tr> : 
+                  filteredUsers.map(u => (
+                    <tr key={u.id}>
+                      <td><strong>{u.fullName}</strong></td>
+                      <td><small>{u.email}<br/>{u.phone}</small></td>
+                      <td>{u.roles?.join(', ')}</td>
+                      <td><span className={`status-badge ${u.accountStatus?.toLowerCase()}`}>{u.accountStatus}</span></td>
+                      <td>{new Date(u.createdAt).toLocaleDateString('vi-VN')}</td>
+                    </tr>
+                  ))
+                }
+              </tbody>
+            </table>
+          </div>
+        );
+
       case 'sellers': return <SellerModeration />;
+      
+      case 'products':
       case 'products_mod': return <ProductModeration />;
       
       case 'reports': 
@@ -289,7 +341,7 @@ const AdminDashboard = () => {
             <div className="reasons-header">
               <input 
                 type="text" 
-                placeholder="Thêm lý do báo cáo mới (ví dụ: Hàng cấm)..." 
+                placeholder="Thêm lý do báo cáo mới..." 
                 value={newReasonName}
                 onChange={e => setNewReasonName(e.target.value)}
               />
@@ -320,6 +372,36 @@ const AdminDashboard = () => {
           </div>
         );
 
+      case 'logs':
+        return (
+          <div className="admin-table-container">
+            <table className="admin-data-table">
+              <thead>
+                <tr>
+                  <th>Thời gian</th>
+                  <th>Admin</th>
+                  <th>Hành động</th>
+                  <th>Đối tượng</th>
+                  <th>Chi tiết</th>
+                </tr>
+              </thead>
+              <tbody>
+                {logs.length === 0 ? <tr><td colSpan={5} className="empty-row">Chưa có nhật ký hoạt động nào.</td></tr> : 
+                  logs.map(log => (
+                    <tr key={log.id}>
+                      <td><small>{new Date(log.timestamp).toLocaleString('vi-VN')}</small></td>
+                      <td><strong>{log.adminEmail}</strong></td>
+                      <td><span className="action-tag">{log.actionType}</span></td>
+                      <td>{log.targetName}</td>
+                      <td className="comment-cell">{log.description}</td>
+                    </tr>
+                  ))
+                }
+              </tbody>
+            </table>
+          </div>
+        );
+
       case 'summary': 
         return (
           <div className="dashboard-render-area">
@@ -340,7 +422,7 @@ const AdminDashboard = () => {
           </div>
         );
 
-      default: return <div className="loading-placeholder">Đang tải...</div>;
+      default: return <div className="loading-placeholder">Vui lòng chọn một danh mục bên trên.</div>;
     }
   };
 
@@ -366,9 +448,9 @@ const AdminDashboard = () => {
 
           <nav className="content-tabs">
             <button className={activeTab === 'summary' ? 'active' : ''} onClick={() => setActiveTab('summary')}>Tổng quan</button>
+            <button className={activeTab === 'users' ? 'active' : ''} onClick={() => setActiveTab('users')}>Người dùng</button>
             <button className={activeTab === 'products_mod' ? 'active' : ''} onClick={() => setActiveTab('products_mod')}>Duyệt Sản phẩm {stats.pendingProducts > 0 && <span className="notif-badge danger">{stats.pendingProducts}</span>}</button>
             <button className={activeTab === 'sellers' ? 'active' : ''} onClick={() => setActiveTab('sellers')}>Duyệt Shop {stats.pendingSellers > 0 && <span className="notif-badge">{stats.pendingSellers}</span>}</button>
-            {/* 🛠️ UPDATED BADGE: Reflects processed status correctly */}
             <button className={activeTab === 'reports' ? 'active' : ''} onClick={() => setActiveTab('reports')}>Báo cáo vi phạm {stats.totalReports > 0 && <span className="notif-badge danger">{stats.totalReports}</span>}</button>
             <button className={activeTab === 'reviews' ? 'active' : ''} onClick={() => setActiveTab('reviews')}>Quản lý đánh giá</button>
             <button className={activeTab === 'reasons' ? 'active' : ''} onClick={() => setActiveTab('reasons')}><FaTags size={12}/> Danh mục báo cáo</button>

@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css'; 
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import ToastNotification from '../../components/Toast/ToastNotification'; 
 import { getUserProfile, updateProfile, logoutUser } from '../../services/authService';
-import { FaLock, FaGoogle, FaFacebook } from 'react-icons/fa';
+import { FaLock, FaGoogle, FaFacebook, FaExclamationTriangle, FaInfoCircle, FaClock } from 'react-icons/fa';
 import logoImg from '../../assets/images/logo.png';
 import './Profile.css';
 
@@ -31,6 +31,12 @@ const Profile = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
+  // 🚀 UPDATED: Track the actual verification status and admin feedback
+  const [verificationStatus, setVerificationStatus] = useState({
+    status: 'NONE', // NONE, PENDING, APPROVED, REJECTED
+    rejectionReason: ''
+  });
+
   const isSocialUser = formData.provider !== 'LOCAL' && formData.provider !== null;
 
   useEffect(() => {
@@ -51,10 +57,15 @@ const Profile = () => {
           bankAccounts: data.bankAccounts || []
         });
 
-        // --- FIXED: Reliable Role & Verification detection ---
         const roles = data.roles || [];
         const isVerifiedSeller = roles.includes('SELLER') || data.sellerVerification === 'VERIFIED';
         setIsSeller(isVerifiedSeller);
+
+        // 🚀 SYNCED: Get status from backend (No more [Lỗi Email] string checking)
+        setVerificationStatus({
+          status: data.sellerVerification || 'NONE',
+          rejectionReason: data.rejectionReason || ''
+        });
 
       } catch (error: any) {
         console.error("Profile load error:", error);
@@ -115,7 +126,7 @@ const Profile = () => {
 
     try {
       setIsSaving(true);
-      const synchronizedAddresses = formData.addresses.map(addr => ({
+      const synchronizedAddresses = (formData.addresses || []).map(addr => ({
         ...addr,
         phone: formData.phone 
       }));
@@ -128,6 +139,25 @@ const Profile = () => {
       const message = await updateProfile(payload);
       setToastMessage(message || "Cập nhật hồ sơ thành công!");
       setShowToast(true);
+      
+      // Refresh logic
+      const freshData = await getUserProfile();
+      setFormData({
+        ...formData,
+        email: freshData.email,
+        phone: freshData.phone,
+        fullName: freshData.fullName,
+        avatarUrl: freshData.avatarUrl,
+        addresses: freshData.addresses || [],
+        bankAccounts: freshData.bankAccounts || []
+      });
+      
+      setVerificationStatus({
+        status: freshData.sellerVerification || 'NONE',
+        rejectionReason: freshData.rejectionReason || ''
+      });
+
+      window.dispatchEvent(new Event('profileUpdate'));
       
     } catch (error: any) {
       setToastMessage(error.message || "Cập nhật hồ sơ thất bại.");
@@ -162,6 +192,41 @@ const Profile = () => {
           </div>
           <hr className="divider" />
 
+          {/* 🚀 NEW: REJECTED BANNER (The Only Red Banner) */}
+          {verificationStatus.status === 'REJECTED' && (
+            <div className="profile-warning-banner" style={{
+              background: '#fff1f0', border: '1px solid #ffa39e', padding: '15px', 
+              borderRadius: '6px', marginBottom: '25px', display: 'flex', gap: '12px', alignItems: 'flex-start'
+            }}>
+              <FaExclamationTriangle style={{ color: '#ff4d4f', fontSize: '20px', marginTop: '2px' }} />
+              <div className="warning-text">
+                <strong style={{ color: '#cf1322', display: 'block', marginBottom: '4px' }}>Yêu cầu nâng cấp Shop bị từ chối</strong>
+                <p style={{ margin: 0, fontSize: '14px', color: '#595959' }}>
+                  <strong>Lý do:</strong> {verificationStatus.rejectionReason}
+                </p>
+                <p style={{ margin: '8px 0 0', fontSize: '13px', color: '#8c8c8c' }}>
+                  Vui lòng cập nhật lại thông tin chính xác và gửi lại yêu cầu.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* 🚀 NEW: PENDING INFO BANNER (Professional Blue Banner) */}
+          {verificationStatus.status === 'PENDING' && (
+            <div className="profile-info-banner" style={{
+              background: '#e6f7ff', border: '1px solid #91d5ff', padding: '15px', 
+              borderRadius: '6px', marginBottom: '25px', display: 'flex', gap: '12px', alignItems: 'flex-start'
+            }}>
+              <FaClock style={{ color: '#1890ff', fontSize: '20px', marginTop: '2px' }} />
+              <div className="info-text">
+                <strong style={{ color: '#0050b3', display: 'block', marginBottom: '4px' }}>Hồ sơ đang chờ phê duyệt</strong>
+                <p style={{ margin: 0, fontSize: '14px', color: '#595959' }}>
+                  Yêu cầu đăng ký Người bán của bạn đã được tiếp nhận. Đội ngũ kiểm duyệt sẽ phản hồi trong vòng 24 giờ làm việc.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="profile-form-container">
             <form className="profile-info-form" onSubmit={(e) => e.preventDefault()}>
               <div className="form-row">
@@ -172,7 +237,7 @@ const Profile = () => {
                     value={formData.email} 
                     onChange={(e) => !isSocialUser && setFormData({...formData, email: e.target.value})}
                     readOnly={isSocialUser} 
-                    className={isSocialUser ? "input-field input-locked" : "input-field"}
+                    className={`${isSocialUser ? "input-field input-locked" : "input-field"}`}
                   />
                   {isSocialUser && (
                     <div className={`lock-badge badge-${formData.provider.toLowerCase()}`}>
@@ -239,13 +304,19 @@ const Profile = () => {
                   <button type="button" className="save-btn" onClick={handleSave} disabled={isSaving}>
                     {isSaving ? "Đang lưu..." : "Lưu thay đổi"}
                   </button>
-                  {/* --- FIXED: Hidden once user is SELLER --- */}
-                  {!isSeller && (
+                  
+                  {!isSeller && verificationStatus.status !== 'PENDING' && (
                     <button type="button" className="become-seller-btn" onClick={() => navigate('/seller/register')}>
                       Trở thành Người bán
                     </button>
                   )}
-                  {/* Optional: Add button to go to Seller Dashboard if they ARE a seller */}
+
+                  {verificationStatus.status === 'PENDING' && (
+                    <button type="button" className="become-seller-btn" style={{backgroundColor: '#faad14', cursor: 'default'}} disabled>
+                      Đang thẩm định...
+                    </button>
+                  )}
+                  
                   {isSeller && (
                     <button type="button" className="become-seller-btn" style={{backgroundColor: '#27ae60'}} onClick={() => navigate('/seller/dashboard')}>
                       Vào Kênh Người Bán

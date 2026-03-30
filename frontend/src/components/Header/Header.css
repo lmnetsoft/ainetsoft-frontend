@@ -226,55 +226,85 @@
 .dropdown-menu li.logout-item:hover {
   background-color: #fef2f2;
 }
-
 /* ==========================================================================
-   5. ICONS & BADGES (100% Preserved)
+   5. ICONS & BADGES (Fixed for Professional Circular Style)
    ========================================================================== */
-.cart-wrapper, .notification-wrapper {
-  position: relative;
-  display: flex;
+
+/* This container holds the icon and the badge */
+.notification-wrapper {
+  position: relative; /* CRITICAL: Pins the badge to this area */
+  display: inline-flex;
   align-items: center;
+  gap: 5px;
+  padding: 8px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: transform 0.2s;
 }
 
-.cart-wrapper { padding: 8px; }
-.cart-wrapper:hover { transform: scale(1.1); }
+.notification-wrapper:hover {
+  transform: translateY(-1px);
+}
 
-.cart-main-icon {
-  font-size: 24px;
+.nav-icon {
+  font-size: 22px; /* Standard professional size */
   color: #5b67f1;
 }
 
-.cart-badge, .notification-badge {
+/* 🔴 THE CIRCULAR BADGE */
+.notification-badge {
   position: absolute;
+  top: 0;           /* Adjusted to sit higher */
+  left: 20px;       /* Positioned exactly on the top-right of the icon */
   background-color: #ee4d2d;
   color: white;
-  font-weight: 700;
-  border: 1px solid white;
+  font-size: 10px;
+  font-weight: 800;
+  
+  /* Create the perfect circle */
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  
+  /* Center the number perfectly */
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  
+  border: 1.5px solid white; /* Adds the professional "gap" look */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  z-index: 10;
 }
 
-.cart-badge {
-  top: 0;
-  right: -2px;
-  font-size: 11px;
-  padding: 3px 6px;
-  border-radius: 10px;
-  min-width: 12px;
-}
-
-.notification-badge {
-  top: -8px;
-  left: 8px;
-  font-size: 10px;
+/* Make it wider ONLY if the number is 10+ (to prevent it becoming an oval for single digits) */
+.notification-badge:has(text:not(:empty)) {
   min-width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  padding: 0 4px;
+}
+
+/* ==========================================================================
+   6. PULSE ANIMATIONS (Updated for Badge)
+   ========================================================================== */
+
+/* Optional: Make the badge itself pulse when there's a warning */
+.notification-badge.pulse {
+  animation: badge-pulse 1.5s infinite;
+}
+
+@keyframes badge-pulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(238, 77, 45, 0.7); }
+  70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(238, 77, 45, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(238, 77, 45, 0); }
+}
+
+.pulse-animation {
+  animation: bell-swing 2s infinite;
+  color: #ee4d2d !important;
+}
+
+@keyframes bell-swing {
+  0%, 100% { transform: rotate(0); }
+  10%, 30% { transform: rotate(15deg); }
+  20%, 40% { transform: rotate(-15deg); }
+  50% { transform: rotate(0); }
 }
 
 /* ==========================================================================
@@ -309,4 +339,57 @@
 @media (max-width: 992px) {
   .search-wrapper { flex: 1; margin-right: 15px; }
   .top-nav { display: none; }
+}
+
+/* Add this to your Header.css */
+.nav-icon.pulse-animation {
+  animation: bell-pulse 2s infinite;
+  color: #ee4d2d; /* Make it orange/red when warnings exist */
+}
+
+@keyframes bell-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); filter: drop-shadow(0 0 5px rgba(238, 77, 45, 0.5)); }
+  100% { transform: scale(1); }
+}
+
+.notification-badge {
+  background-color: #ee4d2d;
+  color: white;
+  font-size: 10px;
+  padding: 2px 5px;
+  border-radius: 10px;
+  position: absolute;
+  top: -5px;
+  right: -8px;
+  font-weight: bold;
+  border: 1.5px solid white;
+}
+
+/* 🔴 Text color change + Glow Effect when notifications exist */
+.alert-red-text {
+  color: #ee4d2d !important; 
+  font-weight: 700 !important;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+/* ✨ The "Glow" on Hover */
+.alert-red-text:hover {
+  color: #ff5a3d !important; /* Slightly brighter red on hover */
+  text-shadow: 0 0 8px rgba(238, 77, 45, 0.5); /* Soft red glow */
+  transform: translateY(-1px);
+}
+
+/* Optional: Add a small red dot next to the text for extra visibility */
+.alert-red-text::after {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background-color: #ee4d2d;
+  border-radius: 50%;
+  margin-left: 5px;
+  vertical-align: middle;
+  box-shadow: 0 0 5px rgba(238, 77, 45, 0.8);
 }
