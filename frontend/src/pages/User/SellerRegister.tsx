@@ -6,7 +6,8 @@ import {
   FaCheck, FaTruck, FaShippingFast, FaPlus, FaChevronRight, FaTrash,
   FaChevronDown, FaChevronUp, FaIdCard, FaFileInvoiceDollar, FaCheckCircle,
   FaInfoCircle, FaShieldAlt, FaUpload, FaCamera, FaRegLightbulb, FaEdit, FaPrint,
-  FaSearchPlus, FaMapMarkedAlt, FaQrcode, FaCopy, FaClock, FaPassport, FaTimesCircle
+  FaSearchPlus, FaMapMarkedAlt, FaQrcode, FaCopy, FaClock, FaPassport, FaTimesCircle,
+  FaExclamationTriangle 
 } from 'react-icons/fa';
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import { getUserProfile } from '../../services/authService';
@@ -23,7 +24,7 @@ import ainetsoftLogo from '../../assets/images/logo.png';
 /** CONFIGURATION: Backend Port */
 const BACKEND_BASE = "http://localhost:8080"; 
 
-/** * NUMBER FORMATTING UTILITIES */
+/** * NUMBER FORMATTING UTILITIES (100% PRESERVED) */
 const formatPhone = (val: string) => {
   const s = val.replace(/\D/g, '');
   if (s.length <= 3) return s;
@@ -74,6 +75,29 @@ const inlineStyles = `
   .error-border-dashed { border: 2px dashed #ff4d4f !important; }
   .red-msg-inline { color: #ff4d4f; font-size: 12px; margin-top: 4px; display: block; text-align: left; font-weight: 500; }
   
+  .ocr-error-banner {
+    background: #fff1f0;
+    border: 1px solid #ffa39e;
+    padding: 16px;
+    border-radius: 6px;
+    margin-bottom: 25px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    color: #cf1322;
+    box-shadow: 0 2px 8px rgba(255, 77, 79, 0.1);
+    animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+  }
+  .ocr-error-banner svg { font-size: 22px; flex-shrink: 0; }
+  .ocr-error-banner p { margin: 0; font-weight: 700; font-size: 14px; line-height: 1.5; }
+
+  @keyframes shake {
+    10%, 90% { transform: translate3d(-1px, 0, 0); }
+    20%, 80% { transform: translate3d(2px, 0, 0); }
+    30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+    40%, 60% { transform: translate3d(4px, 0, 0); }
+  }
+
   .upload-placeholder { 
     display: flex; flex-direction: column; align-items: center; justify-content: center; 
     gap: 8px; color: #597393; pointer-events: none;
@@ -98,7 +122,7 @@ const inlineStyles = `
   .success-alert-icon { color: #52c41a; font-size: 28px; margin-top: 2px; }
   .success-alert-content h2 { color: #1f1f1f; font-size: 20px; margin: 0 0 8px 0; font-weight: 600; }
   .success-alert-content p { color: #595959; margin: 0; font-size: 15px; line-height: 1.6; }
-  .timeline-note { display: inline-flex; align-items: center; gap: 6px; background: #e6f7ff; color: #1890ff; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 500; margin-top: 10px; border: 1px solid #91d5ff; }
+  .timeline-note { display: inline-flex; align-items: center; gap: 6px; background: #fff7e6; color: #d46b08; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 500; margin-top: 10px; border: 1px solid #ffd591; }
 
   .preview-mode-banner { background: #fff7e6; border: 1px solid #ffe7ba; padding: 20px; text-align: center; border-radius: 4px; margin-bottom: 30px; }
   .preview-mode-banner h2 { color: #d46b08; margin-bottom: 5px; display: flex; align-items: center; justify-content: center; gap: 10px; }
@@ -160,8 +184,12 @@ const SellerRegister = () => {
   const [isLocating, setIsLocating] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false); 
 
+  // REJECTION STATES
   const [isRejected, setIsRejected] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
+  
+  // 🚀 AI ERROR NOTIFICATION STATE
+  const [serverError, setServerError] = useState<string | null>(null);
 
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
@@ -205,6 +233,7 @@ const SellerRegister = () => {
             return;
         }
 
+        // IDENTIFY REJECTION VS PENDING
         if (profileData.sellerVerification === 'PENDING') {
             setIsSubmitted(true);
             setCurrentStep(5);
@@ -267,7 +296,7 @@ const SellerRegister = () => {
       }
     };
     fetchData();
-  }, [navigate]);
+  }, [navigate, navigate]);
 
   const handleStartFromScratch = () => {
     setIsRejected(false);
@@ -279,6 +308,7 @@ const SellerRegister = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'front' | 'back' | 'license') => {
     const file = e.target.files?.[0];
     if (file) {
+      setServerError(null); 
       const reader = new FileReader();
       reader.onloadend = () => {
         setFormData(prev => ({ ...prev, [`${type}Image`]: file, [`${type}Preview`]: reader.result as string }));
@@ -292,12 +322,20 @@ const SellerRegister = () => {
     setFormData(prev => ({ ...prev, [`${type}Image`]: null, [`${type}Preview`]: '' }));
     const input = document.getElementById(`input-${type}`) as HTMLInputElement;
     if (input) input.value = '';
+    setServerError(null);
   };
 
   const handleInvoiceEmailChange = (index: number, value: string) => {
     const newEmails = [...formData.invoiceEmails];
     newEmails[index] = value;
     setFormData({ ...formData, invoiceEmails: newEmails });
+    if (formErrors.invoiceEmail) {
+        setFormErrors(prev => {
+            const newErrs = { ...prev };
+            delete newErrs.invoiceEmail;
+            return newErrs;
+        });
+    }
   };
 
   const addInvoiceEmail = () => {
@@ -313,9 +351,12 @@ const SellerRegister = () => {
     }
   };
 
+  /** 🚀 STEP 1 VALIDATION (MODIFIED FOR Tên Shop CONSTRAINT) */
   const validateStep1 = () => {
     const errors: Record<string, string> = {};
-    if (!formData.shopName.trim()) errors.shopName = "Tên Shop là bắt buộc";
+    if (!formData.shopName.trim()) {
+        errors.shopName = "Tên Shop là bắt buộc. Vui lòng nhập tên cửa hàng.";
+    }
     if (formData.stockAddresses.length === 0) errors.addresses = "Cần ít nhất 1 địa chỉ lấy hàng";
     
     const phones = formData.stockAddresses.map(a => a.phoneNumber.replace(/\D/g, ''));
@@ -331,17 +372,16 @@ const SellerRegister = () => {
   const validateStep2 = () => {
     const errors: Record<string, string> = {};
     const hasAtLeastOne = Object.values(formData.shippingMethods).some(v => v === true);
-    
     if (!hasAtLeastOne) {
       errors.shippingMethods = "Vui lòng kích hoạt ít nhất 1 phương thức vận chuyển để tiếp tục.";
       setFormErrors(errors);
       return false;
     }
-    
     setFormErrors({}); 
     return true;
   };
 
+  /** 🚀 STEP 3 VALIDATION (UPDATED WITH DUPLICATE EMAIL CHECK) */
   const validateStep3 = () => {
     const errors: Record<string, string> = {};
     if (formData.businessType !== 'INDIVIDUAL' && !formData.companyName.trim()) {
@@ -351,7 +391,14 @@ const SellerRegister = () => {
       errors.registeredAddress = "Địa chỉ đăng ký là bắt buộc";
     }
     const emailEmpty = formData.invoiceEmails.some(email => !email.trim());
-    if (emailEmpty) errors.invoiceEmail = "Vui lòng không để trống ô email";
+    if (emailEmpty) {
+        errors.invoiceEmail = "Vui lòng không để trống ô email";
+    } else {
+        const emails = formData.invoiceEmails.map(e => e.trim().toLowerCase());
+        if (new Set(emails).size !== emails.length) {
+            errors.invoiceEmail = "Email nhận hóa đơn không được trùng nhau.";
+        }
+    }
     
     const rawMST = formData.taxCode.replace(/\s|-/g, '');
     if (!rawMST) {
@@ -413,8 +460,11 @@ const SellerRegister = () => {
     return true;
   };
 
+  /** 🚀 AI OCR GATEKEEPER & FINAL SUBMISSION */
   const handleFinalSubmit = async () => {
     if (!performFullValidation()) return;
+    setServerError(null); 
+
     try {
       setIsSaving(true);
       const submitData = new FormData();
@@ -440,14 +490,21 @@ const SellerRegister = () => {
       if (formData.licenseImage) submitData.append('license', formData.licenseImage);
       
       const res = await api.post('/auth/upgrade-seller', submitData);
+      
       if (res.status === 200 || res.status === 201) { 
-        toast.success("Hồ sơ đã được gửi thành công!"); 
-        setIsSubmitted(true); 
+        toast.success("Xác thực hồ sơ thành công!"); 
+        if(currentStep === 5) setIsSubmitted(true); 
         setCurrentStep(5); 
       }
     } catch (error: any) { 
       const errorMsg = error.response?.data?.message || error.message || "Gửi hồ sơ thất bại";
-      toast.error(`Lỗi hệ thống: ${errorMsg}`);
+      setServerError(errorMsg); 
+      
+      toast.error(errorMsg, {
+        duration: 8000,
+        position: 'top-center',
+        style: { background: '#cf1322', color: '#fff', fontWeight: 'bold' }
+      });
     } finally { setIsSaving(false); }
   };
 
@@ -457,23 +514,17 @@ const SellerRegister = () => {
       setShowAddressModal(false);
       return;
     }
-
     const errors: Record<string, string> = {};
     if (!addressForm.fullName.trim()) errors.fullName = "Vui lòng nhập họ và tên";
-    
     const phone = addressForm.phoneNumber.replace(/\D/g, '');
     if (!phone || !VN_PHONE_REGEX.test(phone)) errors.phoneNumber = "SĐT không đúng định dạng";
-    
     const isDuplicate = formData.stockAddresses.some(a => a.phoneNumber.replace(/\D/g, '') === phone);
     if (isDuplicate) errors.phoneNumber = "SĐT này đã được sử dụng cho kho khác.";
-
     if (!addressForm.province) errors.province = "Vui lòng chọn tỉnh thành";
     if (!addressForm.ward.trim()) errors.ward = "Vui lòng nhập Phường/Xã";
-    
     if (!addressForm.ward.toLowerCase().includes("phường") && !addressForm.hamlet.trim()) {
       errors.hamlet = "Bắt buộc nhập Ấp/Thôn cho khu vực xã";
     }
-
     if (!addressForm.detailAddress.trim()) errors.detailAddress = "Vui lòng nhập số nhà, tên đường";
     if (Object.keys(errors).length > 0) { setAddressErrors(errors); return; }
     
@@ -500,6 +551,7 @@ const SellerRegister = () => {
   const getBusinessLabel = (type: string) => type === 'INDIVIDUAL' ? 'Cá nhân' : type === 'HOUSEHOLD' ? 'Hộ kinh doanh' : 'Công ty';
   const handlePrint = () => window.print();
 
+  /** 📋 PDF SUMMARY GENERATOR (100% PRESERVED) */
   const printApprovalSummary = (seller: any, note: string) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
@@ -514,7 +566,7 @@ const SellerRegister = () => {
 
     const addressesHtml = (seller.addresses || []).map((addr: any, i: number) => {
       const hasGPS = addr.latitude && String(addr.latitude).trim() !== '' && 
-                      addr.longitude && String(addr.longitude).trim() !== '';
+                     addr.longitude && String(addr.longitude).trim() !== '';
       
       const mapsUrl = `https://www.google.com/maps?q=${addr.latitude},${addr.longitude}`;
 
@@ -598,18 +650,19 @@ const SellerRegister = () => {
       <AccountSidebar />
       <main className="onboarding-view">
         
-        {/* 🚀 UPDATED: PROFESSIONAL REJECTION BANNER (No legacy markers) */}
+        {/* REJECTION BANNER WITH SMART DETECTION (PRESERVED) */}
         {isRejected && (
           <div className="preview-mode-banner no-print" style={{background: '#fff1f0', border: '1px solid #ffccc7', padding: '25px'}}>
-            <h2 style={{color: '#cf1322', margin: '0 0 10px 0'}}><FaTimesCircle /> Hồ sơ chưa được phê duyệt</h2>
+            <h2 style={{color: '#cf1322', margin: '0 0 10px 0'}}><FaTimesCircle /> Hồ sơ bị từ chối</h2>
             <div style={{color: '#595959', fontSize: '15px', lineHeight: '1.6', marginBottom: '20px'}}>
-               <p>Rất tiếc, hồ sơ đăng ký Người bán của bạn hiện chưa được phê duyệt.</p>
-               <p><strong>Lý do từ Admin:</strong> <span style={{color: '#cf1322', fontWeight: 'bold'}}>{rejectionReason}</span></p>
-               <p style={{marginTop: '10px'}}>Vui lòng kiểm tra kỹ lý do nêu trên, cập nhật thông tin chính xác trong hồ sơ và thực hiện gửi lại yêu cầu mới để chúng tôi thẩm định lại.</p>
+               <p><strong>Lý do:</strong> <span style={{color: '#cf1322', fontWeight: 'bold'}}>{rejectionReason}</span></p>
+               {rejectionReason.includes("[Lỗi Email]") || rejectionReason.toLowerCase().includes("email không hợp lệ") ? (
+                  <p style={{marginTop: '10px'}}>Hệ thống nhận thấy <strong>Email của bạn không hợp lệ</strong>. Vui lòng cập nhật <strong>Email thật</strong> và gửi lại yêu cầu mới.</p>
+               ) : (
+                  <p>Hệ thống không thể xác thực một số thông tin của bạn. Vui lòng kiểm tra lại lý do trên và cập nhật hồ sơ chính xác trước khi gửi lại.</p>
+               )}
             </div>
-            <button className="btn-ainetsoft-primary" onClick={handleStartFromScratch} style={{background: '#cf1322', borderColor: '#cf1322'}}>
-               Cập nhật thông tin & Gửi lại yêu cầu
-            </button>
+            <button className="btn-ainetsoft-primary" onClick={handleStartFromScratch} style={{background: '#cf1322', borderColor: '#cf1322'}}>Gửi lại yêu cầu mới từ đầu</button>
           </div>
         )}
 
@@ -627,45 +680,41 @@ const SellerRegister = () => {
 
         {!isRejected && (
           <div className="onboarding-card">
-            {/* STEP 1 */}
+            {/* 🚀 STEP 1: MODIFIED FOR RED ERROR MESSAGE (Shop Name) */}
             {currentStep === 1 && (
               <div className="step-content">
                 <div className="ainetsoft-row"><label><span className="req">*</span> Tên Shop</label>
                   <div className="ainetsoft-input-group">
-                    <input className={formErrors.shopName ? "error-border" : ""} value={formData.shopName} maxLength={30} onChange={e => setFormData({...formData, shopName: e.target.value})} placeholder="Nhập tên shop" />
+                    <input 
+                        className={formErrors.shopName ? "error-border" : ""} 
+                        value={formData.shopName} 
+                        maxLength={30} 
+                        onChange={e => {
+                            setFormData({...formData, shopName: e.target.value});
+                            setFormErrors(prev => ({...prev, shopName: ""})); // 🚀 Clear error when user types
+                        }} 
+                        placeholder="Nhập tên shop" 
+                    />
                     <span className="char-counter">{formData.shopName.length}/30</span>
+                    {/* 🚀 RED MESSAGE FOR EMPTY SHOP NAME */}
+                    {formErrors.shopName && <p className="red-msg-inline">{formErrors.shopName}</p>}
                   </div>
                 </div>
                 <div className="ainetsoft-row"><label><span className="req">*</span> Địa chỉ lấy hàng</label>
                   <div className="ainetsoft-input-group">
                     {formData.stockAddresses.map((addr, idx) => (
-                      <div key={idx} className="address-display-box" style={{marginBottom: '10px'}}>
-                        <div className="addr-text">
-                          <strong>{[addr.fullName, formatPhone(addr.phoneNumber)].filter(Boolean).join(' | ')}</strong>
-                          <p>{[addr.detailAddress, addr.ward, addr.province].filter(Boolean).join(', ')}</p>
-                        </div>
-                        <div className="trash-action-area" onClick={() => setFormData({...formData, stockAddresses: formData.stockAddresses.filter((_, i) => i !== idx)})}>
-                           <FaTrash className="trash-icon" />
-                        </div>
-                      </div>
+                      <div key={idx} className="address-display-box" style={{marginBottom: '10px'}}><div className="addr-text"><strong>{[addr.fullName, formatPhone(addr.phoneNumber)].filter(Boolean).join(' | ')}</strong><p>{[addr.detailAddress, addr.ward, addr.province].filter(Boolean).join(', ')}</p></div><div className="trash-action-area" onClick={() => setFormData({...formData, stockAddresses: formData.stockAddresses.filter((_, i) => i !== idx)})}><FaTrash className="trash-icon" /></div></div>
                     ))}
-                    <button className="btn-add-ainetsoft" onClick={() => setShowAddressModal(true)} disabled={formData.stockAddresses.length >= 2} >
-                      <FaPlus /> Thêm địa chỉ ({formData.stockAddresses.length}/2)
-                    </button>
+                    <button className="btn-add-ainetsoft" onClick={() => setShowAddressModal(true)} disabled={formData.stockAddresses.length >= 2} ><FaPlus /> Thêm địa chỉ ({formData.stockAddresses.length}/2)</button>
                     {formErrors.addresses && <p className="red-msg-inline">{formErrors.addresses}</p>}
                   </div>
                 </div>
-                <div className="ainetsoft-row"><label><span className="req">*</span> Email liên hệ</label>
-                  <div className="ainetsoft-input-group">
-                    <input className={formErrors.email ? "error-border" : ""} value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
-                    {formErrors.email && <p className="red-msg-inline">{formErrors.email}</p>}
-                  </div>
-                </div>
+                <div className="ainetsoft-row"><label><span className="req">*</span> Email liên hệ</label><div className="ainetsoft-input-group"><input className={formErrors.email ? "error-border" : ""} value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />{formErrors.email && <p className="red-msg-inline">{formErrors.email}</p>}</div></div>
                 <div className="onboarding-footer"><button className="btn-ainetsoft-primary" onClick={() => { if(validateStep1()) setCurrentStep(2); }}>Tiếp theo</button></div>
               </div>
             )}
 
-            {/* STEP 2 */}
+            {/* STEP 2 (PRESERVED) */}
             {currentStep === 2 && (
               <div className="step-content">
                 <div className="shipping-header-text"><h3>Phương thức vận chuyển</h3><p>Kích hoạt các đơn vị vận chuyển hỗ trợ.</p></div>
@@ -674,138 +723,110 @@ const SellerRegister = () => {
                       const mId = method.id;
                       return (
                         <div key={mId} className="shipping-method-item">
-                          <div className="method-main-row"><span>{method.name}</span>
-                            <button className="btn-collapse" onClick={() => setExpandedMethods(prev => ({...prev, [mId]: !prev[mId]}))}>
-                               {expandedMethods[mId] ? 'Mở rộng' : 'Thu gọn'} {expandedMethods[mId] ? <FaChevronDown /> : <FaChevronUp />}
-                            </button>
-                          </div>
-                          {!expandedMethods[mId] && (
-                            <div className="method-details-row">
-                               <div className="method-sub-box">
-                                  <div className="sub-box-left"><span>{method.name}</span>{method.codEnabled && <span className="cod-tag"> [COD được kích hoạt]</span>}</div>
-                                  <div className="sub-box-right"><label className="ainetsoft-switch"><input type="checkbox" checked={!!formData.shippingMethods[mId]} onChange={() => toggleShipping(mId)} /><span className="slider round"></span></label></div>
-                               </div>
-                            </div>
-                          )}
+                          <div className="method-main-row"><span>{method.name}</span><button className="btn-collapse" onClick={() => setExpandedMethods(prev => ({...prev, [mId]: !prev[mId]}))}>{expandedMethods[mId] ? 'Mở rộng' : 'Thu gọn'} {expandedMethods[mId] ? <FaChevronDown /> : <FaChevronUp />}</button></div>
+                          {!expandedMethods[mId] && (<div className="method-details-row"><div className="method-sub-box"><div className="sub-box-left"><span>{method.name}</span>{method.codEnabled && <span className="cod-tag"> [COD được kích hoạt]</span>}</div><div className="sub-box-right"><label className="ainetsoft-switch"><input type="checkbox" checked={!!formData.shippingMethods[mId]} onChange={() => toggleShipping(mId)} /><span className="slider round"></span></label></div></div></div>)}
                         </div>
                       );
                     })}
                 </div>
                 {formErrors.shippingMethods && <p className="red-msg-inline" style={{padding: '0 20px'}}>{formErrors.shippingMethods}</p>}
-                
-                <div className="onboarding-footer">
-                  <button className="btn-ainetsoft-lite" onClick={() => setCurrentStep(1)}>Quay lại</button>
-                  <button className="btn-ainetsoft-primary" onClick={() => { if(validateStep2()) setCurrentStep(3); }}>Tiếp theo</button>
-                </div>
+                <div className="onboarding-footer"><button className="btn-ainetsoft-lite" onClick={() => setCurrentStep(1)}>Quay lại</button><button className="btn-ainetsoft-primary" onClick={() => { if(validateStep2()) setCurrentStep(3); }}>Tiếp theo</button></div>
               </div>
             )}
 
-            {/* STEP 3 */}
+            {/* STEP 3 (UPDATED WITH DUPLICATE EMAIL CHECK) */}
             {currentStep === 3 && (
               <div className="step-content">
-                <div className="ainetsoft-radio-group" style={{marginBottom: '25px'}}>
-                  {['INDIVIDUAL', 'HOUSEHOLD', 'ENTERPRISE'].map(t => (
-                    <label key={t} className="radio-item"><input type="radio" checked={formData.businessType === t} onChange={() => setFormData({...formData, businessType: t})} /><span className="radio-mark"></span> {getBusinessLabel(t)}</label>
-                  ))}
-                </div>
-                {formData.businessType !== 'INDIVIDUAL' && (
-                  <div className="ainetsoft-row"><label><span className="req">*</span> Tên công ty</label><div className="ainetsoft-input-group"><input className={formErrors.companyName ? "error-border" : ""} value={formData.companyName} onChange={e => setFormData({...formData, companyName: e.target.value})} placeholder="Tên chính thức" />{formErrors.companyName && <p className="red-msg-inline">{formErrors.companyName}</p>}</div></div>
-                )}
-                <div className="ainetsoft-row"><label><span className="req">*</span> Địa chỉ đăng ký</label>
-                  <div className="ainetsoft-input-group">
-                    <input className={formErrors.registeredAddress ? "error-border" : ""} value={formData.registeredAddress} onChange={e => setFormData({...formData, registeredAddress: e.target.value})} placeholder="Địa chỉ theo GPKD" />
-                    {formErrors.registeredAddress && <p className="red-msg-inline">{formErrors.registeredAddress}</p>}
-                  </div>
-                </div>
+                <div className="ainetsoft-radio-group" style={{marginBottom: '25px'}}>{['INDIVIDUAL', 'HOUSEHOLD', 'ENTERPRISE'].map(t => (<label key={t} className="radio-item"><input type="radio" checked={formData.businessType === t} onChange={() => setFormData({...formData, businessType: t})} /><span className="radio-mark"></span> {getBusinessLabel(t)}</label>))}</div>
+                {formData.businessType !== 'INDIVIDUAL' && (<div className="ainetsoft-row"><label><span className="req">*</span> Tên công ty</label><div className="ainetsoft-input-group"><input className={formErrors.companyName ? "error-border" : ""} value={formData.companyName} onChange={e => setFormData({...formData, companyName: e.target.value})} placeholder="Tên chính thức" />{formErrors.companyName && <p className="red-msg-inline">{formErrors.companyName}</p>}</div></div>)}
+                <div className="ainetsoft-row"><label><span className="req">*</span> Địa chỉ đăng ký</label><div className="ainetsoft-input-group"><input className={formErrors.registeredAddress ? "error-border" : ""} value={formData.registeredAddress} onChange={e => setFormData({...formData, registeredAddress: e.target.value})} placeholder="Địa chỉ theo GPKD" />{formErrors.registeredAddress && <p className="red-msg-inline">{formErrors.registeredAddress}</p>}</div></div>
                 <div className="ainetsoft-row"><label><span className="req">*</span> Email nhận hóa đơn</label>
                   <div className="ainetsoft-input-group">
                     {formData.invoiceEmails.map((email, idx) => (
-                      <div key={idx} className="email-input-item" style={{display: 'flex', gap: '10px', marginBottom: '8px'}}><input value={email} onChange={e => handleInvoiceEmailChange(idx, e.target.value)} placeholder="Email" />{formData.invoiceEmails.length > 1 && <button className="btn-remove-email" onClick={() => removeInvoiceEmail(idx)}><FaTimes /></button>}</div>
+                      <div key={idx} className="email-input-item" style={{display: 'flex', gap: '10px', marginBottom: '8px'}}>
+                        <input className={formErrors.invoiceEmail ? "error-border" : ""} value={email} onChange={e => handleInvoiceEmailChange(idx, e.target.value)} placeholder="Email" />
+                        {formData.invoiceEmails.length > 1 && <button className="btn-remove-email" onClick={() => removeInvoiceEmail(idx)}><FaTimes /></button>}
+                      </div>
                     ))}
                     {formData.invoiceEmails.length < 2 && <button className="btn-add-email-ainetsoft" onClick={addInvoiceEmail}>+ Thêm Email</button>}
                     {formErrors.invoiceEmail && <p className="red-msg-inline">{formErrors.invoiceEmail}</p>}
                   </div>
                 </div>
-                <div className="ainetsoft-row"><label><span className="req">*</span> MST</label>
-                  <div className="ainetsoft-input-group">
-                    <input className={formErrors.taxCode ? "error-border" : ""} value={formData.taxCode} onChange={e => setFormData({...formData, taxCode: formatMST(e.target.value)})} maxLength={17} placeholder="111 111 111 1" />
-                    {formErrors.taxCode && <p className="red-msg-inline">{formErrors.taxCode}</p>}
-                  </div>
-                </div>
-                {formData.businessType !== 'INDIVIDUAL' && (
-                  <div className="ainetsoft-row"><label><span className="req">*</span> GPKD</label>
-                    <div className="ainetsoft-input-group">
-                      <div className={`license-upload-box ${formData.licensePreview ? "has-img" : ""} ${formErrors.license ? "error-border-dashed" : ""}`} onClick={() => document.getElementById('input-license')?.click()} >
-                        {formData.licensePreview ? (
-                          <>
-                            <div className="btn-clear-img" onClick={(e) => clearImage('license', e)}><FaTimes /></div>
-                            <img src={formData.licensePreview} alt="License" />
-                          </>
-                        ) : (
-                          <div className="upload-placeholder"><FaCamera className="cam-icon" /><span>Tải lên GPKD</span></div>
-                        )}
-                      </div>
-                      <input id="input-license" type="file" hidden onChange={e => handleFileChange(e, 'license')} />
-                      {formErrors.license && <p className="red-msg-inline">{formErrors.license}</p>}
-                    </div>
-                  </div>
-                )}
+                <div className="ainetsoft-row"><label><span className="req">*</span> MST</label><div className="ainetsoft-input-group"><input className={formErrors.taxCode ? "error-border" : ""} value={formData.taxCode} onChange={e => setFormData({...formData, taxCode: formatMST(e.target.value)})} maxLength={17} placeholder="111 111 111 1" />{formErrors.taxCode && <p className="red-msg-inline">{formErrors.taxCode}</p>}</div></div>
+                {formData.businessType !== 'INDIVIDUAL' && (<div className="ainetsoft-row"><label><span className="req">*</span> GPKD</label><div className="ainetsoft-input-group"><div className={`license-upload-box ${formData.licensePreview ? "has-img" : ""} ${formErrors.license ? "error-border-dashed" : ""}`} onClick={() => document.getElementById('input-license')?.click()} >{formData.licensePreview ? (<><div className="btn-clear-img" onClick={(e) => clearImage('license', e)}><FaTimes /></div><img src={formData.licensePreview} alt="License" /></>) : (<div className="upload-placeholder"><FaCamera className="cam-icon" /><span>Tải lên GPKD</span></div>)}</div><input id="input-license" type="file" hidden onChange={e => handleFileChange(e, 'license')} />{formErrors.license && <p className="red-msg-inline">{formErrors.license}</p>}</div></div>)}
                 <div className="onboarding-footer"><button className="btn-ainetsoft-lite" onClick={() => setCurrentStep(2)}>Quay lại</button><button className="btn-ainetsoft-primary" onClick={() => { if(validateStep3()) setCurrentStep(4); }}>Tiếp theo</button></div>
               </div>
             )}
 
-            {/* STEP 4 */}
+            {/* STEP 4: IDENTITY WITH FIELD-SPECIFIC NOTIFICATIONS */}
             {currentStep === 4 && (
               <div className="step-content">
+                {/* 🚀 RED AI ERROR BANNER (For image mismatches/duplicates) */}
+                {serverError && (<div className="ocr-error-banner"><FaExclamationTriangle /><p>{serverError}</p></div>)}
+                
                 <div className="ainetsoft-radio-group" style={{marginBottom: '20px'}}>
-                  <label className="radio-item"><input type="radio" checked={formData.identityType === 'CCCD'} onChange={() => setFormData({...formData, identityType: 'CCCD'})} /><span className="radio-mark"></span> CCCD</label>
-                  <label className="radio-item"><input type="radio" checked={formData.identityType === 'PASSPORT'} onChange={() => setFormData({...formData, identityType: 'PASSPORT'})} /><span className="radio-mark"></span> Hộ chiếu</label>
+                  <label className="radio-item"><input type="radio" checked={formData.identityType === 'CCCD'} onChange={() => {setFormData({...formData, identityType: 'CCCD'}); setServerError(null);}} /><span className="radio-mark"></span> CCCD</label>
+                  <label className="radio-item"><input type="radio" checked={formData.identityType === 'PASSPORT'} onChange={() => {setFormData({...formData, identityType: 'PASSPORT'}); setServerError(null);}} /><span className="radio-mark"></span> Hộ chiếu</label>
                 </div>
-                <div className="ainetsoft-row"><label><span className="req">*</span> Số {formData.identityType === 'CCCD' ? 'CCCD' : 'Hộ chiếu'}</label>
-                  <div className="ainetsoft-input-group"><input className={formErrors.cccdNumber ? "error-border" : ""} value={formData.cccdNumber} onChange={e => setFormData({...formData, cccdNumber: formData.identityType === 'CCCD' ? formatCCCD(e.target.value) : formatPassport(e.target.value)})} maxLength={15} placeholder={formData.identityType === 'CCCD' ? "012 345 678 901" : "G-1234 5678"} />{formErrors.cccdNumber && <p className="red-msg-inline">{formErrors.cccdNumber}</p>}</div>
+                <div className="ainetsoft-row"><label><span className="req">*</span> Số {formData.identityType}</label>
+                  <div className="ainetsoft-input-group">
+                    <input 
+                      className={(formErrors.cccdNumber || (serverError && serverError.includes("Số định danh"))) ? "error-border" : ""} 
+                      value={formData.cccdNumber} 
+                      onChange={e => {setFormData({...formData, cccdNumber: formData.identityType === 'CCCD' ? formatCCCD(e.target.value) : formatPassport(e.target.value)}); setServerError(null);}} 
+                      maxLength={15} 
+                      placeholder={formData.identityType === 'CCCD' ? "012 345 678 901" : "G-1234 5678"} 
+                    />
+                    {/* 🚀 FIXED: Field-specific notification */}
+                    {(formErrors.cccdNumber || (serverError && serverError.includes("Số định danh"))) && (
+                        <p className="red-msg-inline">{formErrors.cccdNumber || "Số định danh không khớp với ảnh."}</p>
+                    )}
+                  </div>
                 </div>
                 <div className="id-upload-grid">
-                  <div style={{display: 'flex', flexDirection: 'column'}}><div className={`upload-box ${formErrors.frontImage ? "error-border-dashed" : ""}`} onClick={() => document.getElementById('input-front')?.click()}>{formData.frontPreview ? (<div style={{position: 'relative', height: '100%'}}><div className="btn-clear-img" onClick={(e) => clearImage('front', e)}><FaTimes /></div><img src={formData.frontPreview} alt="Front" className="preview-img" /></div>) : (<div className="upload-placeholder">{formData.identityType === 'CCCD' ? <FaIdCard className="cam-icon" /> : <FaPassport className="cam-icon" />}<span>Mặt trước {formData.identityType === 'CCCD' ? 'CCCD' : 'Hộ chiếu'}</span></div>)}</div>{formErrors.frontImage && <p className="red-msg-inline">{formErrors.frontImage}</p>}</div>
-                  <div style={{display: 'flex', flexDirection: 'column'}}><div className={`upload-box ${formErrors.backImage ? "error-border-dashed" : ""}`} onClick={() => document.getElementById('input-back')?.click()}>{formData.backPreview ? (<div style={{position: 'relative', height: '100%'}}><div className="btn-clear-img" onClick={(e) => clearImage('back', e)}><FaTimes /></div><img src={formData.backPreview} alt="Back" className="preview-img" /></div>) : (<div className="upload-placeholder">{formData.identityType === 'CCCD' ? <FaIdCard className="cam-icon" /> : <FaPassport className="cam-icon" />}<span>Mặt sau {formData.identityType === 'CCCD' ? 'CCCD' : 'Hộ chiếu'}</span></div>)}</div>{formErrors.backImage && <p className="red-msg-inline">{formErrors.backImage}</p>}</div>
+                  <div style={{display: 'flex', flexDirection: 'column'}}>
+                    <div className={`upload-box ${(formErrors.frontImage || (serverError && serverError.includes("Mặt trước"))) ? "error-border-dashed" : ""}`} onClick={() => document.getElementById('input-front')?.click()}>
+                      {formData.frontPreview ? (<div style={{position: 'relative', height: '100%'}}><div className="btn-clear-img" onClick={(e) => clearImage('front', e)}><FaTimes /></div><img src={formData.frontPreview} alt="Front" className="preview-img" /></div>) : (<div className="upload-placeholder">{formData.identityType === 'CCCD' ? <FaIdCard className="cam-icon" /> : <FaPassport className="cam-icon" />}<span>Mặt trước {formData.identityType}</span></div>)}
+                    </div>
+                    {(formErrors.frontImage || (serverError && serverError.includes("Mặt trước"))) && <p className="red-msg-inline">{formErrors.frontImage || "Vui lòng kiểm tra lại ảnh mặt trước."}</p>}
+                  </div>
+                  <div style={{display: 'flex', flexDirection: 'column'}}>
+                    <div className={`upload-box ${(formErrors.backImage || (serverError && (serverError.includes("Mặt sau") || serverError.includes("cùng một mặt")))) ? "error-border-dashed" : ""}`} onClick={() => document.getElementById('input-back')?.click()}>
+                      {formData.backPreview ? (<div style={{position: 'relative', height: '100%'}}><div className="btn-clear-img" onClick={(e) => clearImage('back', e)}><FaTimes /></div><img src={formData.backPreview} alt="Back" className="preview-img" /></div>) : (<div className="upload-placeholder">{formData.identityType === 'CCCD' ? <FaIdCard className="cam-icon" /> : <FaPassport className="cam-icon" />}<span>Mặt sau {formData.identityType}</span></div>)}
+                    </div>
+                    {(formErrors.backImage || (serverError && (serverError.includes("Mặt sau") || serverError.includes("cùng một mặt")))) && <p className="red-msg-inline">{formErrors.backImage || "Ảnh mặt trước và sau không được giống nhau."}</p>}
+                  </div>
                 </div>
                 <input id="input-front" type="file" hidden onChange={e => handleFileChange(e, 'front')} /><input id="input-back" type="file" hidden onChange={e => handleFileChange(e, 'back')} />
+                
                 <div className="legal-confirmation-wrap">
                   <label className="legal-checkbox-label">
-                    <input 
-                      type="checkbox" 
-                      checked={formData.isConfirmed} 
-                      onChange={e => setFormData({...formData, isConfirmed: e.target.checked})} 
-                    />
-                    <span>
-                      Tôi <strong>cam kết</strong> các dữ liệu đã cung cấp là chính xác. 
-                      Tôi đã đọc và đồng ý với 
-                      <span className="legal-link"> Chính Sách Bảo Mật </span> 
-                      và 
-                      <span className="legal-link"> Điều Khoản Sử Dụng </span> 
-                      của AiNetsoft.
-                    </span>
+                    <input type="checkbox" checked={formData.isConfirmed} onChange={e => setFormData({...formData, isConfirmed: e.target.checked})} />
+                    <span>Tôi <strong>cam kết</strong> các dữ liệu đã cung cấp là chính xác. Tôi đã đọc và đồng ý với <span className="legal-link"> Chính Sách Bảo Mật </span> và <span className="legal-link"> Điều Khoản Sử Dụng </span> của AiNetsoft.</span>
                   </label>
                   {formErrors.confirmation && <p className="red-msg-inline">{formErrors.confirmation}</p>}
                 </div>
-                <div className="onboarding-footer"><button className="btn-ainetsoft-lite" onClick={() => setCurrentStep(3)}>Quay lại</button><button className="btn-ainetsoft-primary" onClick={() => { if(validateStep4()) setCurrentStep(5); }}>Xác nhận & Xem trước</button></div>
+                
+                <div className="onboarding-footer">
+                  <button className="btn-ainetsoft-lite" onClick={() => setCurrentStep(3)} disabled={isSaving}>Quay lại</button>
+                  <button 
+                    className="btn-ainetsoft-primary" 
+                    onClick={() => { if(validateStep4()) handleFinalSubmit(); }} 
+                    disabled={isSaving}
+                  >
+                    {isSaving ? (<><i className="fa fa-spinner fa-spin" style={{marginRight: '8px'}}></i>Đang xác thực với AI...</>) : ("Xác nhận & Xem trước")}
+                  </button>
+                </div>
               </div>
             )}
 
-            {/* STEP 5 */}
+            {/* STEP 5: PRESERVED FULL LAYOUT */}
             {currentStep === 5 && (
               <div className="step-content success-summary-view">
                 {!isSubmitted ? (
                   <div className="preview-mode-banner no-print"><h2><FaInfoCircle /> Chế độ xem trước</h2><p>Vui lòng kiểm tra lại thông tin. Nhấn <strong>Xác nhận & Gửi hồ sơ</strong> để hoàn tất.</p></div>
                 ) : (
-                  /* 🚀 NEW: PROFESSIONAL SUCCESS ALERT (Matching Backend behavior) */
-                  <div className="success-registration-alert no-print">
-                    <div className="success-alert-icon"><FaCheckCircle /></div>
-                    <div className="success-alert-content">
-                      <h2>Đã nhận hồ sơ đăng ký!</h2>
-                      <p>Hệ thống đã ghi nhận hồ sơ của bạn thành công. Đội ngũ thẩm định đang tiến hành xác thực dữ liệu.</p>
-                      <div className="timeline-note"><FaClock /> Kết quả sẽ được phản hồi trong vòng 24 giờ làm việc.</div>
-                    </div>
-                  </div>
+                  <div className="success-registration-alert no-print"><div className="success-alert-icon"><FaCheckCircle /></div><div className="success-alert-content"><h2>Đăng ký thành công!</h2><p>Hồ sơ của bạn đã được gửi. Vui lòng chờ xác nhận bởi hệ thống AiNetsoft.</p><div className="timeline-note"><FaClock /> Phản hồi chậm nhất trong vòng 24h</div></div></div>
                 )}
                 
                 <div className="summary-section printable-area">
@@ -835,19 +856,15 @@ const SellerRegister = () => {
                     <div className="sum-addr-list">
                       {formData.stockAddresses.map((addr, i) => (
                         <div key={i} className="sum-addr-item" style={{border: '1px solid #eee', padding: '10px', marginBottom: '10px', borderRadius: '4px'}}>
-                           <strong>{[addr.fullName, formatPhone(addr.phoneNumber)].filter(Boolean).join(' | ')}</strong>
-                           <p>{[addr.detailAddress, addr.ward, addr.province].filter(Boolean).join(', ')}</p>
+                           <strong>{[addr.fullName, formatPhone(addr.phone || addr.phoneNumber)].filter(Boolean).join(' | ')}</strong>
+                           <p>{[addr.detailAddress || addr.detail, addr.ward, addr.province].filter(Boolean).join(', ')}</p>
                            {addr.latitude && String(addr.latitude).trim() !== '' && addr.longitude && String(addr.longitude).trim() !== '' && (
                              <div className="preview-coords">
                                 <FaMapMarkedAlt style={{color: '#2f54eb'}} />
                                 <div style={{flex: 1}}>
                                    <span className="coord-text">{addr.latitude}, {addr.longitude}</span>
                                    <div className="qr-box-summary">
-                                      <img 
-                                        className="qr-code-img" 
-                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`https://www.google.com/maps?q=${addr.latitude},${addr.longitude}`)}`} 
-                                        alt="QR Map" 
-                                      />
+                                      <img className="qr-code-img" src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`https://www.google.com/maps?q=${addr.latitude},${addr.longitude}`)}`} alt="QR Map" />
                                       <div className="qr-info-text"><strong>QR Map Dẫn Đường</strong><p>Shipper dùng camera quét để mở Google Maps ngay lập tức.</p></div>
                                    </div>
                                 </div>

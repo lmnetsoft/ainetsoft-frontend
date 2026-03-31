@@ -38,6 +38,9 @@ public class AuthService {
     private final JwtUtils jwtUtils;
     private final FileStorageService fileStorageService;
     private final NotificationService notificationService;
+    
+    // 🚀 Added for the Best approach: Side Detection
+    private final AzureOCRService ocrService;
 
     private final String UPLOAD_DIR = "uploads/cccd/";
     private final String LICENSE_DIR = "uploads/license/";
@@ -159,7 +162,6 @@ public class AuthService {
                         throw new RuntimeException("Email '" + newEmail + "' đã được sử dụng bởi tài khoản khác!");
                     }
                     user.setEmail(newEmail);
-                    // 🚀 REMOVED: SMART FIX related to [Lỗi Email] - this is now handled by verified flow
                 }
             }
         }
@@ -238,7 +240,6 @@ public class AuthService {
         User user = userRepository.findByIdentifier(identifier)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
         
-        // 🚀 CLEANED: Role check only
         if (user.getRoles() != null && user.getRoles().contains("SELLER")) {
             return "Bạn đã là Người bán rồi!";
         }
@@ -258,6 +259,46 @@ public class AuthService {
         }
 
         try {
+            // 🚀 STEP 1: STRICT AI IMAGE VERIFICATION (FRONT vs BACK)
+            if (front != null && !front.isEmpty() && back != null && !back.isEmpty()) {
+                // A. 100% BYTE COMPARISON (Catches identical files instantly)
+                if (Arrays.equals(front.getBytes(), back.getBytes())) {
+                    throw new RuntimeException("Ảnh mặt trước và mặt sau là cùng một tệp tin. Vui lòng tải lên đúng 2 mặt khác nhau.");
+                }
+
+                log.info("AI Analysis started for user: {}", user.getId());
+                AzureOCRService.IdAnalysisResult frontResult = ocrService.analyzeIdDocument(front);
+                AzureOCRService.IdAnalysisResult backResult = ocrService.analyzeIdDocument(back);
+
+                String sideF = frontResult.getSide();
+                String sideB = backResult.getSide();
+
+                // B. STRICT SIDE COMPARISON
+                // Only block if AI is SURE they are the same side (e.g., both "front" or both "back")
+                if (!"unknown".equals(sideF) && !"unknown".equals(sideB) && sideF.equalsIgnoreCase(sideB)) {
+                    throw new RuntimeException("Bạn đã tải lên cùng một mặt của thẻ. Vui lòng cung cấp cả mặt trước và mặt sau.");
+                }
+
+                // Block if sides are clearly swapped
+                if ("back".equals(sideF)) {
+                    throw new RuntimeException("Ảnh tải lên ô 'Mặt trước' thực tế là mặt sau. Vui lòng tải lên đúng mặt thẻ.");
+                }
+                if ("front".equals(sideB)) {
+                    throw new RuntimeException("Ảnh tải lên ô 'Mặt sau' thực tế là mặt trước. Vui lòng tải lên đúng mặt thẻ.");
+                }
+
+                // C. NUMBER VERIFICATION (Cross-check with user input)
+                if (frontResult.getIdNumber() != null && dto.getCccdNumber() != null) {
+                    String normalizedInput = dto.getCccdNumber().toUpperCase().replaceAll("[^A-Z0-9]", "");
+                    String normalizedExtracted = frontResult.getIdNumber();
+
+                    if (!normalizedInput.equals(normalizedExtracted)) {
+                        log.warn("AI MISMATCH: Typed [{}] vs Extracted [{}]", normalizedInput, normalizedExtracted);
+                        throw new RuntimeException("Số định danh trên ảnh không khớp với thông tin bạn nhập. Vui lòng kiểm tra lại.");
+                    }
+                }
+            }
+
             String frontUrl = (front != null && !front.isEmpty()) ? saveFile(front, user.getId(), "front") : 
                              (user.getIdentityInfo() != null ? user.getIdentityInfo().getFrontImageUrl() : null);
             String backUrl = (back != null && !back.isEmpty()) ? saveFile(back, user.getId(), "back") : 
@@ -275,7 +316,6 @@ public class AuthService {
 
             List<User.AddressInfo> addressInfos = new ArrayList<>();
             if (dto.getStockAddresses() != null && !dto.getStockAddresses().isEmpty()) {
-                // 🚀 PRESERVED: Constraints for address size and unique phone
                 if (dto.getStockAddresses().size() > 2) throw new RuntimeException("Tối đa 2 địa chỉ.");
                 
                 if (dto.getStockAddresses().size() == 2) {
@@ -367,7 +407,6 @@ public class AuthService {
 
             if ("PENDING".equals(user.getSellerVerification())) {
                 try {
-                    // 🚀 Phase 1: Call your NEW professional receipt method
                     azureService.sendSellerSubmissionReceivedEmail(user.getEmail(), user.getFullName());
                 } catch (Exception emailEx) {
                     log.error("Initial Seller Email failed for {}: {}", user.getEmail(), emailEx.getMessage());
@@ -376,6 +415,8 @@ public class AuthService {
 
             return "PENDING".equals(user.getSellerVerification()) ? "Hồ sơ đã gửi thành công!" : "Đã lưu tiến trình!";
             
+        } catch (RuntimeException re) {
+            throw re;
         } catch (Exception e) {
             log.error("Upgrade error: {}", e.getMessage());
             throw new RuntimeException("Lỗi khi lưu hồ sơ: " + e.getMessage());
