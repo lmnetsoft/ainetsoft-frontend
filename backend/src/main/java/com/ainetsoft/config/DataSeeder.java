@@ -26,9 +26,10 @@ public class DataSeeder implements CommandLineRunner {
     private final ReportReasonRepository reportReasonRepository;
     private final ProductReportRepository productReportRepository;
     private final PasswordEncoder passwordEncoder;
-    
-    // 🚀 NEW: Integrated for Quick Response Templates
     private final FeedbackTemplateRepository feedbackTemplateRepository;
+    
+    // 🚀 NEW: Repository for Legal Content Management
+    private final SystemContentRepository systemContentRepository;
 
     @Value("${app.seed.mock-data:true}")
     private boolean seedMockData;
@@ -57,8 +58,11 @@ public class DataSeeder implements CommandLineRunner {
         List<ShippingMethod> globalMethods = seedShippingMethods();
         seedReportReasons();
         
-        // 🚀 NEW: Seed Vietnamese Templates
+        // 🚀 NEW: Seed Vietnamese Templates (PRESERVED)
         seedFeedbackTemplates();
+
+        // 🚀 NEW: Initialize Privacy Policy and Terms of Use
+        seedSystemContents();
 
         if (seedMockData) {
             log.info("🛠 Seeding Full Mock Ecosystem for Professional Testing...");
@@ -78,11 +82,34 @@ public class DataSeeder implements CommandLineRunner {
         productReportRepository.deleteAll();
         userRepository.deleteAll(); 
         shippingMethodRepository.deleteAll(); 
-        
-        // 🚀 NEW: Cleanup templates
         feedbackTemplateRepository.deleteAll();
         
+        // 🚀 NEW: Cleanup legal content
+        systemContentRepository.deleteAll();
+        
         log.info("✅ Database cleaned successfully.");
+    }
+
+    // --- 🚀 NEW: DYNAMIC SYSTEM CONTENT SEEDER (The logic we are developing) ---
+    private void seedSystemContents() {
+        if (!systemContentRepository.existsBySlug("privacy")) {
+            systemContentRepository.save(SystemContent.builder()
+                    .slug("privacy")
+                    .title("Chính Sách Bảo Mật")
+                    .htmlContent("<h2>Chính Sách Bảo Mật</h2><p>Chào mừng bạn đến với AiNetsoft. Chúng tôi cam kết bảo vệ thông tin cá nhân của bạn theo quy định pháp luật Việt Nam...</p><p><i>(Nội dung này có thể chỉnh sửa trong trang Admin)</i></p>")
+                    .lastUpdated(LocalDateTime.now())
+                    .build());
+        }
+
+        if (!systemContentRepository.existsBySlug("terms")) {
+            systemContentRepository.save(SystemContent.builder()
+                    .slug("terms")
+                    .title("Điều Khoản Sử Dụng")
+                    .htmlContent("<h2>Điều Khoản Sử Dụng</h2><p>Bằng việc sử dụng nền tảng AiNetsoft, bạn đồng ý tuân thủ các quy định và chính sách của chúng tôi...</p><p><i>(Nội dung này có thể chỉnh sửa trong trang Admin)</i></p>")
+                    .lastUpdated(LocalDateTime.now())
+                    .build());
+        }
+        log.info("✅ System Legal Contents Seeded (Privacy & Terms).");
     }
 
     private void seedGlobalAdmin() {
@@ -162,50 +189,18 @@ public class DataSeeder implements CommandLineRunner {
         return savedCats;
     }
 
-    // --- 🚀 NEW: VIETNAMESE FEEDBACK TEMPLATE SEEDER ---
     private void seedFeedbackTemplates() {
         if (feedbackTemplateRepository.count() == 0) {
             log.info("Initializing professional Vietnamese feedback templates...");
 
             List<FeedbackTemplate> templates = Arrays.asList(
-                // SELLER MODERATION TEMPLATES
-                FeedbackTemplate.builder()
-                        .title("Hồ sơ hợp lệ")
-                        .content("Hồ sơ và các chứng từ bạn cung cấp hoàn toàn hợp lệ và đầy đủ. Chào mừng bạn gia nhập cộng đồng người bán của AiNetSoft!")
-                        .type("SELLER_REJECTION")
-                        .build(),
-                FeedbackTemplate.builder()
-                        .title("Ảnh CCCD mờ")
-                        .content("Hình ảnh CCCD bạn cung cấp bị mờ, lóa sáng hoặc không rõ số. Vui lòng tải lên ảnh chụp bản gốc rõ nét và đủ ánh sáng.")
-                        .type("SELLER_REJECTION")
-                        .build(),
-                FeedbackTemplate.builder()
-                        .title("Thiếu GPKD")
-                        .content("Tài khoản của bạn được đăng ký là Hộ kinh doanh/Doanh nghiệp nhưng đang thiếu ảnh Giấy phép kinh doanh. Vui lòng bổ sung để tiếp tục.")
-                        .type("SELLER_REJECTION")
-                        .build(),
-                FeedbackTemplate.builder()
-                        .title("Mã số thuế sai")
-                        .content("Mã số thuế (MST) bạn cung cấp không khớp với thông tin trên trang tra cứu của Tổng cục Thuế. Vui lòng kiểm tra và cập nhật lại.")
-                        .type("SELLER_REJECTION")
-                        .build(),
-                FeedbackTemplate.builder()
-                        .title("Tọa độ GPS sai")
-                        .content("Tọa độ GPS của kho hàng không trùng khớp với địa chỉ thực tế bạn đã nhập. Vui lòng định vị lại vị trí chính xác trên bản đồ.")
-                        .type("SELLER_REJECTION")
-                        .build(),
-
-                // PRODUCT MODERATION TEMPLATES
-                FeedbackTemplate.builder()
-                        .title("Sản phẩm bị cấm")
-                        .content("Sản phẩm này thuộc danh mục hàng hóa bị cấm kinh doanh theo quy định pháp luật và tiêu chuẩn cộng đồng của AiNetSoft.")
-                        .type("PRODUCT_REJECTION")
-                        .build(),
-                FeedbackTemplate.builder()
-                        .title("Ảnh chất lượng kém")
-                        .content("Hình ảnh sản phẩm có chất lượng thấp, bị vỡ nét hoặc chứa logo/hình mờ của sàn thương mại điện tử khác.")
-                        .type("PRODUCT_REJECTION")
-                        .build()
+                FeedbackTemplate.builder().title("Hồ sơ hợp lệ").content("Hồ sơ và các chứng từ bạn cung cấp hoàn toàn hợp lệ và đầy đủ. Chào mừng bạn gia nhập cộng đồng người bán của AiNetSoft!").type("SELLER_REJECTION").build(),
+                FeedbackTemplate.builder().title("Ảnh CCCD mờ").content("Hình ảnh CCCD bạn cung cấp bị mờ, lóa sáng hoặc không rõ số. Vui lòng tải lên ảnh chụp bản gốc rõ nét và đủ ánh sáng.").type("SELLER_REJECTION").build(),
+                FeedbackTemplate.builder().title("Thiếu GPKD").content("Tài khoản của bạn được đăng ký là Hộ kinh doanh/Doanh nghiệp nhưng đang thiếu ảnh Giấy phép kinh doanh. Vui lòng bổ sung để tiếp tục.").type("SELLER_REJECTION").build(),
+                FeedbackTemplate.builder().title("Mã số thuế sai").content("Mã số thuế (MST) bạn cung cấp không khớp với thông tin trên trang tra cứu của Tổng cục Thuế. Vui lòng kiểm tra và cập nhật lại.").type("SELLER_REJECTION").build(),
+                FeedbackTemplate.builder().title("Tọa độ GPS sai").content("Tọa độ GPS của kho hàng không trùng khớp với địa chỉ thực tế bạn đã nhập. Vui lòng định vị lại vị trí chính xác trên bản đồ.").type("SELLER_REJECTION").build(),
+                FeedbackTemplate.builder().title("Sản phẩm bị cấm").content("Sản phẩm này thuộc danh mục hàng hóa bị cấm kinh doanh theo quy định pháp luật và tiêu chuẩn cộng đồng của AiNetSoft.").type("PRODUCT_REJECTION").build(),
+                FeedbackTemplate.builder().title("Ảnh chất lượng kém").content("Hình ảnh sản phẩm có chất lượng thấp, bị vỡ nét hoặc chứa logo/hình mờ của sàn thương mại điện tử khác.").type("PRODUCT_REJECTION").build()
             );
 
             feedbackTemplateRepository.saveAll(templates);
@@ -216,43 +211,16 @@ public class DataSeeder implements CommandLineRunner {
     private void seedDefaultSeller(List<Category> savedCats, List<ShippingMethod> globalMethods) {
         String sellerEmail = "seller@ainetsoft.com";
         if (!userRepository.existsByEmail(sellerEmail)) {
-            
             User.AddressInfo stockAddr = User.AddressInfo.builder()
-                    .receiverName("AiNetsoft Manager")
-                    .phone("0909123456")
-                    .province("TP.HCM (TP.HCM + Bình Dương + Bà Rịa–Vũng Tàu)")
-                    .ward("Phường Bến Nghé")
-                    .hamlet("Khu phố 1")
-                    .detail("Tòa nhà Bitexco, Quận 1, TP.HCM")
-                    .latitude("10.7715")
-                    .longitude("106.7043")
-                    .isDefault(true).build();
-
-            User.BankInfo bank = User.BankInfo.builder()
-                    .bankName("Vietcombank")
-                    .accountNumber("1234567890")
-                    .accountHolder("AINETSOFT MALL")
-                    .isDefault(true).build();
-
+                    .receiverName("AiNetsoft Manager").phone("0909123456")
+                    .province("TP.HCM (TP.HCM + Bình Dương + Bà Rịa–Vũng Tàu)").ward("Phường Bến Nghé").hamlet("Khu phố 1").detail("Tòa nhà Bitexco, Quận 1, TP.HCM").latitude("10.7715").longitude("106.7043").isDefault(true).build();
+            User.BankInfo bank = User.BankInfo.builder().bankName("Vietcombank").accountNumber("1234567890").accountHolder("AINETSOFT MALL").isDefault(true).build();
             User seller = User.builder()
-                    .email(sellerEmail).fullName("AiNetsoft Mall")
-                    .password(passwordEncoder.encode("Test1234!"))
-                    .roles(new HashSet<>(Set.of("SELLER", "USER")))
-                    .sellerVerification("VERIFIED").accountStatus("ACTIVE")
-                    .addresses(Collections.singletonList(stockAddr))
-                    .bankAccounts(Collections.singletonList(bank))
-                    .shopProfile(User.ShopProfile.builder()
-                            .shopName("AiNetsoft Mall")
-                            .shopSlug("ainetsoft-mall")
-                            .lastShopNameChange(LocalDateTime.now())
-                            .businessEmail(sellerEmail)
-                            .businessPhone("0909123456")
-                            .shopAddress(stockAddr.getDetail())
-                            .taxCode("0102030405")
-                            .enabledShippingMethodIds(globalMethods.stream().map(ShippingMethod::getId).collect(Collectors.toList()))
-                            .build())
+                    .email(sellerEmail).fullName("AiNetsoft Mall").password(passwordEncoder.encode("Test1234!"))
+                    .roles(new HashSet<>(Set.of("SELLER", "USER"))).sellerVerification("VERIFIED").accountStatus("ACTIVE")
+                    .addresses(Collections.singletonList(stockAddr)).bankAccounts(Collections.singletonList(bank))
+                    .shopProfile(User.ShopProfile.builder().shopName("AiNetsoft Mall").shopSlug("ainetsoft-mall").lastShopNameChange(LocalDateTime.now()).businessEmail(sellerEmail).businessPhone("0909123456").shopAddress(stockAddr.getDetail()).taxCode("0102030405").enabledShippingMethodIds(globalMethods.stream().map(ShippingMethod::getId).collect(Collectors.toList())).build())
                     .build();
-
             userRepository.save(seller);
             log.info("✅ Default Seller Created with Slug: ainetsoft-mall");
             seedMockProducts(seller, savedCats, globalMethods);
@@ -261,76 +229,32 @@ public class DataSeeder implements CommandLineRunner {
 
     private void seedMockProducts(User seller, List<Category> savedCats, List<ShippingMethod> globalMethods) {
         if (productRepository.count() > 10 || savedCats.isEmpty()) return;
-
         Random rand = new Random();
         for (int i = 1; i <= 55; i++) {
             Category randomCat = savedCats.get(rand.nextInt(savedCats.size()));
             List<Product.ShippingConfig> situationalOptions = new ArrayList<>();
-            
-            if (globalMethods.size() >= 2) {
-                situationalOptions.add(Product.ShippingConfig.builder()
-                        .methodId(globalMethods.get(1).getId()).methodName(globalMethods.get(1).getName())
-                        .cost(28700.0).estimatedTime("19 Th03 - 20 Th03")
-                        .voucherNote("Tặng Voucher 15.000đ nếu đơn giao sau thời gian trên.").build());
-            }
-            
-            if (i % 3 == 0 && globalMethods.size() >= 1) {
-                situationalOptions.add(Product.ShippingConfig.builder()
-                        .methodId(globalMethods.get(0).getId()).methodName(globalMethods.get(0).getName())
-                        .cost(208600.0).estimatedTime("Ngày mai 08:00")
-                        .voucherNote("Tặng Voucher 20.000đ nếu đơn giao sau thời gian trên.").build());
-            }
-
-            Product p = Product.builder()
-                    .name(randomCat.getName() + " Elite Gen " + i)
-                    .description("Sản phẩm chuyên nghiệp phân phối bởi AiNetsoft")
-                    .price(100000 + (rand.nextInt(500) * 1000)).stock(rand.nextInt(100) + 10)
-                    .categoryId(randomCat.getId()).categoryName(randomCat.getName())
-                    .sellerId(seller.getId()).shopName(seller.getFullName())
-                    .status("APPROVED").imageUrls(Arrays.asList("https://picsum.photos/seed/" + i + "/600/600"))
-                    .shippingOptions(situationalOptions).protectionEnabled(true).allowSharing(true)
-                    .favoriteCount(rand.nextInt(100)).soldCount(rand.nextInt(500) + 10)
-                    .averageRating(4.0 + (rand.nextDouble() * 1.0)).reviewCount(3)
-                    .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
-            
+            if (globalMethods.size() >= 2) { situationalOptions.add(Product.ShippingConfig.builder().methodId(globalMethods.get(1).getId()).methodName(globalMethods.get(1).getName()).cost(28700.0).estimatedTime("19 Th03 - 20 Th03").voucherNote("Tặng Voucher 15.000đ nếu đơn giao sau thời gian trên.").build()); }
+            if (i % 3 == 0 && globalMethods.size() >= 1) { situationalOptions.add(Product.ShippingConfig.builder().methodId(globalMethods.get(0).getId()).methodName(globalMethods.get(0).getName()).cost(208600.0).estimatedTime("Ngày mai 08:00").voucherNote("Tặng Voucher 20.000đ nếu đơn giao sau thời gian trên.").build()); }
+            Product p = Product.builder().name(randomCat.getName() + " Elite Gen " + i).description("Sản phẩm chuyên nghiệp phân phối bởi AiNetsoft").price(100000 + (rand.nextInt(500) * 1000)).stock(rand.nextInt(100) + 10).categoryId(randomCat.getId()).categoryName(randomCat.getName()).sellerId(seller.getId()).shopName(seller.getFullName()).status("APPROVED").imageUrls(Arrays.asList("https://picsum.photos/seed/" + i + "/600/600")).shippingOptions(situationalOptions).protectionEnabled(true).allowSharing(true).favoriteCount(rand.nextInt(100)).soldCount(rand.nextInt(500) + 10).averageRating(4.0 + (rand.nextDouble() * 1.0)).reviewCount(3).createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
             Product saved = productRepository.save(p);
             seedMockReviews(saved, seller.getId());
         }
-        log.info("✅ 55 Mock Products seeded with situational shipping.");
+        log.info("✅ 55 Mock Products seeded.");
     }
 
     private void seedMockReviews(Product product, String sellerId) {
-        Review rev1 = Review.builder()
-                .productId(product.getId()).productName(product.getName()).sellerId(sellerId)
-                .userName("tatoanhduc07").rating(5)
-                .comment("Sản phẩm tuyệt vời! Đúng với mô tả.")
-                .variantInfo("Phân loại: Size M").isVerifiedPurchase(true)
-                .sellerReply("Cảm ơn Quý khách!").repliedAt(LocalDateTime.now())
-                .createdAt(LocalDateTime.now().minusDays(1)).build();
+        Review rev1 = Review.builder().productId(product.getId()).productName(product.getName()).sellerId(sellerId).userName("tatoanhduc07").rating(5).comment("Sản phẩm tuyệt vời! Đúng với mô tả.").variantInfo("Phân loại: Size M").isVerifiedPurchase(true).sellerReply("Cảm ơn Quý khách!").repliedAt(LocalDateTime.now()).createdAt(LocalDateTime.now().minusDays(1)).build();
         reviewRepository.save(rev1);
-
-        Review rev2 = Review.builder()
-                .productId(product.getId()).productName(product.getName()).sellerId(sellerId)
-                .userName("Spam_User_99").rating(1).comment("Quảng cáo láo!!!")
-                .isVerifiedPurchase(false).createdAt(LocalDateTime.now()).build();
+        Review rev2 = Review.builder().productId(product.getId()).productName(product.getName()).sellerId(sellerId).userName("Spam_User_99").rating(1).comment("Quảng cáo láo!!!").isVerifiedPurchase(false).createdAt(LocalDateTime.now()).build();
         reviewRepository.save(rev2);
-
-        Review rev3 = Review.builder()
-                .productId(product.getId()).productName(product.getName()).sellerId(sellerId)
-                .userName("lien0988324688").rating(4).comment("Chất lượng tốt, hàng đẹp.")
-                .isVerifiedPurchase(true).createdAt(LocalDateTime.now().minusDays(3)).build();
+        Review rev3 = Review.builder().productId(product.getId()).productName(product.getName()).sellerId(sellerId).userName("lien0988324688").rating(4).comment("Chất lượng tốt, hàng đẹp.").isVerifiedPurchase(true).createdAt(LocalDateTime.now().minusDays(3)).build();
         reviewRepository.save(rev3);
     }
 
     private void seedSubAdmin() {
         String modEmail = "mod@ainetsoft.com";
         if (!userRepository.existsByEmail(modEmail)) {
-            User mod = User.builder()
-                    .email(modEmail).fullName("Product Moderator")
-                    .password(passwordEncoder.encode("Test1234!"))
-                    .roles(new HashSet<>(Set.of("ADMIN")))
-                    .permissions(new HashSet<>(Set.of("MANAGE_PRODUCTS"))) 
-                    .accountStatus("ACTIVE").build();
+            User mod = User.builder().email(modEmail).fullName("Product Moderator").password(passwordEncoder.encode("Test1234!")).roles(new HashSet<>(Set.of("ADMIN"))).permissions(new HashSet<>(Set.of("MANAGE_PRODUCTS"))).accountStatus("ACTIVE").build();
             userRepository.save(mod);
             log.info("🛡 Sub-Admin created.");
         }
@@ -339,40 +263,10 @@ public class DataSeeder implements CommandLineRunner {
     private void seedPendingModeration(List<Category> savedCats, List<ShippingMethod> globalMethods) {
         String pendingSellerEmail = "pending_seller@example.com";
         if (!userRepository.existsByEmail(pendingSellerEmail)) {
-            User.AddressInfo stock1 = User.AddressInfo.builder()
-                    .receiverName("Nguyễn Văn Kho")
-                    .phone("0987654321")
-                    .province("Hà Nội")
-                    .ward("Phường Hàng Đào")
-                    .hamlet("Số 1")
-                    .detail("123 Phố Cổ, Hà Nội")
-                    .isDefault(true).build();
-
-            User pSeller = User.builder()
-                    .email(pendingSellerEmail).fullName("Người Bán Chờ Duyệt").phone("0987654321")
-                    .password(passwordEncoder.encode("Test1234!")).roles(new HashSet<>(Set.of("USER")))
-                    .accountStatus("PENDING_SELLER").sellerVerification("PENDING")
-                    .identityInfo(User.IdentityInfo.builder()
-                            .cccdNumber("012345678912")
-                            .frontImageUrl("https://picsum.photos/seed/front/400/250")
-                            .backImageUrl("https://picsum.photos/seed/back/400/250")
-                            .submittedAt(LocalDateTime.now()).build())
-                    .addresses(Collections.singletonList(stock1))
-                    .shopProfile(User.ShopProfile.builder()
-                            .shopName("Shop Đang Đợi Duyệt")
-                            .shopSlug("shop-dang-doi-duyet")
-                            .lastShopNameChange(LocalDateTime.now())
-                            .businessEmail(pendingSellerEmail)
-                            .businessPhone("0987654321").shopAddress(stock1.getDetail())
-                            .enabledShippingMethodIds(globalMethods.size() > 2 ? 
-                                Arrays.asList(globalMethods.get(1).getId(), globalMethods.get(2).getId()) : new ArrayList<>())
-                            .build())
-                    .bankAccounts(Collections.singletonList(User.BankInfo.builder()
-                            .bankName("Vietcombank").accountNumber("9988776655")
-                            .accountHolder("NGUYEN VAN CHO DUYET").isDefault(true).build()))
-                    .build();
+            User.AddressInfo stock1 = User.AddressInfo.builder().receiverName("Nguyễn Văn Kho").phone("0987654321").province("Hà Nội").ward("Phường Hàng Đào").hamlet("Số 1").detail("123 Phố Cổ, Hà Nội").isDefault(true).build();
+            User pSeller = User.builder().email(pendingSellerEmail).fullName("Người Bán Chờ Duyệt").phone("0987654321").password(passwordEncoder.encode("Test1234!")).roles(new HashSet<>(Set.of("USER"))).accountStatus("PENDING_SELLER").sellerVerification("PENDING").identityInfo(User.IdentityInfo.builder().cccdNumber("012345678912").frontImageUrl("https://picsum.photos/seed/front/400/250").backImageUrl("https://picsum.photos/seed/back/400/250").submittedAt(LocalDateTime.now()).build()).addresses(Collections.singletonList(stock1)).shopProfile(User.ShopProfile.builder().shopName("Shop Đang Đợi Duyệt").shopSlug("shop-dang-doi-duyet").lastShopNameChange(LocalDateTime.now()).businessEmail(pendingSellerEmail).businessPhone("0987654321").shopAddress(stock1.getDetail()).enabledShippingMethodIds(globalMethods.size() > 2 ? Arrays.asList(globalMethods.get(1).getId(), globalMethods.get(2).getId()) : new ArrayList<>()).build()).bankAccounts(Collections.singletonList(User.BankInfo.builder().bankName("Vietcombank").accountNumber("9988776655").accountHolder("NGUYEN VAN CHO DUYET").isDefault(true).build())).build();
             userRepository.save(pSeller);
-            log.info("⚠️ Pending Data Seeded with Slug: shop-dang-doi-duyet");
+            log.info("⚠️ Pending Data Seeded.");
         }
     }
 }

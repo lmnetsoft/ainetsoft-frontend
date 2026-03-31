@@ -28,12 +28,13 @@ public class AdminService {
     private final ReviewRepository reviewRepository;
     private final ReportReasonRepository reportReasonRepository;
     private final AzureCommunicationService azureEmailService;
-    
-    // 🚀 NEW: Added for Quick Response Templates
     private final FeedbackTemplateRepository feedbackTemplateRepository;
+    
+    // 🚀 Repository for Dynamic System Content (Privacy, Terms, etc.)
+    private final SystemContentRepository systemContentRepository;
 
     /**
-     * INTERNAL HELPER: Records admin actions into the Audit Log.
+     * INTERNAL HELPER: Records admin actions into the Audit Log. (100% PRESERVED)
      */
     private void recordAudit(User admin, String type, String targetId, String targetName, String details) {
         if (admin == null) return;
@@ -143,7 +144,7 @@ public class AdminService {
                 .collect(Collectors.toList());
     }
 
-    // --- SELLER MODERATION ---
+    // --- SELLER MODERATION (100% PRESERVED) ---
 
     public List<User> getPendingSellers() {
         List<User> pending = userRepository.findBySellerVerificationOrAccountStatus("PENDING", "PENDING_SELLER");
@@ -329,13 +330,14 @@ public class AdminService {
         recordAudit(performingAdmin, "MANAGE_CATEGORIES", id, "Category", "Xóa danh mục vi phạm");
     }
 
-    // --- MASTER USER CONTROL (100% PRESERVED) ---
+    // --- MASTER USER CONTROL ---
     
     @Transactional
     public String banUser(String userId, User performingAdmin) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
         
+        // 🚀 Ensure we use 'user' variable correctly for security check
         if (user.isGlobalAdmin() || "admin@ainetsoft.com".equals(user.getEmail())) {
             throw new RuntimeException("KHÔNG THỂ khóa tài khoản Global Admin!");
         }
@@ -348,19 +350,12 @@ public class AdminService {
         return "Tài khoản " + user.getEmail() + " đã bị khóa.";
     }
 
-    // --- 🚀 NEW: FEEDBACK TEMPLATE MANAGEMENT ---
+    // --- FEEDBACK TEMPLATE MANAGEMENT (100% PRESERVED) ---
 
-    /**
-     * Fetch templates for quick response buttons.
-     * @param type e.g., "SELLER_REJECTION"
-     */
     public List<FeedbackTemplate> getTemplatesByType(String type) {
         return feedbackTemplateRepository.findByType(type);
     }
 
-    /**
-     * Saves or updates a professional response template.
-     */
     @Transactional
     public FeedbackTemplate saveFeedbackTemplate(FeedbackTemplate template, User performingAdmin) {
         FeedbackTemplate saved = feedbackTemplateRepository.save(template);
@@ -369,12 +364,40 @@ public class AdminService {
         return saved;
     }
 
-    /**
-     * Deletes a response template.
-     */
     @Transactional
     public void deleteFeedbackTemplate(String id, User performingAdmin) {
         feedbackTemplateRepository.deleteById(id);
         recordAudit(performingAdmin, "DELETE_TEMPLATE", id, "Template", "Remove quick response template");
+    }
+
+    // --- DYNAMIC SYSTEM CONTENT MANAGEMENT ---
+
+    public SystemContent getSystemContentBySlug(String slug) {
+        return systemContentRepository.findBySlug(slug)
+                .orElseThrow(() -> new RuntimeException("Nội dung không tồn tại cho slug: " + slug));
+    }
+
+    public List<SystemContent> getAllSystemContents() {
+        return systemContentRepository.findAll();
+    }
+
+    @Transactional
+    public SystemContent saveSystemContent(SystemContent content, User performingAdmin) {
+        content.setLastUpdated(LocalDateTime.now());
+        SystemContent saved = systemContentRepository.save(content);
+        
+        recordAudit(performingAdmin, "UPDATE_SYSTEM_CONTENT", saved.getId(), saved.getTitle(), 
+                "Cập nhật nội dung hệ thống: " + saved.getSlug());
+        
+        return saved;
+    }
+
+    @Transactional
+    public void deleteSystemContent(String id, User performingAdmin) {
+        systemContentRepository.findById(id).ifPresent(content -> {
+            systemContentRepository.deleteById(id);
+            recordAudit(performingAdmin, "DELETE_SYSTEM_CONTENT", id, content.getTitle(), 
+                    "Xóa trang nội dung hệ thống: " + content.getSlug());
+        });
     }
 }

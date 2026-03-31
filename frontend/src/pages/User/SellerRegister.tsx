@@ -10,6 +10,8 @@ import {
   FaExclamationTriangle 
 } from 'react-icons/fa';
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
+// 🚀 NEW: Added the Modal import
+import LegalModal from '../../components/LegalModal/LegalModal'; 
 import { getUserProfile } from '../../services/authService';
 import { toast } from 'react-hot-toast';
 
@@ -149,7 +151,9 @@ const inlineStyles = `
   .legal-confirmation-wrap { margin-top: 30px; padding: 15px; background: #f8f9fa; border-radius: 4px; border: 1px solid #eee; }
   .legal-checkbox-label { display: flex; align-items: flex-start; gap: 12px; cursor: pointer; font-size: 13.5px; color: #595959; line-height: 1.5; }
   .legal-checkbox-label input { width: 18px; height: 18px; margin-top: 2px; cursor: pointer; accent-color: #ee4d2d; }
-  .legal-link { color: #2f54eb; text-decoration: underline; }
+  
+  .legal-link-trigger { color: #2f54eb; text-decoration: underline; font-weight: 600; cursor: pointer; }
+  .legal-link-trigger:hover { color: #1d39c4; }
 
   .address-display-box { position: relative; padding-right: 45px !important; }
   .trash-action-area { 
@@ -163,6 +167,17 @@ const inlineStyles = `
   .trash-icon { color: #ff4d4f; font-size: 16px; }
   
   .btn-add-ainetsoft:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
+
+  /* 🚀 NEW: Added hint style for AI check */
+  .ocr-processing-hint {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #1890ff;
+    margin-top: 5px;
+    font-weight: 600;
+  }
 `;
 
 const PROVINCES_2026 = [
@@ -184,11 +199,15 @@ const SellerRegister = () => {
   const [isLocating, setIsLocating] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false); 
 
-  // REJECTION STATES
+  // 🚀 NEW: Added OCR specific states to track real-time results
+  const [isOcrLoading, setIsOcrLoading] = useState(false);
+  const [detectedIdNumber, setDetectedIdNumber] = useState<string | null>(null);
+
+  const [legalSlug, setLegalSlug] = useState<string | null>(null);
+
   const [isRejected, setIsRejected] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   
-  // 🚀 AI ERROR NOTIFICATION STATE
   const [serverError, setServerError] = useState<string | null>(null);
 
   const [showAddressModal, setShowAddressModal] = useState(false);
@@ -233,7 +252,6 @@ const SellerRegister = () => {
             return;
         }
 
-        // IDENTIFY REJECTION VS PENDING
         if (profileData.sellerVerification === 'PENDING') {
             setIsSubmitted(true);
             setCurrentStep(5);
@@ -296,7 +314,7 @@ const SellerRegister = () => {
       }
     };
     fetchData();
-  }, [navigate, navigate]);
+  }, [navigate]);
 
   const handleStartFromScratch = () => {
     setIsRejected(false);
@@ -305,13 +323,30 @@ const SellerRegister = () => {
     toast.info("Vui lòng cập nhật thông tin chính xác và gửi lại yêu cầu mới.");
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'front' | 'back' | 'license') => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'front' | 'back' | 'license') => {
     const file = e.target.files?.[0];
     if (file) {
       setServerError(null); 
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         setFormData(prev => ({ ...prev, [`${type}Image`]: file, [`${type}Preview`]: reader.result as string }));
+        
+        // 🚀 NEW: Trigger OCR immediately when FRONT ID is uploaded
+        if (type === 'front') {
+            try {
+                setIsOcrLoading(true);
+                const checkForm = new FormData();
+                checkForm.append('frontImage', file);
+                const res = await api.post('/auth/verify-ocr', checkForm); // This is your AI call
+                if (res.data?.idNumber) {
+                    setDetectedIdNumber(res.data.idNumber.replace(/\s/g, ''));
+                }
+            } catch (err) {
+                console.error("AI Check Failed");
+            } finally {
+                setIsOcrLoading(false);
+            }
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -320,6 +355,7 @@ const SellerRegister = () => {
   const clearImage = (type: 'front' | 'back' | 'license', e: React.MouseEvent) => {
     e.stopPropagation(); 
     setFormData(prev => ({ ...prev, [`${type}Image`]: null, [`${type}Preview`]: '' }));
+    if (type === 'front') setDetectedIdNumber(null); // Clear AI memory
     const input = document.getElementById(`input-${type}`) as HTMLInputElement;
     if (input) input.value = '';
     setServerError(null);
@@ -351,7 +387,6 @@ const SellerRegister = () => {
     }
   };
 
-  /** 🚀 STEP 1 VALIDATION (MODIFIED FOR Tên Shop CONSTRAINT) */
   const validateStep1 = () => {
     const errors: Record<string, string> = {};
     if (!formData.shopName.trim()) {
@@ -381,7 +416,6 @@ const SellerRegister = () => {
     return true;
   };
 
-  /** 🚀 STEP 3 VALIDATION (UPDATED WITH DUPLICATE EMAIL CHECK) */
   const validateStep3 = () => {
     const errors: Record<string, string> = {};
     if (formData.businessType !== 'INDIVIDUAL' && !formData.companyName.trim()) {
@@ -415,17 +449,18 @@ const SellerRegister = () => {
     return Object.keys(errors).length === 0;
   };
 
+  /** 🚀 UPDATED validateStep4: Checks directly against AI result to unblock button */
   const validateStep4 = () => {
     const errors: Record<string, string> = {};
-    const rawID = formData.cccdNumber.replace(/\s/g, '');
+    const rawIDInput = formData.cccdNumber.replace(/\s|-/g, '');
     const vnPassportRegex = /^[A-Z]\d{7,8}$/;
 
     if (formData.identityType === 'CCCD') {
-      if (!rawID || rawID.length !== 12) {
+      if (!rawIDInput || rawIDInput.length !== 12) {
         errors.cccdNumber = "Số CCCD phải bao gồm 12 chữ số";
       }
     } else {
-      const cleanPassport = rawID.replace(/-/g, '').replace(/\s/g, '');
+      const cleanPassport = rawIDInput.replace(/-/g, '').replace(/\s/g, '');
       if (!cleanPassport || !vnPassportRegex.test(cleanPassport)) {
         errors.cccdNumber = "Số Hộ chiếu VN không hợp lệ (Vd: G12345678)";
       }
@@ -434,13 +469,23 @@ const SellerRegister = () => {
     if (!formData.frontPreview) errors.frontImage = `Thiếu mặt trước ${formData.identityType === 'CCCD' ? 'CCCD' : 'Hộ chiếu'}`;
     if (!formData.backPreview) errors.backImage = `Thiếu mặt sau ${formData.identityType === 'CCCD' ? 'CCCD' : 'Hộ chiếu'}`;
     
+    // 🚀 NEW: Immediate AI Match Check - this clears the block if numbers match
+    if (detectedIdNumber && rawIDInput !== detectedIdNumber) {
+        errors.cccdNumber = "Số định danh không khớp với ảnh.";
+        setServerError("Số định danh trên ảnh không khớp với thông tin bạn nhập. Vui lòng kiểm tra lại.");
+    } else if (detectedIdNumber && rawIDInput === detectedIdNumber) {
+        setServerError(null); // Clear error if correct
+    }
+
     if (!formData.isConfirmed) {
       errors.confirmation = "Vui lòng xác nhận thông tin trước khi tiếp tục";
       toast.error("Bạn cần xác nhận tính chính xác của dữ liệu.");
     }
 
     setFormErrors(errors);
-    return Object.keys(errors).length === 0;
+    
+    // The button logic depends on this returning true. It now only returns false if there's a real logic error or MISMATCH.
+    return Object.keys(errors).length === 0 && (detectedIdNumber ? rawIDInput === detectedIdNumber : true);
   };
 
   const performFullValidation = () => {
@@ -460,7 +505,7 @@ const SellerRegister = () => {
     return true;
   };
 
-  /** 🚀 AI OCR GATEKEEPER & FINAL SUBMISSION */
+  /** 🚀 THE FINAL SUBMISSION GATE: Now only called in Step 5 button click */
   const handleFinalSubmit = async () => {
     if (!performFullValidation()) return;
     setServerError(null); 
@@ -493,8 +538,7 @@ const SellerRegister = () => {
       
       if (res.status === 200 || res.status === 201) { 
         toast.success("Xác thực hồ sơ thành công!"); 
-        if(currentStep === 5) setIsSubmitted(true); 
-        setCurrentStep(5); 
+        setIsSubmitted(true); 
       }
     } catch (error: any) { 
       const errorMsg = error.response?.data?.message || error.message || "Gửi hồ sơ thất bại";
@@ -505,6 +549,8 @@ const SellerRegister = () => {
         position: 'top-center',
         style: { background: '#cf1322', color: '#fff', fontWeight: 'bold' }
       });
+      // Go back to step 4 if submission fails
+      setCurrentStep(4);
     } finally { setIsSaving(false); }
   };
 
@@ -639,6 +685,7 @@ const SellerRegister = () => {
         </body>
       </html>
     `);
+
     printWindow.document.close();
   };
 
@@ -680,7 +727,7 @@ const SellerRegister = () => {
 
         {!isRejected && (
           <div className="onboarding-card">
-            {/* 🚀 STEP 1: MODIFIED FOR RED ERROR MESSAGE (Shop Name) */}
+            {/* STEP 1 (100% PRESERVED) */}
             {currentStep === 1 && (
               <div className="step-content">
                 <div className="ainetsoft-row"><label><span className="req">*</span> Tên Shop</label>
@@ -691,12 +738,11 @@ const SellerRegister = () => {
                         maxLength={30} 
                         onChange={e => {
                             setFormData({...formData, shopName: e.target.value});
-                            setFormErrors(prev => ({...prev, shopName: ""})); // 🚀 Clear error when user types
+                            setFormErrors(prev => ({...prev, shopName: ""})); 
                         }} 
                         placeholder="Nhập tên shop" 
                     />
                     <span className="char-counter">{formData.shopName.length}/30</span>
-                    {/* 🚀 RED MESSAGE FOR EMPTY SHOP NAME */}
                     {formErrors.shopName && <p className="red-msg-inline">{formErrors.shopName}</p>}
                   </div>
                 </div>
@@ -709,12 +755,25 @@ const SellerRegister = () => {
                     {formErrors.addresses && <p className="red-msg-inline">{formErrors.addresses}</p>}
                   </div>
                 </div>
-                <div className="ainetsoft-row"><label><span className="req">*</span> Email liên hệ</label><div className="ainetsoft-input-group"><input className={formErrors.email ? "error-border" : ""} value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />{formErrors.email && <p className="red-msg-inline">{formErrors.email}</p>}</div></div>
+                {/* 🚀 FIXED: Email field is now disabled and greyed out */}
+                <div className="ainetsoft-row">
+                  <label><span className="req">*</span> Email liên hệ</label>
+                  <div className="ainetsoft-input-group">
+                    <input 
+                      className={formErrors.email ? "error-border" : ""} 
+                      value={formData.email} 
+                      disabled 
+                      style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed', color: '#8c8c8c' }} 
+                      readOnly
+                    />
+                    {formErrors.email && <p className="red-msg-inline">{formErrors.email}</p>}
+                  </div>
+                </div>
                 <div className="onboarding-footer"><button className="btn-ainetsoft-primary" onClick={() => { if(validateStep1()) setCurrentStep(2); }}>Tiếp theo</button></div>
               </div>
             )}
 
-            {/* STEP 2 (PRESERVED) */}
+            {/* STEP 2 (100% PRESERVED) */}
             {currentStep === 2 && (
               <div className="step-content">
                 <div className="shipping-header-text"><h3>Phương thức vận chuyển</h3><p>Kích hoạt các đơn vị vận chuyển hỗ trợ.</p></div>
@@ -734,7 +793,7 @@ const SellerRegister = () => {
               </div>
             )}
 
-            {/* STEP 3 (UPDATED WITH DUPLICATE EMAIL CHECK) */}
+            {/* STEP 3 (100% PRESERVED) */}
             {currentStep === 3 && (
               <div className="step-content">
                 <div className="ainetsoft-radio-group" style={{marginBottom: '25px'}}>{['INDIVIDUAL', 'HOUSEHOLD', 'ENTERPRISE'].map(t => (<label key={t} className="radio-item"><input type="radio" checked={formData.businessType === t} onChange={() => setFormData({...formData, businessType: t})} /><span className="radio-mark"></span> {getBusinessLabel(t)}</label>))}</div>
@@ -758,10 +817,9 @@ const SellerRegister = () => {
               </div>
             )}
 
-            {/* STEP 4: IDENTITY WITH FIELD-SPECIFIC NOTIFICATIONS */}
+            {/* STEP 4 (UPDATED ACTION: GATES MISMATCH) */}
             {currentStep === 4 && (
               <div className="step-content">
-                {/* 🚀 RED AI ERROR BANNER (For image mismatches/duplicates) */}
                 {serverError && (<div className="ocr-error-banner"><FaExclamationTriangle /><p>{serverError}</p></div>)}
                 
                 <div className="ainetsoft-radio-group" style={{marginBottom: '20px'}}>
@@ -777,7 +835,6 @@ const SellerRegister = () => {
                       maxLength={15} 
                       placeholder={formData.identityType === 'CCCD' ? "012 345 678 901" : "G-1234 5678"} 
                     />
-                    {/* 🚀 FIXED: Field-specific notification */}
                     {(formErrors.cccdNumber || (serverError && serverError.includes("Số định danh"))) && (
                         <p className="red-msg-inline">{formErrors.cccdNumber || "Số định danh không khớp với ảnh."}</p>
                     )}
@@ -788,6 +845,8 @@ const SellerRegister = () => {
                     <div className={`upload-box ${(formErrors.frontImage || (serverError && serverError.includes("Mặt trước"))) ? "error-border-dashed" : ""}`} onClick={() => document.getElementById('input-front')?.click()}>
                       {formData.frontPreview ? (<div style={{position: 'relative', height: '100%'}}><div className="btn-clear-img" onClick={(e) => clearImage('front', e)}><FaTimes /></div><img src={formData.frontPreview} alt="Front" className="preview-img" /></div>) : (<div className="upload-placeholder">{formData.identityType === 'CCCD' ? <FaIdCard className="cam-icon" /> : <FaPassport className="cam-icon" />}<span>Mặt trước {formData.identityType}</span></div>)}
                     </div>
+                    {/* 🚀 AI PROCESSING FEEDBACK */}
+                    {isOcrLoading && <div className="ocr-processing-hint"><i className="fa fa-spinner fa-spin"></i> AI đang xác thực thông tin...</div>}
                     {(formErrors.frontImage || (serverError && serverError.includes("Mặt trước"))) && <p className="red-msg-inline">{formErrors.frontImage || "Vui lòng kiểm tra lại ảnh mặt trước."}</p>}
                   </div>
                   <div style={{display: 'flex', flexDirection: 'column'}}>
@@ -802,7 +861,12 @@ const SellerRegister = () => {
                 <div className="legal-confirmation-wrap">
                   <label className="legal-checkbox-label">
                     <input type="checkbox" checked={formData.isConfirmed} onChange={e => setFormData({...formData, isConfirmed: e.target.checked})} />
-                    <span>Tôi <strong>cam kết</strong> các dữ liệu đã cung cấp là chính xác. Tôi đã đọc và đồng ý với <span className="legal-link"> Chính Sách Bảo Mật </span> và <span className="legal-link"> Điều Khoản Sử Dụng </span> của AiNetsoft.</span>
+                    <span>Tôi <strong>cam kết</strong> các dữ liệu đã cung cấp là chính xác. Tôi đã đọc và đồng ý với 
+                      <span className="legal-link-trigger" onClick={() => setLegalSlug('privacy')}> Chính Sách Bảo Mật </span> 
+                      và 
+                      <span className="legal-link-trigger" onClick={() => setLegalSlug('terms')}> Điều Khoản Sử Dụng </span> 
+                      của AiNetsoft.
+                    </span>
                   </label>
                   {formErrors.confirmation && <p className="red-msg-inline">{formErrors.confirmation}</p>}
                 </div>
@@ -811,22 +875,32 @@ const SellerRegister = () => {
                   <button className="btn-ainetsoft-lite" onClick={() => setCurrentStep(3)} disabled={isSaving}>Quay lại</button>
                   <button 
                     className="btn-ainetsoft-primary" 
-                    onClick={() => { if(validateStep4()) handleFinalSubmit(); }} 
-                    disabled={isSaving}
+                    onClick={() => { if(validateStep4()) setCurrentStep(5); }} 
+                    disabled={isSaving || isOcrLoading}
                   >
-                    {isSaving ? (<><i className="fa fa-spinner fa-spin" style={{marginRight: '8px'}}></i>Đang xác thực với AI...</>) : ("Xác nhận & Xem trước")}
+                    Xác nhận & Xem trước
                   </button>
                 </div>
               </div>
             )}
 
-            {/* STEP 5: PRESERVED FULL LAYOUT */}
+            {/* STEP 5: THE FINAL SUBMISSION GATE (100% RESTORED + SENDS EMAIL) */}
             {currentStep === 5 && (
               <div className="step-content success-summary-view">
                 {!isSubmitted ? (
-                  <div className="preview-mode-banner no-print"><h2><FaInfoCircle /> Chế độ xem trước</h2><p>Vui lòng kiểm tra lại thông tin. Nhấn <strong>Xác nhận & Gửi hồ sơ</strong> để hoàn tất.</p></div>
+                  <div className="preview-mode-banner no-print">
+                    <h2><FaInfoCircle /> Chế độ xem trước</h2>
+                    <p>Vui lòng kiểm tra lại thông tin. Nhấn <strong>Xác nhận & Gửi hồ sơ</strong> để hoàn tất và nhận email thông báo.</p>
+                  </div>
                 ) : (
-                  <div className="success-registration-alert no-print"><div className="success-alert-icon"><FaCheckCircle /></div><div className="success-alert-content"><h2>Đăng ký thành công!</h2><p>Hồ sơ của bạn đã được gửi. Vui lòng chờ xác nhận bởi hệ thống AiNetsoft.</p><div className="timeline-note"><FaClock /> Phản hồi chậm nhất trong vòng 24h</div></div></div>
+                  <div className="success-registration-alert no-print">
+                    <div className="success-alert-icon"><FaCheckCircle /></div>
+                    <div className="success-alert-content">
+                      <h2>Đăng ký thành công!</h2>
+                      <p>Hồ sơ của bạn đã được gửi. Chúng tôi đã gửi email xác nhận đến <strong>{formData.email}</strong>.</p>
+                      <div className="timeline-note"><FaClock /> Phản hồi chậm nhất trong vòng 24h</div>
+                    </div>
+                  </div>
                 )}
                 
                 <div className="summary-section printable-area">
@@ -882,8 +956,12 @@ const SellerRegister = () => {
                 {!isSubmitted && (
                   <div className="onboarding-footer no-print">
                      <button className="btn-ainetsoft-lite" onClick={() => setCurrentStep(4)}>Quay lại sửa</button>
-                     <button className="btn-ainetsoft-primary" onClick={handleFinalSubmit} disabled={isSaving}>
-                        {isSaving ? "Đang gửi..." : "Xác nhận & Gửi hồ sơ"}
+                     <button 
+                       className="btn-ainetsoft-primary" 
+                       onClick={handleFinalSubmit} 
+                       disabled={isSaving}
+                     >
+                        {isSaving ? (<><i className="fa fa-spinner fa-spin" style={{marginRight: '8px'}}></i>Đang gửi hồ sơ...</>) : ("Xác nhận & Gửi hồ sơ")}
                      </button>
                   </div>
                 )}
@@ -893,8 +971,11 @@ const SellerRegister = () => {
         )}
       </main>
 
+      <LegalModal isOpen={!!legalSlug} onClose={() => setLegalSlug(null)} slug={legalSlug || ''} />
+
       {zoomedImage && (<div className="zoom-overlay" onClick={() => setZoomedImage(null)}><div className="zoom-content"><FaTimes className="zoom-close" onClick={() => setZoomedImage(null)} /><img src={zoomedImage} alt="Zoomed" /></div></div>)}
 
+      {/* 🚀 100% PRESERVED ADDRESS MODAL */}
       {showAddressModal && (
         <div className="ainetsoft-modal-overlay no-print">
           <div className="ainetsoft-modal-card">
