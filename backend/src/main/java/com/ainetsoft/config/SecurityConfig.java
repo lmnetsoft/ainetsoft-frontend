@@ -73,7 +73,8 @@ public class SecurityConfig {
                     "/uploads/**",
                     "/api/chat/download/**",
                     "/ws/**",
-                    "/api/report-reasons"
+                    "/api/report-reasons",
+                    "/api/system-content/**" // 🚀 Added to allow users to read Privacy/Terms without logging in
                 ).permitAll() 
 
                 .requestMatchers("/api/chat/history/**").permitAll()
@@ -83,8 +84,6 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/reviews/**").permitAll()
 
                 // --- 2. ADMIN ONLY ENDPOINTS ---
-                // FIXED: Changed from .hasAuthority("ADMIN") to .hasRole("ADMIN")
-                // hasRole automatically looks for "ROLE_ADMIN" which matches your CustomUserDetailsService
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/chat/admin/**").hasRole("ADMIN")
 

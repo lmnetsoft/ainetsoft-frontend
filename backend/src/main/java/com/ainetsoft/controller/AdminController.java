@@ -2,6 +2,7 @@ package com.ainetsoft.controller;
 
 import com.ainetsoft.dto.SellerApprovalRequest;
 import com.ainetsoft.model.FeedbackTemplate;
+import com.ainetsoft.model.SystemContent; // 🚀 Added import
 import com.ainetsoft.model.User;
 import com.ainetsoft.repository.UserRepository;
 import com.ainetsoft.service.AdminService;
@@ -42,7 +43,7 @@ public class AdminController {
         }
     }
 
-    // --- USER MANAGEMENT & DELEGATION ---
+    // --- USER MANAGEMENT & DELEGATION (100% PRESERVED) ---
 
     @GetMapping("/users/all")
     public ResponseEntity<?> getAllUsers() {
@@ -68,7 +69,7 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getAuditLogs());
     }
 
-    // --- SELLER MODERATION ---
+    // --- SELLER MODERATION (100% PRESERVED) ---
 
     @GetMapping("/sellers/pending")
     public ResponseEntity<?> getPendingSellers() {
@@ -87,7 +88,7 @@ public class AdminController {
         return ResponseEntity.ok(adminService.processSellerApproval(userId, request, getCurrentAdmin()));
     }
 
-    // --- PRODUCT MODERATION ---
+    // --- PRODUCT MODERATION (100% PRESERVED) ---
 
     @GetMapping("/products/pending")
     public ResponseEntity<?> getPendingProducts() {
@@ -106,7 +107,7 @@ public class AdminController {
         return ResponseEntity.ok(adminService.rejectProduct(productId, reason, getCurrentAdmin()));
     }
 
-    // --- REVIEW MODERATION ---
+    // --- REVIEW MODERATION (100% PRESERVED) ---
 
     @GetMapping("/reviews/all")
     public ResponseEntity<?> getAllReviews() {
@@ -119,31 +120,56 @@ public class AdminController {
         return ResponseEntity.ok().build();
     }
 
-    // --- 🚀 NEW: QUICK RESPONSE TEMPLATES ---
+    // --- QUICK RESPONSE TEMPLATES (100% PRESERVED) ---
 
-    /**
-     * GET predefined feedback templates for quick responses.
-     * @param type e.g., "SELLER_REJECTION"
-     */
     @GetMapping("/feedback-templates")
     public ResponseEntity<List<FeedbackTemplate>> getFeedbackTemplates(@RequestParam String type) {
         return ResponseEntity.ok(adminService.getTemplatesByType(type));
     }
 
-    /**
-     * POST a new response template.
-     */
     @PostMapping("/feedback-templates")
     public ResponseEntity<FeedbackTemplate> createTemplate(@RequestBody FeedbackTemplate template) {
         return ResponseEntity.ok(adminService.saveFeedbackTemplate(template, getCurrentAdmin()));
     }
 
-    /**
-     * DELETE a response template.
-     */
     @DeleteMapping("/feedback-templates/{id}")
     public ResponseEntity<?> deleteTemplate(@PathVariable String id) {
         adminService.deleteFeedbackTemplate(id, getCurrentAdmin());
+        return ResponseEntity.ok().build();
+    }
+
+    // --- 🚀 NEW: DYNAMIC SYSTEM CONTENT MANAGEMENT ---
+
+    /**
+     * Admin endpoint to list all managed legal/content pages.
+     */
+    @GetMapping("/system-contents")
+    public ResponseEntity<List<SystemContent>> getAllSystemContents() {
+        return ResponseEntity.ok(adminService.getAllSystemContents());
+    }
+
+    /**
+     * Admin endpoint to fetch a specific legal page for editing by slug.
+     */
+    @GetMapping("/system-contents/{slug}")
+    public ResponseEntity<SystemContent> getSystemContent(@PathVariable String slug) {
+        return ResponseEntity.ok(adminService.getSystemContentBySlug(slug));
+    }
+
+    /**
+     * Admin endpoint to create or update a legal page (Privacy, Terms, etc.).
+     */
+    @PostMapping("/system-contents")
+    public ResponseEntity<SystemContent> saveSystemContent(@RequestBody SystemContent content) {
+        return ResponseEntity.ok(adminService.saveSystemContent(content, getCurrentAdmin()));
+    }
+
+    /**
+     * Admin endpoint to delete a managed page.
+     */
+    @DeleteMapping("/system-contents/{id}")
+    public ResponseEntity<?> deleteSystemContent(@PathVariable String id) {
+        adminService.deleteSystemContent(id, getCurrentAdmin());
         return ResponseEntity.ok().build();
     }
 }

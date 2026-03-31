@@ -1,0 +1,148 @@
+/* 1. Backdrop - Shopee style uses a lighter translucent black */
+.legal-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 11000;
+  padding: 20px;
+}
+
+/* 2. Modal Card - Shopee uses very slight rounding (approx 3px) and clean borders */
+.legal-modal-card {
+  background: #fff;
+  width: 100%;
+  max-width: 600px; /* Slightly narrower for better readability */
+  max-height: 80vh;
+  border-radius: 3px; 
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 3px 10px 0 rgba(0,0,0,0.14);
+  animation: modalFadeIn 0.2s ease-in-out;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 3. Header - Clean, gray text, minimal border */
+.legal-modal-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(0,0,0,.09);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header-title-wrap h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: #222;
+  font-weight: 400; /* Shopee avoids ultra-bold */
+  font-family: "Helvetica Neue", Helvetica, Arial, 文泉驛正黑, "WenQuanYi Zen Hei", "Hiragino Sans GB", "儷黑 Pro", "LiHei Pro", "Heiti TC", 微軟正黑體, "Microsoft JhengHei UI", "Microsoft JhengHei", sans-serif;
+}
+
+.legal-modal-close {
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  color: #bbb;
+  cursor: pointer;
+  padding: 5px;
+}
+
+.legal-modal-close:hover { color: #888; }
+
+/* 4. Body Content - This is where the "Shopee Look" happens */
+.legal-modal-body {
+  padding: 25px 30px;
+  overflow-y: auto;
+  flex: 1;
+  color: rgba(0, 0, 0, 0.8);
+  font-size: 14px; /* Standard Shopee font size */
+  line-height: 1.6;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+/* Scrollbar styling */
+.legal-modal-body::-webkit-scrollbar { width: 5px; }
+.legal-modal-body::-webkit-scrollbar-track { background: #f5f5f5; }
+.legal-modal-body::-webkit-scrollbar-thumb { background: #ccc; border-radius: 5px; }
+
+/* Content Typography Fixes */
+.legal-html-content h1 {
+  font-size: 1.25rem;
+  color: #222;
+  text-align: center;
+  margin-bottom: 24px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.legal-html-content h3 {
+  font-size: 0.95rem;
+  color: #222;
+  margin-top: 20px;
+  margin-bottom: 8px;
+  font-weight: 600;
+  display: flex;
+  align-items: flex-start;
+}
+
+/* Subtle red accent bar on the left - very thin */
+.legal-html-content h3::before {
+  content: "";
+  display: inline-block;
+  width: 3px;
+  height: 15px;
+  background: #ee4d2d; /* Shopee Orange-Red */
+  margin-right: 10px;
+  margin-top: 3px;
+}
+
+.legal-html-content p {
+  margin-bottom: 12px;
+  text-align: left; /* Shopee usually uses left-align for legals */
+}
+
+.legal-html-content ul {
+  padding-left: 20px;
+  margin-bottom: 15px;
+  list-style-type: disc;
+}
+
+.legal-html-content li {
+  margin-bottom: 6px;
+}
+
+/* 5. Footer - Floating button style */
+.legal-modal-footer {
+  padding: 15px 25px;
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid rgba(0,0,0,.09);
+}
+
+.btn-legal-close {
+  background: #ee4d2d;
+  color: #fff;
+  border: none;
+  min-width: 140px;
+  padding: 10px 20px;
+  border-radius: 2px;
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+  box-shadow: 0 1px 1px 0 rgba(0,0,0,.09);
+  transition: opacity 0.2s;
+}
+
+.btn-legal-close:hover {
+  opacity: 0.9;
+}

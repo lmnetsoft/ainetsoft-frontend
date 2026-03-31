@@ -49,15 +49,17 @@ import SellerSettings from './pages/Seller/SellerSettings';
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import AdminChat from './pages/Admin/AdminChat'; 
 import ShippingManagement from './pages/Admin/ShippingManagement'; 
+// 🚀 NEW: Admin Content Management Page
+import SystemContentManagement from './pages/Admin/SystemContentManagement';
 
-// 🛠️ ADDED: Legal Components
+// Legal Components (PRESERVED)
 import PrivacyPolicy from './pages/Legal/PrivacyPolicy';
 import TermsOfUse from './pages/Legal/TermsOfUse';
 
 import './App.css';
 
 /**
- * INTERNAL COMPONENT: GlobalChatOverlay
+ * INTERNAL COMPONENT: GlobalChatOverlay (PRESERVED)
  * Renders the ChatPage (as a popup) globally when toggled.
  */
 const GlobalChatOverlay = () => {
@@ -106,7 +108,7 @@ function App() {
             
             <main className="content">
               <Routes>
-                {/* --- PUBLIC ROUTES --- */}
+                {/* --- PUBLIC ROUTES (PRESERVED) --- */}
                 <Route path="/" element={<Home />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/login" element={<Login />} />
@@ -117,15 +119,15 @@ function App() {
                 <Route path="/regulations" element={<ContentPage type="regulations" />} />
                 <Route path="/contact" element={<ContentPage type="contact" />} />
                 
-                {/* 🛠️ ADDED: Legal Research Pages */}
+                {/* Legal Research Pages (PRESERVED) */}
                 <Route path="/privacy" element={<PrivacyPolicy />} />
                 <Route path="/terms" element={<TermsOfUse />} />
                 
-                {/* UPDATED: Path handles both ID and Slug under prefix */}
+                {/* Path handles both ID and Slug (PRESERVED) */}
                 <Route path="/shop/:identifier" element={<PublicShop />} />
                 <Route path="/my-shop" element={<PublicShop />} />
 
-                {/* --- PROTECTED USER ROUTES --- */}
+                {/* --- PROTECTED USER ROUTES (PRESERVED) --- */}
                 <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
                 <Route path="/user/notifications" element={<ProtectedRoute><NotificationPage /></ProtectedRoute>} />
                 <Route path="/user/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
@@ -135,7 +137,7 @@ function App() {
                 <Route path="/user/purchase" element={<ProtectedRoute><Purchase /></ProtectedRoute>} />
                 <Route path="/seller/register" element={<ProtectedRoute><SellerRegister /></ProtectedRoute>} />
                 
-                {/* --- PROTECTED SELLER ROUTES --- */}
+                {/* --- PROTECTED SELLER ROUTES (PRESERVED) --- */}
                 <Route 
                   path="/seller/dashboard" 
                   element={<ProtectedRoute allowedRoles={['SELLER']}><SellerDashboard /></ProtectedRoute>} 
@@ -144,7 +146,6 @@ function App() {
                   path="/seller/products" 
                   element={<ProtectedRoute allowedRoles={['SELLER']}><MyProducts /></ProtectedRoute>} 
                 />
-
                 <Route 
                   path="/seller/add-product" 
                   element={<ProtectedRoute allowedRoles={['SELLER']}><AddProduct /></ProtectedRoute>} 
@@ -153,7 +154,6 @@ function App() {
                   path="/seller/add" 
                   element={<ProtectedRoute allowedRoles={['SELLER']}><AddProduct /></ProtectedRoute>} 
                 />
-
                 <Route 
                   path="/seller/edit-product/:id" 
                   element={<ProtectedRoute allowedRoles={['SELLER']}><EditProduct /></ProtectedRoute>} 
@@ -162,7 +162,6 @@ function App() {
                   path="/seller/edit/:id" 
                   element={<ProtectedRoute allowedRoles={['SELLER']}><EditProduct /></ProtectedRoute>} 
                 />
-
                 <Route 
                   path="/seller/orders" 
                   element={<ProtectedRoute allowedRoles={['SELLER']}><SellerOrders /></ProtectedRoute>} 
@@ -189,9 +188,13 @@ function App() {
                   path="/admin/shipping" 
                   element={<ProtectedRoute allowedRoles={['ADMIN']}><ShippingManagement /></ProtectedRoute>} 
                 />
+                {/* 🚀 NEW: Admin System Content Route */}
+                <Route 
+                  path="/admin/content" 
+                  element={<ProtectedRoute allowedRoles={['ADMIN']}><SystemContentManagement /></ProtectedRoute>} 
+                />
 
-                {/* THE "NICE URL" ROOT ROUTE
-                    This MUST be at the bottom so it doesn't conflict with specific paths. */}
+                {/* THE "NICE URL" ROOT ROUTE (PRESERVED AT BOTTOM) */}
                 <Route path="/:shopSlug" element={<PublicShop />} />
 
                 <Route path="*" element={<NotFound />} />

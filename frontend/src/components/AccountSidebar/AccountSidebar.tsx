@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { FaUser, FaStore, FaShoppingBag, FaShieldAlt, FaComments, FaTruck } from 'react-icons/fa'; 
+import { 
+  FaUser, FaStore, FaShoppingBag, FaShieldAlt, FaComments, FaTruck, 
+  FaFileAlt // 🚀 Added for Content Management
+} from 'react-icons/fa'; 
 import api from '../../services/api'; 
 import './AccountSidebar.css';
 
@@ -126,6 +129,11 @@ const AccountSidebar = () => {
               <NavLink to="/admin/chat" className={({isActive}) => isActive ? 'active' : ''}>
                 <FaComments className="sub-menu-icon" /> 
                 Quản lý Chat
+              </NavLink>
+              {/* 🚀 NEW: Dynamic Content Management Link */}
+              <NavLink to="/admin/content" className={({isActive}) => isActive ? 'active' : ''}>
+                <FaFileAlt className="sub-menu-icon" /> 
+                Quản lý nội dung
               </NavLink>
             </div>
           </div>
