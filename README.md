@@ -37,6 +37,11 @@ show collections
 
 db.users.find({email: "lmnetsoft@yahoo.com.vn"}, {bankAccounts: 1, addresses: 1}).pretty()
 
+db.users.updateOne(
+   { email: "tontontonton01012008@gmail.com" },
+   { $set: { roles: ["USER"] } }
+ )
+
 
 # AiNetsoft - Shopee-Style Moderated Marketplace
 
@@ -71,3 +76,14 @@ AiNetsoft is a full-stack e-commerce platform built with a high-security "Modera
 - **Email:** `admin@ainetsoft.com`
 - **Default Password:** `Admin@123456`
 - **Access:** `/admin/dashboard`
+
+---
+Map
+
+curl -X POST -d '{
+  "textQuery" : "Pizza in Ho Chi Minh City"
+}' \
+-H 'Content-Type: application/json' \
+-H 'X-Goog-Api-Key: AIzaSyD7GRSlZ16Qe9MHxgNl6KhJzN48v9R9wto' \
+-H 'X-Goog-FieldMask: places.displayName,places.formattedAddress' \
+'https://places.googleapis.com/v1/places:searchText'

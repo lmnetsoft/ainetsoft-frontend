@@ -123,6 +123,11 @@
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-ai-formrecognizer</artifactId>
+            <version>4.1.2</version>
+        </dependency>    
     </dependencies>
 
     <build>
