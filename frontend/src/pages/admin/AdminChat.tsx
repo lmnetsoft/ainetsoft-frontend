@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../services/api';
-import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
+// 🚀 REMOVED: Redundant sidebar import
 import ChatPage from '../Chat/ChatPage'; 
 import { 
   FaInbox, FaReply, FaSearch, FaSyncAlt, FaVolumeUp, 
@@ -29,7 +29,7 @@ const AdminChat = () => {
   const { recipientId } = useParams();
   const { sendMessage, connected, isMuted, setIsMuted, setUnreadCount } = useChat(); 
 
-  // --- States ---
+  // --- States (PRESERVED) ---
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
@@ -49,7 +49,7 @@ const AdminChat = () => {
     "Cảm ơn bạn đã quan tâm! Chúc bạn một ngày tốt lành."
   ];
 
-  // --- IDENTITY HELPERS ---
+  // --- IDENTITY HELPERS (PRESERVED) ---
   const getDisplayIdentity = (conv: Conversation) => {
     if (conv.userId.startsWith('visitor_')) {
       const shortId = conv.userId.split('_')[1] || 'Guest';
@@ -111,7 +111,7 @@ const AdminChat = () => {
     return user?.tags?.includes(tag) || false;
   };
 
-  // --- Data Logic ---
+  // --- Data Logic (PRESERVED) ---
   const fetchConversations = async (query = '') => {
     try {
       setLoading(true);
@@ -165,132 +165,127 @@ const AdminChat = () => {
     setShowQuickReplies(false);
   };
 
+  // 🚀 SURGICAL UPDATE: Return flattened content without double-sidebar wrappers
   return (
-    <div className="profile-wrapper">
-      <div className="container profile-container admin-chat-layout">
-        <AccountSidebar />
-        
-        <main className="profile-main-content">
-          <div className="admin-chat-header">
-            <h1><FaInbox /> Trung tâm Hỗ trợ Khách hàng</h1>
-          </div>
+    <div className="admin-chat-main-view">
+      <div className="admin-chat-header">
+        <h1><FaInbox /> Trung tâm Hỗ trợ Khách hàng</h1>
+      </div>
 
-          <div className="admin-chat-content-box">
-            <div className="admin-chat-top-actions">
-               <p>Quản lý và phản hồi các yêu cầu từ người dùng và khách vãng lai.</p>
-               <div className="header-actions">
-                  <button className={`mute-toggle-btn ${isMuted ? 'muted' : ''}`} onClick={() => setIsMuted(!isMuted)}>
-                    {isMuted ? <FaVolumeMute /> : <FaVolumeUp />} <span>{isMuted ? "Đã tắt" : "Âm thanh"}</span>
-                  </button>
-                  <button className="test-sound-btn" onClick={() => testAudio.play()}>Thử chuông</button>
-                  <button className="refresh-btn" onClick={() => fetchConversations(searchTerm)}><FaSyncAlt /></button>
-               </div>
+      <div className="admin-chat-content-box">
+        <div className="admin-chat-top-actions">
+           <p>Quản lý và phản hồi các yêu cầu từ người dùng và khách vãng lai.</p>
+           <div className="header-actions">
+              <button className={`mute-toggle-btn ${isMuted ? 'muted' : ''}`} onClick={() => setIsMuted(!isMuted)}>
+                {isMuted ? <FaVolumeMute /> : <FaVolumeUp />} <span>{isMuted ? "Đã tắt" : "Âm thanh"}</span>
+              </button>
+              <button className="test-sound-btn" onClick={() => testAudio.play()}>Thử chuông</button>
+              <button className="refresh-btn" onClick={() => fetchConversations(searchTerm)}><FaSyncAlt /></button>
+           </div>
+        </div>
+
+        <div className="admin-chat-main-grid">
+          <div className="admin-inbox-sidebar">
+            <div className="search-bar-wrapper">
+              <FaSearch className="search-icon" />
+              <input type="text" placeholder="Tìm ID hoặc tên..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
 
-            <div className="admin-chat-main-grid">
-              <div className="admin-inbox-sidebar">
-                <div className="search-bar-wrapper">
-                  <FaSearch className="search-icon" />
-                  <input type="text" placeholder="Tìm ID hoặc tên..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                </div>
-
-                <div className="conversations-list">
-                  {loading ? <div className="admin-chat-loading">Đang tải...</div> : conversations.map((conv) => {
-                    const identity = getDisplayIdentity(conv);
-                    return (
-                      <div key={conv.userId} className={`admin-conv-item ${recipientId === conv.userId ? 'is-active' : ''} ${identity.isVisitor ? 'visitor-item' : ''}`} onClick={() => navigate(`/admin/chat/${conv.userId}`)}>
-                        <div className="user-avatar-circle">
-                          {identity.isVisitor ? (
-                            <div className="visitor-avatar-icon"><FaUserSecret /></div>
-                          ) : (
-                            conv.userAvatar ? <img src={conv.userAvatar} className="user-item-photo" alt="" /> : (conv.userName || conv.userId).charAt(0).toUpperCase()
-                          )}
-                          <span className={`status-indicator ${isOnline(conv.lastActiveAt) ? 'online' : 'offline'}`}></span>
-                          {conv.unreadCount > 0 && <span className="admin-unread-badge">{conv.unreadCount}</span>}
-                        </div>
-
-                        <div className="conv-details">
-                          <div className="conv-top-row">
-                            <span className="conv-user-id">
-                              {getHighlightedText(identity.name, searchTerm)}
-                              <div className="tag-container">
-                                {identity.isVisitor && <span className="user-pill tag-visitor">GUEST</span>}
-                                {conv.tags?.map((tag, idx) => <span key={idx} className={`user-pill ${getTagClass(tag)}`}>{tag}</span>)}
-                              </div>
-                            </span>
-                            <span className="conv-status-text">
-                              {isOnline(conv.lastActiveAt) ? <span className="text-online">Online</span> : formatTimeAgo(conv.lastActiveAt)}
-                            </span>
-                          </div>
-                          <span className="conv-preview">{conv.lastMessageContent}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="admin-chat-view-area">
-                {recipientId ? (
-                  <div className="admin-active-chat-wrapper">
-                    <div className="chat-instructions-bar">
-                      <p>Hỗ trợ cho: <strong>{getDisplayIdentity(conversations.find(c => c.userId === recipientId) || {userId: recipientId, userName: recipientId} as any).name}</strong></p>
-                      <div className="instruction-actions">
-                        <button className={`note-toggle-btn ${isNoteOpen ? 'active' : ''}`} onClick={() => setIsNoteOpen(!isNoteOpen)}>
-                          <FaStickyNote /> {isNoteOpen ? 'Đóng Note' : 'Note nội bộ'}
-                        </button>
-                        <button className={`quick-reply-toggle ${showQuickReplies ? 'active' : ''}`} onClick={() => setShowQuickReplies(!showQuickReplies)}>
-                          <FaBolt /> Trả lời nhanh
-                        </button>
-                        <button onClick={() => navigate('/admin/chat')}>Đóng</button>
-                      </div>
-                    </div>
-
-                    <div className="admin-main-chat-split">
-                      <div className="chat-content-embedded">
-                        {showQuickReplies && (
-                          <div className="quick-reply-drawer">
-                            {quickReplies.map((reply, i) => <button key={i} onClick={() => handleSendQuickReply(reply)} className="quick-reply-item">{reply}</button>)}
-                          </div>
-                        )}
-                        <ChatPage />
-                      </div>
-
-                      {isNoteOpen && (
-                        <div className="admin-internal-notes">
-                          <h3><FaStickyNote /> Ghi chú & Nhãn</h3>
-                          <div className="manage-tags-section">
-                            <div className="tag-edit-row">
-                              {allAvailableTags.map(tag => (
-                                <button 
-                                  key={tag} 
-                                  className={`tag-chip-btn ${userHasTag(tag) ? 'active ' + getTagClass(tag) : ''}`} 
-                                  onClick={() => handleToggleTag(tag)}
-                                >
-                                  {tag}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                          <hr className="note-divider" />
-                          <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ghi chú khách hàng..." />
-                          <button className={`save-note-btn ${saveStatus}`} onClick={handleSaveNote}>
-                            {saveStatus === 'saved' ? 'Đã lưu' : 'Lưu Note'}
-                          </button>
-                        </div>
+            <div className="conversations-list">
+              {loading ? <div className="admin-chat-loading">Đang tải...</div> : conversations.map((conv) => {
+                const identity = getDisplayIdentity(conv);
+                return (
+                  <div key={conv.userId} className={`admin-conv-item ${recipientId === conv.userId ? 'is-active' : ''} ${identity.isVisitor ? 'visitor-item' : ''}`} onClick={() => navigate(`/admin/chat/${conv.userId}`)}>
+                    <div className="user-avatar-circle">
+                      {identity.isVisitor ? (
+                        <div className="visitor-avatar-icon"><FaUserSecret /></div>
+                      ) : (
+                        conv.userAvatar ? <img src={conv.userAvatar} className="user-item-photo" alt="" /> : (conv.userName || conv.userId).charAt(0).toUpperCase()
                       )}
+                      <span className={`status-indicator ${isOnline(conv.lastActiveAt) ? 'online' : 'offline'}`}></span>
+                      {conv.unreadCount > 0 && <span className="admin-unread-badge">{conv.unreadCount}</span>}
+                    </div>
+
+                    <div className="conv-details">
+                      <div className="conv-top-row">
+                        <span className="conv-user-id">
+                          {getHighlightedText(identity.name, searchTerm)}
+                          <div className="tag-container">
+                            {identity.isVisitor && <span className="user-pill tag-visitor">GUEST</span>}
+                            {conv.tags?.map((tag, idx) => <span key={idx} className={`user-pill ${getTagClass(tag)}`}>{tag}</span>)}
+                          </div>
+                        </span>
+                        <span className="conv-status-text">
+                          {isOnline(conv.lastActiveAt) ? <span className="text-online">Online</span> : formatTimeAgo(conv.lastActiveAt)}
+                        </span>
+                      </div>
+                      <span className="conv-preview">{conv.lastMessageContent}</span>
                     </div>
                   </div>
-                ) : (
-                  <div className="admin-chat-placeholder">
-                    <FaInbox size={50} style={{ opacity: 0.1, marginBottom: '15px' }} />
-                    <h3>Chọn một hội thoại để bắt đầu</h3>
-                  </div>
-                )}
-              </div>
+                );
+              })}
             </div>
           </div>
-        </main>
+
+          <div className="admin-chat-view-area">
+            {recipientId ? (
+              <div className="admin-active-chat-wrapper">
+                <div className="chat-instructions-bar">
+                  <p>Hỗ trợ cho: <strong>{getDisplayIdentity(conversations.find(c => c.userId === recipientId) || {userId: recipientId, userName: recipientId} as any).name}</strong></p>
+                  <div className="instruction-actions">
+                    <button className={`note-toggle-btn ${isNoteOpen ? 'active' : ''}`} onClick={() => setIsNoteOpen(!isNoteOpen)}>
+                      <FaStickyNote /> {isNoteOpen ? 'Đóng Note' : 'Note nội bộ'}
+                    </button>
+                    <button className={`quick-reply-toggle ${showQuickReplies ? 'active' : ''}`} onClick={() => setShowQuickReplies(!showQuickReplies)}>
+                      <FaBolt /> Trả lời nhanh
+                    </button>
+                    <button onClick={() => navigate('/admin/chat')}>Đóng</button>
+                  </div>
+                </div>
+
+                <div className="admin-main-chat-split">
+                  <div className="chat-content-embedded">
+                    {showQuickReplies && (
+                      <div className="quick-reply-drawer">
+                        {quickReplies.map((reply, i) => <button key={i} onClick={() => handleSendQuickReply(reply)} className="quick-reply-item">{reply}</button>)}
+                      </div>
+                    )}
+                    <ChatPage />
+                  </div>
+
+                  {isNoteOpen && (
+                    <div className="admin-internal-notes">
+                      <h3><FaStickyNote /> Ghi chú & Nhãn</h3>
+                      <div className="manage-tags-section">
+                        <div className="tag-edit-row">
+                          {allAvailableTags.map(tag => (
+                            <button 
+                              key={tag} 
+                              className={`tag-chip-btn ${userHasTag(tag) ? 'active ' + getTagClass(tag) : ''}`} 
+                              onClick={() => handleToggleTag(tag)}
+                            >
+                              {tag}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <hr className="note-divider" />
+                      <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ghi chú khách hàng..." />
+                      <button className={`save-note-btn ${saveStatus}`} onClick={handleSaveNote}>
+                        {saveStatus === 'saved' ? 'Đã lưu' : 'Lưu Note'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="admin-chat-placeholder">
+                <FaInbox size={50} style={{ opacity: 0.1, marginBottom: '15px' }} />
+                <h3>Chọn một hội thoại để bắt đầu</h3>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

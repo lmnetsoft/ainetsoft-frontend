@@ -21,6 +21,9 @@ import { getUserProfile } from './services/authService';
 import LoadingOverlay from './components/LoadingOverlay/LoadingOverlay';
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute'; 
 
+// 🚀 APPENDED: Layout for persistent Sidebar
+import AdminLayout from './components/Admin/AdminLayout'; 
+
 // User Account Components
 import Profile from './pages/User/Profile';
 import ChangePassword from './pages/User/ChangePassword';
@@ -49,12 +52,7 @@ import SellerSettings from './pages/Seller/SellerSettings';
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import AdminChat from './pages/Admin/AdminChat'; 
 import ShippingManagement from './pages/Admin/ShippingManagement'; 
-// 🚀 NEW: Admin Content Management Page
 import SystemContentManagement from './pages/Admin/SystemContentManagement';
-
-// Legal Components (PRESERVED)
-import PrivacyPolicy from './pages/Legal/PrivacyPolicy';
-import TermsOfUse from './pages/Legal/TermsOfUse';
 
 import './App.css';
 
@@ -119,11 +117,8 @@ function App() {
                 <Route path="/regulations" element={<ContentPage type="regulations" />} />
                 <Route path="/contact" element={<ContentPage type="contact" />} />
                 
-                {/* Legal Research Pages (PRESERVED) */}
-                <Route path="/privacy" element={<PrivacyPolicy />} />
-                <Route path="/terms" element={<TermsOfUse />} />
+                <Route path="/legal/:slug" element={<ContentPage />} />
                 
-                {/* Path handles both ID and Slug (PRESERVED) */}
                 <Route path="/shop/:identifier" element={<PublicShop />} />
                 <Route path="/my-shop" element={<PublicShop />} />
 
@@ -142,56 +137,40 @@ function App() {
                   path="/seller/dashboard" 
                   element={<ProtectedRoute allowedRoles={['SELLER']}><SellerDashboard /></ProtectedRoute>} 
                 />
-                <Route 
-                  path="/seller/products" 
-                  element={<ProtectedRoute allowedRoles={['SELLER']}><MyProducts /></ProtectedRoute>} 
-                />
-                <Route 
-                  path="/seller/add-product" 
-                  element={<ProtectedRoute allowedRoles={['SELLER']}><AddProduct /></ProtectedRoute>} 
-                />
-                <Route 
-                  path="/seller/add" 
-                  element={<ProtectedRoute allowedRoles={['SELLER']}><AddProduct /></ProtectedRoute>} 
-                />
-                <Route 
-                  path="/seller/edit-product/:id" 
-                  element={<ProtectedRoute allowedRoles={['SELLER']}><EditProduct /></ProtectedRoute>} 
-                />
-                <Route 
-                  path="/seller/edit/:id" 
-                  element={<ProtectedRoute allowedRoles={['SELLER']}><EditProduct /></ProtectedRoute>} 
-                />
-                <Route 
-                  path="/seller/orders" 
-                  element={<ProtectedRoute allowedRoles={['SELLER']}><SellerOrders /></ProtectedRoute>} 
-                />
-                <Route 
-                  path="/seller/settings" 
-                  element={<ProtectedRoute allowedRoles={['SELLER']}><SellerSettings /></ProtectedRoute>} 
-                />
+                <Route path="/seller/products" element={<ProtectedRoute allowedRoles={['SELLER']}><MyProducts /></ProtectedRoute>} />
+                <Route path="/seller/add-product" element={<ProtectedRoute allowedRoles={['SELLER']}><AddProduct /></ProtectedRoute>} />
+                <Route path="/seller/add" element={<ProtectedRoute allowedRoles={['SELLER']}><AddProduct /></ProtectedRoute>} />
+                <Route path="/seller/edit-product/:id" element={<ProtectedRoute allowedRoles={['SELLER']}><EditProduct /></ProtectedRoute>} />
+                <Route path="/seller/edit/:id" element={<ProtectedRoute allowedRoles={['SELLER']}><EditProduct /></ProtectedRoute>} />
+                <Route path="/seller/orders" element={<ProtectedRoute allowedRoles={['SELLER']}><SellerOrders /></ProtectedRoute>} />
+                <Route path="/seller/settings" element={<ProtectedRoute allowedRoles={['SELLER']}><SellerSettings /></ProtectedRoute>} />
 
-                {/* --- PROTECTED ADMIN ROUTES --- */}
+                {/* --- 🚀 UPDATED ADMIN ROUTES (Surgical Layout Injection) --- */}
                 <Route 
                   path="/admin/dashboard" 
-                  element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboard /></ProtectedRoute>} 
+                  element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminLayout><AdminDashboard /></AdminLayout></ProtectedRoute>} 
                 />
                 <Route 
                   path="/admin/chat" 
-                  element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminChat /></ProtectedRoute>} 
+                  element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminLayout><AdminChat /></AdminLayout></ProtectedRoute>} 
                 />
                 <Route 
                   path="/admin/chat/:recipientId" 
-                  element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminChat /></ProtectedRoute>} 
+                  element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminLayout><AdminChat /></AdminLayout></ProtectedRoute>} 
                 />
                 <Route 
                   path="/admin/shipping" 
-                  element={<ProtectedRoute allowedRoles={['ADMIN']}><ShippingManagement /></ProtectedRoute>} 
+                  element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminLayout><ShippingManagement /></AdminLayout></ProtectedRoute>} 
                 />
-                {/* 🚀 NEW: Admin System Content Route */}
+
+                {/* 🚀 Dynamic content route handles both /admin/content/legal and /admin/content/company */}
+                <Route 
+                  path="/admin/content/:category" 
+                  element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminLayout><SystemContentManagement /></AdminLayout></ProtectedRoute>} 
+                />
                 <Route 
                   path="/admin/content" 
-                  element={<ProtectedRoute allowedRoles={['ADMIN']}><SystemContentManagement /></ProtectedRoute>} 
+                  element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminLayout><SystemContentManagement /></AdminLayout></ProtectedRoute>} 
                 />
 
                 {/* THE "NICE URL" ROOT ROUTE (PRESERVED AT BOTTOM) */}

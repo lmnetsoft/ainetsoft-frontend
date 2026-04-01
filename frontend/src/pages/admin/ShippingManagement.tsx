@@ -3,7 +3,7 @@ import {
   FaTruck, FaPlus, FaTrash, FaEdit, FaChevronDown, FaChevronUp, 
   FaTimes, FaShippingFast 
 } from 'react-icons/fa';
-import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
+// 🚀 REMOVED: Redundant sidebar import
 import adminService from '../../services/admin.service';
 import { toast } from 'react-hot-toast';
 import './AdminDashboard.css';
@@ -21,11 +21,11 @@ const ShippingManagement = () => {
     description: '',
     baseCost: 0,
     estimatedTime: '',
-    active: true // Unified to 'active'
+    active: true 
   });
 
   useEffect(() => {
-    fetchData(true); // Initial load with spinner
+    fetchData(true); 
   }, []);
 
   const fetchData = async (isInitialLoad = false) => {
@@ -40,28 +40,20 @@ const ShippingManagement = () => {
     }
   };
 
-  /**
-   * OPTIMISTIC UPDATE:
-   * Changes the UI state immediately so the button moves slightly/smoothly
-   * without triggering a full-page reload or list jump.
-   */
   const handleToggleActive = async (e: React.MouseEvent | null, method: any) => {
     if (e) e.stopPropagation(); 
 
-    const originalMethods = [...methods]; // Backup for rollback if API fails
+    const originalMethods = [...methods]; 
     const newStatus = !method.active;
 
-    // 1. Update UI state immediately (Smooth & Static)
     setMethods(prev => prev.map(m => 
       m.id === method.id ? { ...m, active: newStatus } : m
     ));
 
     try {
-      // 2. Perform background API call
       await adminService.updateShippingMethod(method.id, { ...method, active: newStatus });
       toast.success(`Đã ${newStatus ? 'kích hoạt' : 'tắt'} ${method.name}`);
     } catch (error) {
-      // 3. Rollback if backend update fails
       setMethods(originalMethods);
       toast.error("Lỗi cập nhật trạng thái");
     }
@@ -89,7 +81,7 @@ const ShippingManagement = () => {
         toast.success("Thêm mới thành công");
       }
       setShowModal(false);
-      fetchData(false); // Silent refresh
+      fetchData(false); 
     } catch (error) {
       toast.error("Lỗi khi lưu dữ liệu");
     }
@@ -101,7 +93,7 @@ const ShippingManagement = () => {
     try {
       await adminService.deleteShippingMethod(id);
       toast.success("Đã xóa vĩnh viễn");
-      fetchData(false); // Silent refresh
+      fetchData(false); 
     } catch (error) {
       toast.error("Không thể xóa phương thức đang sử dụng");
     }
@@ -111,104 +103,95 @@ const ShippingManagement = () => {
     setExpandedId(expandedId === id ? null : id);
   };
 
+  // 🚀 SURGICAL UPDATE: Return content without the redundant sidebar layout
   return (
-    <div className="admin-master-layout shipping-management-page">
-      <div className="sidebar-fixed-column">
-        <AccountSidebar />
-      </div>
-      
-      <main className="admin-main-view">
-        <div className="admin-dashboard-wrapper">
-          <header className="admin-page-header">
-            <div className="header-left">
-              <h1><FaTruck /> Phương thức vận chuyển</h1>
-              <div className="badge-container">
-                <span className="master-badge">LOGISTICS</span>
-                <span className="status-dot">Hệ thống đang hoạt động</span>
-              </div>
+    <div className="shipping-management-page">
+      <div className="admin-dashboard-wrapper">
+        <header className="admin-page-header">
+          <div className="header-left">
+            <h1><FaTruck /> Phương thức vận chuyển</h1>
+            <div className="badge-container">
+              <span className="master-badge">LOGISTICS</span>
+              <span className="status-dot">Hệ thống đang hoạt động</span>
             </div>
-            <button className="btn-refresh" onClick={() => handleOpenModal()}>
-              <FaPlus /> Thêm đơn vị mới
-            </button>
-          </header>
+          </div>
+          <button className="btn-refresh" onClick={() => handleOpenModal()}>
+            <FaPlus /> Thêm đơn vị mới
+          </button>
+        </header>
 
-          <div className="shipping-config-section">
-            <p className="section-desc">Kích hoạt và cấu hình các phương thức vận chuyển phù hợp cho toàn sàn.</p>
-            
-            {/* FIXED: Conditional loading. 
-              Only shows spinner if we have NO data yet. 
-              This prevents the UI from "jumping" during toggles.
-            */}
-            {loading && methods.length === 0 ? (
-              <div className="tab-loading-spinner">Đang đồng bộ dữ liệu...</div>
-            ) : (
-              <div className="shipping-methods-list">
-                {methods.map((m) => (
-                  <div key={m.id} className={`shipping-method-item ${!m.active ? 'is-disabled' : ''}`}>
-                    <div className="method-main-row" onClick={() => toggleAccordion(m.id)}>
-                      <div className="method-info-title">
-                        <FaShippingFast className="method-icon-bg" />
-                        <span>{m.name}</span>
+        <div className="shipping-config-section">
+          <p className="section-desc">Kích hoạt và cấu hình các phương thức vận chuyển phù hợp cho toàn sàn.</p>
+          
+          {loading && methods.length === 0 ? (
+            <div className="tab-loading-spinner">Đang đồng bộ dữ liệu...</div>
+          ) : (
+            <div className="shipping-methods-list">
+              {methods.map((m) => (
+                <div key={m.id} className={`shipping-method-item ${!m.active ? 'is-disabled' : ''}`}>
+                  <div className="method-main-row" onClick={() => toggleAccordion(m.id)}>
+                    <div className="method-info-title">
+                      <FaShippingFast className="method-icon-bg" />
+                      <span>{m.name}</span>
+                    </div>
+                    
+                    <div className="method-controls">
+                      <div className="thu-gon-wrapper">
+                        <button className="thu-gon-btn">
+                          {expandedId === m.id ? 'Thu gọn' : 'Chi tiết'} 
+                          {expandedId === m.id ? <FaChevronUp /> : <FaChevronDown />}
+                        </button>
                       </div>
                       
-                      <div className="method-controls">
-                        <div className="thu-gon-wrapper">
-                          <button className="thu-gon-btn">
-                            {expandedId === m.id ? 'Thu gọn' : 'Chi tiết'} 
-                            {expandedId === m.id ? <FaChevronUp /> : <FaChevronDown />}
-                          </button>
-                        </div>
-                        
-                        <div className="toggle-switch-wrapper" onClick={(e) => e.stopPropagation()}>
-                          <label className="admin-switch">
-                            <input 
-                              type="checkbox" 
-                              checked={m.active} 
-                              onChange={() => handleToggleActive(null, m)} 
-                            />
-                            <span className="admin-slider round"></span>
-                          </label>
-                        </div>
+                      <div className="toggle-switch-wrapper" onClick={(e) => e.stopPropagation()}>
+                        <label className="admin-switch">
+                          <input 
+                            type="checkbox" 
+                            checked={m.active} 
+                            onChange={() => handleToggleActive(null, m)} 
+                          />
+                          <span className="admin-slider round"></span>
+                        </label>
                       </div>
                     </div>
-
-                    {expandedId === m.id && (
-                      <div className="method-details-panel">
-                        <div className="details-grid">
-                          <div className="detail-item">
-                            <label>Mô tả:</label>
-                            <p>{m.description}</p>
-                          </div>
-                          <div className="detail-item">
-                            <label>Giá cơ bản:</label>
-                            <p>{m.baseCost.toLocaleString()} VNĐ</p>
-                          </div>
-                          <div className="detail-item">
-                            <label>Ước tính:</label>
-                            <p>{m.estimatedTime}</p>
-                          </div>
-                        </div>
-                        <div className="panel-actions">
-                          <button className="btn-edit-ship" onClick={() => handleOpenModal(m)}><FaEdit /> Chỉnh sửa</button>
-                          <button className="btn-delete-ship" onClick={(e) => handleDelete(e, m.id)}><FaTrash /> Xóa</button>
-                        </div>
-                      </div>
-                    )}
                   </div>
-                ))}
-                
-                <div className="add-more-container">
-                    <div className="add-more-placeholder" onClick={() => handleOpenModal()}>
-                      <div className="plus-icon-circle"><FaPlus /></div>
-                      <span>Thêm Đơn Vị Vận Chuyển</span>
-                      <p>Các đơn vị vận chuyển khác được AiNetsoft hỗ trợ</p>
+
+                  {expandedId === m.id && (
+                    <div className="method-details-panel">
+                      <div className="details-grid">
+                        <div className="detail-item">
+                          <label>Mô tả:</label>
+                          <p>{m.description}</p>
+                        </div>
+                        <div className="detail-item">
+                          <label>Giá cơ bản:</label>
+                          <p>{m.baseCost.toLocaleString()} VNĐ</p>
+                        </div>
+                        <div className="detail-item">
+                          <label>Ước tính:</label>
+                          <p>{m.estimatedTime}</p>
+                        </div>
+                      </div>
+                      <div className="panel-actions">
+                        <button className="btn-edit-ship" onClick={() => handleOpenModal(m)}><FaEdit /> Chỉnh sửa</button>
+                        <button className="btn-delete-ship" onClick={(e) => handleDelete(e, m.id)}><FaTrash /> Xóa</button>
+                      </div>
                     </div>
+                  )}
                 </div>
+              ))}
+              
+              <div className="add-more-container">
+                  <div className="add-more-placeholder" onClick={() => handleOpenModal()}>
+                    <div className="plus-icon-circle"><FaPlus /></div>
+                    <span>Thêm Đơn Vị Vận Chuyển</span>
+                    <p>Các đơn vị vận chuyển khác được AiNetsoft hỗ trợ</p>
+                  </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
-      </main>
+      </div>
 
       {showModal && (
         <div className="admin-modal-overlay">
