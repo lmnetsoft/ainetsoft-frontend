@@ -21,7 +21,7 @@ import { getUserProfile } from './services/authService';
 import LoadingOverlay from './components/LoadingOverlay/LoadingOverlay';
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute'; 
 
-// 🚀 APPENDED: Layout for persistent Sidebar
+// Layout for persistent Sidebar
 import AdminLayout from './components/Admin/AdminLayout'; 
 
 // User Account Components
@@ -54,10 +54,14 @@ import AdminChat from './pages/Admin/AdminChat';
 import ShippingManagement from './pages/Admin/ShippingManagement'; 
 import SystemContentManagement from './pages/Admin/SystemContentManagement';
 
+// 🚀 NEW: Footer & Help Hierarchy Management Components
+import FooterMenuManagement from './pages/Admin/FooterMenuManagement';
+import HelpHierarchyManagement from './pages/Admin/HelpHierarchyManagement';
+
 import './App.css';
 
 /**
- * INTERNAL COMPONENT: GlobalChatOverlay (PRESERVED)
+ * INTERNAL COMPONENT: GlobalChatOverlay
  * Renders the ChatPage (as a popup) globally when toggled.
  */
 const GlobalChatOverlay = () => {
@@ -106,7 +110,7 @@ function App() {
             
             <main className="content">
               <Routes>
-                {/* --- PUBLIC ROUTES (PRESERVED) --- */}
+                {/* --- PUBLIC ROUTES --- */}
                 <Route path="/" element={<Home />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/login" element={<Login />} />
@@ -114,15 +118,18 @@ function App() {
                 <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/product/:id" element={<ProductDetail />} />
+                
+                {/* 🚀 NEW: Help Center Public Route */}
+                <Route path="/tro-giup/:slug?" element={<ContentPage />} />
+                
                 <Route path="/regulations" element={<ContentPage type="regulations" />} />
                 <Route path="/contact" element={<ContentPage type="contact" />} />
-                
                 <Route path="/legal/:slug" element={<ContentPage />} />
                 
                 <Route path="/shop/:identifier" element={<PublicShop />} />
                 <Route path="/my-shop" element={<PublicShop />} />
 
-                {/* --- PROTECTED USER ROUTES (PRESERVED) --- */}
+                {/* --- PROTECTED USER ROUTES --- */}
                 <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
                 <Route path="/user/notifications" element={<ProtectedRoute><NotificationPage /></ProtectedRoute>} />
                 <Route path="/user/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
@@ -132,7 +139,7 @@ function App() {
                 <Route path="/user/purchase" element={<ProtectedRoute><Purchase /></ProtectedRoute>} />
                 <Route path="/seller/register" element={<ProtectedRoute><SellerRegister /></ProtectedRoute>} />
                 
-                {/* --- PROTECTED SELLER ROUTES (PRESERVED) --- */}
+                {/* --- PROTECTED SELLER ROUTES --- */}
                 <Route 
                   path="/seller/dashboard" 
                   element={<ProtectedRoute allowedRoles={['SELLER']}><SellerDashboard /></ProtectedRoute>} 
@@ -145,7 +152,7 @@ function App() {
                 <Route path="/seller/orders" element={<ProtectedRoute allowedRoles={['SELLER']}><SellerOrders /></ProtectedRoute>} />
                 <Route path="/seller/settings" element={<ProtectedRoute allowedRoles={['SELLER']}><SellerSettings /></ProtectedRoute>} />
 
-                {/* --- 🚀 UPDATED ADMIN ROUTES (Surgical Layout Injection) --- */}
+                {/* --- 🚀 PROTECTED ADMIN ROUTES --- */}
                 <Route 
                   path="/admin/dashboard" 
                   element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminLayout><AdminDashboard /></AdminLayout></ProtectedRoute>} 
@@ -163,7 +170,18 @@ function App() {
                   element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminLayout><ShippingManagement /></AdminLayout></ProtectedRoute>} 
                 />
 
-                {/* 🚀 Dynamic content route handles both /admin/content/legal and /admin/content/company */}
+                {/* 🚀 NEW: Footer Menu Management */}
+                <Route 
+                  path="/admin/footer-menus" 
+                  element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminLayout><FooterMenuManagement /></AdminLayout></ProtectedRoute>} 
+                />
+
+                {/* 🚀 NEW: Help Hierarchy (Parent-Child) Management */}
+                <Route 
+                  path="/admin/help-hierarchy" 
+                  element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminLayout><HelpHierarchyManagement /></AdminLayout></ProtectedRoute>} 
+                />
+
                 <Route 
                   path="/admin/content/:category" 
                   element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminLayout><SystemContentManagement /></AdminLayout></ProtectedRoute>} 
@@ -173,7 +191,7 @@ function App() {
                   element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminLayout><SystemContentManagement /></AdminLayout></ProtectedRoute>} 
                 />
 
-                {/* THE "NICE URL" ROOT ROUTE (PRESERVED AT BOTTOM) */}
+                {/* THE "NICE URL" ROOT ROUTE */}
                 <Route path="/:shopSlug" element={<PublicShop />} />
 
                 <Route path="*" element={<NotFound />} />

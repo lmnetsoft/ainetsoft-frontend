@@ -24,7 +24,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity // Enables @PreAuthorize support across controllers
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -60,7 +60,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 
-                // --- 1. PUBLIC ENDPOINTS ---
+                // --- 1. PUBLIC ENDPOINTS (Visitors can see) ---
                 .requestMatchers(
                     "/api/auth/login", 
                     "/api/auth/register", 
@@ -74,7 +74,10 @@ public class SecurityConfig {
                     "/api/chat/download/**",
                     "/ws/**",
                     "/api/report-reasons",
-                    "/api/system-content/**" // 🚀 Added to allow users to read Privacy/Terms without logging in
+                    "/api/system-content/**",
+                    "/api/help/tree",           // 🚀 NEW: Visitors see the help sidebar
+                    "/api/footer-menus/**",     // 🚀 NEW: Visitors see footer columns
+                    "/api/footer-icons/**"      // 🚀 NEW: Visitors see payment/shipping icons
                 ).permitAll() 
 
                 .requestMatchers("/api/chat/history/**").permitAll()
@@ -83,9 +86,13 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/reviews/**").permitAll()
 
-                // --- 2. ADMIN ONLY ENDPOINTS ---
+                // --- 2. ADMIN ONLY ENDPOINTS (Management) ---
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/chat/admin/**").hasRole("ADMIN")
+                
+                // 🚀 NEW: Restrict management of menus and help nodes to ADMINs only
+                .requestMatchers(HttpMethod.POST, "/api/footer-menus/**", "/api/help/nodes/**", "/api/footer-icons/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/footer-menus/**", "/api/help/nodes/**", "/api/footer-icons/**").hasRole("ADMIN")
 
                 // --- 3. AUTHENTICATED USER ENDPOINTS ---
                 .requestMatchers(

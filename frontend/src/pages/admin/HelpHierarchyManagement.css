@@ -1,0 +1,116 @@
+.help-hierarchy-mgmt {
+  padding: 30px;
+  background: #ffffff;
+  min-height: 100vh;
+}
+
+.mgmt-header {
+  border-bottom: 1px solid #eee;
+  padding-bottom: 20px;
+  margin-bottom: 30px;
+}
+
+.btn-add-root {
+  background: #1890ff;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 15px;
+  font-weight: 600;
+}
+
+.tree-container {
+  max-width: 900px;
+  background: #fafafa;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #f0f0f0;
+}
+
+.tree-node-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  margin-bottom: 5px;
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.tree-node-item.is-folder {
+  border-left: 4px solid #1890ff;
+}
+
+.tree-node-item.is-article {
+  border-left: 4px solid #52c41a;
+  background: #f6ffed;
+}
+
+.node-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  cursor: pointer;
+}
+
+.node-title-input {
+  border: none;
+  background: transparent;
+  font-weight: 600;
+  font-size: 14px;
+  width: 250px;
+}
+
+.node-title-input:focus {
+  outline: none;
+  border-bottom: 1px solid #1890ff;
+}
+
+.node-slug-box {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: #f0f0f0;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #666;
+}
+
+.node-slug-box input {
+  border: none;
+  background: transparent;
+  width: 150px;
+  font-family: monospace;
+}
+
+.node-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.node-actions button {
+  background: #eee;
+  border: none;
+  padding: 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #555;
+}
+
+.node-actions button:hover {
+  background: #ddd;
+}
+
+.node-actions .btn-delete:hover {
+  background: #ff4d4f;
+  color: white;
+}

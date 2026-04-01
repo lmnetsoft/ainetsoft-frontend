@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   FaUser, FaStore, FaShoppingBag, FaShieldAlt, FaComments, FaTruck, 
-  FaFileAlt, FaBalanceScale // Added FaBalanceScale for a distinct Legal icon
+  FaFileAlt, FaBalanceScale, FaList, FaSitemap // 🚀 Added FaList and FaSitemap
 } from 'react-icons/fa'; 
 import api from '../../services/api'; 
 import './AccountSidebar.css';
@@ -123,13 +123,23 @@ const AccountSidebar = () => {
                 Tổng quan Admin
               </NavLink>
 
-              {/* 🚀 Split: Legal Policies */}
+              {/* 🚀 NEW: Footer Menu Management */}
+              <NavLink to="/admin/footer-menus" className={({isActive}) => isActive ? 'active' : ''}>
+                <FaList className="sub-menu-icon" /> 
+                Quản lý Menu Footer
+              </NavLink>
+
+              {/* 🚀 NEW: Help Hierarchy Management */}
+              <NavLink to="/admin/help-hierarchy" className={({isActive}) => isActive ? 'active' : ''}>
+                <FaSitemap className="sub-menu-icon" /> 
+                Phân cấp Trợ giúp
+              </NavLink>
+
               <NavLink to="/admin/content/legal" className={({isActive}) => isActive ? 'active' : ''}>
                 <FaBalanceScale className="sub-menu-icon" /> 
                 Chính sách pháp lý
               </NavLink>
 
-              {/* 🚀 Split: System Config (Footer, Social, Badges) */}
               <NavLink to="/admin/content/company" className={({isActive}) => isActive ? 'active' : ''}>
                 <FaFileAlt className="sub-menu-icon" /> 
                 Cấu hình hệ thống
