@@ -28,7 +28,7 @@ public class DataSeeder implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
     private final FeedbackTemplateRepository feedbackTemplateRepository;
     
-    // 🚀 NEW: Repository for Legal Content Management
+    // 🚀 CMS Repository
     private final SystemContentRepository systemContentRepository;
 
     @Value("${app.seed.mock-data:true}")
@@ -48,7 +48,7 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        log.info("--- 🚀 Data Seeder: Initializing Core (2026 Ready & Full Restore) ---");
+        log.info("--- 🚀 Data Seeder: Initializing Production Core (2026 Ready) ---");
         
         if (forceClean) {
             cleanupDatabase();
@@ -57,11 +57,9 @@ public class DataSeeder implements CommandLineRunner {
         seedGlobalAdmin();
         List<ShippingMethod> globalMethods = seedShippingMethods();
         seedReportReasons();
-        
-        // 🚀 NEW: Seed Vietnamese Templates (PRESERVED)
         seedFeedbackTemplates();
 
-        // 🚀 NEW: Initialize Privacy Policy and Terms of Use
+        // 🚀 UPDATED: Now using local paths for BCT Badges
         seedSystemContents();
 
         if (seedMockData) {
@@ -84,47 +82,68 @@ public class DataSeeder implements CommandLineRunner {
         shippingMethodRepository.deleteAll(); 
         feedbackTemplateRepository.deleteAll();
         
-        // 🚀 NEW: Cleanup legal content
+        // 🚀 CMS Cleanup
         systemContentRepository.deleteAll();
         
         log.info("✅ Database cleaned successfully.");
     }
 
-    // --- 🚀 NEW: DYNAMIC SYSTEM CONTENT SEEDER (The logic we are developing) ---
+    // --- 🚀 UPDATED: PRODUCTION SYSTEM CONTENT SEEDER ---
     private void seedSystemContents() {
-        if (!systemContentRepository.existsBySlug("privacy")) {
-            systemContentRepository.save(SystemContent.builder()
-                    .slug("privacy")
-                    .title("Chính Sách Bảo Mật")
-                    .htmlContent("<h2>Chính Sách Bảo Mật</h2><p>Chào mừng bạn đến với AiNetsoft. Chúng tôi cam kết bảo vệ thông tin cá nhân của bạn theo quy định pháp luật Việt Nam...</p><p><i>(Nội dung này có thể chỉnh sửa trong trang Admin)</i></p>")
-                    .lastUpdated(LocalDateTime.now())
-                    .build());
-        }
+        log.info("📦 Seeding Production CMS Contents (Local Paths & Socials)...");
 
-        if (!systemContentRepository.existsBySlug("terms")) {
-            systemContentRepository.save(SystemContent.builder()
-                    .slug("terms")
-                    .title("Điều Khoản Sử Dụng")
-                    .htmlContent("<h2>Điều Khoản Sử Dụng</h2><p>Bằng việc sử dụng nền tảng AiNetsoft, bạn đồng ý tuân thủ các quy định và chính sách của chúng tôi...</p><p><i>(Nội dung này có thể chỉnh sửa trong trang Admin)</i></p>")
-                    .lastUpdated(LocalDateTime.now())
-                    .build());
+        // 1. Core Footer Information (Strictly as requested)
+        seedIfMissing("footer_company_name", "Tên Công Ty", "CÔNG TY TNHH AINETSOFT");
+        seedIfMissing("footer_address", "Địa chỉ trụ sở", "A2.804 Hưng Ngân Garden, Phường Trung Mỹ Tây, TP. Hồ Chí Minh");
+        seedIfMissing("footer_hotline", "Hotline / CSKH", "1900 1234 (miễn phí) hoặc Trò chuyện trực tuyến");
+        seedIfMissing("footer_representative", "Người đại diện", "Nguyễn Văn Thành");
+        seedIfMissing("footer_tax_code", "Mã số thuế", "04410045333");
+        seedIfMissing("footer_registration_date", "Ngày cấp đăng ký", "10/02/2026");
+        seedIfMissing("footer_issuing_agency", "Nơi cấp đăng ký", "Sở Kế hoạch và Đầu tư TP. Hồ Chí Minh");
+
+        // 2. Production Legal Content (HTML)
+        seedIfMissing("privacy", "Chính Sách Bảo Mật", "<h3>CHÍNH SÁCH BẢO MẬT</h3><p>AiNetsoft cam kết bảo vệ tuyệt đối thông tin cá nhân của bạn theo tiêu chuẩn ISO/IEC 27001...</p>");
+        seedIfMissing("terms", "Quy Chế Hoạt Động", "<h3>QUY CHẾ HOẠT ĐỘNG</h3><p>Quy định về giao dịch, thanh toán và an toàn trên sàn TMĐT AiNetsoft...</p>");
+        seedIfMissing("shipping-policy", "Chính Sách Vận Chuyển", "<h3>CHÍNH SÁCH VẬN CHUYỂN</h3><p>Hợp tác cùng các đơn vị vận chuyển hàng đầu, giao hàng nhanh chóng 2-4 ngày...</p>");
+        seedIfMissing("return-policy", "Chính Sách Trả Hàng", "<h3>CHÍNH SÁCH ĐỔI TRẢ</h3><p>Hỗ trợ đổi trả hàng và hoàn tiền trong vòng 07 ngày nếu lỗi từ nhà sản xuất...</p>");
+
+        // 3. Social Media Links
+        seedIfMissing("social_youtube", "Link YouTube", "https://youtube.com/@ainetsoft");
+        seedIfMissing("social_facebook", "Link Facebook", "https://facebook.com/ainetsoft.official");
+
+        // 4. App Links & QR Code (JSON Format)
+        String iosJson = "{\"img\":\"https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg\",\"link\":\"https://www.apple.com/vn/app-store/\"}";
+        String androidJson = "{\"img\":\"https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg\",\"link\":\"https://play.google.com/store/apps\"}";
+        String qrJson = "{\"img\":\"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://ainetsoft.vn\",\"link\":\"https://ainetsoft.vn\"}";
+
+        seedIfMissing("app_ios_link", "App: iOS Store", iosJson);
+        seedIfMissing("app_android_link", "App: Android Store", androidJson);
+        seedIfMissing("app_qr_code", "App: QR Code", qrJson);
+
+        // 5. 🚀 UPDATED: BCT Badges (Using Local Path as requested)
+        String localBctLogo = "http://localhost:8080/uploads/system/logo-bct.png";
+        
+        String bct1Json = "{\"img\":\"" + localBctLogo + "\",\"link\":\"http://online.gov.vn/\"}";
+        String bct2Json = "{\"img\":\"" + localBctLogo + "\",\"link\":\"http://online.gov.vn/\"}";
+        // Keeping Zalo as Zalo has its own icon
+        String bct3Json = "{\"img\":\"https://upload.wikimedia.org/wikipedia/commons/9/91/Icon_of_Zalo.svg\",\"link\":\"https://zalo.me/0909123456\"}";
+
+        seedIfMissing("footer_badge_1", "Badge BCT 1 (Link)", bct1Json);
+        seedIfMissing("footer_badge_2", "Badge BCT 2 (Link)", bct2Json);
+        seedIfMissing("footer_badge_3", "Badge BCT 3 / Icon Phụ", bct3Json);
+
+        log.info("✅ Full Production System Contents Seeded.");
+    }
+
+    private void seedIfMissing(String slug, String title, String content) {
+        if (!systemContentRepository.existsBySlug(slug)) {
+            systemContentRepository.save(SystemContent.builder().slug(slug).title(title).htmlContent(content).lastUpdated(LocalDateTime.now()).build());
         }
-        log.info("✅ System Legal Contents Seeded (Privacy & Terms).");
     }
 
     private void seedGlobalAdmin() {
         if (!userRepository.existsByEmail(adminEmail)) {
-            User admin = User.builder()
-                    .email(adminEmail)
-                    .fullName(adminFullName)
-                    .password(passwordEncoder.encode(adminPassword))
-                    .roles(new HashSet<>(Set.of("ADMIN", "USER")))
-                    .permissions(new HashSet<>(Set.of("ALL_ACCESS")))
-                    .isGlobalAdmin(true)
-                    .accountStatus("ACTIVE")
-                    .createdAt(LocalDateTime.now())
-                    .updatedAt(LocalDateTime.now())
-                    .build();
+            User admin = User.builder().email(adminEmail).fullName(adminFullName).password(passwordEncoder.encode(adminPassword)).roles(new HashSet<>(Set.of("ADMIN", "USER"))).permissions(new HashSet<>(Set.of("ALL_ACCESS"))).isGlobalAdmin(true).accountStatus("ACTIVE").createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
             userRepository.save(admin);
             log.info("✅ Global Admin born: " + adminEmail);
         }
@@ -132,57 +151,30 @@ public class DataSeeder implements CommandLineRunner {
 
     private void seedReportReasons() {
         if (reportReasonRepository.count() == 0) {
-            List<String> reasons = List.of(
-                "Sản phẩm giả mạo, hàng nhái",
-                "Nội dung phản cảm, khiêu dâm",
-                "Sản phẩm bị cấm kinh doanh",
-                "Dấu hiệu lừa đảo",
-                "Hình ảnh không rõ ràng/sai lệch",
-                "Lý do khác..."
-            );
-            reasons.forEach(name -> {
-                ReportReason rr = ReportReason.builder().name(name).active(true).build();
-                reportReasonRepository.save(rr);
-            });
+            List<String> reasons = List.of("Sản phẩm giả mạo, hàng nhái", "Nội dung phản cảm, khiêu dâm", "Sản phẩm bị cấm kinh doanh", "Dấu hiệu lừa đảo", "Hình ảnh không rõ ràng/sai lệch", "Lý do khác...");
+            reasons.forEach(name -> reportReasonRepository.save(ReportReason.builder().name(name).active(true).build()));
             log.info("✅ 6 Dynamic Report Reasons Seeded.");
         }
     }
 
     private List<ShippingMethod> seedShippingMethods() {
         if (shippingMethodRepository.count() > 0) return shippingMethodRepository.findAll();
-
         List<ShippingMethod> methods = Arrays.asList(
-            ShippingMethod.builder()
-                .name("Hỏa Tốc").description("Nhận hàng trong 2 giờ").baseCost(208600.0)
-                .estimatedTime("Trong ngày").active(true).codEnabled(true).build(),
-            ShippingMethod.builder()
-                .name("Nhanh").description("Giao hàng tiêu chuẩn 24h").baseCost(28700.0)
-                .estimatedTime("19 Th03 - 20 Th03").active(true).codEnabled(true).build(),
-            ShippingMethod.builder()
-                .name("Tiết Kiệm").description("Cước phí tối ưu cho đơn hàng nhỏ").baseCost(15000.0)
-                .estimatedTime("3-5 ngày").active(true).codEnabled(true).build(),
-            ShippingMethod.builder()
-                .name("Hàng Cồng Kềnh").description("Dành cho sản phẩm lớn").baseCost(150000.0)
-                .estimatedTime("19 Th03 - 23 Th03").active(true).codEnabled(true).build()
+            ShippingMethod.builder().name("Hỏa Tốc").description("Nhận hàng trong 2 giờ").baseCost(208600.0).estimatedTime("Trong ngày").active(true).codEnabled(true).build(),
+            ShippingMethod.builder().name("Nhanh").description("Giao hàng tiêu chuẩn 24h").baseCost(28700.0).estimatedTime("19 Th03 - 20 Th03").active(true).codEnabled(true).build(),
+            ShippingMethod.builder().name("Tiết Kiệm").description("Cước phí tối ưu cho đơn hàng nhỏ").baseCost(15000.0).estimatedTime("3-5 ngày").active(true).codEnabled(true).build(),
+            ShippingMethod.builder().name("Hàng Cồng Kềnh").description("Dành cho sản phẩm lớn").baseCost(150000.0).estimatedTime("19 Th03 - 23 Th03").active(true).codEnabled(true).build()
         );
-
         log.info("🚚 Global Shipping Units Seeded (4 methods).");
         return shippingMethodRepository.saveAll(methods);
     }
 
     private List<Category> seedCategories() {
         if (categoryRepository.count() > 0) return categoryRepository.findAll();
-
-        List<String> catNames = Arrays.asList(
-            "Máy Tính", "TiVi", "Âm Thanh", "Điện Thoại", "Dịch Vụ IT", "Máy Ảnh", 
-            "Thiết Bị VP", "Thiết Bị Mạng", "Linh Kiện", "Gia Dụng", "Thời Trang", 
-            "Sức Khỏe", "Sách", "Đồ Chơi", "Văn Phòng", "Thể Thao", "Làm Đẹp", "Ô Tô"
-        );
-
+        List<String> catNames = Arrays.asList("Máy Tính", "TiVi", "Âm Thanh", "Điện Thoại", "Dịch Vụ IT", "Máy Ảnh", "Thiết Bị VP", "Thiết Bị Mạng", "Linh Kiện", "Gia Dụng", "Thời Trang", "Sức Khỏe", "Sách", "Đồ Chơi", "Văn Phòng", "Thể Thao", "Làm Đẹp", "Ô Tô");
         List<Category> savedCats = new ArrayList<>();
         for (String name : catNames) {
-            Category c = Category.builder()
-                    .name(name).slug(name.toLowerCase().replace(" ", "-")).active(true).build();
+            Category c = Category.builder().name(name).slug(name.toLowerCase().replace(" ", "-")).active(true).build();
             savedCats.add(categoryRepository.save(c));
         }
         log.info("✅ 18 Categories Seeded.");
@@ -192,7 +184,6 @@ public class DataSeeder implements CommandLineRunner {
     private void seedFeedbackTemplates() {
         if (feedbackTemplateRepository.count() == 0) {
             log.info("Initializing professional Vietnamese feedback templates...");
-
             List<FeedbackTemplate> templates = Arrays.asList(
                 FeedbackTemplate.builder().title("Hồ sơ hợp lệ").content("Hồ sơ và các chứng từ bạn cung cấp hoàn toàn hợp lệ và đầy đủ. Chào mừng bạn gia nhập cộng đồng người bán của AiNetSoft!").type("SELLER_REJECTION").build(),
                 FeedbackTemplate.builder().title("Ảnh CCCD mờ").content("Hình ảnh CCCD bạn cung cấp bị mờ, lóa sáng hoặc không rõ số. Vui lòng tải lên ảnh chụp bản gốc rõ nét và đủ ánh sáng.").type("SELLER_REJECTION").build(),
@@ -202,27 +193,19 @@ public class DataSeeder implements CommandLineRunner {
                 FeedbackTemplate.builder().title("Sản phẩm bị cấm").content("Sản phẩm này thuộc danh mục hàng hóa bị cấm kinh doanh theo quy định pháp luật và tiêu chuẩn cộng đồng của AiNetSoft.").type("PRODUCT_REJECTION").build(),
                 FeedbackTemplate.builder().title("Ảnh chất lượng kém").content("Hình ảnh sản phẩm có chất lượng thấp, bị vỡ nét hoặc chứa logo/hình mờ của sàn thương mại điện tử khác.").type("PRODUCT_REJECTION").build()
             );
-
             feedbackTemplateRepository.saveAll(templates);
-            log.info("✅ Seeded {} Vietnamese Quick Response Templates.", templates.size());
+            log.info("✅ Seeded Vietnamese Feedback Templates.");
         }
     }
 
     private void seedDefaultSeller(List<Category> savedCats, List<ShippingMethod> globalMethods) {
         String sellerEmail = "seller@ainetsoft.com";
         if (!userRepository.existsByEmail(sellerEmail)) {
-            User.AddressInfo stockAddr = User.AddressInfo.builder()
-                    .receiverName("AiNetsoft Manager").phone("0909123456")
-                    .province("TP.HCM (TP.HCM + Bình Dương + Bà Rịa–Vũng Tàu)").ward("Phường Bến Nghé").hamlet("Khu phố 1").detail("Tòa nhà Bitexco, Quận 1, TP.HCM").latitude("10.7715").longitude("106.7043").isDefault(true).build();
+            User.AddressInfo stockAddr = User.AddressInfo.builder().receiverName("AiNetsoft Manager").phone("0909123456").province("TP.HCM (TP.HCM + Bình Dương + Bà Rịa–Vũng Tàu)").ward("Phường Bến Nghé").hamlet("Khu phố 1").detail("Tòa nhà Bitexco, Quận 1, TP.HCM").latitude("10.7715").longitude("106.7043").isDefault(true).build();
             User.BankInfo bank = User.BankInfo.builder().bankName("Vietcombank").accountNumber("1234567890").accountHolder("AINETSOFT MALL").isDefault(true).build();
-            User seller = User.builder()
-                    .email(sellerEmail).fullName("AiNetsoft Mall").password(passwordEncoder.encode("Test1234!"))
-                    .roles(new HashSet<>(Set.of("SELLER", "USER"))).sellerVerification("VERIFIED").accountStatus("ACTIVE")
-                    .addresses(Collections.singletonList(stockAddr)).bankAccounts(Collections.singletonList(bank))
-                    .shopProfile(User.ShopProfile.builder().shopName("AiNetsoft Mall").shopSlug("ainetsoft-mall").lastShopNameChange(LocalDateTime.now()).businessEmail(sellerEmail).businessPhone("0909123456").shopAddress(stockAddr.getDetail()).taxCode("0102030405").enabledShippingMethodIds(globalMethods.stream().map(ShippingMethod::getId).collect(Collectors.toList())).build())
-                    .build();
+            User seller = User.builder().email(sellerEmail).fullName("AiNetsoft Mall").password(passwordEncoder.encode("Test1234!")).roles(new HashSet<>(Set.of("SELLER", "USER"))).sellerVerification("VERIFIED").accountStatus("ACTIVE").addresses(Collections.singletonList(stockAddr)).bankAccounts(Collections.singletonList(bank)).shopProfile(User.ShopProfile.builder().shopName("AiNetsoft Mall").shopSlug("ainetsoft-mall").lastShopNameChange(LocalDateTime.now()).businessEmail(sellerEmail).businessPhone("0909123456").shopAddress(stockAddr.getDetail()).taxCode("0102030405").enabledShippingMethodIds(globalMethods.stream().map(ShippingMethod::getId).collect(Collectors.toList())).build()).build();
             userRepository.save(seller);
-            log.info("✅ Default Seller Created with Slug: ainetsoft-mall");
+            log.info("✅ Default Seller Created.");
             seedMockProducts(seller, savedCats, globalMethods);
         }
     }
@@ -252,21 +235,16 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private void seedSubAdmin() {
-        String modEmail = "mod@ainetsoft.com";
-        if (!userRepository.existsByEmail(modEmail)) {
-            User mod = User.builder().email(modEmail).fullName("Product Moderator").password(passwordEncoder.encode("Test1234!")).roles(new HashSet<>(Set.of("ADMIN"))).permissions(new HashSet<>(Set.of("MANAGE_PRODUCTS"))).accountStatus("ACTIVE").build();
-            userRepository.save(mod);
-            log.info("🛡 Sub-Admin created.");
+        if (!userRepository.existsByEmail("mod@ainetsoft.com")) {
+            userRepository.save(User.builder().email("mod@ainetsoft.com").fullName("Product Moderator").password(passwordEncoder.encode("Test1234!")).roles(new HashSet<>(Set.of("ADMIN"))).permissions(new HashSet<>(Set.of("MANAGE_PRODUCTS"))).accountStatus("ACTIVE").build());
         }
     }
 
     private void seedPendingModeration(List<Category> savedCats, List<ShippingMethod> globalMethods) {
-        String pendingSellerEmail = "pending_seller@example.com";
-        if (!userRepository.existsByEmail(pendingSellerEmail)) {
+        if (!userRepository.existsByEmail("pending_seller@example.com")) {
             User.AddressInfo stock1 = User.AddressInfo.builder().receiverName("Nguyễn Văn Kho").phone("0987654321").province("Hà Nội").ward("Phường Hàng Đào").hamlet("Số 1").detail("123 Phố Cổ, Hà Nội").isDefault(true).build();
-            User pSeller = User.builder().email(pendingSellerEmail).fullName("Người Bán Chờ Duyệt").phone("0987654321").password(passwordEncoder.encode("Test1234!")).roles(new HashSet<>(Set.of("USER"))).accountStatus("PENDING_SELLER").sellerVerification("PENDING").identityInfo(User.IdentityInfo.builder().cccdNumber("012345678912").frontImageUrl("https://picsum.photos/seed/front/400/250").backImageUrl("https://picsum.photos/seed/back/400/250").submittedAt(LocalDateTime.now()).build()).addresses(Collections.singletonList(stock1)).shopProfile(User.ShopProfile.builder().shopName("Shop Đang Đợi Duyệt").shopSlug("shop-dang-doi-duyet").lastShopNameChange(LocalDateTime.now()).businessEmail(pendingSellerEmail).businessPhone("0987654321").shopAddress(stock1.getDetail()).enabledShippingMethodIds(globalMethods.size() > 2 ? Arrays.asList(globalMethods.get(1).getId(), globalMethods.get(2).getId()) : new ArrayList<>()).build()).bankAccounts(Collections.singletonList(User.BankInfo.builder().bankName("Vietcombank").accountNumber("9988776655").accountHolder("NGUYEN VAN CHO DUYET").isDefault(true).build())).build();
+            User pSeller = User.builder().email("pending_seller@example.com").fullName("Người Bán Chờ Duyệt").phone("0987654321").password(passwordEncoder.encode("Test1234!")).roles(new HashSet<>(Set.of("USER"))).accountStatus("PENDING_SELLER").sellerVerification("PENDING").identityInfo(User.IdentityInfo.builder().cccdNumber("012345678912").frontImageUrl("https://picsum.photos/seed/front/400/250").backImageUrl("https://picsum.photos/seed/back/400/250").submittedAt(LocalDateTime.now()).build()).addresses(Collections.singletonList(stock1)).shopProfile(User.ShopProfile.builder().shopName("Shop Đang Đợi Duyệt").shopSlug("shop-dang-doi-duyet").lastShopNameChange(LocalDateTime.now()).businessEmail("pending_seller@example.com").businessPhone("0987654321").shopAddress(stock1.getDetail()).enabledShippingMethodIds(globalMethods.size() > 2 ? Arrays.asList(globalMethods.get(1).getId(), globalMethods.get(2).getId()) : new ArrayList<>()).build()).bankAccounts(Collections.singletonList(User.BankInfo.builder().bankName("Vietcombank").accountNumber("9988776655").accountHolder("NGUYEN VAN CHO DUYET").isDefault(true).build())).build();
             userRepository.save(pSeller);
-            log.info("⚠️ Pending Data Seeded.");
         }
     }
 }
