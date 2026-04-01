@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   FaUser, FaStore, FaShoppingBag, FaShieldAlt, FaComments, FaTruck, 
-  FaFileAlt // 🚀 Added for Content Management
+  FaFileAlt, FaBalanceScale // Added FaBalanceScale for a distinct Legal icon
 } from 'react-icons/fa'; 
 import api from '../../services/api'; 
 import './AccountSidebar.css';
@@ -122,6 +122,19 @@ const AccountSidebar = () => {
               <NavLink to="/admin/dashboard" className={({isActive}) => isActive ? 'active' : ''}>
                 Tổng quan Admin
               </NavLink>
+
+              {/* 🚀 Split: Legal Policies */}
+              <NavLink to="/admin/content/legal" className={({isActive}) => isActive ? 'active' : ''}>
+                <FaBalanceScale className="sub-menu-icon" /> 
+                Chính sách pháp lý
+              </NavLink>
+
+              {/* 🚀 Split: System Config (Footer, Social, Badges) */}
+              <NavLink to="/admin/content/company" className={({isActive}) => isActive ? 'active' : ''}>
+                <FaFileAlt className="sub-menu-icon" /> 
+                Cấu hình hệ thống
+              </NavLink>
+
               <NavLink to="/admin/shipping" className={({isActive}) => isActive ? 'active' : ''}>
                 <FaTruck className="sub-menu-icon" /> 
                 Cấu hình vận chuyển
@@ -129,11 +142,6 @@ const AccountSidebar = () => {
               <NavLink to="/admin/chat" className={({isActive}) => isActive ? 'active' : ''}>
                 <FaComments className="sub-menu-icon" /> 
                 Quản lý Chat
-              </NavLink>
-              {/* 🚀 NEW: Dynamic Content Management Link */}
-              <NavLink to="/admin/content" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaFileAlt className="sub-menu-icon" /> 
-                Quản lý nội dung
               </NavLink>
             </div>
           </div>

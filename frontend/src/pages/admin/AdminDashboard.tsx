@@ -4,7 +4,7 @@ import {
   FaChartBar, FaSync, FaHistory, FaShieldAlt,
   FaExclamationTriangle, FaStar, FaTrash, FaCheck, FaTimes, FaListUl, FaTags, FaPlus, FaSearch
 } from 'react-icons/fa';
-import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
+// 🚀 REMOVED: Redundant sidebar import as it is now handled by AdminLayout
 import adminService from '../../services/admin.service';
 import SellerModeration from './SellerModeration'; 
 import ProductModeration from './ProductModeration'; 
@@ -32,11 +32,10 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [tabLoading, setTabLoading] = useState(false);
 
-  // 🛠️ NEW: Search filter for Users
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [newReasonName, setNewReasonName] = useState("");
 
-  // --- 1. DATA FETCHERS ---
+  // --- 1. DATA FETCHERS (PRESERVED) ---
 
   const fetchSummary = async (showToast = false) => {
     try {
@@ -52,7 +51,6 @@ const AdminDashboard = () => {
           totalRevenue: data.totalRevenue || 0,
           pendingProducts: data.pendingProducts || 0,
           pendingSellers: data.pendingSellers || 0,
-          // Let fetchReports handle the report badge for accuracy
         }));
       }
       if (showToast) toast.success("Số liệu đã được đồng bộ");
@@ -119,7 +117,7 @@ const AdminDashboard = () => {
     finally { setTabLoading(false); }
   };
 
-  // --- 2. THE REFRESH ENGINE ---
+  // --- 2. THE REFRESH ENGINE (PRESERVED) ---
 
   const handleManualRefresh = async () => {
     await fetchSummary(true);
@@ -146,7 +144,7 @@ const AdminDashboard = () => {
   }, [activeTab]);
 
 
-  // --- 3. ACTIONS ---
+  // --- 3. ACTIONS (PRESERVED) ---
 
   const handleResolveReport = async (reportId: string, action: 'RESOLVED' | 'DISMISSED') => {
     try {
@@ -197,7 +195,7 @@ const AdminDashboard = () => {
     } catch (err) { toast.error("Không thể xóa"); }
   };
 
-  // --- 4. RENDERER ---
+  // --- 4. RENDERER (PRESERVED) ---
 
   const renderContent = () => {
     if (tabLoading) return <div className="tab-loading-spinner">Đang xử lý dữ liệu...</div>;
@@ -426,42 +424,39 @@ const AdminDashboard = () => {
     }
   };
 
+  // 🚀 SURGICAL UPDATE: Removed the local AccountSidebar and admin-master-layout wrapper.
+  // The component now returns the content directly to the global AdminLayout.
   return (
-    <div className="admin-master-layout"> 
-      <div className="sidebar-fixed-column"><AccountSidebar /></div>
-      <main className="admin-main-view">
-        <div className="admin-dashboard-wrapper">
-          <header className="admin-page-header">
-            <div className="header-left">
-              <h1>Hệ thống Quản trị AiNetsoft</h1>
-              <div className="badge-container"><span className="master-badge">GLOBAL ADMIN</span><span className="status-dot">Online</span></div>
-            </div>
-            <button className="btn-refresh" onClick={handleManualRefresh} disabled={loading}><FaSync className={loading ? 'spin' : ''} /><span>{loading ? 'Đang đồng bộ...' : 'Làm mới'}</span></button>
-          </header>
-
-          <section className="metrics-grid">
-            <div className={`metric-card ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}><div className="metric-icon users"><FaUsers /></div><div className="metric-data"><span className="metric-label">Tổng Người dùng</span><span className="metric-value">{stats.totalUsers.toLocaleString()}</span></div></div>
-            <div className={`metric-card ${activeTab === 'products' ? 'active' : ''}`} onClick={() => setActiveTab('products')}><div className="metric-icon products"><FaBox /></div><div className="metric-data"><span className="metric-label">Sản phẩm</span><span className="metric-value">{stats.totalProducts}</span></div></div>
-            <div className={`metric-card ${stats.pendingProducts > 0 ? 'urgent' : ''}`} onClick={() => setActiveTab('products_mod')}><div className="metric-icon pending"><FaClock /></div><div className="metric-data"><span className="metric-label">Chờ Duyệt (SP)</span><span className="metric-value">{stats.pendingProducts}</span></div></div>
-            <div className={`metric-card ${stats.pendingSellers > 0 ? 'urgent' : ''}`} onClick={() => setActiveTab('sellers')}><div className="metric-icon sellers"><FaStore /></div><div className="metric-data"><span className="metric-label">Chờ Duyệt (Shop)</span><span className="metric-value">{stats.pendingSellers}</span></div></div>
-          </section>
-
-          <nav className="content-tabs">
-            <button className={activeTab === 'summary' ? 'active' : ''} onClick={() => setActiveTab('summary')}>Tổng quan</button>
-            <button className={activeTab === 'users' ? 'active' : ''} onClick={() => setActiveTab('users')}>Người dùng</button>
-            <button className={activeTab === 'products_mod' ? 'active' : ''} onClick={() => setActiveTab('products_mod')}>Duyệt Sản phẩm {stats.pendingProducts > 0 && <span className="notif-badge danger">{stats.pendingProducts}</span>}</button>
-            <button className={activeTab === 'sellers' ? 'active' : ''} onClick={() => setActiveTab('sellers')}>Duyệt Shop {stats.pendingSellers > 0 && <span className="notif-badge">{stats.pendingSellers}</span>}</button>
-            <button className={activeTab === 'reports' ? 'active' : ''} onClick={() => setActiveTab('reports')}>Báo cáo vi phạm {stats.totalReports > 0 && <span className="notif-badge danger">{stats.totalReports}</span>}</button>
-            <button className={activeTab === 'reviews' ? 'active' : ''} onClick={() => setActiveTab('reviews')}>Quản lý đánh giá</button>
-            <button className={activeTab === 'reasons' ? 'active' : ''} onClick={() => setActiveTab('reasons')}><FaTags size={12}/> Danh mục báo cáo</button>
-            <button className={activeTab === 'logs' ? 'active' : ''} onClick={() => setActiveTab('logs')}>Nhật ký hệ thống</button>
-          </nav>
-
-          <section className="dynamic-view-area">
-            {loading && activeTab === 'summary' ? <div className="loading-placeholder"><span>Đang tải dữ liệu...</span></div> : renderContent()}
-          </section>
+    <div className="admin-dashboard-wrapper">
+      <header className="admin-page-header">
+        <div className="header-left">
+          <h1>Hệ thống Quản trị AiNetsoft</h1>
+          <div className="badge-container"><span className="master-badge">GLOBAL ADMIN</span><span className="status-dot">Online</span></div>
         </div>
-      </main>
+        <button className="btn-refresh" onClick={handleManualRefresh} disabled={loading}><FaSync className={loading ? 'spin' : ''} /><span>{loading ? 'Đang đồng bộ...' : 'Làm mới'}</span></button>
+      </header>
+
+      <section className="metrics-grid">
+        <div className={`metric-card ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}><div className="metric-icon users"><FaUsers /></div><div className="metric-data"><span className="metric-label">Tổng Người dùng</span><span className="metric-value">{stats.totalUsers.toLocaleString()}</span></div></div>
+        <div className={`metric-card ${activeTab === 'products' ? 'active' : ''}`} onClick={() => setActiveTab('products')}><div className="metric-icon products"><FaBox /></div><div className="metric-data"><span className="metric-label">Sản phẩm</span><span className="metric-value">{stats.totalProducts}</span></div></div>
+        <div className={`metric-card ${stats.pendingProducts > 0 ? 'urgent' : ''}`} onClick={() => setActiveTab('products_mod')}><div className="metric-icon pending"><FaClock /></div><div className="metric-data"><span className="metric-label">Chờ Duyệt (SP)</span><span className="metric-value">{stats.pendingProducts}</span></div></div>
+        <div className={`metric-card ${stats.pendingSellers > 0 ? 'urgent' : ''}`} onClick={() => setActiveTab('sellers')}><div className="metric-icon sellers"><FaStore /></div><div className="metric-data"><span className="metric-label">Chờ Duyệt (Shop)</span><span className="metric-value">{stats.pendingSellers}</span></div></div>
+      </section>
+
+      <nav className="content-tabs">
+        <button className={activeTab === 'summary' ? 'active' : ''} onClick={() => setActiveTab('summary')}>Tổng quan</button>
+        <button className={activeTab === 'users' ? 'active' : ''} onClick={() => setActiveTab('users')}>Người dùng</button>
+        <button className={activeTab === 'products_mod' ? 'active' : ''} onClick={() => setActiveTab('products_mod')}>Duyệt Sản phẩm {stats.pendingProducts > 0 && <span className="notif-badge danger">{stats.pendingProducts}</span>}</button>
+        <button className={activeTab === 'sellers' ? 'active' : ''} onClick={() => setActiveTab('sellers')}>Duyệt Shop {stats.pendingSellers > 0 && <span className="notif-badge">{stats.pendingSellers}</span>}</button>
+        <button className={activeTab === 'reports' ? 'active' : ''} onClick={() => setActiveTab('reports')}>Báo cáo vi phạm {stats.totalReports > 0 && <span className="notif-badge danger">{stats.totalReports}</span>}</button>
+        <button className={activeTab === 'reviews' ? 'active' : ''} onClick={() => setActiveTab('reviews')}>Quản lý đánh giá</button>
+        <button className={activeTab === 'reasons' ? 'active' : ''} onClick={() => setActiveTab('reasons')}><FaTags size={12}/> Danh mục báo cáo</button>
+        <button className={activeTab === 'logs' ? 'active' : ''} onClick={() => setActiveTab('logs')}>Nhật ký hệ thống</button>
+      </nav>
+
+      <section className="dynamic-view-area">
+        {loading && activeTab === 'summary' ? <div className="loading-placeholder"><span>Đang tải dữ liệu...</span></div> : renderContent()}
+      </section>
     </div>
   );
 };

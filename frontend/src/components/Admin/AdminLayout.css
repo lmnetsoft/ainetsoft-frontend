@@ -1,0 +1,22 @@
+.admin-master-layout {
+  display: flex;
+  background-color: #f0f2f5;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.sidebar-fixed-column {
+  width: 250px;
+  flex-shrink: 0;
+  background: #fff;
+  border-right: 1px solid #e8e8e8;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.admin-main-view {
+  flex-grow: 1;
+  overflow-x: hidden;
+}
