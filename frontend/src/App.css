@@ -3,14 +3,14 @@
 }
 
 .app-wrapper {
-  background-color: #f5f5f5;
+  /* 🚀 CHANGE: We use a very light neutral background for the site */
+  background-color: #f8fafc;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   width: 100%;
 }
 
-/* 🚀 CONTAINER: The master 1400px block */
 .container {
   width: 100%;
   max-width: var(--container-max);
@@ -24,14 +24,13 @@ footer {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  align-items: center; /* Only Header and Footer use internal centering */
+  align-items: center;
 }
 
-/* 🚀 CONTENT FIX: Removed flex centering to prevent page vibration */
 .content {
   flex: 1 0 auto;
   width: 100%;
-  display: block; /* Allows child pages to handle their own alignment */
+  display: block; 
   padding-bottom: 60px;
 }
 

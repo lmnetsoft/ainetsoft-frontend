@@ -5,17 +5,13 @@
   width: 100%;
 }
 
-/* --- 🚀 THE SPREAD FIX: Moves sections to the edges of the 1400px container --- */
+/* --- 🚀 THE SPREAD FIX: Spreads columns to the edges of the 1400px container --- */
 .footer-top-nav {
   display: flex;
-  justify-content: space-between; /* This creates the large gap you want */
+  justify-content: space-between;
   align-items: flex-start;
   width: 100%;
   padding-bottom: 50px;
-}
-
-.footer-nav-col {
-  /* No fixed width here lets flex-space-between do the work */
 }
 
 .footer-nav-title {
@@ -41,12 +37,12 @@
   color: var(--shopee-orange);
 }
 
-/* --- LOGOS: SUPREME SIZING & FLOATING --- */
+/* --- LOGOS: SUPREME SIZING --- */
 .footer-partners-row {
   display: flex;
   flex-wrap: wrap;
   gap: 15px;
-  max-width: 250px; /* Limits width to wrap logos nicely in column 3 */
+  max-width: 250px;
 }
 
 .partner-logo {
@@ -93,7 +89,7 @@
   margin-bottom: 35px;
 }
 
-/* --- CENTERED POLICIES --- */
+/* --- 🚀 FIXED: RESTORED HAND HOVER --- */
 .footer-policy-links {
   display: flex;
   justify-content: center;
@@ -102,6 +98,15 @@
   font-size: 13px;
   color: var(--shopee-orange);
   font-weight: 500;
+}
+
+.footer-policy-links span {
+  cursor: pointer; /* 💡 THE FIX: Shows the hand icon on hover */
+  transition: opacity 0.2s ease;
+}
+
+.footer-policy-links span:hover {
+  opacity: 0.7;
 }
 
 .sep-divider { color: #ccc; }

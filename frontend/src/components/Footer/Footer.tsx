@@ -52,7 +52,7 @@ const Footer: React.FC = () => {
         setShipIcons(resShip.data || []);
         setAppData(resApp.data || {});
       } catch (error) {
-        console.error("Footer CMS Sync failed:", error);
+        console.error("Footer Sync Error:", error);
       } finally {
         setLoading(false);
       }
@@ -83,7 +83,7 @@ const Footer: React.FC = () => {
     <footer className="app-footer-global">
       <div className="container">
         
-        {/* ROW 1: SPREAD NAVIGATION (Flex Layout) */}
+        {/* ROW 1: SPREAD NAVIGATION */}
         <div className="footer-top-nav">
           {menus.slice(0, 2).map((col, idx) => (
             <div key={idx} className="footer-nav-col">
@@ -100,7 +100,6 @@ const Footer: React.FC = () => {
             </div>
           ))}
 
-          {/* Payment & Shipping */}
           <div className="footer-nav-col">
             <h4 className="footer-nav-title">THANH TOÁN</h4>
             <div className="footer-partners-row">
@@ -116,7 +115,6 @@ const Footer: React.FC = () => {
             </div>
           </div>
 
-          {/* Download App Area */}
           <div className="footer-nav-col">
             <h4 className="footer-nav-title">TẢI ỨNG DỤNG</h4>
             <div className="footer-app-flex">
@@ -131,6 +129,7 @@ const Footer: React.FC = () => {
 
         <hr className="footer-hr" />
 
+        {/* ROW 2: POLICIES (FIXED HAND HOVER) */}
         <div className="footer-policy-links">
           <span onClick={() => setLegalSlug('privacy')}>CHÍNH SÁCH BẢO MẬT</span>
           <span className="sep-divider">|</span>

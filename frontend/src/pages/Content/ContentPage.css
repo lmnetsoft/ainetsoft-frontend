@@ -1,230 +1,176 @@
-/* --- 🚀 STABLE LAYOUT STRUCTURE --- */
+/* --- 🚀 SEAMLESS WRAPPER --- */
 .help-center-layout {
-  display: grid;
-  /* 💡 FIXED: Locked sidebar width at 320px to prevent "kicking" the content card */
-  grid-template-columns: 320px 1fr; 
-  gap: 30px;
   width: 100%;
-  max-width: var(--container-max); /* Uses the 1400px variable */
-  margin: 40px auto; /* Perfectly centers the grid within the app */
+  max-width: var(--container-max);
+  margin: 40px auto;
   padding: 0 20px;
-  align-items: start;
-  box-sizing: border-box;
 }
 
-/* --- SIDEBAR: Zero-Jumping Logic --- */
-.help-sidebar {
-  background: var(--bg-white);
+/* 🚀 THE SUPREME FIX: This container makes Sidebar and Content share the same background height */
+.help-main-container {
+  display: flex;
+  background: white;
   border-radius: 16px;
-  border: var(--border-standard);
-  padding: 0;
-  position: sticky;
-  top: 100px; /* Locked position relative to Header */
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  border: 1px solid #edf2f7;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
   overflow: hidden;
-  /* 💡 STABILITY: Prevents sidebar from shrinking during transitions */
-  min-width: 320px; 
+  min-height: 70vh; /* Professional minimal height */
+}
+
+/* --- SIDEBAR (Left Panel) --- */
+.help-sidebar {
+  width: 320px;
+  flex-shrink: 0;
+  border-right: 1px solid #f1f5f9; /* Vertical divider instead of separate border */
+  background: #fcfdfe; /* Subtle difference for navigation area */
+}
+
+/* 💡 Keeps sidebar visible while scrolling inside the unified box */
+.sidebar-sticky-box {
+  position: sticky;
+  top: 0; 
 }
 
 .sidebar-top-header {
-  background: #f8fafc;
-  padding: 20px 24px;
+  padding: 24px;
   display: flex;
   align-items: center;
   gap: 12px;
-  border-bottom: var(--border-standard);
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .sidebar-top-header svg {
   color: var(--shopee-orange);
-  font-size: 20px;
+  font-size: 18px;
 }
 
 .sidebar-top-header h3 {
-  font-size: 17px;
+  font-size: 16px;
   color: var(--ainet-navy);
-  margin: 0;
   font-weight: 700;
+  margin: 0;
 }
 
 .tree-navigation {
   padding: 15px;
 }
 
-/* Category Styling: Smooth Transitions */
 .sidebar-category-header {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px;
+  padding: 10px 12px;
   font-weight: 600;
-  font-size: 15px;
-  color: #334155;
+  font-size: 14px;
+  color: #4a5568;
   cursor: pointer;
   border-radius: 8px;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition: all 0.2s ease;
 }
 
-.sidebar-category-header:hover {
-  background: #f1f5f9;
-}
+.sidebar-category-header:hover { background: #f1f5f9; }
+.sidebar-category-header.open { color: var(--shopee-orange); }
 
-.sidebar-category-header.open {
-  color: var(--shopee-orange);
-}
-
-.sidebar-category-header.active-cat {
-  background: #fff5f3;
-  color: var(--shopee-orange);
-  font-weight: 700;
-}
-
-.chevron {
-  font-size: 10px;
-  transition: transform 0.2s ease;
-}
-
-/* Sub-items list stability */
-.sidebar-sub-items {
-  margin-left: 12px;
-  padding-left: 15px;
-  border-left: 2px solid #f1f5f9;
-  margin-top: 2px;
-  margin-bottom: 10px;
-}
-
-/* Article Link: Non-Shifty Hovers */
 .sidebar-article-link {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
-  font-size: 14px;
-  color: var(--text-secondary);
+  padding: 8px 12px;
+  font-size: 13.5px;
+  color: #718096;
   text-decoration: none;
   border-radius: 8px;
   margin-bottom: 2px;
-  transition: all 0.2s;
-}
-
-.sidebar-article-link:hover {
-  background: #fff5f3;
-  color: var(--shopee-orange);
 }
 
 .sidebar-article-link.active {
   background: var(--shopee-orange);
-  color: var(--bg-white) !important;
+  color: white !important;
   font-weight: 600;
-  box-shadow: 0 4px 12px rgba(238, 77, 45, 0.2);
 }
 
-.sidebar-article-link.active .art-icon {
-  color: white;
-  opacity: 1;
-}
-
-.art-icon {
-  font-size: 13px;
-  opacity: 0.6;
-}
-
-/* --- MAIN CONTENT AREA: Professional Cards --- */
+/* --- CONTENT AREA (Right Panel) --- */
 .help-content-area {
-  min-height: 70vh;
-  position: relative;
+  flex: 1;
+  padding: 50px 60px;
+  background: white; /* Seamless background */
 }
 
-.content-card, 
-.search-results-container {
-  background: var(--bg-white);
-  padding: 40px 50px;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-  border: var(--border-standard);
-}
-
-/* 🚀 SEARCH UI IMPROVEMENTS */
-.search-results-header h1 {
-  font-size: 24px;
+.content-header h1 {
   color: var(--ainet-navy);
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  font-size: 30px;
+  font-weight: 700;
   margin-bottom: 8px;
 }
 
-.search-results-header h1 svg {
-  color: var(--shopee-orange);
-}
-
-.search-result-item {
-  padding: 24px;
-  border: 1px solid #f1f5f9;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: transform 0.2s ease, border-color 0.2s ease;
-  background: #fafafa;
-}
-
-.search-result-item:hover {
-  border-color: var(--shopee-orange);
-  background: var(--bg-white);
-  box-shadow: 0 6px 15px rgba(238, 77, 45, 0.08);
-  transform: translateY(-2px);
-}
-
-.search-result-item h3 {
-  margin: 0 0 10px 0;
-  color: var(--ainet-navy);
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.read-more {
-  color: var(--shopee-orange);
-  font-weight: 600;
-}
-
-/* --- HTML CONTENT TYPOGRAPHY --- */
-.content-header h1 {
-  color: var(--ainet-navy);
-  margin-bottom: 12px;
-  font-size: 32px;
-  font-weight: 700;
-  line-height: 1.2;
+.last-updated {
+  font-size: 13px;
+  color: #a0aec0;
 }
 
 .header-divider {
   border: 0;
-  border-top: 2px solid #f1f5f9;
-  margin: 25px 0;
+  border-top: 1px solid #f1f5f9;
+  margin: 20px 0 30px 0;
 }
 
 .dynamic-html-content {
   line-height: 1.8;
-  color: #334155;
+  color: #2d3748;
   font-size: 16px;
 }
 
-/* --- ANIMATIONS --- */
-.animate-fade-in {
-  animation: fadeIn 0.4s ease-out;
+/* --- SEARCH RESULTS --- */
+.search-result-item {
+  padding: 20px;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  transition: background 0.2s;
 }
 
+.search-result-item:hover { background: #fdf2f0; }
+
+.result-snippet {
+  color: #718096;
+  font-size: 14px;
+  margin: 8px 0;
+}
+
+.read-more {
+  color: var(--shopee-orange);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* --- ANIMATIONS & SPINNER --- */
+.animate-fade-in { animation: fadeIn 0.4s ease-out; }
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* --- RESPONSIVENESS --- */
+.content-loading-spinner {
+  display: flex;
+  justify-content: center;
+  padding: 100px 0;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid var(--shopee-orange);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 @media (max-width: 1024px) {
-  .help-center-layout {
-    grid-template-columns: 1fr;
-  }
-  .help-sidebar {
-    position: static;
-    min-width: 100%;
-    margin-bottom: 30px;
-  }
+  .help-main-container { flex-direction: column; }
+  .help-sidebar { width: 100%; border-right: none; border-bottom: 1px solid #f1f5f9; }
+  .help-content-area { padding: 30px; }
 }
