@@ -29,7 +29,7 @@ const HelpHierarchyManagement = () => {
     try {
       setLoading(true);
       const res = await api.get('/help/tree');
-      setNodes(res.data);
+      setNodes(res.data || []);
     } catch (e) {
       toast.error("Không thể tải cấu trúc cây trợ giúp.");
     } finally {
@@ -44,15 +44,21 @@ const HelpHierarchyManagement = () => {
     setExpandedNodes(next);
   };
 
+  // 🚀 FIXED: Title now starts empty instead of "Danh mục mới"
   const handleAddNode = (parentId: string | null, type: 'CATEGORY' | 'ARTICLE') => {
     const newNode: HelpNode = {
-      title: type === 'CATEGORY' ? "Danh mục mới" : "Bài viết mới",
+      title: "", 
       slug: "",
       parentId: parentId,
       type: type,
       displayOrder: nodes.filter(n => n.parentId === parentId).length + 1
     };
-    // For UI purposes, we'll save it immediately to get an ID or handle it locally
+    
+    // Automatically expand the parent if we're adding a child
+    if (parentId) {
+        setExpandedNodes(prev => new Set(prev).add(parentId));
+    }
+
     saveNode(newNode);
   };
 
@@ -77,7 +83,6 @@ const HelpHierarchyManagement = () => {
     }
   };
 
-  // 🚀 Recursive function to render the Tree UI
   const renderTree = (parentId: string | null, level: number = 0) => {
     return nodes
       .filter(node => node.parentId === parentId)
@@ -85,10 +90,14 @@ const HelpHierarchyManagement = () => {
       .map(node => (
         <div key={node.id} className="tree-node-wrapper" style={{ marginLeft: `${level * 20}px` }}>
           <div className={`tree-node-item ${node.type === 'CATEGORY' ? 'is-folder' : 'is-article'}`}>
-            <div className="node-info" onClick={() => node.id && toggleExpand(node.id)}>
+            <div className="node-info" onClick={() => node.id && node.type === 'CATEGORY' && toggleExpand(node.id)}>
               {node.type === 'CATEGORY' && (expandedNodes.has(node.id!) ? <FaChevronDown /> : <FaChevronRight />)}
+              
+              {/* 🚀 FIXED: Added placeholder and autoFocus for better UX */}
               <input 
                 className="node-title-input"
+                placeholder={node.type === 'CATEGORY' ? "Tên danh mục mới..." : "Tên bài viết mới..."}
+                autoFocus={!node.id} // Focus only on items not yet saved to DB
                 value={node.title}
                 onChange={(e) => {
                   const updated = nodes.map(n => n.id === node.id ? { ...n, title: e.target.value } : n);
@@ -96,30 +105,29 @@ const HelpHierarchyManagement = () => {
                 }}
                 onBlur={() => saveNode(node)}
               />
-              {node.type === 'ARTICLE' && (
-                <div className="node-slug-box">
-                  <FaLink />
-                  <input 
-                    placeholder="Slug bài viết..."
-                    value={node.slug}
-                    onChange={(e) => {
-                      const updated = nodes.map(n => n.id === node.id ? { ...n, slug: e.target.value } : n);
-                      setNodes(updated);
-                    }}
-                    onBlur={() => saveNode(node)}
-                  />
-                </div>
-              )}
+              
+              <div className="node-slug-box">
+                <FaLink />
+                <input 
+                  placeholder="Slug (vd: ve-zinzin)..."
+                  value={node.slug}
+                  onChange={(e) => {
+                    const updated = nodes.map(n => n.id === node.id ? { ...n, slug: e.target.value } : n);
+                    setNodes(updated);
+                  }}
+                  onBlur={() => saveNode(node)}
+                />
+              </div>
             </div>
             
             <div className="node-actions">
               {node.type === 'CATEGORY' && (
                 <>
-                  <button title="Thêm danh mục con" onClick={() => handleAddNode(node.id!, 'CATEGORY')}><FaFolderPlus /></button>
-                  <button title="Thêm bài viết" onClick={() => handleAddNode(node.id!, 'ARTICLE')}><FaFileMedical /></button>
+                  <button title="Thêm danh mục con" onClick={(e) => { e.stopPropagation(); handleAddNode(node.id!, 'CATEGORY'); }}><FaFolderPlus /></button>
+                  <button title="Thêm bài viết" onClick={(e) => { e.stopPropagation(); handleAddNode(node.id!, 'ARTICLE'); }}><FaFileMedical /></button>
                 </>
               )}
-              <button className="btn-delete" onClick={() => deleteNode(node.id!)}><FaTrash /></button>
+              <button className="btn-delete" onClick={(e) => { e.stopPropagation(); deleteNode(node.id!); }}><FaTrash /></button>
             </div>
           </div>
           {node.type === 'CATEGORY' && expandedNodes.has(node.id!) && renderTree(node.id!, level + 1)}
