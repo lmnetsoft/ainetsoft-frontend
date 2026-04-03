@@ -1,50 +1,37 @@
-/* Reset root for full width */
 #root {
   width: 100%;
-  margin: 0;
-  padding: 0;
-  text-align: left;
-}
-
-/* Master Centering Container - Standardized to 1600px */
-.container {
-  width: 100%;
-  max-width: 1600px; /* UPDATED: 1400px -> 1600px to fix alignment gaps */
-  margin: 0 auto;
-  padding: 0 20px;
-  box-sizing: border-box;
 }
 
 .app-wrapper {
-  background-color: #f5f5f5;
+  /* 🚀 CHANGE: We use a very light neutral background for the site */
+  background-color: #f8fafc;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   width: 100%;
-  align-items: center; 
 }
 
-/* These wrappers (header, main, footer) span 100% width.
-   The internal .container (1600px) does the actual centering of the text/logo.
-*/
+.container {
+  width: 100%;
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
 header, 
-.content, 
 footer {
   width: 100%;
+  flex-shrink: 0;
   display: flex;
-  flex-direction: column; /* Stack internal items vertically */
-  align-items: center;    /* Center the internal .container */
+  flex-direction: column;
+  align-items: center;
 }
 
 .content {
-  flex: 1; /* Pushes Footer to the bottom */
-  width: 100%; /* ADDED: Ensures main content area fills available space */
-}
-
-/* Base Styles */
-a {
-  text-decoration: none;
-  color: inherit;
+  flex: 1 0 auto;
+  width: 100%;
+  display: block; 
+  padding-bottom: 60px;
 }
 
 ul {
