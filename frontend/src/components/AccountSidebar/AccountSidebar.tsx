@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   FaUser, FaStore, FaShoppingBag, FaShieldAlt, FaComments, FaTruck, 
-  FaFileAlt, FaBalanceScale, FaList, FaSitemap, FaEdit, FaCog 
+  FaFileAlt, FaBalanceScale, FaList, FaSitemap, FaEdit, FaCog,
+  FaUsers, FaBoxOpen, FaStoreAlt, FaExclamationTriangle, FaStar, FaTags, FaHistory 
 } from 'react-icons/fa'; 
 import api from '../../services/api'; 
 import './AccountSidebar.css';
@@ -17,10 +18,8 @@ const AccountSidebar = () => {
     const handleSync = () => {
       setUserName(localStorage.getItem('userName') || 'Thành viên');
       setUserAvatar(localStorage.getItem('userAvatar') || '');
-      
       const userStr = localStorage.getItem('user');
       const rolesStr = localStorage.getItem('userRoles');
-      
       let roles: string[] = [];
       if (userStr) {
         const userObj = JSON.parse(userStr);
@@ -28,7 +27,6 @@ const AccountSidebar = () => {
       } else if (rolesStr) {
         roles = JSON.parse(rolesStr);
       }
-
       setIsSeller(roles.includes('SELLER'));
       setIsAdmin(roles.includes('ADMIN'));
     };
@@ -49,10 +47,8 @@ const AccountSidebar = () => {
 
     handleSync(); 
     fetchLatestProfile(); 
-
     window.addEventListener('storage', handleSync);
     window.addEventListener('profileUpdate', handleSync);
-    
     return () => {
       window.removeEventListener('storage', handleSync);
       window.removeEventListener('profileUpdate', handleSync);
@@ -112,7 +108,7 @@ const AccountSidebar = () => {
           </div>
         )}
 
-        {/* --- ADMIN SECTION (REORGANIZED) --- */}
+        {/* --- ADMIN SECTION --- */}
         {isAdmin && (
           <div className="menu-section admin-menu-section">
             <div className="menu-header">
@@ -125,48 +121,61 @@ const AccountSidebar = () => {
                 Tổng quan Admin
               </NavLink>
 
-              {/* 📂 GROUP 1: QUẢN LÝ NỘI DUNG */}
+              {/* 🟢 NEW GROUP: QUẢN LÝ VẬN HÀNH */}
+              <div className="admin-inner-group">QUẢN LÝ VẬN HÀNH</div>
+              <NavLink to="/admin/users" className={({isActive}) => isActive ? 'active' : ''}>
+                <FaUsers className="sub-menu-icon" /> Người dùng
+              </NavLink>
+              <NavLink to="/admin/sellers" className={({isActive}) => isActive ? 'active' : ''}>
+                <FaStoreAlt className="sub-menu-icon" /> Duyệt Shop
+              </NavLink>
+              <NavLink to="/admin/products" className={({isActive}) => isActive ? 'active' : ''}>
+                <FaBoxOpen className="sub-menu-icon" /> Duyệt Sản phẩm
+              </NavLink>
+
+              {/* 📂 GROUP: QUẢN LÝ NỘI DUNG */}
               <div className="admin-inner-group">QUẢN LÝ NỘI DUNG</div>
-              
               <NavLink to="/admin/articles" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaEdit className="sub-menu-icon" /> 
-                Quản lý Bài viết
+                <FaEdit className="sub-menu-icon" /> Bài viết
               </NavLink>
-
+              <NavLink to="/admin/reviews" className={({isActive}) => isActive ? 'active' : ''}>
+                <FaStar className="sub-menu-icon" /> Quản lý Đánh giá
+              </NavLink>
               <NavLink to="/admin/help-hierarchy" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaSitemap className="sub-menu-icon" /> 
-                Phân cấp Trợ giúp
+                <FaSitemap className="sub-menu-icon" /> Phân cấp Trợ giúp
               </NavLink>
-
               <NavLink to="/admin/content/legal" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaBalanceScale className="sub-menu-icon" /> 
-                Chính sách pháp lý
+                <FaBalanceScale className="sub-menu-icon" /> Chính sách pháp lý
               </NavLink>
 
-              {/* ⚙️ GROUP 2: CẤU HÌNH HỆ THỐNG */}
+              {/* 🛡️ NEW GROUP: KIỂM SOÁT & BÁO CÁO */}
+              <div className="admin-inner-group">KIỂM SOÁT & BÁO CÁO</div>
+              <NavLink to="/admin/reports" className={({isActive}) => isActive ? 'active' : ''}>
+                <FaExclamationTriangle className="sub-menu-icon" /> Báo cáo vi phạm
+              </NavLink>
+              <NavLink to="/admin/report-categories" className={({isActive}) => isActive ? 'active' : ''}>
+                <FaTags className="sub-menu-icon" /> Danh mục báo cáo
+              </NavLink>
+              <NavLink to="/admin/audit-logs" className={({isActive}) => isActive ? 'active' : ''}>
+                <FaHistory className="sub-menu-icon" /> Nhật ký hệ thống
+              </NavLink>
+
+              {/* ⚙️ GROUP: CẤU HÌNH HỆ THỐNG */}
               <div className="admin-inner-group">CẤU HÌNH HỆ THỐNG</div>
-
               <NavLink to="/admin/footer-menus" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaList className="sub-menu-icon" /> 
-                Quản lý Menu Footer
+                <FaList className="sub-menu-icon" /> Menu Footer
               </NavLink>
-
               <NavLink to="/admin/content/company" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaCog className="sub-menu-icon" /> 
-                Thông tin Công ty
+                <FaCog className="sub-menu-icon" /> Thông tin Công ty
               </NavLink>
-
               <NavLink to="/admin/shipping" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaTruck className="sub-menu-icon" /> 
-                Cấu hình vận chuyển
+                <FaTruck className="sub-menu-icon" /> Cấu hình vận chuyển
               </NavLink>
 
-              {/* 💬 GROUP 3: TƯƠNG TÁC */}
+              {/* 💬 GROUP: TƯƠNG TÁC */}
               <div className="admin-inner-group">TƯƠNG TÁC</div>
-              
               <NavLink to="/admin/chat" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaComments className="sub-menu-icon" /> 
-                Quản lý Chat
+                <FaComments className="sub-menu-icon" /> Quản lý Chat
               </NavLink>
             </div>
           </div>

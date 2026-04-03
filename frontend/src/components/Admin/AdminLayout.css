@@ -19,4 +19,9 @@
 .admin-main-view {
   flex-grow: 1;
   overflow-x: hidden;
+  /* 🟢 ADD THESE LINES */
+  padding: 40px; 
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* This helps center the white cards */
 }

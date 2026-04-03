@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   FaTruck, FaPlus, FaTrash, FaEdit, FaChevronDown, FaChevronUp, 
-  FaTimes, FaShippingFast 
+  FaTimes, FaShippingFast, FaSync 
 } from 'react-icons/fa';
-// 🚀 REMOVED: Redundant sidebar import
 import adminService from '../../services/admin.service';
 import { toast } from 'react-hot-toast';
 import './AdminDashboard.css';
@@ -32,7 +31,8 @@ const ShippingManagement = () => {
     try {
       if (isInitialLoad) setLoading(true);
       const data = await adminService.getAllShippingMethods();
-      setMethods(data);
+      setMethods(data || []);
+      if (!isInitialLoad) toast.success("Dữ liệu vận chuyển đã đồng bộ");
     } catch (error) {
       toast.error("Không thể tải danh sách vận chuyển");
     } finally {
@@ -42,19 +42,12 @@ const ShippingManagement = () => {
 
   const handleToggleActive = async (e: React.MouseEvent | null, method: any) => {
     if (e) e.stopPropagation(); 
-
-    const originalMethods = [...methods]; 
     const newStatus = !method.active;
-
-    setMethods(prev => prev.map(m => 
-      m.id === method.id ? { ...m, active: newStatus } : m
-    ));
-
     try {
       await adminService.updateShippingMethod(method.id, { ...method, active: newStatus });
+      setMethods(prev => prev.map(m => m.id === method.id ? { ...m, active: newStatus } : m));
       toast.success(`Đã ${newStatus ? 'kích hoạt' : 'tắt'} ${method.name}`);
     } catch (error) {
-      setMethods(originalMethods);
       toast.error("Lỗi cập nhật trạng thái");
     }
   };
@@ -89,7 +82,7 @@ const ShippingManagement = () => {
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (!window.confirm("Xác nhận xóa đơn vị vận chuyển này?")) return;
+    if (!window.confirm("Xóa đơn vị vận chuyển này?")) return;
     try {
       await adminService.deleteShippingMethod(id);
       toast.success("Đã xóa vĩnh viễn");
@@ -99,97 +92,93 @@ const ShippingManagement = () => {
     }
   };
 
-  const toggleAccordion = (id: string) => {
-    setExpandedId(expandedId === id ? null : id);
-  };
+  if (loading && methods.length === 0) return <div className="admin-loading-state">Đang đồng bộ cấu hình vận chuyển...</div>;
 
-  // 🚀 SURGICAL UPDATE: Return content without the redundant sidebar layout
   return (
-    <div className="shipping-management-page">
-      <div className="admin-dashboard-wrapper">
-        <header className="admin-page-header">
-          <div className="header-left">
-            <h1><FaTruck /> Phương thức vận chuyển</h1>
-            <div className="badge-container">
-              <span className="master-badge">LOGISTICS</span>
-              <span className="status-dot">Hệ thống đang hoạt động</span>
-            </div>
+    /* 🟢 root div is now the standard wrapper */
+    <div className="admin-dashboard-wrapper">
+      <header className="admin-page-header">
+        <div className="header-left">
+          <h1><FaTruck /> Cấu hình vận chuyển</h1>
+          <div className="badge-container">
+            <span className="master-badge">LOGISTICS</span>
+            <span className="status-dot">Online</span>
           </div>
-          <button className="btn-refresh" onClick={() => handleOpenModal()}>
-            <FaPlus /> Thêm đơn vị mới
-          </button>
-        </header>
+        </div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+            <button className="btn-refresh" onClick={() => fetchData(false)}>
+                <FaSync /> Làm mới
+            </button>
+            <button className="btn-add-reason" onClick={() => handleOpenModal()}>
+                <FaPlus /> Thêm đơn vị
+            </button>
+        </div>
+      </header>
 
-        <div className="shipping-config-section">
-          <p className="section-desc">Kích hoạt và cấu hình các phương thức vận chuyển phù hợp cho toàn sàn.</p>
-          
-          {loading && methods.length === 0 ? (
-            <div className="tab-loading-spinner">Đang đồng bộ dữ liệu...</div>
-          ) : (
-            <div className="shipping-methods-list">
-              {methods.map((m) => (
-                <div key={m.id} className={`shipping-method-item ${!m.active ? 'is-disabled' : ''}`}>
-                  <div className="method-main-row" onClick={() => toggleAccordion(m.id)}>
-                    <div className="method-info-title">
-                      <FaShippingFast className="method-icon-bg" />
-                      <span>{m.name}</span>
-                    </div>
-                    
-                    <div className="method-controls">
-                      <div className="thu-gon-wrapper">
-                        <button className="thu-gon-btn">
-                          {expandedId === m.id ? 'Thu gọn' : 'Chi tiết'} 
-                          {expandedId === m.id ? <FaChevronUp /> : <FaChevronDown />}
-                        </button>
-                      </div>
-                      
-                      <div className="toggle-switch-wrapper" onClick={(e) => e.stopPropagation()}>
-                        <label className="admin-switch">
-                          <input 
-                            type="checkbox" 
-                            checked={m.active} 
-                            onChange={() => handleToggleActive(null, m)} 
-                          />
-                          <span className="admin-slider round"></span>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-
-                  {expandedId === m.id && (
-                    <div className="method-details-panel">
-                      <div className="details-grid">
-                        <div className="detail-item">
-                          <label>Mô tả:</label>
-                          <p>{m.description}</p>
-                        </div>
-                        <div className="detail-item">
-                          <label>Giá cơ bản:</label>
-                          <p>{m.baseCost.toLocaleString()} VNĐ</p>
-                        </div>
-                        <div className="detail-item">
-                          <label>Ước tính:</label>
-                          <p>{m.estimatedTime}</p>
-                        </div>
-                      </div>
-                      <div className="panel-actions">
-                        <button className="btn-edit-ship" onClick={() => handleOpenModal(m)}><FaEdit /> Chỉnh sửa</button>
-                        <button className="btn-delete-ship" onClick={(e) => handleDelete(e, m.id)}><FaTrash /> Xóa</button>
-                      </div>
-                    </div>
-                  )}
+      <div className="shipping-config-section">
+        <p className="subtitle" style={{ marginBottom: '25px' }}>
+           Kích hoạt và cấu hình các phương thức vận chuyển cho toàn sàn AiNetsoft.
+        </p>
+        
+        <div className="shipping-methods-list">
+          {methods.map((m) => (
+            <div key={m.id} className={`shipping-method-item ${!m.active ? 'is-disabled' : ''}`}>
+              <div className="method-main-row" onClick={() => setExpandedId(expandedId === m.id ? null : m.id)}>
+                <div className="method-info-title">
+                  <FaShippingFast className="method-icon-bg" />
+                  <span className="name-bold">{m.name}</span>
                 </div>
-              ))}
-              
-              <div className="add-more-container">
-                  <div className="add-more-placeholder" onClick={() => handleOpenModal()}>
-                    <div className="plus-icon-circle"><FaPlus /></div>
-                    <span>Thêm Đơn Vị Vận Chuyển</span>
-                    <p>Các đơn vị vận chuyển khác được AiNetsoft hỗ trợ</p>
+                
+                <div className="method-controls">
+                  <button className="thu-gon-btn">
+                    {expandedId === m.id ? <><FaChevronUp /> Thu gọn</> : <><FaChevronDown /> Chi tiết</>}
+                  </button>
+                  
+                  <div className="toggle-switch-wrapper" onClick={(e) => e.stopPropagation()}>
+                    <label className="admin-switch">
+                      <input 
+                        type="checkbox" 
+                        checked={m.active} 
+                        onChange={() => handleToggleActive(null, m)} 
+                      />
+                      <span className="admin-slider round"></span>
+                    </label>
                   </div>
+                </div>
               </div>
+
+              {expandedId === m.id && (
+                <div className="method-details-panel">
+                  <div className="details-grid">
+                    <div className="detail-item">
+                      <label>Mô tả dịch vụ:</label>
+                      <p>{m.description}</p>
+                    </div>
+                    <div className="detail-item">
+                      <label>Phí vận chuyển cơ bản:</label>
+                      <p className="metric-value" style={{ fontSize: '1.2rem', color: '#2d3436' }}>
+                        {m.baseCost.toLocaleString()} VNĐ
+                      </p>
+                    </div>
+                    <div className="detail-item">
+                      <label>Thời gian giao hàng dự kiến:</label>
+                      <p><strong>{m.estimatedTime}</strong></p>
+                    </div>
+                  </div>
+                  <div className="panel-actions">
+                    <button className="mod-btn approve" onClick={() => handleOpenModal(m)}><FaEdit /> Sửa</button>
+                    <button className="mod-btn reject" onClick={(e) => handleDelete(e, m.id)}><FaTrash /> Xóa</button>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+          ))}
+          
+          <div className="add-more-placeholder" onClick={() => handleOpenModal()}>
+            <div className="plus-icon-circle"><FaPlus /></div>
+            <span>Thêm Đơn Vị Vận Chuyển Mới</span>
+            <p>Mở rộng các tùy chọn giao nhận cho khách hàng</p>
+          </div>
         </div>
       </div>
 
@@ -205,23 +194,23 @@ const ShippingManagement = () => {
             </div>
             
             <form onSubmit={handleSubmit}>
-              <div className="review-grid" style={{gridTemplateColumns: '1fr', padding: '25px'}}>
+              <div className="review-grid" style={{gridTemplateColumns: '1fr', padding: '25px', gap: '20px'}}>
                 <div className="form-group-admin">
-                  <label>Tên hiển thị</label>
+                  <label>Tên đơn vị vận chuyển</label>
                   <input required value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="vd: Hỏa Tốc" />
                 </div>
                 <div className="form-group-admin">
-                  <label>Mô tả ngắn</label>
-                  <textarea required value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="vd: Nhận hàng trong 2 giờ" />
+                  <label>Mô tả chi tiết</label>
+                  <textarea required value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="vd: Nhận hàng trong 2 giờ nội thành" />
                 </div>
                 <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px'}}>
                   <div className="form-group-admin">
-                    <label>Giá gốc (VNĐ)</label>
+                    <label>Phí cơ bản (VNĐ)</label>
                     <input required type="number" value={form.baseCost} onChange={e => setForm({...form, baseCost: Number(e.target.value)})} />
                   </div>
                   <div className="form-group-admin">
                     <label>Thời gian ước tính</label>
-                    <input required value={form.estimatedTime} onChange={e => setForm({...form, estimatedTime: e.target.value})} placeholder="vd: 2-3 ngày" />
+                    <input required value={form.estimatedTime} onChange={e => setForm({...form, estimatedTime: e.target.value})} placeholder="vd: 1-2 ngày" />
                   </div>
                 </div>
               </div>
