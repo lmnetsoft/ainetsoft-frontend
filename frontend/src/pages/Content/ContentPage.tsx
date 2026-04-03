@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
-import { FaInfoCircle, FaChevronRight, FaChevronDown, FaBookOpen, FaLifeRing } from 'react-icons/fa';
+import { FaInfoCircle, FaChevronRight, FaChevronDown, FaBookOpen, FaLifeRing, FaSearch } from 'react-icons/fa';
 import api from '../../services/api';
 import './ContentPage.css';
 
@@ -18,13 +18,27 @@ interface PageContent {
     htmlContent: string;
 }
 
+// 🚀 Interface for search result items
+interface SearchResult {
+    id: string;
+    title: string;
+    slug: string;
+    htmlContent: string;
+}
+
 const ContentPage = ({ type }: { type?: 'regulations' | 'contact' }) => {
     const { slug } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
     
+    // Parse the search query from URL (e.g., ?q=hoan+tien)
+    const queryParams = new URLSearchParams(location.search);
+    const searchQuery = queryParams.get('q') || '';
+    
     const [nodes, setNodes] = useState<HelpNode[]>([]);
     const [data, setData] = useState<PageContent | null>(null);
+    const [searchResults, setSearchResults] = useState<SearchResult[]>([]); // 🚀 New State
+    const [isSearchMode, setIsSearchMode] = useState(false); // 🚀 New State
     const [loading, setLoading] = useState(true);
     const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
 
@@ -49,7 +63,6 @@ const ContentPage = ({ type }: { type?: 'regulations' | 'contact' }) => {
                 setExpandedNodes(prev => {
                     const next = new Set(prev);
                     if (currentNode.parentId) next.add(currentNode.parentId);
-                    // If the current page is a category, expand it too
                     if (currentNode.type === 'CATEGORY') next.add(currentNode.id);
                     return next;
                 });
@@ -57,12 +70,29 @@ const ContentPage = ({ type }: { type?: 'regulations' | 'contact' }) => {
         }
     }, [slug, nodes]);
 
-    // 3. Fetch Main Article Content
+    // 3. 🚀 FETCH LOGIC: Article Content vs. Search Results
     useEffect(() => {
         const fetchContent = async () => {
             setLoading(true);
-            const targetSlug = type || slug;
             
+            // Check if we are in Search Mode
+            if (slug === 'tim-kiem') {
+                setIsSearchMode(true);
+                try {
+                    const res = await api.get(`/system-content/search?q=${encodeURIComponent(searchQuery)}`);
+                    setSearchResults(res.data || []);
+                } catch (err) {
+                    console.error("Search API failed", err);
+                    setSearchResults([]);
+                } finally {
+                    setLoading(false);
+                }
+                return;
+            }
+
+            // Normal Article Mode
+            setIsSearchMode(false);
+            const targetSlug = type || slug;
             if (!targetSlug) {
                 setLoading(false);
                 return;
@@ -89,14 +119,10 @@ const ContentPage = ({ type }: { type?: 'regulations' | 'contact' }) => {
 
         fetchContent();
         window.scrollTo(0, 0);
-    }, [type, slug]);
+    }, [type, slug, searchQuery]); // Re-run when search query changes
 
-    // 🚀 Logic: Categories now Navigate AND Toggle Expand/Collapse
     const handleCategoryClick = (node: HelpNode) => {
-        // Toggle the folder view
         toggleExpand(node.id);
-        
-        // Navigate to the content if a slug exists
         if (node.slug) {
             navigate(`/tro-giup/${node.slug}`);
         }
@@ -111,7 +137,6 @@ const ContentPage = ({ type }: { type?: 'regulations' | 'contact' }) => {
         });
     };
 
-    // Recursive Sidebar Renderer
     const renderSidebarTree = (parentId: string | null) => {
         return nodes
             .filter(node => node.parentId === parentId)
@@ -145,6 +170,12 @@ const ContentPage = ({ type }: { type?: 'regulations' | 'contact' }) => {
             ));
     };
 
+    // 🚀 NEW: Helper to strip HTML tags for search result snippets
+    const createSnippet = (html: string) => {
+        const text = html.replace(/<[^>]*>?/gm, ' ');
+        return text.length > 160 ? text.substring(0, 160) + '...' : text;
+    };
+
     return (
         <div className="help-center-layout">
             <aside className="help-sidebar">
@@ -163,7 +194,38 @@ const ContentPage = ({ type }: { type?: 'regulations' | 'contact' }) => {
                 {loading ? (
                     <div className="content-loading-spinner">
                         <div className="spinner"></div>
-                        <p>Đang tải nội dung...</p>
+                        <p>Đang tìm kiếm nội dung...</p>
+                    </div>
+                ) : isSearchMode ? (
+                    /* 🚀 SEARCH RESULTS UI */
+                    <div className="search-results-container animate-fade-in">
+                        <div className="search-results-header">
+                            <h1><FaSearch /> Kết quả tìm kiếm cho: "{searchQuery}"</h1>
+                            <p>Tìm thấy {searchResults.length} bài viết liên quan</p>
+                        </div>
+                        <hr className="header-divider" />
+                        
+                        {searchResults.length > 0 ? (
+                            <div className="search-results-list">
+                                {searchResults.map(article => (
+                                    <div key={article.id} className="search-result-item" onClick={() => navigate(`/tro-giup/${article.slug}`)}>
+                                        <h3>{article.title}</h3>
+                                        <p className="result-snippet">{createSnippet(article.htmlContent)}</p>
+                                        <span className="read-more">Xem chi tiết <FaChevronRight /></span>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="no-search-results">
+                                <FaInfoCircle />
+                                <p>Không tìm thấy kết quả nào phù hợp với từ khóa của bạn.</p>
+                                <ul>
+                                    <li>Kiểm tra lại lỗi chính tả.</li>
+                                    <li>Thử bằng các từ khóa ngắn gọn hơn.</li>
+                                    <li>Sử dụng các thuật ngữ chung chung hơn.</li>
+                                </ul>
+                            </div>
+                        )}
                     </div>
                 ) : !data ? (
                     <div className="content-error-box">
@@ -173,6 +235,7 @@ const ContentPage = ({ type }: { type?: 'regulations' | 'contact' }) => {
                         <Link to="/" className="btn-back-home">Quay lại trang chủ</Link>
                     </div>
                 ) : (
+                    /* REGULAR ARTICLE UI */
                     <div className="content-card animate-fade-in">
                         <div className="content-header">
                             <h1>{data.title}</h1>

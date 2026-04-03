@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed; 
+import org.springframework.data.mongodb.core.index.TextIndexed; // 🚀 New Import
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
@@ -22,8 +23,10 @@ public class SystemContent {
     @Indexed(unique = true) 
     private String slug; 
     
+    @TextIndexed(weight = 3) // 🚀 Priority 1: Title matches are most relevant
     private String title;
     
+    @TextIndexed(weight = 1) // 🚀 Priority 2: Searching inside the HTML content
     private String htmlContent;
     
     private LocalDateTime lastUpdated;

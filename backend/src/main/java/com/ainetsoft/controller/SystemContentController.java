@@ -22,6 +22,31 @@ public class SystemContentController {
 
     // --- 🌍 PUBLIC ENDPOINTS (No Login Required) ---
 
+    /**
+     * 🔍 NEW: Full-Text Search for Help Articles
+     * Use this when the user is in the Help Center.
+     */
+    @GetMapping("/api/system-content/search")
+    public ResponseEntity<List<SystemContent>> searchHelpArticles(@RequestParam String q) {
+        if (q == null || q.trim().length() < 2) {
+            return ResponseEntity.ok(List.of());
+        }
+        // Returns results sorted by relevance (Title matches higher than body)
+        return ResponseEntity.ok(systemContentRepository.searchArticles(q));
+    }
+
+    /**
+     * ⚡ NEW: Search Suggestions (Autocomplete)
+     * Use this for the dropdown list while the user types.
+     */
+    @GetMapping("/api/system-content/suggestions")
+    public ResponseEntity<List<SystemContent>> getSearchSuggestions(@RequestParam String q) {
+        if (q == null || q.trim().isEmpty()) {
+            return ResponseEntity.ok(List.of());
+        }
+        return ResponseEntity.ok(systemContentRepository.findByTitleContainingIgnoreCase(q));
+    }
+
     @GetMapping("/api/system-content/{slug}")
     public ResponseEntity<SystemContent> getPublicContentBySlug(@PathVariable String slug) {
         return systemContentRepository.findBySlug(slug)
@@ -93,10 +118,6 @@ public class SystemContentController {
         return ResponseEntity.ok(saved);
     }
 
-    /**
-     * 🚀 CRITICAL FIX: The full path is required here because there is no 
-     * @RequestMapping at the top of the class.
-     */
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/api/admin/system-contents/{slug}")
     public ResponseEntity<Void> deleteContent(@PathVariable String slug) {
