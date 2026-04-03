@@ -1,84 +1,57 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* --- 🎨 BRAND COLOR PALETTE --- */
+  --shopee-orange: #ee4d2d;
+  --ainet-navy: #002147;
+  --ainet-blue: #5b67f1;
+  --bg-light: #fbfbfb;
+  --bg-white: #ffffff;
+  
+  /* --- 📝 TEXT COLORS --- */
+  --text-primary: rgba(0, 0, 0, 0.87);
+  --text-secondary: rgba(0, 0, 0, 0.54);
+  --text-muted: #94a3b8;
+  
+  /* --- 📏 DIMENSIONS & STABILITY --- */
+  --border-standard: 1px solid #e0e0e0;
+  --container-max: 1400px; 
+  --font-main: -apple-system, "Helvetica Neue", Helvetica, Roboto, Arial, sans-serif;
+
+  font-family: var(--font-main);
   line-height: 1.5;
   font-weight: 400;
-
-  /* We will keep this so it responds to system dark/light mode */
-  color-scheme: light dark;
-  font-synthesis: none;
+  color-scheme: light;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Updated Body: Removed the 'center' alignment so your layout can flow naturally */
-body {
+/* 🚀 STABILITY FIX: Prevents layout shift when scrollbars appear */
+html {
+  overflow-y: scroll;
+}
+
+* {
+  box-sizing: border-box;
   margin: 0;
   padding: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  /* Changed background to white for the 'light' preference */
-  background-color: #ffffff;
-  color: #213547;
 }
 
-#root {
-  width: 100%;
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: var(--bg-white);
+  color: var(--text-primary);
+  overflow-x: hidden;
 }
 
 a {
   font-weight: 500;
-  color: #5b67f1; /* Using your brand blue */
-  text-decoration: inherit;
-}
-a:hover {
-  color: #4451d6;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #f9f9f9;
+  color: var(--ainet-blue);
+  transition: color 0.2s ease;
   cursor: pointer;
-  transition: all 0.25s;
-}
-button:hover {
-  border-color: #5b67f1;
+  text-decoration: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: rgba(255, 255, 255, 0.87);
-    background-color: #1a1a1a;
-  }
-  body {
-    background-color: #1a1a1a;
-  }
-  button {
-    background-color: #242424;
-  }
-}
-
-.auth-link-highlight {
-    color: #5b67f1 !important;    /* Matches your branding blue */
-    font-weight: 700 !important;   /* MAKES IT BOLD BY DEFAULT to match others */
-    cursor: pointer !important;    /* Ensures the hand icon shows up */
-    margin-left: 5px;
-    transition: all 0.2s ease;
-    display: inline-block;
-}
-
-.auth-link-highlight:hover {
-    color: #4451d6 !important;    /* Darker blue on hover */
-    text-decoration: underline !important; 
-    /* The link is already bold now, so hover just adds the underline */
+a:hover {
+  color: var(--shopee-orange);
 }
