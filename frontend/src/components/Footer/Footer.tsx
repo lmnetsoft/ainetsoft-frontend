@@ -9,7 +9,7 @@ const Footer = () => {
   const [legalSlug, setLegalSlug] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   
-  // Base state for company data
+  // Initial state for company branding and contact info
   const [data, setData] = useState<any>({
     footer_company_name: 'CÔNG TY TNHH AINETSOFT',
     footer_address: 'Đang cập nhật...',
@@ -30,7 +30,7 @@ const Footer = () => {
   const [shipIcons, setShipIcons] = useState<any[]>([]);
   const [appData, setAppData] = useState<any>({});
 
-  // 🚀 HELPER: Ensures local backend paths resolve correctly to localhost:8080
+  // Helper to handle relative image paths from the Spring Boot backend
   const getImageUrl = (path: string) => {
     if (!path) return '';
     if (path.startsWith('http')) return path;
@@ -43,7 +43,7 @@ const Footer = () => {
         setLoading(true);
         const appSlugs = ['app_qr_code', 'app_ios_link', 'app_android_link'];
 
-        // 🚀 OPTIMIZATION: Fetch everything in parallel for max performance
+        // Parallel execution to minimize loading time
         const [resFooter, resMenus, resPay, resShip, resApp] = await Promise.all([
           api.get('/system-content/footer'),
           api.get('/footer-menus'),
@@ -59,7 +59,7 @@ const Footer = () => {
         setAppData(resApp.data || {});
 
       } catch (error) {
-        console.error("Footer CMS Sync failed:", error);
+        console.error("Footer CMS Data Sync failed:", error);
       } finally {
         setLoading(false);
       }
@@ -67,6 +67,7 @@ const Footer = () => {
     fetchAllFooterData();
   }, []);
 
+  // Parses badge JSON and handles the "DISABLED_" prefix for visibility toggling
   const getBadgeInfo = (rawData: string) => {
     if (!rawData || rawData.startsWith('DISABLED_')) return null;
     try {
@@ -96,15 +97,22 @@ const Footer = () => {
         {/* ROW 1: DYNAMIC NAVIGATION (Shopee Style) */}
         <div className="footer-main-nav">
           
-          {/* Admin Managed Columns */}
           {menus.map((col) => (
-            <div key={col.id} className="footer-nav-col">
-              <h4 className="nav-title">{col.categoryTitle}</h4>
+            <div key={col.id || Math.random()} className="footer-nav-col">
+              <h4 className="nav-title">{col.columnTitle || col.categoryTitle}</h4>
+              
               <ul className="nav-list">
-                {col.items.map((item: any, idx: number) => (
+                {(col.links || col.items || []).map((item: any, idx: number) => (
                   <li key={idx}>
-                    {item.isInternal ? (
-                      <Link to={`/tro-giup/${item.url}`}>{item.label}</Link>
+                    {/* 🚀 UPDATED: Uses <a> with target="_blank" for the New Tab requirement */}
+                    {item.type === 'INTERNAL' || item.isInternal === true ? (
+                      <a 
+                        href={`/tro-giup/${item.url}`} 
+                        target="_blank" 
+                        rel="noreferrer"
+                      >
+                        {item.label}
+                      </a>
                     ) : (
                       <a href={item.url} target="_blank" rel="noreferrer">{item.label}</a>
                     )}
@@ -149,7 +157,7 @@ const Footer = () => {
 
         <hr className="footer-nav-divider" />
 
-        {/* ROW 2: LEGAL LINKS */}
+        {/* ROW 2: LEGAL LINKS (Opens in Modal) */}
         <div className="footer-policy-links">
           <span onClick={() => openLegal('privacy')}>CHÍNH SÁCH BẢO MẬT</span>
           <span className="footer-divider"> | </span>
@@ -160,7 +168,7 @@ const Footer = () => {
           <span onClick={() => openLegal('return-policy')}>CHÍNH SÁCH TRẢ HÀNG VÀ HOÀN TIỀN</span>
         </div>
 
-        {/* ROW 3: BCT & SOCIALS */}
+        {/* ROW 3: GOVERNMENT BADGES & SOCIAL MEDIA */}
         <div className="footer-badges-row">
           {b1 && (
             <a href={b1.link} target="_blank" rel="noreferrer" className="badge-link">
@@ -185,7 +193,7 @@ const Footer = () => {
           </a>
         </div>
 
-        {/* ROW 4: COMPANY INFO */}
+        {/* ROW 4: CORPORATE LEGAL INFO */}
         <div className="footer-company-info">
           <p className="footer-company-name">{data.footer_company_name}</p>
           <p>Địa chỉ: {data.footer_address}</p>
@@ -195,7 +203,7 @@ const Footer = () => {
             Nội dung: {data.footer_representative}
           </p>
           <p>MSDN: {data.footer_tax_code} - Cấp bởi: {data.footer_issuing_agency} ({data.footer_registration_date})</p>
-          <p className="footer-copyright">© {new Date().getFullYear()} - {data.footer_company_name}</p>
+          <p className="footer-copyright">© {new Date().getFullYear()} - {data.footer_company_name}. Tất cả quyền được bảo lưu.</p>
         </div>
       </div>
 

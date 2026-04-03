@@ -15,16 +15,13 @@ import java.time.LocalDateTime;
 
 @RestController
 @RequiredArgsConstructor
+@CrossOrigin(origins = "*")
 public class SystemContentController {
 
     private final SystemContentRepository systemContentRepository;
 
     // --- 🌍 PUBLIC ENDPOINTS (No Login Required) ---
 
-    /**
-     * 🟢 FOR MODAL: Allows the LegalModal to fetch content.
-     * Called by: api.get("/system-content/privacy")
-     */
     @GetMapping("/api/system-content/{slug}")
     public ResponseEntity<SystemContent> getPublicContentBySlug(@PathVariable String slug) {
         return systemContentRepository.findBySlug(slug)
@@ -32,10 +29,6 @@ public class SystemContentController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    /**
-     * 🟢 FOR FOOTER: Aggregates company info and social links.
-     * Called by: api.get("/system-content/footer")
-     */
     @GetMapping("/api/system-content/footer")
     public ResponseEntity<Map<String, String>> getFooterInfo() {
         List<String> footerKeys = Arrays.asList(
@@ -57,10 +50,6 @@ public class SystemContentController {
         return ResponseEntity.ok(footerMap);
     }
 
-    /**
-     * 🟢 FOR APP BADGES: Bulk fetch for specific slugs.
-     * Called by: api.get("/system-content/list?slugs=...")
-     */
     @GetMapping("/api/system-content/list")
     public ResponseEntity<Map<String, String>> getMultipleContents(@RequestParam List<String> slugs) {
         List<SystemContent> contents = systemContentRepository.findBySlugIn(slugs);
@@ -75,18 +64,12 @@ public class SystemContentController {
 
     // --- 🔐 ADMIN ENDPOINTS (Require ROLE_ADMIN) ---
 
-    /**
-     * List all for the Admin Sidebar.
-     */
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/api/admin/system-contents")
     public ResponseEntity<List<SystemContent>> getAllContents() {
         return ResponseEntity.ok(systemContentRepository.findAll());
     }
 
-    /**
-     * Fetch specific content for the Admin Editor.
-     */
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/api/admin/system-contents/{slug}")
     public ResponseEntity<SystemContent> getAdminContentBySlug(@PathVariable String slug) {
@@ -95,9 +78,6 @@ public class SystemContentController {
                 .orElse(ResponseEntity.ok(new SystemContent(slug, "", ""))); 
     }
 
-    /**
-     * Save/Update from the Admin Editor.
-     */
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/api/admin/system-contents")
     public ResponseEntity<SystemContent> saveOrUpdate(@RequestBody SystemContent request) {
@@ -112,4 +92,19 @@ public class SystemContentController {
         SystemContent saved = systemContentRepository.save(content);
         return ResponseEntity.ok(saved);
     }
+
+    /**
+     * 🚀 CRITICAL FIX: The full path is required here because there is no 
+     * @RequestMapping at the top of the class.
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/api/admin/system-contents/{slug}")
+    public ResponseEntity<Void> deleteContent(@PathVariable String slug) {
+        return systemContentRepository.findBySlug(slug)
+            .map(content -> {
+                systemContentRepository.delete(content);
+                return ResponseEntity.noContent().<Void>build();
+            })
+            .orElse(ResponseEntity.notFound().build());
+    }    
 }

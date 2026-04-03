@@ -1,9 +1,9 @@
 /* Container & Global */
 .admin-content-mgmt {
-  padding: 40px; /* 🚀 Increased padding for more "breathable" space */
+  padding: 40px;
   background: #f0f2f5;
   min-height: 100vh;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 /* Header Styling */
@@ -29,13 +29,13 @@
 /* Main Layout: Sidebar + Editor */
 .mgmt-main-layout {
   display: grid;
-  grid-template-columns: 300px 1fr; /* 🚀 Slightly wider sidebar */
+  grid-template-columns: 320px 1fr; /* Slightly wider for titles */
   gap: 0;
   background: white;
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.05);
   overflow: hidden;
-  min-height: 700px;
+  min-height: 750px;
 }
 
 /* Sidebar Slugs */
@@ -45,13 +45,24 @@
   padding: 25px 15px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  max-height: 85vh;
+  overflow-y: auto;
+  position: sticky;
+  top: 0;
+}
+
+.sidebar-section-title {
+  padding: 0 15px;
+  margin: 15px 0 8px 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .slug-btn {
   width: 100%;
   text-align: left;
-  padding: 14px 18px;
+  padding: 12px 18px;
   border: none;
   background: transparent;
   border-radius: 8px;
@@ -61,8 +72,15 @@
   font-weight: 500;
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 12px;
   transition: all 0.2s ease;
+}
+
+.slug-btn .btn-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
 }
 
 .slug-btn:hover {
@@ -74,138 +92,124 @@
   background: #e6f7ff;
   color: #1890ff;
   font-weight: 600;
-  box-shadow: inset 4px 0 0 #1890ff; /* Blue indicator line */
+  box-shadow: inset 4px 0 0 #1890ff;
+}
+
+/* Custom Article Wrapper Fix */
+.custom-article-item-wrapper {
+  display: flex;
+  align-items: center;
+  position: relative;
+  margin-bottom: 2px;
+}
+
+.delete-article-btn {
+  background: none;
+  border: none;
+  color: #ff4d4f;
+  padding: 10px;
+  cursor: pointer;
+  opacity: 0; /* Hidden until hover */
+  transition: all 0.2s ease;
+}
+
+.custom-article-item-wrapper:hover .delete-article-btn {
+  opacity: 1;
+}
+
+.add-new-article-btn {
+  margin-top: 20px;
+  border: 1px dashed #1890ff !important;
+  color: #1890ff !important;
+  justify-content: center;
+  background: #fff !important;
 }
 
 /* Editor Card Content */
 .editor-card {
-  padding: 40px; /* 🚀 More space inside the editor */
+  padding: 40px;
   display: flex;
   flex-direction: column;
-  gap: 20px; /* 🚀 Natural gap between all groups */
+  gap: 24px;
 }
 
-/* 🚀 MODERN TOGGLE PILL (The Kill Switch) */
+/* Modern Toggle Pill */
 .toggle-wrapper {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #fffbe6; /* Warning yellow tint */
+  background: #fffbe6;
   border: 1px dashed #ffe58f;
-  padding: 20px 25px; /* 🚀 More padding for a premium feel */
+  padding: 18px 25px;
   border-radius: 10px;
-  margin-bottom: 15px;
-}
-
-.toggle-label {
-  font-weight: 700;
-  color: #856404;
-  font-size: 15px;
-}
-
-.toggle-control {
-  cursor: pointer;
 }
 
 .badge-status-pill {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 20px;
-  border-radius: 30px; /* 🚀 Pill Shape */
+  gap: 10px;
+  padding: 8px 24px;
+  border-radius: 30px;
   font-weight: 700;
-  font-size: 14px;
+  cursor: pointer;
   transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  min-width: 160px;
-  justify-content: center;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
 }
 
-.badge-status-pill.on {
-  background-color: #52c41a; /* 🚀 Vibrant Green */
-  color: white;
-  border: 2px solid #52c41a;
+.badge-status-pill.on { background: #52c41a; color: white; }
+.badge-status-pill.off { background: #ff4d4f; color: white; }
+.badge-status-pill:hover { transform: scale(1.05); }
+
+/* Fix: ReactQuill Styling */
+.quill-wrapper {
+  display: flex;
+  flex-direction: column;
 }
 
-.badge-status-pill.off {
-  background-color: #ff4d4f; /* 🚀 Vibrant Red */
-  color: white;
-  border: 2px solid #ff4d4f;
+.quill-wrapper .ql-toolbar {
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  border-color: #d9d9d9;
+  background: #fafafa;
 }
 
-.badge-status-pill:hover {
-  transform: scale(1.05) translateY(-2px);
-  box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+.quill-wrapper .ql-container {
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  border-color: #d9d9d9;
+  min-height: 350px;
+  font-size: 15px;
 }
 
-.toggle-icon {
-  font-size: 22px;
-}
-
-/* Input & Group Spacing */
-.input-group {
-  margin-bottom: 10px; /* 🚀 Controlled by the editor-card gap */
-}
-
+/* Inputs */
 .input-group label {
   display: flex;
   align-items: center;
   gap: 8px;
   font-weight: 600;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   color: #262626;
-  font-size: 14px;
 }
 
 .input-group input {
   width: 100%;
-  padding: 14px;
+  padding: 12px 15px;
   border: 1px solid #d9d9d9;
   border-radius: 8px;
-  font-size: 15px;
+  outline: none;
   transition: border 0.3s;
 }
 
 .input-group input:focus {
-  border-color: #40a9ff;
-  outline: none;
+  border-color: #1890ff;
   box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
 }
 
-/* Badge Fields (Image + Link) */
-.badge-fields-container {
-  display: flex;
-  flex-direction: column;
-  gap: 25px; /* 🚀 Deep space between Image and Redirect inputs */
-  background: #f9f9f9;
-  padding: 25px;
-  border-radius: 10px;
-  border: 1px solid #f0f0f0;
-}
-
-.html-textarea, .simple-textarea {
-  width: 100%;
-  padding: 20px;
-  border: 1px solid #d9d9d9;
-  border-radius: 8px;
-  font-size: 15px;
-  line-height: 1.7;
-  resize: vertical;
-}
-
-.html-textarea {
-  min-height: 400px;
-  font-family: 'Fira Code', 'Courier New', monospace;
-  background: #2b2b2b;
-  color: #a9b7c6;
-}
-
-/* Save Button & Footer */
+/* Footer & Save Button */
 .editor-footer {
-  margin-top: 30px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-top: 20px;
   padding-top: 25px;
   border-top: 1px solid #f0f0f0;
 }
@@ -214,42 +218,30 @@
   background: #1890ff;
   color: white;
   border: none;
-  padding: 14px 45px;
+  padding: 12px 40px;
   border-radius: 8px;
   font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 16px;
-  box-shadow: 0 4px 14px rgba(24, 144, 255, 0.3);
+  gap: 10px;
   transition: all 0.3s;
 }
 
 .btn-save-content:hover { 
   background: #40a9ff; 
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(24, 144, 255, 0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
 }
 
 /* Preview Section */
-.preview-section {
-  margin-top: 50px;
-}
-
-.preview-section h3 {
-  color: #1f1f1f;
-  font-size: 20px;
-  margin-bottom: 20px;
-  font-weight: 700;
-}
-
+.preview-section { margin-top: 50px; }
 .preview-container {
   background: white;
-  padding: 50px;
+  padding: 40px;
   border-radius: 12px;
-  border: 1px solid #d9d9d9;
-  box-shadow: inset 0 2px 8px rgba(0,0,0,0.02);
+  border: 1px solid #eee;
+  min-height: 200px;
 }
 
 .badge-preview {
@@ -257,63 +249,22 @@
   display: inline-flex;
   flex-direction: column;
   align-items: center;
-  padding: 30px;
-  background: #ffffff;
-  border-radius: 12px;
+  padding: 20px;
   border: 1px solid #f0f0f0;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  border-radius: 12px;
 }
 
-.badge-preview img {
-  max-height: 80px;
-  display: block;
-}
-
-.preview-link-hint {
-  margin-top: 15px;
-  font-size: 12px;
-  color: #1890ff;
-  font-weight: 600;
-}
-
-.preview-hidden {
-  opacity: 0.5;
-  filter: grayscale(100%);
-}
+.preview-hidden { opacity: 0.4; filter: grayscale(1); }
 
 .hidden-overlay {
   position: absolute;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  background: rgba(0, 0, 0, 0.6);
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 800;
-  font-size: 16px;
   border-radius: 12px;
-  z-index: 10;
-}
-
-/* Loading State */
-.loading-state {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 300px;
-  font-size: 18px;
-  color: #bfbfbf;
-  font-style: italic;
-}
-
-/* Responsive */
-@media (max-width: 1024px) {
-  .mgmt-main-layout { grid-template-columns: 1fr; }
-  .slug-sidebar {
-    flex-direction: row;
-    overflow-x: auto;
-    border-right: none;
-    border-bottom: 1px solid #f0f0f0;
-  }
+  font-weight: bold;
+  z-index: 5;
 }

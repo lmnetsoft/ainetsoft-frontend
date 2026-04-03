@@ -195,6 +195,11 @@ function App() {
                 <Route path="/:shopSlug" element={<PublicShop />} />
 
                 <Route path="*" element={<NotFound />} />
+                {/* 🚀 Add this specific route for the new Article Manager */}
+                <Route 
+                  path="/admin/articles" 
+                  element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminLayout><SystemContentManagement /></AdminLayout></ProtectedRoute>} 
+                />                
               </Routes>
             </main>
             

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   FaUser, FaStore, FaShoppingBag, FaShieldAlt, FaComments, FaTruck, 
-  FaFileAlt, FaBalanceScale, FaList, FaSitemap // 🚀 Added FaList and FaSitemap
+  FaFileAlt, FaBalanceScale, FaList, FaSitemap, FaEdit, FaCog 
 } from 'react-icons/fa'; 
 import api from '../../services/api'; 
 import './AccountSidebar.css';
@@ -37,12 +37,10 @@ const AccountSidebar = () => {
       try {
         const res = await api.get('/auth/me');
         const latestUser = res.data;
-
         localStorage.setItem('user', JSON.stringify(latestUser));
         localStorage.setItem('userName', latestUser.fullName || latestUser.username);
         localStorage.setItem('userAvatar', latestUser.avatarUrl || '');
         localStorage.setItem('userRoles', JSON.stringify(latestUser.roles || []));
-
         handleSync(); 
       } catch (err) {
         console.error("Sidebar background sync failed:", err);
@@ -79,6 +77,7 @@ const AccountSidebar = () => {
       </div>
 
       <nav className="sidebar-menu">
+        {/* --- USER SECTION --- */}
         <div className="menu-section">
           <div className="menu-header">
             <FaUser className="menu-icon profile-icon" />
@@ -97,6 +96,7 @@ const AccountSidebar = () => {
           <span>Đơn mua</span>
         </NavLink>
 
+        {/* --- SELLER SECTION --- */}
         {isSeller && (
           <div className="menu-section seller-menu-section">
             <div className="menu-header">
@@ -112,24 +112,27 @@ const AccountSidebar = () => {
           </div>
         )}
 
+        {/* --- ADMIN SECTION (REORGANIZED) --- */}
         {isAdmin && (
           <div className="menu-section admin-menu-section">
             <div className="menu-header">
               <FaShieldAlt className="menu-icon admin-icon" />
               <span className="admin-title">Quản trị viên</span>
             </div>
+            
             <div className="menu-sub-items">
               <NavLink to="/admin/dashboard" className={({isActive}) => isActive ? 'active' : ''}>
                 Tổng quan Admin
               </NavLink>
 
-              {/* 🚀 NEW: Footer Menu Management */}
-              <NavLink to="/admin/footer-menus" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaList className="sub-menu-icon" /> 
-                Quản lý Menu Footer
+              {/* 📂 GROUP 1: QUẢN LÝ NỘI DUNG */}
+              <div className="admin-inner-group">QUẢN LÝ NỘI DUNG</div>
+              
+              <NavLink to="/admin/articles" className={({isActive}) => isActive ? 'active' : ''}>
+                <FaEdit className="sub-menu-icon" /> 
+                Quản lý Bài viết
               </NavLink>
 
-              {/* 🚀 NEW: Help Hierarchy Management */}
               <NavLink to="/admin/help-hierarchy" className={({isActive}) => isActive ? 'active' : ''}>
                 <FaSitemap className="sub-menu-icon" /> 
                 Phân cấp Trợ giúp
@@ -140,15 +143,27 @@ const AccountSidebar = () => {
                 Chính sách pháp lý
               </NavLink>
 
+              {/* ⚙️ GROUP 2: CẤU HÌNH HỆ THỐNG */}
+              <div className="admin-inner-group">CẤU HÌNH HỆ THỐNG</div>
+
+              <NavLink to="/admin/footer-menus" className={({isActive}) => isActive ? 'active' : ''}>
+                <FaList className="sub-menu-icon" /> 
+                Quản lý Menu Footer
+              </NavLink>
+
               <NavLink to="/admin/content/company" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaFileAlt className="sub-menu-icon" /> 
-                Cấu hình hệ thống
+                <FaCog className="sub-menu-icon" /> 
+                Thông tin Công ty
               </NavLink>
 
               <NavLink to="/admin/shipping" className={({isActive}) => isActive ? 'active' : ''}>
                 <FaTruck className="sub-menu-icon" /> 
                 Cấu hình vận chuyển
               </NavLink>
+
+              {/* 💬 GROUP 3: TƯƠNG TÁC */}
+              <div className="admin-inner-group">TƯƠNG TÁC</div>
+              
               <NavLink to="/admin/chat" className={({isActive}) => isActive ? 'active' : ''}>
                 <FaComments className="sub-menu-icon" /> 
                 Quản lý Chat

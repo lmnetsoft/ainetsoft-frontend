@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom'; 
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { 
   FaSave, FaShieldAlt, FaFileContract, FaHistory, FaCheckCircle, 
   FaBuilding, FaYoutube, FaFacebook, FaToggleOn, FaToggleOff, 
   FaCertificate, FaGavel, FaBullhorn, FaExternalLinkAlt, FaImage,
-  FaPlus, FaListUl, FaEdit, FaMobileAlt // 🚀 Added FaMobileAlt for App Icons
+  FaPlus, FaEdit, FaMobileAlt, FaLink, FaTrash, FaFileAlt 
 } from 'react-icons/fa';
 
-// 🚀 React 19 Compatible Editor
+// React 19 Compatible Editor
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 
@@ -35,7 +35,6 @@ const FIXED_SLUGS = [
   { slug: 'footer_badge_2', label: 'Badge BCT 2 (Link)', cat: 'social', isToggleable: true, icon: <FaCertificate style={{color: '#faad14'}}/> },
   { slug: 'footer_badge_3', label: 'Badge BCT 3 / Icon Phụ', cat: 'social', isToggleable: true, icon: <FaCertificate style={{color: '#ff4d4f'}}/> },
 
-  // 🚀 NEW: Added App Download slugs to use "Badge UI" (Image + Link)
   { slug: 'app_qr_code', label: 'App: QR Code', cat: 'social', isToggleable: true, icon: <FaMobileAlt style={{color: '#52c41a'}}/> },
   { slug: 'app_ios_link', label: 'App: iOS Store', cat: 'social', isToggleable: true, icon: <FaMobileAlt style={{color: '#1890ff'}}/> },
   { slug: 'app_android_link', label: 'App: Android Store', cat: 'social', isToggleable: true, icon: <FaMobileAlt style={{color: '#52c41a'}}/> }
@@ -43,12 +42,17 @@ const FIXED_SLUGS = [
 
 const SystemContentManagement = () => {
   const { category } = useParams(); 
+  const location = useLocation(); 
+  
   const [selectedSlug, setSelectedSlug] = useState('');
   const [content, setContent] = useState({ slug: '', title: '', htmlContent: '', lastUpdated: '' });
   const [customArticles, setCustomArticles] = useState<any[]>([]);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  const isArticleMode = location.pathname.includes('/admin/articles');
+  const isCustomArticle = !FIXED_SLUGS.some(s => s.slug === selectedSlug);
 
   const quillModules = {
     toolbar: [
@@ -88,10 +92,14 @@ const SystemContentManagement = () => {
   };
 
   useEffect(() => {
-    if (!isCreatingNew && filteredFixedSlugs.length > 0) {
-      setSelectedSlug(filteredFixedSlugs[0].slug);
+    if (!isCreatingNew) {
+      if (isArticleMode) {
+        if (customArticles.length > 0) setSelectedSlug(customArticles[0].slug);
+      } else {
+        if (filteredFixedSlugs.length > 0) setSelectedSlug(filteredFixedSlugs[0].slug);
+      }
     }
-  }, [category]);
+  }, [category, isArticleMode, customArticles.length]);
 
   useEffect(() => {
     if (!isCreatingNew && selectedSlug) {
@@ -115,7 +123,23 @@ const SystemContentManagement = () => {
   const handleCreateNew = () => {
     setIsCreatingNew(true);
     setSelectedSlug('');
+    // 🚀 FIXED: Ensuring everything is strictly empty on start
     setContent({ slug: '', title: '', htmlContent: '', lastUpdated: '' });
+  };
+
+  const handleDeleteArticle = async (slug: string) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa bài viết "${slug}"?`)) return;
+    try {
+      await api.delete(`/admin/system-contents/${slug}`);
+      toast.success("Đã xóa bài viết!");
+      if (selectedSlug === slug) {
+        setSelectedSlug('');
+        setContent({ slug: '', title: '', htmlContent: '', lastUpdated: '' });
+      }
+      fetchCustomArticles();
+    } catch (e) {
+      toast.error("Lỗi khi xóa bài viết.");
+    }
   };
 
   const handleToggleBadge = () => {
@@ -127,8 +151,10 @@ const SystemContentManagement = () => {
   };
 
   const handleSave = async () => {
-    if (!content.title.trim() || !content.htmlContent.trim() || (isCreatingNew && !content.slug.trim())) {
-      toast.error("Vui lòng nhập đầy đủ thông tin.");
+    const finalSlug = (isCreatingNew || isCustomArticle) ? content.slug : selectedSlug;
+
+    if (!content.title.trim() || !content.htmlContent.trim() || !finalSlug.trim()) {
+      toast.error("Vui lòng nhập đầy đủ thông tin (Tiêu đề, Slug, Nội dung).");
       return;
     }
 
@@ -136,17 +162,14 @@ const SystemContentManagement = () => {
       setIsSaving(true);
       await api.post('/admin/system-contents', {
         ...content,
-        slug: isCreatingNew ? content.slug : selectedSlug,
+        slug: finalSlug,
         lastUpdated: new Date()
       });
       toast.success("Đã lưu thành công!");
       setIsCreatingNew(false);
-      if (isCreatingNew) {
-        setSelectedSlug(content.slug);
-        fetchCustomArticles();
-      } else {
-        fetchContent(selectedSlug);
-      }
+      setSelectedSlug(finalSlug);
+      fetchCustomArticles();
+      fetchContent(finalSlug);
     } catch (e) {
       toast.error("Lỗi khi lưu nội dung.");
     } finally {
@@ -162,46 +185,68 @@ const SystemContentManagement = () => {
     <div className="admin-content-mgmt">
       <div className="mgmt-header">
         <h2>
-          {isCreatingNew ? (
+          {isArticleMode ? (
+            <><FaFileAlt style={{color: '#1890ff', marginRight: '12px'}} /> Quản lý Bài viết</>
+          ) : isCreatingNew ? (
             <><FaPlus style={{color: '#52c41a', marginRight: '12px'}} /> Tạo bài viết mới</>
           ) : category === 'legal' ? (
             <><FaShieldAlt style={{color: '#2f54eb', marginRight: '12px'}} /> Quản lý Chính sách Pháp lý</>
           ) : (
-            <><FaBuilding style={{color: '#52c41a', marginRight: '12px'}} /> Cấu hình Hệ thống</>
+            <><FaBuilding style={{color: '#52c41a', marginRight: '12px'}} /> Thông tin Công ty</>
           )}
         </h2>
-        <p>Soạn thảo nội dung chuyên nghiệp và quản lý thông tin hệ thống.</p>
+        <p>
+          {isArticleMode 
+            ? "Tạo và quản lý các nội dung hướng dẫn, blog hoặc bài viết giới thiệu." 
+            : "Cấu hình các thông tin cố định và giao diện chân trang hệ thống."}
+        </p>
       </div>
 
       <div className="mgmt-main-layout">
         <div className="slug-sidebar">
-          <div className="sidebar-section-title" style={{fontSize: '12px', color: '#8c8c8c', marginBottom: '10px', fontWeight: 600}}>MỤC CỐ ĐỊNH</div>
-          {filteredFixedSlugs.map(item => (
-            <button 
-              key={item.slug} 
-              className={`slug-btn ${selectedSlug === item.slug && !isCreatingNew ? 'active' : ''}`} 
-              onClick={() => { setIsCreatingNew(false); setSelectedSlug(item.slug); }}
-            >
-              {item.icon || <FaFileContract />}
-              {item.label}
-            </button>
-          ))}
+          {!isArticleMode && (
+            <>
+              <div className="sidebar-section-title" style={{fontSize: '12px', color: '#8c8c8c', marginBottom: '10px', fontWeight: 600}}>MỤC CỐ ĐỊNH</div>
+              {filteredFixedSlugs.map(item => (
+                <button 
+                  key={item.slug} 
+                  className={`slug-btn ${selectedSlug === item.slug && !isCreatingNew ? 'active' : ''}`} 
+                  onClick={() => { setIsCreatingNew(false); setSelectedSlug(item.slug); }}
+                >
+                  {item.icon || <FaFileContract />}
+                  {item.label}
+                </button>
+              ))}
+            </>
+          )}
 
-          <div className="sidebar-section-title" style={{fontSize: '12px', color: '#8c8c8c', margin: '25px 0 10px 0', fontWeight: 600}}>BÀI VIẾT TỰ DO</div>
-          {customArticles.map(art => (
-            <button 
-              key={art.slug} 
-              className={`slug-btn ${selectedSlug === art.slug && !isCreatingNew ? 'active' : ''}`} 
-              onClick={() => { setIsCreatingNew(false); setSelectedSlug(art.slug); }}
-            >
-              <FaEdit style={{color: '#faad14'}} />
-              {art.title}
-            </button>
-          ))}
-          
-          <button className="slug-btn" style={{marginTop: 'auto', border: '1px dashed #d9d9d9', color: '#1890ff'}} onClick={handleCreateNew}>
-            <FaPlus /> Thêm bài viết mới
-          </button>
+          {isArticleMode && (
+            <>
+              <div className="sidebar-section-title" style={{fontSize: '12px', color: '#8c8c8c', marginBottom: '10px', fontWeight: 600}}>BÀI VIẾT TỰ DO</div>
+              {customArticles.map(art => (
+                <div key={art.slug} className="custom-article-item-wrapper">
+                  <button 
+                    className={`slug-btn ${selectedSlug === art.slug && !isCreatingNew ? 'active' : ''}`} 
+                    onClick={() => { setIsCreatingNew(false); setSelectedSlug(art.slug); }}
+                  >
+                    <FaEdit style={{color: '#faad14'}} />
+                    <span className="btn-text">{art.title}</span>
+                  </button>
+                  <button 
+                    className="delete-article-btn" 
+                    onClick={(e) => { e.stopPropagation(); handleDeleteArticle(art.slug); }}
+                    title="Xóa bài viết"
+                  >
+                    <FaTrash />
+                  </button>
+                </div>
+              ))}
+              
+              <button className="slug-btn add-new-article-btn" onClick={handleCreateNew}>
+                <FaPlus /> Thêm bài viết mới
+              </button>
+            </>
+          )}
         </div>
 
         <div className="editor-card">
@@ -224,22 +269,33 @@ const SystemContentManagement = () => {
                 </div>
               )}
 
-              {isCreatingNew && (
-                <div className="input-group">
-                  <label>Mã định danh (Slug) - *Dùng để liên kết URL*</label>
+              <div className="input-group">
+                <label>Tiêu đề bài viết hiển thị</label>
+                {/* 🚀 FIXED: Added autoFocus and Placeholder */}
+                <input 
+                  type="text" 
+                  autoFocus={isCreatingNew}
+                  placeholder="Nhập tiêu đề (vd: Hướng dẫn mua hàng)..."
+                  value={content.title} 
+                  onChange={(e) => setContent({...content, title: e.target.value})} 
+                />
+              </div>
+
+              {(isCreatingNew || isCustomArticle) && !isBadge && (
+                <div className="input-group slug-input-group">
+                  <label><FaLink /> Mã định danh (Slug) - *Dùng để liên kết với Phân cấp Trợ giúp*</label>
+                  {/* 🚀 FIXED: Placeholder updated to match guide */}
                   <input 
                     type="text" 
                     value={content.slug} 
-                    placeholder="ví dụ: huong-dan-thanh-toan"
+                    placeholder="vd: huong-dan-thanh-toan"
                     onChange={(e) => setContent({...content, slug: e.target.value.toLowerCase().replace(/\s+/g, '-')})} 
                   />
+                  <small style={{color: '#8c8c8c', marginTop: '4px', display: 'block'}}>
+                    Lưu ý: Slug này phải khớp 100% với slug bạn đã đặt trong trang "Phân cấp Trợ giúp".
+                  </small>
                 </div>
               )}
-
-              <div className="input-group">
-                <label>Tiêu đề bài viết hiển thị</label>
-                <input type="text" value={content.title} onChange={(e) => setContent({...content, title: e.target.value})} />
-              </div>
 
               {isBadge ? (
                 <div className="badge-fields-container">
@@ -304,13 +360,13 @@ const SystemContentManagement = () => {
         <h3><FaCheckCircle style={{color: '#52c41a'}} /> Xem trước thực tế</h3>
         <div className="preview-container">
           {isBadge ? (
-             <div className={`badge-preview ${content.htmlContent.startsWith('DISABLED_') ? 'preview-hidden' : ''}`}>
-               {content.htmlContent.startsWith('DISABLED_') && <div className="hidden-overlay">LOGO ĐANG TẮT</div>}
-               <a href={badgeData.link} target="_blank" rel="noreferrer">
-                 <img src={badgeData.img} alt="Badge Preview" onError={(e) => e.currentTarget.src = "https://via.placeholder.com/150x50?text=Lỗi+Ảnh"} />
-               </a>
-               {badgeData.link && <p className="preview-link-hint">Liên kết: {badgeData.link}</p>}
-             </div>
+              <div className={`badge-preview ${content.htmlContent.startsWith('DISABLED_') ? 'preview-hidden' : ''}`}>
+                {content.htmlContent.startsWith('DISABLED_') && <div className="hidden-overlay">LOGO ĐANG TẮT</div>}
+                <a href={badgeData.link} target="_blank" rel="noreferrer">
+                  <img src={badgeData.img} alt="Badge Preview" onError={(e) => e.currentTarget.src = "https://via.placeholder.com/150x50?text=Lỗi+Ảnh"} />
+                </a>
+                {badgeData.link && <p className="preview-link-hint">Liên kết: {badgeData.link}</p>}
+              </div>
           ) : (
             <div 
               className="preview-box ql-editor" 
