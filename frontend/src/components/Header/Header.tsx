@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom'; // 🚀 Added useLocation
 import { FaSearch, FaChevronDown, FaShoppingCart, FaBell, FaUserShield, FaCrown } from 'react-icons/fa';
 import logoImg from '../../assets/images/logo.png';
 import { getUserProfile, logoutUser } from '../../services/authService';
@@ -12,6 +12,7 @@ import './Header.css';
 
 const Header: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation(); // 🚀 Hook to detect current path
 
   // PRESERVED: Chat and Notification logic
   const { unreadCount, resetChat, setIsChatOpen } = useChat(); 
@@ -25,6 +26,9 @@ const Header: React.FC = () => {
   const [userAvatar, setUserAvatar] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [cartCount, setCartCount] = useState(3);
+
+  // 🚀 Logic to detect if we are in Help Center mode
+  const isHelpCenter = location.pathname.startsWith('/tro-giup');
 
   const avatarFallback = '/logo.svg';
 
@@ -77,7 +81,7 @@ const Header: React.FC = () => {
           clearStorage();
         }
       } catch (err) {
-        // Silently fail to allow offline mode or handle in interceptors
+        // Silently fail
       }
     };
 
@@ -115,7 +119,7 @@ const Header: React.FC = () => {
       localStorage.removeItem('userAvatar');
       localStorage.removeItem('userRoles');
       localStorage.removeItem('userPermissions'); 
-      localStorage.removeItem('isGlobalAdmin');
+      localStorage.removeItem('isGlobalAdmin'); 
       localStorage.removeItem('jwt_token');
 
       setIsLoggedIn(false);
@@ -129,30 +133,35 @@ const Header: React.FC = () => {
     }
   };
 
+  // 🚀 UPDATED: Context-Aware Search Logic
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const query = formData.get('search')?.toString();
+    
     if (query && query.trim()) {
-      navigate(`/?search=${encodeURIComponent(query)}`);
+      if (isHelpCenter) {
+        // Mode 1: Search Help Articles
+        navigate(`/tro-giup/tim-kiem?q=${encodeURIComponent(query)}`);
+      } else {
+        // Mode 2: Search Products (Keep original behavior)
+        navigate(`/?search=${encodeURIComponent(query)}`);
+      }
     }
   };
 
   const handleNotificationClick = () => {
     if (isAdmin) {
-      // Admins go to Chat if they have messages, otherwise Dashboard
       if (unreadCount > 0) {
         navigate('/admin/chat');
       } else {
         navigate('/admin/dashboard');
       }
     } else {
-      // Users/Sellers go to the unified notification list
       navigate('/user/notifications');
     }
   };
 
-  // 🛠️ LOGIC: Combine chat messages + system warnings (fake email alerts)
   const totalAlerts = unreadCount + (systemCount || 0);
 
   return (
@@ -178,21 +187,15 @@ const Header: React.FC = () => {
               </>
             )}
 
-              {/* 🛠️ NOTIFICATION BELL: Pickups SYSTEM_WARNINGS from DB automatically */}
               <div
                 className={`notification-wrapper ${totalAlerts > 0 ? 'active-alerts' : ''}`}
                 onClick={handleNotificationClick}
                 style={{ cursor: 'pointer' }}
               >
-                {/* Icon pulses if there are critical system warnings */}
                 <FaBell className={`nav-icon ${systemCount > 0 ? 'pulse-animation' : ''}`} />
-                
-                {/* 🔴 Text turns red if there are ANY alerts (Chat or System) */}
                 <span className={`blue-link ${totalAlerts > 0 ? 'alert-red-text' : ''}`}>
                   Thông báo
                 </span>
-
-                {/* Badge logic - showing the total count */}
                 {totalAlerts > 0 && (
                   <span className={`notification-badge ${systemCount > 0 ? 'pulse' : ''}`}>
                     {totalAlerts > 99 ? '99+' : totalAlerts}
@@ -207,7 +210,13 @@ const Header: React.FC = () => {
 
         <div className="action-bar">
           <form className="search-wrapper" onSubmit={handleSearch}>
-            <input type="text" name="search" placeholder="Bạn muốn tìm gì hôm nay?..." autoComplete="off" />
+            {/* 🚀 Updated placeholder based on context */}
+            <input 
+              type="text" 
+              name="search" 
+              placeholder={isHelpCenter ? "Tìm kiếm hướng dẫn, trợ giúp..." : "Bạn muốn tìm gì hôm nay?..."} 
+              autoComplete="off" 
+            />
             <button type="submit" className="search-icon-btn">
               <FaSearch />
             </button>
