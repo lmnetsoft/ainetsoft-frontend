@@ -1,22 +1,75 @@
+/* --- 🚀 THE MASTER SHELL --- */
 .admin-master-layout {
+  background-color: #f6f9fc; 
   display: flex;
-  background-color: #f0f2f5;
+  flex-direction: column;
+  flex: 1; 
   min-height: 100vh;
-  width: 100%;
 }
 
-.sidebar-fixed-column {
-  width: 250px;
-  flex-shrink: 0;
-  background: #fff;
-  border-right: 1px solid #e8e8e8;
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  overflow-y: auto;
+/* 🚀 THE STRETCH & WIDTH FIX 
+   Using Grid ensures both Sidebar and Content are mathematically equal.
+*/
+.admin-layout-inner-container {
+  display: grid;
+  /* Sidebar fixed at 280px, Content takes all remaining space */
+  grid-template-columns: 280px 1fr; 
+  gap: 20px;
+  padding: 40px 20px;
+  width: 100%;
+  max-width: 1400px; 
+  margin: 0 auto;
+  /* 🚀 Forces both columns to match the taller one (usually Sidebar) */
+  align-items: stretch; 
+  flex: 1;
+}
+
+.sidebar-column {
+  width: 280px;
+  min-width: 280px;
+  background: #ffffff;
+  border-radius: 10px;
+  border: 1px solid #eef2f6;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  display: flex;
+  flex-direction: column;
+  /* height: 100% removed to let grid alignment handle stretch */
 }
 
 .admin-main-view {
-  flex-grow: 1;
-  overflow-x: hidden;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-content-wrapper {
+  width: 100%;
+  background: #ffffff;
+  border-radius: 10px;
+  border: 1px solid #eef2f6;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  padding: 40px; 
+  /* 🚀 THIS FORCES THE WHITE BACKGROUND TO FILL THE REMAINING HEIGHT */
+  flex: 1; 
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  /* Lock the stretch inside the grid cell */
+  min-height: 100%; 
+}
+
+/* Responsive: Switch to stack on smaller screens */
+@media (max-width: 1024px) {
+  .admin-layout-inner-container { 
+    grid-template-columns: 1fr; 
+    padding: 20px;
+  }
+  .sidebar-column { 
+    width: 100%; 
+    min-height: auto;
+  }
+  .admin-content-wrapper {
+    min-height: auto;
+  }
 }

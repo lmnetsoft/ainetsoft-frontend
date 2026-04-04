@@ -1,148 +1,140 @@
-.account-sidebar {
-  width: 230px; /* Standardized width for all pages */
-  flex-shrink: 0;
-  padding: 20px 0;
-  background: transparent;
+.account-sidebar-supreme {
+  width: 100%;
+  background: #ffffff;
+  padding: 25px 0;
+  border-right: none; 
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
 }
 
-/* User Brief Section */
-.sidebar-user-info {
+/* --- Profile Box --- */
+.sidebar-profile-box {
   display: flex;
   align-items: center;
-  padding: 15px 0;
-  border-bottom: 1px solid #efefef;
-  margin-bottom: 15px;
   gap: 12px;
+  padding: 0 20px 20px 20px;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 15px;
 }
 
-.sidebar-avatar-wrapper {
-  width: 50px;
-  height: 50px;
+.avatar-circle {
+  width: 45px;
+  height: 45px;
   border-radius: 50%;
   overflow: hidden;
-  border: 1px solid rgba(0,0,0,0.09);
-  background-color: #fff;
+  border: 1px solid #e2e8f0;
+  flex-shrink: 0;
 }
 
-.sidebar-avatar-wrapper img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
+.avatar-circle img { width: 100%; height: 100%; object-fit: cover; }
 
-.sidebar-user-text {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.sidebar-username {
-  font-weight: 600;
+.display-name {
+  display: block;
+  font-weight: 700;
   font-size: 14px;
-  color: #333;
+  color: #002147; 
+  margin-bottom: 2px;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.edit-profile-link {
-  font-size: 13px;
-  color: #888;
+.edit-trigger {
+  font-size: 12px;
+  color: #94a3b8;
   text-decoration: none;
   display: flex;
   align-items: center;
   gap: 5px;
 }
+.edit-trigger:hover { color: #ee4d2d; }
 
-.edit-profile-link:hover { color: #5b67f1; }
+/* --- Navigation --- */
+.sidebar-navigation { display: flex; flex-direction: column; gap: 2px; }
+.nav-section { margin-bottom: 10px; }
+.section-divider { border-top: 1px solid #f1f5f9; padding-top: 10px; margin-top: 5px; }
 
-/* Sidebar Menu Navigation */
-.sidebar-menu {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.menu-header {
+/* 🚀 UPDATED: Section headers like "Tài khoản của tôi" and "Quản trị viên" now always Red */
+.section-header, .standalone-link {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 14px;
-  color: #333;
-  text-decoration: none;
-  cursor: pointer;
-  padding: 5px 0;
-  transition: color 0.2s;
-}
-
-.menu-icon { font-size: 16px; }
-.profile-icon { color: #5b67f1; }
-.purchase-icon { color: #f15b5b; }
-
-.menu-sub-items {
-  display: flex;
-  flex-direction: column;
-  padding-left: 26px;
   gap: 12px;
-  margin-top: 5px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 700; 
+  color: #ee4d2d !important; /* 🚀 Forced Red to match screenshot */
+  text-decoration: none;
+  transition: background 0.2s;
 }
 
-.menu-sub-items a {
+/* Sub-Links Alignment */
+.section-links { display: flex; flex-direction: column; gap: 1px; }
+
+.section-links a {
+  padding: 10px 20px 10px 52px; 
+  font-size: 13.5px;
+  color: #64748b;
   text-decoration: none;
-  color: rgba(0,0,0,0.65);
-  font-size: 14px;
-  transition: all 0.2s;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  transition: all 0.2s ease;
+  border-left: 4px solid transparent; 
 }
 
-.menu-sub-items a:hover,
-.menu-sub-items a.active {
-  color: #5b67f1;
-  font-weight: 500;
+/* 🚀 NEW: Special class to keep "Tổng quan hệ thống" always red */
+.section-links a.always-red {
+  color: #ee4d2d !important;
+  font-weight: 700;
 }
 
-.sub-menu-icon {
-  font-size: 0.9rem;
+.section-links a.always-red svg {
+  color: #ee4d2d !important;
+  opacity: 1;
 }
 
-/* Standalone Items */
-.single-item:hover, 
-.single-item.active { color: #f15b5b; }
+.section-links a svg { font-size: 15px; width: 18px; opacity: 0.7; transition: all 0.2s; }
 
-/* --- Seller Section --- */
-.seller-menu-section {
+/* 🚀 VIBRANT ICON COLORS (UNTOUCHED) */
+.icon-blue { color: #3498db !important; }
+.icon-green { color: #27ae60 !important; }
+.icon-red { color: #e74c3c !important; }
+.icon-gold { color: #f1c40f !important; }
+.icon-orange { color: #ee4d2d !important; }
+.icon-orange-red { color: #ff4757 !important; }
+.icon-purple { color: #8e44ad !important; }
+.icon-teal { color: #1abc9c !important; }
+.icon-cyan { color: #00d2d3 !important; }
+.icon-navy { color: #002147 !important; }
+.icon-slate { color: #475569 !important; }
+.icon-indigo { color: #6610f2 !important; }
+
+/* Hover States */
+.section-links a:hover { background: #f8fafc; color: #ee4d2d; }
+.section-links a:hover svg { opacity: 1; transform: scale(1.05); }
+
+/* 🚀 ACTIVE STATE */
+.section-links a.active, .standalone-link.active {
+  background: transparent !important; 
+  color: #ee4d2d !important;
+  border-left: 4px solid #ee4d2d; 
+  font-weight: 700;
+}
+
+.section-links a.active svg, .standalone-link.active svg {
+  opacity: 1;
+  color: #ee4d2d !important;
+}
+
+/* 🚀 GROUP LABELS */
+.group-label {
+  padding: 22px 20px 10px 52px; 
+  font-size: 14px; 
+  font-weight: 700;
+  color: #002147 !important; 
+  text-transform: none; 
+  letter-spacing: 0.2px;
+  border-top: 1px solid #f1f5f9;
   margin-top: 10px;
-  padding-top: 15px;
-  border-top: 1px dotted #ddd;
-}
-
-.seller-title { color: #ee4d2d !important; font-weight: bold; }
-.seller-icon { color: #ee4d2d; }
-
-.seller-menu-section .menu-sub-items a:hover,
-.seller-menu-section .menu-sub-items a.active {
-  color: #ee4d2d;
-  font-weight: 600;
-}
-
-/* --- Admin Section --- */
-.admin-menu-section {
-  margin-top: 10px;
-  padding-top: 15px;
-  border-top: 1px dotted #ddd;
-}
-
-.admin-title { 
-  color: #5b67f1 !important; 
-  font-weight: bold; 
-}
-
-.admin-icon { color: #5b67f1; }
-
-.admin-menu-section .menu-sub-items a:hover,
-.admin-menu-section .menu-sub-items a.active {
-  color: #5b67f1;
-  font-weight: 600;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }

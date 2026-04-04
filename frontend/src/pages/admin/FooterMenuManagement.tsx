@@ -11,8 +11,6 @@ const FooterMenuManagement = () => {
   const [menus, setMenus] = useState<any[]>([]);
   const [icons, setIcons] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'menus' | 'icons'>('menus');
-  
-  // State to track which column is currently saving
   const [savingId, setSavingId] = useState<string | null>(null);
 
   const [newIcon, setNewIcon] = useState({
@@ -50,15 +48,13 @@ const FooterMenuManagement = () => {
       return;
     }
     try {
-      const payload = {
+      await api.post('/footer-icons', {
         name: newIcon.name,
         imgUrl: newIcon.imgUrl,
         category: newIcon.type, 
         active: newIcon.active,
         displayOrder: icons.length + 1
-      };
-
-      await api.post('/footer-icons', payload); 
+      }); 
       toast.success("Đã thêm icon thành công!");
       setNewIcon({ name: '', imgUrl: '', type: 'PAYMENT', active: true });
       fetchData();
@@ -78,7 +74,6 @@ const FooterMenuManagement = () => {
     }
   };
 
-  // 🚀 FIXED: Initializing with an empty string so user doesn't have to delete "CỘT MỚI"
   const addColumn = () => {
     const newCol = { 
       categoryTitle: "", 
@@ -111,8 +106,7 @@ const FooterMenuManagement = () => {
 
   const deleteMenu = async (id: string, index: number) => {
     if (!id) {
-      const updated = menus.filter((_, i) => i !== index);
-      setMenus(updated);
+      setMenus(menus.filter((_, i) => i !== index));
       return;
     }
     if (!window.confirm("Xóa toàn bộ cột này?")) return;
@@ -126,29 +120,34 @@ const FooterMenuManagement = () => {
 
   return (
     <div className="admin-footer-mgmt">
-      <div className="mgmt-header">
-        <h2>Thiết lập Footer Nâng cao</h2>
+      {/* 🚀 SUPREME HEADER: Centered and Uppercase Red */}
+      <div className="mgmt-header centered-header">
+        <h2>THIẾT LẬP FOOTER NÂNG CAO</h2>
+        <p>Tùy chỉnh danh sách liên kết và các biểu tượng đối tác hiển thị ở chân trang</p>
+        
         <div className="mgmt-tabs">
           <button className={activeTab === 'menus' ? 'active' : ''} onClick={() => setActiveTab('menus')}>
-            <FaList /> Cột Danh Mục
+            <FaList /> CỘT DANH MỤC
           </button>
           <button className={activeTab === 'icons' ? 'active' : ''} onClick={() => setActiveTab('icons')}>
-            <FaCreditCard /> Icons Đối tác
+            <FaCreditCard /> ICONS ĐỐI TÁC
           </button>
         </div>
       </div>
 
+      <hr className="supreme-divider" />
+
       {activeTab === 'menus' ? (
-        <div className="menu-grid">
+        /* 🚀 THE FIX: Added 'vertical-stack' to match the new CSS layout */
+        <div className="menu-grid vertical-stack">
           {(menus || []).map((menu, mIdx) => {
-            const isSaving = savingId === (menu.id || `new-col-${mIdx}`);
+            const currentSaving = savingId === (menu.id || `new-col-${mIdx}`);
             
             return (
               <div key={menu.id || mIdx} className="menu-col-card">
                 <div className="card-header">
-                  {/* 🚀 FIXED: Added placeholder and autoFocus logic */}
                   <input 
-                    placeholder="Nhập tên cột (vd: Dịch vụ)..."
+                    placeholder="NHẬP TÊN CỘT..."
                     autoFocus={!menu.id} 
                     value={menu.categoryTitle} 
                     onChange={(e) => {
@@ -164,7 +163,7 @@ const FooterMenuManagement = () => {
                   {menu.items.map((item: any, iIdx: number) => (
                     <div key={iIdx} className="item-row">
                       <input 
-                        placeholder="Nhãn (vd: Về chúng tôi)" 
+                        placeholder="Nhãn (vd: Trợ giúp)" 
                         value={item.label}
                         onChange={(e) => {
                           const up = [...menus];
@@ -173,7 +172,7 @@ const FooterMenuManagement = () => {
                         }}
                       />
                       <input 
-                        placeholder="Slug/URL (vd: gioi-thieu)" 
+                        placeholder="Slug/URL" 
                         value={item.url}
                         onChange={(e) => {
                           const up = [...menus];
@@ -190,32 +189,32 @@ const FooterMenuManagement = () => {
                         }}
                       >
                         <option value="true">Nội bộ</option>
-                        <option value="false">Link ngoài</option>
+                        <option value="false">Ngoài</option>
                       </select>
                     </div>
                   ))}
-                  <button className="btn-add-item" onClick={() => addItem(mIdx)}><FaPlus /> Thêm Link</button>
+                  <button className="btn-add-item" onClick={() => addItem(mIdx)}><FaPlus /> THÊM LINK</button>
                 </div>
+                
                 <button 
                   className="btn-save-col" 
                   onClick={() => saveMenu(menu, mIdx)}
-                  disabled={isSaving}
+                  disabled={currentSaving}
                 >
-                  {isSaving ? "Đang lưu..." : <><FaSave /> Lưu Cột</>}
+                  {currentSaving ? "ĐANG LƯU..." : <><FaSave /> LƯU CỘT</>}
                 </button>
               </div>
             );
           })}
-          <button className="add-col-card" onClick={addColumn}><FaPlus /> Thêm Cột Mới</button>
+          <button className="add-col-card" onClick={addColumn}><FaPlus /> THÊM CỘT MỚI</button>
         </div>
       ) : (
         <div className="icons-manager">
-          {/* ... Icons management remains same ... */}
           <div className="icon-add-form">
-            <h4>Thêm Icon Đối tác mới</h4>
+            <h4 className="form-title">THÊM ICON ĐỐI TÁC MỚI</h4>
             <div className="form-inputs">
               <input 
-                placeholder="Tên đối tác (vd: Visa, GHTK)" 
+                placeholder="Tên đối tác (vd: Visa)" 
                 value={newIcon.name}
                 onChange={(e) => setNewIcon({...newIcon, name: e.target.value})}
               />
@@ -232,14 +231,14 @@ const FooterMenuManagement = () => {
                 <option value="SHIPPING">VẬN CHUYỂN</option>
               </select>
               <button onClick={handleSaveIcon} className="btn-primary-add">
-                <FaPlus /> Thêm
+                <FaPlus /> THÊM
               </button>
             </div>
           </div>
 
           <div className="icon-sections">
             <section className="icon-sec">
-              <h5><FaCreditCard /> Phương thức Thanh toán</h5>
+              <h5><FaCreditCard /> PHƯƠNG THỨC THANH TOÁN</h5>
               <div className="icon-display-grid">
                 {icons.filter(i => i.category === 'PAYMENT').map(icon => (
                   <div key={icon.id} className="admin-icon-card">
@@ -252,7 +251,7 @@ const FooterMenuManagement = () => {
             </section>
 
             <section className="icon-sec">
-              <h5><FaTruck /> Đơn vị Vận chuyển</h5>
+              <h5><FaTruck /> ĐƠN VỊ VẬN CHUYỂN</h5>
               <div className="icon-display-grid">
                 {icons.filter(i => i.category === 'SHIPPING').map(icon => (
                   <div key={icon.id} className="admin-icon-card">

@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css'; 
-import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import ToastNotification from '../../components/Toast/ToastNotification'; 
 import { getUserProfile, updateProfile, logoutUser } from '../../services/authService';
-import { FaLock, FaGoogle, FaFacebook, FaExclamationTriangle, FaInfoCircle, FaClock } from 'react-icons/fa';
+import { FaGoogle, FaFacebook, FaExclamationTriangle, FaClock } from 'react-icons/fa';
 import logoImg from '../../assets/images/logo.png';
 import './Profile.css';
 
@@ -13,9 +12,13 @@ const Profile = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const today = new Date();
+  const maxBirthDate = new Date(today.getFullYear() - 16, today.getMonth(), today.getDate())
+    .toISOString().split('T')[0];
+
   const [formData, setFormData] = useState({
     email: '',
-    phone: '',
+    phone: '84', 
     fullName: '',
     gender: 'other',
     birthDate: '',
@@ -31,9 +34,8 @@ const Profile = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
-  // 🚀 UPDATED: Track the actual verification status and admin feedback
   const [verificationStatus, setVerificationStatus] = useState({
-    status: 'NONE', // NONE, PENDING, APPROVED, REJECTED
+    status: 'NONE', 
     rejectionReason: ''
   });
 
@@ -45,9 +47,21 @@ const Profile = () => {
         setLoading(true);
         const data = await getUserProfile();
         
+        let normalizedPhone = '84';
+        if (data.phone) {
+            const digits = data.phone.replace(/\D/g, '');
+            if (digits.startsWith('084')) {
+                normalizedPhone = digits.slice(1);
+            } else if (digits.startsWith('0')) {
+                normalizedPhone = '84' + digits.slice(1);
+            } else {
+                normalizedPhone = digits;
+            }
+        }
+
         setFormData({
           email: data.email || '',
-          phone: data.phone || '',
+          phone: normalizedPhone,
           fullName: data.fullName || '',
           gender: data.gender || 'other',
           birthDate: data.birthDate || '',
@@ -61,7 +75,6 @@ const Profile = () => {
         const isVerifiedSeller = roles.includes('SELLER') || data.sellerVerification === 'VERIFIED';
         setIsSeller(isVerifiedSeller);
 
-        // 🚀 SYNCED: Get status from backend (No more [Lỗi Email] string checking)
         setVerificationStatus({
           status: data.sellerVerification || 'NONE',
           rejectionReason: data.rejectionReason || ''
@@ -101,7 +114,7 @@ const Profile = () => {
   };
 
   const validatePhone = (phone: string) => {
-    if (!phone) return false;
+    if (!phone || phone === '84') return false;
     const digitsOnly = phone.replace(/\D/g, '');
     if (digitsOnly.startsWith('0') || digitsOnly.startsWith('84')) {
         const normalized = digitsOnly.startsWith('84') ? '0' + digitsOnly.slice(2) : digitsOnly;
@@ -118,6 +131,12 @@ const Profile = () => {
       return;
     }
 
+    if (formData.birthDate && formData.birthDate > maxBirthDate) {
+      setToastMessage("Bạn phải ít nhất 16 tuổi để sử dụng dịch vụ này.");
+      setShowToast(true);
+      return;
+    }
+
     if (!formData.phone || !validatePhone(formData.phone)) {
       setToastMessage("Số điện thoại không hợp lệ hoặc nhà mạng không hỗ trợ.");
       setShowToast(true);
@@ -126,13 +145,16 @@ const Profile = () => {
 
     try {
       setIsSaving(true);
+      const finalPhone = formData.phone.startsWith('+') ? formData.phone : `+${formData.phone}`;
+
       const synchronizedAddresses = (formData.addresses || []).map(addr => ({
         ...addr,
-        phone: formData.phone 
+        phone: finalPhone 
       }));
 
       const payload = {
         ...formData,
+        phone: finalPhone,
         addresses: synchronizedAddresses
       };
 
@@ -140,22 +162,15 @@ const Profile = () => {
       setToastMessage(message || "Cập nhật hồ sơ thành công!");
       setShowToast(true);
       
-      // Refresh logic
       const freshData = await getUserProfile();
-      setFormData({
-        ...formData,
-        email: freshData.email,
-        phone: freshData.phone,
+      setFormData(prev => ({
+        ...prev,
+        phone: freshData.phone ? freshData.phone.replace(/\D/g, '').replace(/^084/, '84') : '84',
         fullName: freshData.fullName,
         avatarUrl: freshData.avatarUrl,
         addresses: freshData.addresses || [],
         bankAccounts: freshData.bankAccounts || []
-      });
-      
-      setVerificationStatus({
-        status: freshData.sellerVerification || 'NONE',
-        rejectionReason: freshData.rejectionReason || ''
-      });
+      }));
 
       window.dispatchEvent(new Event('profileUpdate'));
       
@@ -167,178 +182,152 @@ const Profile = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="profile-wrapper">
-        <div className="container profile-container-loading">
-          <div className="loading-spinner"></div>
-          <p>Đang tải dữ liệu hồ sơ...</p>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <div className="profile-loading-box">Đang tải hồ sơ...</div>;
 
   return (
-    <div className="profile-wrapper">
+    <div className="user-profile-supreme-layout">
       <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
 
-      <div className="container profile-container">
-        <AccountSidebar />
-        
-        <main className="profile-main-content">
-          <div className="content-header">
-            <h1>Hồ sơ của tôi</h1>
-            <p>Quản lý thông tin hồ sơ để bảo mật tài khoản</p>
+      <div className="profile-content-header centered-header">
+        <h1>Hồ sơ của tôi</h1>
+        <p>Quản lý thông tin hồ sơ để bảo mật tài khoản</p>
+      </div>
+
+      <hr className="supreme-divider" />
+
+      {verificationStatus.status === 'REJECTED' && (
+        <div className="status-banner error-banner">
+          <FaExclamationTriangle className="banner-icon" />
+          <div className="warning-text">
+            <strong>Yêu cầu nâng cấp Shop bị từ chối</strong>
+            <p><strong>Lý do:</strong> {verificationStatus.rejectionReason}</p>
+            <p className="hint">Vui lòng cập nhật lại thông tin chính xác và gửi lại yêu cầu.</p>
           </div>
-          <hr className="divider" />
+        </div>
+      )}
 
-          {/* 🚀 NEW: REJECTED BANNER (The Only Red Banner) */}
-          {verificationStatus.status === 'REJECTED' && (
-            <div className="profile-warning-banner" style={{
-              background: '#fff1f0', border: '1px solid #ffa39e', padding: '15px', 
-              borderRadius: '6px', marginBottom: '25px', display: 'flex', gap: '12px', alignItems: 'flex-start'
-            }}>
-              <FaExclamationTriangle style={{ color: '#ff4d4f', fontSize: '20px', marginTop: '2px' }} />
-              <div className="warning-text">
-                <strong style={{ color: '#cf1322', display: 'block', marginBottom: '4px' }}>Yêu cầu nâng cấp Shop bị từ chối</strong>
-                <p style={{ margin: 0, fontSize: '14px', color: '#595959' }}>
-                  <strong>Lý do:</strong> {verificationStatus.rejectionReason}
-                </p>
-                <p style={{ margin: '8px 0 0', fontSize: '13px', color: '#8c8c8c' }}>
-                  Vui lòng cập nhật lại thông tin chính xác và gửi lại yêu cầu.
-                </p>
-              </div>
-            </div>
-          )}
+      {verificationStatus.status === 'PENDING' && (
+        <div className="status-banner info-banner">
+          <FaClock className="banner-icon" />
+          <div className="info-text">
+            <strong>Hồ sơ đang chờ phê duyệt</strong>
+            <p>Yêu cầu đăng ký Người bán của bạn đã được tiếp nhận. Đội ngũ kiểm duyệt sẽ phản hồi trong vòng 24 giờ làm việc.</p>
+          </div>
+        </div>
+      )}
 
-          {/* 🚀 NEW: PENDING INFO BANNER (Professional Blue Banner) */}
-          {verificationStatus.status === 'PENDING' && (
-            <div className="profile-info-banner" style={{
-              background: '#e6f7ff', border: '1px solid #91d5ff', padding: '15px', 
-              borderRadius: '6px', marginBottom: '25px', display: 'flex', gap: '12px', alignItems: 'flex-start'
-            }}>
-              <FaClock style={{ color: '#1890ff', fontSize: '20px', marginTop: '2px' }} />
-              <div className="info-text">
-                <strong style={{ color: '#0050b3', display: 'block', marginBottom: '4px' }}>Hồ sơ đang chờ phê duyệt</strong>
-                <p style={{ margin: 0, fontSize: '14px', color: '#595959' }}>
-                  Yêu cầu đăng ký Người bán của bạn đã được tiếp nhận. Đội ngũ kiểm duyệt sẽ phản hồi trong vòng 24 giờ làm việc.
-                </p>
-              </div>
-            </div>
-          )}
-
-          <div className="profile-form-container">
-            <form className="profile-info-form" onSubmit={(e) => e.preventDefault()}>
-              <div className="form-row">
-                <label>Email <span className="required-star">*</span></label>
-                <div className="input-group-container">
-                  <input 
-                    type="email" 
-                    value={formData.email} 
-                    onChange={(e) => !isSocialUser && setFormData({...formData, email: e.target.value})}
-                    readOnly={isSocialUser} 
-                    className={`${isSocialUser ? "input-field input-locked" : "input-field"}`}
-                  />
-                  {isSocialUser && (
-                    <div className={`lock-badge badge-${formData.provider.toLowerCase()}`}>
-                      {formData.provider === 'GOOGLE' && <FaGoogle className="provider-icon" />}
-                      {formData.provider === 'FACEBOOK' && <FaFacebook className="provider-icon" />}
-                      <span>Liên kết với {formData.provider}</span>
-                    </div>
-                  )}
+      <div className="profile-main-grid">
+        <form className="profile-data-form" onSubmit={(e) => e.preventDefault()}>
+          <div className="supreme-form-row">
+            <label>Email <span className="req">*</span></label>
+            <div className="input-group-container">
+              <input 
+                type="email" 
+                value={formData.email} 
+                readOnly={isSocialUser} 
+                className={`${isSocialUser ? "input-field input-locked" : "input-field"}`}
+                onChange={(e) => !isSocialUser && setFormData({...formData, email: e.target.value})}
+              />
+              {isSocialUser && (
+                <div className={`lock-badge badge-${formData.provider.toLowerCase()}`}>
+                  {formData.provider === 'GOOGLE' && <FaGoogle className="provider-icon" />}
+                  {formData.provider === 'FACEBOOK' && <FaFacebook className="provider-icon" />}
+                  <span>Liên kết với {formData.provider}</span>
                 </div>
-              </div>
-
-              <div className="form-row">
-                <label>Họ và Tên <span className="required-star">*</span></label>
-                <input 
-                  type="text" 
-                  value={formData.fullName} 
-                  onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                  placeholder="Nhập họ và tên"
-                />
-              </div>
-
-              <div className="form-row">
-                <label>Số điện thoại <span className="required-star">*</span></label>
-                <div className="phone-input-wrapper">
-                  <PhoneInput
-                    country={'vn'} 
-                    preferredCountries={['vn']}
-                    value={formData.phone}
-                    onChange={(phone) => setFormData({...formData, phone})}
-                    inputStyle={{ width: '100%', height: '40px' }}
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <label>Giới tính</label>
-                <div className="radio-group">
-                  {['male', 'female', 'other'].map((g) => (
-                    <label key={g}>
-                      <input 
-                        type="radio" 
-                        name="gender" 
-                        value={g} 
-                        checked={formData.gender === g} 
-                        onChange={(e) => setFormData({...formData, gender: e.target.value})} 
-                      /> {g === 'male' ? 'Nam' : g === 'female' ? 'Nữ' : 'Khác'}
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="form-row">
-                <label>Ngày sinh</label>
-                <input 
-                  type="date" 
-                  value={formData.birthDate} 
-                  onChange={(e) => setFormData({...formData, birthDate: e.target.value})}
-                />
-              </div>
-
-              <div className="form-row">
-                <label></label>
-                <div className="button-group-profile">
-                  <button type="button" className="save-btn" onClick={handleSave} disabled={isSaving}>
-                    {isSaving ? "Đang lưu..." : "Lưu thay đổi"}
-                  </button>
-                  
-                  {!isSeller && verificationStatus.status !== 'PENDING' && (
-                    <button type="button" className="become-seller-btn" onClick={() => navigate('/seller/register')}>
-                      Trở thành Người bán
-                    </button>
-                  )}
-
-                  {verificationStatus.status === 'PENDING' && (
-                    <button type="button" className="become-seller-btn" style={{backgroundColor: '#faad14', cursor: 'default'}} disabled>
-                      Đang thẩm định...
-                    </button>
-                  )}
-                  
-                  {isSeller && (
-                    <button type="button" className="become-seller-btn" style={{backgroundColor: '#27ae60'}} onClick={() => navigate('/seller/dashboard')}>
-                      Vào Kênh Người Bán
-                    </button>
-                  )}
-                </div>
-              </div>
-            </form>
-
-            <div className="profile-avatar-section">
-              <div className="avatar-preview">
-                <img 
-                  src={formData.avatarUrl || logoImg} 
-                  alt="Avatar" 
-                  onError={(e) => { (e.target as HTMLImageElement).src = logoImg; }}
-                />
-              </div>
-              <input type="file" ref={fileInputRef} onChange={handleImageChange} accept=".jpg,.jpeg,.png" style={{ display: 'none' }} />
-              <button className="upload-btn" onClick={() => fileInputRef.current?.click()}>Chọn ảnh</button>
+              )}
             </div>
           </div>
-        </main>
+
+          <div className="supreme-form-row">
+            <label>Họ và Tên <span className="req">*</span></label>
+            <div className="input-group-container">
+              <input 
+                type="text" 
+                value={formData.fullName} 
+                onChange={(e) => setFormData({...formData, fullName: e.target.value})}
+                placeholder="Nhập họ và tên"
+              />
+            </div>
+          </div>
+
+          <div className="supreme-form-row">
+            <label>Số điện thoại <span className="req">*</span></label>
+            <div className="input-group-container">
+              <PhoneInput
+                country={'vn'} 
+                preferredCountries={['vn']}
+                value={formData.phone}
+                onChange={(phone) => setFormData({...formData, phone})}
+                enableSearch={true}
+                searchPlaceholder="Tìm kiếm quốc gia..."
+                searchNotFound="Không tìm thấy kết quả"
+                containerClass="supreme-phone-container"
+                inputStyle={{ width: '100%', height: '45px', paddingLeft: '48px', fontSize: '0.9375rem' }} 
+                specialLabel={""}
+                forceDialCode={true}
+                countryCodeEditable={false}
+              />
+            </div>
+          </div>
+
+          <div className="supreme-form-row">
+            <label>Giới tính</label>
+            <div className="input-group-container">
+              <div className="gender-options">
+                {['male', 'female', 'other'].map((g) => (
+                  <label key={g}>
+                    <input type="radio" name="gender" value={g} checked={formData.gender === g} onChange={(e) => setFormData({...formData, gender: e.target.value})} /> {g === 'male' ? 'Nam' : g === 'female' ? 'Nữ' : 'Khác'}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="supreme-form-row">
+            <label>Ngày sinh</label>
+            <div className="input-group-container">
+              <input 
+                type="date" 
+                value={formData.birthDate} 
+                max={maxBirthDate}
+                onChange={(e) => setFormData({...formData, birthDate: e.target.value})}
+              />
+            </div>
+          </div>
+
+          <div className="form-actions">
+            <button type="button" className="save-btn-supreme" onClick={handleSave} disabled={isSaving}>
+              {isSaving ? "Đang lưu..." : "Lưu thay đổi"}
+            </button>
+            
+            {!isSeller && verificationStatus.status !== 'PENDING' && (
+              <button type="button" className="become-seller-btn" onClick={() => navigate('/seller/register')}>
+                Trở thành Người bán
+              </button>
+            )}
+
+            {verificationStatus.status === 'PENDING' && (
+              <button type="button" className="become-seller-btn status-pending" disabled>
+                Đang thẩm định...
+              </button>
+            )}
+            
+            {isSeller && (
+              <button type="button" className="become-seller-btn status-active" onClick={() => navigate('/seller/dashboard')}>
+                Vào Kênh Người Bán
+              </button>
+            )}
+          </div>
+        </form>
+
+        <div className="profile-avatar-column">
+          <div className="avatar-preview-box">
+            <img src={formData.avatarUrl || logoImg} alt="Avatar" onError={(e) => { (e.target as HTMLImageElement).src = logoImg; }} />
+          </div>
+          <input type="file" ref={fileInputRef} onChange={handleImageChange} accept=".jpg,.jpeg,.png" style={{ display: 'none' }} />
+          <button className="upload-btn-supreme" onClick={() => fileInputRef.current?.click()}>Chọn ảnh</button>
+          <p className="upload-hint">Dung lượng tối đa 1MB<br/>Định dạng: .JPG, .PNG</p>
+        </div>
       </div>
     </div>
   );

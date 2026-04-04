@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
+import React, { useState, useEffect, useRef } from 'react';
 import ToastNotification from '../../components/Toast/ToastNotification';
 import { getUserProfile, updateProfile } from '../../services/authService';
-import './Profile.css';
+import { FaSearch, FaChevronDown } from 'react-icons/fa'; 
+import './Profile.css'; 
 
 const Bank = () => {
   const [bankData, setBankData] = useState({
@@ -15,6 +15,25 @@ const Bank = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const vnBanks = [
+    "Vietcombank", "VietinBank", "BIDV", "Agribank", 
+    "MB Bank", "Techcombank", "ACB", "VPBank", 
+    "TPBank", "Sacombank", "VIB", "HDBank", 
+    "SHB", "Eximbank", "OCB", "MSB", 
+    "SeABank", "LPBank", "PVcomBank", "Nam A Bank", 
+    "Kienlongbank", "VietBank", "BaoVietBank", "ABBANK", 
+    "OceanBank", "GPBank", "DongA Bank", "Bac A Bank", 
+    "Viet Capital Bank", "Shinhan Bank", "HSBC", "Standard Chartered"
+  ].sort();
+
+  const filteredBanks = vnBanks.filter(bank => 
+    bank.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   useEffect(() => {
     const fetchBankInfo = async () => {
@@ -30,9 +49,30 @@ const Bank = () => {
         setLoading(false);
       }
     };
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
     fetchBankInfo();
+    document.addEventListener("mousedown", handleClickOutside);
     document.title = "Ngân hàng của tôi | AiNetsoft";
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const handleSelectBank = (bank: string) => {
+    setBankData({ ...bankData, bankName: bank });
+    setSearchTerm('');
+    setIsDropdownOpen(false);
+  };
+
+  const validateBankAccount = (number: string) => {
+    const digitsOnly = number.replace(/\s/g, ''); 
+    const regex = /^\d{8,15}$/; 
+    return regex.test(digitsOnly);
+  };
 
   const handleSave = async () => {
     if (!bankData.bankName || !bankData.accountNumber || !bankData.accountHolder) {
@@ -41,12 +81,28 @@ const Bank = () => {
       return;
     }
 
+    if (!validateBankAccount(bankData.accountNumber)) {
+      setToastMessage("Số tài khoản không hợp lệ (Phải là số, từ 8-15 ký tự)!");
+      setShowToast(true);
+      return;
+    }
+
+    const nameRegex = /^[a-zA-ZÀ-ỹ\s]+$/;
+    if (!nameRegex.test(bankData.accountHolder)) {
+      setToastMessage("Tên chủ tài khoản không được chứa số hoặc ký tự đặc biệt!");
+      setShowToast(true);
+      return;
+    }
+
     try {
       setIsSaving(true);
-      // Sending as a list to match the User model 'List<BankInfo>'
-      await updateProfile({
-        bankAccounts: [bankData]
-      });
+      const cleanData = {
+        ...bankData,
+        accountNumber: bankData.accountNumber.replace(/\s/g, ''),
+        accountHolder: bankData.accountHolder.trim().toUpperCase()
+      };
+
+      await updateProfile({ bankAccounts: [cleanData] });
       setToastMessage("Cập nhật ngân hàng thành công!");
       setShowToast(true);
     } catch (error: any) {
@@ -57,62 +113,99 @@ const Bank = () => {
     }
   };
 
-  if (loading) return <div className="profile-wrapper"><div className="loading-spinner"></div></div>;
+  if (loading) return <div className="profile-loading-box">Đang tải dữ liệu...</div>;
 
   return (
-    <div className="profile-wrapper">
+    <div className="user-profile-supreme-layout">
       <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
-      <div className="container profile-container">
-        <AccountSidebar />
-        <main className="profile-main-content">
-          <div className="content-header">
-            <h1>Tài khoản Ngân hàng</h1>
-            <p>Thông tin này giúp bạn rút doanh thu bán hàng về ví cá nhân</p>
+      
+      <div className="profile-content-header centered-header">
+        <h1>TÀI KHOẢN NGÂN HÀNG</h1>
+        <p>Thông tin này giúp bạn rút doanh thu bán hàng về ví cá nhân</p>
+      </div>
+      
+      <hr className="supreme-divider" />
+
+      <div className="profile-main-grid">
+        <form className="profile-data-form" onSubmit={(e) => e.preventDefault()}>
+          
+          <div className="supreme-form-row">
+            <label>Tên Ngân hàng <span className="req">*</span></label>
+            <div className="input-group-container" ref={dropdownRef} style={{ position: 'relative' }}>
+              <div 
+                className={`searchable-select-box ${isDropdownOpen ? 'active' : ''}`}
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              >
+                <span>{bankData.bankName || "-- Chọn Ngân hàng --"}</span>
+                <FaChevronDown className={`chevron-icon ${isDropdownOpen ? 'rotate' : ''}`} />
+              </div>
+
+              {isDropdownOpen && (
+                <div className="bank-dropdown-menu">
+                  <div className="search-input-wrapper">
+                    <FaSearch className="search-icon" />
+                    <input 
+                      type="text" 
+                      placeholder="Tìm kiếm ngân hàng..." 
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onClick={(e) => e.stopPropagation()} 
+                      autoFocus
+                    />
+                  </div>
+                  <ul className="bank-list-results">
+                    {filteredBanks.length > 0 ? (
+                      filteredBanks.map(bank => (
+                        <li key={bank} onClick={() => handleSelectBank(bank)}>
+                          {bank}
+                        </li>
+                      ))
+                    ) : (
+                      <li className="no-results">Không tìm thấy ngân hàng</li>
+                    )}
+                  </ul>
+                </div>
+              )}
+            </div>
           </div>
-          <hr className="divider" />
-          <div className="profile-form-container">
-            <form className="profile-info-form" onSubmit={(e) => e.preventDefault()}>
-              <div className="form-row">
-                <label>Tên Ngân hàng</label>
-                <select 
-                  value={bankData.bankName} 
-                  onChange={(e) => setBankData({...bankData, bankName: e.target.value})}
-                >
-                  <option value="">-- Chọn Ngân hàng --</option>
-                  <option value="Vietcombank">Vietcombank</option>
-                  <option value="Techcombank">Techcombank</option>
-                  <option value="MB Bank">MB Bank</option>
-                  <option value="Agribank">Agribank</option>
-                  <option value="VietinBank">VietinBank</option>
-                </select>
-              </div>
-              <div className="form-row">
-                <label>Số tài khoản</label>
-                <input 
-                  type="text" 
-                  value={bankData.accountNumber} 
-                  onChange={(e) => setBankData({...bankData, accountNumber: e.target.value})}
-                  placeholder="Nhập số tài khoản"
-                />
-              </div>
-              <div className="form-row">
-                <label>Tên chủ tài khoản</label>
-                <input 
-                  type="text" 
-                  value={bankData.accountHolder} 
-                  onChange={(e) => setBankData({...bankData, accountHolder: e.target.value.toUpperCase()})}
-                  placeholder="Họ tên không dấu (ví dụ: NGUYEN VAN A)"
-                />
-              </div>
-              <div className="form-row">
-                <label></label>
-                <button type="button" className="save-btn" onClick={handleSave} disabled={isSaving}>
-                  {isSaving ? "Đang lưu..." : "Lưu tài khoản"}
-                </button>
-              </div>
-            </form>
+
+          <div className="supreme-form-row">
+            <label>Số tài khoản <span className="req">*</span></label>
+            <div className="input-group-container">
+              <input 
+                type="text" 
+                value={bankData.accountNumber} 
+                onChange={(e) => setBankData({...bankData, accountNumber: e.target.value.replace(/\D/g, '')})}
+                placeholder="Nhập số tài khoản (8-15 chữ số)"
+              />
+            </div>
           </div>
-        </main>
+
+          <div className="supreme-form-row">
+            <label>Tên chủ tài khoản <span className="req">*</span></label>
+            <div className="input-group-container">
+              <input 
+                type="text" 
+                value={bankData.accountHolder} 
+                onChange={(e) => setBankData({...bankData, accountHolder: e.target.value.toUpperCase()})}
+                placeholder="NGUYEN VAN A (Không dấu hoặc có dấu)"
+              />
+            </div>
+          </div>
+
+          <div className="form-actions">
+            <button type="button" className="save-btn-supreme" onClick={handleSave} disabled={isSaving}>
+              {isSaving ? "Đang lưu..." : "Lưu tài khoản"}
+            </button>
+          </div>
+        </form>
+
+        <div className="profile-avatar-column" style={{ border: 'none' }}>
+            <div className="bank-info-illustration" style={{ padding: '20px' }}>
+                {/* 🚀 THE FIX: Applied supreme-side-hint class and removed inline styles */}
+                <p className="supreme-side-hint">Vui lòng đảm bảo số tài khoản chính xác (8-15 chữ số) để giao dịch không bị gián đoạn.</p>
+            </div>
+        </div>
       </div>
     </div>
   );

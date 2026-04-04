@@ -2,33 +2,76 @@
   padding: 30px;
   background: #ffffff;
   min-height: 100vh;
+  /* 🚀 FORCE SUPREME FONT STACK */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
 }
 
+/* --- 🚀 SUPREME HEADER: CENTERED, RED, CRISP FONT --- */
 .mgmt-header {
-  border-bottom: 1px solid #eee;
-  padding-bottom: 20px;
-  margin-bottom: 30px;
+  border-bottom: 1px solid #f1f2f6;
+  padding-bottom: 25px;
+  margin-bottom: 35px;
+  text-align: center; /* 🚀 Centers the sub-text */
 }
 
+.mgmt-header h2 {
+  margin: 0;
+  /* 🚀 THE SUPREME STANDARD: Center, Bold, Red, Uppercase */
+  color: #ee4d2d !important; 
+  font-size: 28px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center; 
+  font-weight: 900 !important; 
+  text-transform: uppercase !important;
+  letter-spacing: 1.2px;
+  
+  /* 🚀 SHARPNESS LOCK */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 🚀 FIXED: Specific gap for the icon to prevent it being too near the title */
+.mgmt-header h2 svg {
+  margin-right: 18px !important; /* Increased from 10px to fix crowding */
+  font-size: 32px;
+}
+
+.mgmt-header p {
+  color: #8c8c8c;
+  margin-top: 10px;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+/* Add Root Button Alignment */
 .btn-add-root {
   background: #1890ff;
   color: white;
   border: none;
-  padding: 10px 20px;
-  border-radius: 6px;
+  padding: 12px 24px;
+  border-radius: 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-top: 15px;
-  font-weight: 600;
+  margin: 20px auto 0 auto; /* 🚀 Centered to match header */
+  font-weight: 700;
+  transition: all 0.2s;
+}
+.btn-add-root:hover {
+  background: #096dd9;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
 }
 
+/* --- Tree Layout (UNTOUCHED LOGIC) --- */
 .tree-container {
   max-width: 900px;
+  margin: 0 auto; /* 🚀 Centers the tree container on the page */
   background: #fafafa;
-  padding: 20px;
-  border-radius: 8px;
+  padding: 25px;
+  border-radius: 12px;
   border: 1px solid #f0f0f0;
 }
 
@@ -36,27 +79,33 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 15px;
-  margin-bottom: 5px;
+  padding: 12px 18px;
+  margin-bottom: 8px;
   background: white;
   border: 1px solid #eee;
-  border-radius: 6px;
+  border-radius: 8px;
   transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
 }
 
 .tree-node-item.is-folder {
-  border-left: 4px solid #1890ff;
+  border-left: 5px solid #1890ff;
 }
 
 .tree-node-item.is-article {
-  border-left: 4px solid #52c41a;
+  border-left: 5px solid #52c41a;
   background: #f6ffed;
+}
+
+.tree-node-item:hover {
+  border-color: #d9d9d9;
+  transform: translateX(4px);
 }
 
 .node-info {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   flex: 1;
   cursor: pointer;
 }
@@ -64,53 +113,62 @@
 .node-title-input {
   border: none;
   background: transparent;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 14px;
-  width: 250px;
+  color: #262626;
+  width: 100%;
+  max-width: 300px;
 }
 
 .node-title-input:focus {
   outline: none;
-  border-bottom: 1px solid #1890ff;
+  border-bottom: 2px solid #1890ff;
 }
 
 .node-slug-box {
   display: flex;
   align-items: center;
-  gap: 5px;
-  background: #f0f0f0;
-  padding: 4px 10px;
-  border-radius: 4px;
+  gap: 8px;
+  background: #f1f2f6;
+  padding: 5px 12px;
+  border-radius: 6px;
   font-size: 12px;
-  color: #666;
+  color: #475569;
 }
 
 .node-slug-box input {
   border: none;
   background: transparent;
-  width: 150px;
-  font-family: monospace;
+  width: 180px;
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 600;
 }
 
 .node-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
 
 .node-actions button {
-  background: #eee;
-  border: none;
-  padding: 6px;
-  border-radius: 4px;
+  background: #f8fafc;
+  border: 1px solid #eef2f6;
+  padding: 8px;
+  border-radius: 6px;
   cursor: pointer;
-  color: #555;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
 }
 
 .node-actions button:hover {
-  background: #ddd;
+  background: #e2e8f0;
+  color: #1e293b;
 }
 
 .node-actions .btn-delete:hover {
-  background: #ff4d4f;
-  color: white;
+  background: #fff1f0;
+  border-color: #ffa39e;
+  color: #ff4d4f;
 }
