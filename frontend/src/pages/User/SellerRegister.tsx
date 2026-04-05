@@ -9,8 +9,7 @@ import {
   FaSearchPlus, FaMapMarkedAlt, FaQrcode, FaCopy, FaClock, FaPassport, FaTimesCircle,
   FaExclamationTriangle 
 } from 'react-icons/fa';
-import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
-// 🚀 NEW: Added the Modal import
+// 🚀 REMOVED redundant Sidebar import to fix double sidebar issue
 import LegalModal from '../../components/LegalModal/LegalModal'; 
 import { getUserProfile } from '../../services/authService';
 import { toast } from 'react-hot-toast';
@@ -472,7 +471,7 @@ const SellerRegister = () => {
     // 🚀 NEW: Immediate AI Match Check - this clears the block if numbers match
     if (detectedIdNumber && rawIDInput !== detectedIdNumber) {
         errors.cccdNumber = "Số định danh không khớp với ảnh.";
-        setServerError("Số định danh trên ảnh không khớp với thông tin bạn nhập. Vui lòng kiểm tra lại.");
+        setServerError("Số định danh on ảnh không khớp với thông tin bạn nhập. Vui lòng kiểm tra lại.");
     } else if (detectedIdNumber && rawIDInput === detectedIdNumber) {
         setServerError(null); // Clear error if correct
     }
@@ -692,10 +691,17 @@ const SellerRegister = () => {
   if (isPageLoading) return <div className="loading-spinner">Đang tải hồ sơ Người bán...</div>;
 
   return (
-    <div className="onboarding-layout">
+    /* 🚀 UPDATED WRAPPER: Matches fixed Profile/Bank pages for perfect alignment */
+    <div className="user-page-supreme-layout">
       <style>{inlineStyles}</style>
-      <AccountSidebar />
+      
       <main className="onboarding-view">
+        {/* standardized supreme header logic */}
+        <div className="profile-content-header">
+           <h1>Đăng ký Người bán</h1>
+           <p>Hoàn tất 5 bước để bắt đầu kinh doanh trên AiNetsoft</p>
+        </div>
+        <hr className="supreme-divider" />
         
         {/* REJECTION BANNER WITH SMART DETECTION (PRESERVED) */}
         {isRejected && (
@@ -727,11 +733,13 @@ const SellerRegister = () => {
 
         {!isRejected && (
           <div className="onboarding-card">
-            {/* STEP 1 (100% PRESERVED) */}
+            {/* STEP 1 (100% PRESERVED LOGIC) */}
             {currentStep === 1 && (
               <div className="step-content">
-                <div className="ainetsoft-row"><label><span className="req">*</span> Tên Shop</label>
-                  <div className="ainetsoft-input-group">
+                {/* standardized row logic for 25% label alignment */}
+                <div className="supreme-form-row">
+                  <label><span className="req">*</span> Tên Shop</label>
+                  <div style={{ flex: 1, maxWidth: '600px' }}>
                     <input 
                         className={formErrors.shopName ? "error-border" : ""} 
                         value={formData.shopName} 
@@ -746,8 +754,10 @@ const SellerRegister = () => {
                     {formErrors.shopName && <p className="red-msg-inline">{formErrors.shopName}</p>}
                   </div>
                 </div>
-                <div className="ainetsoft-row"><label><span className="req">*</span> Địa chỉ lấy hàng</label>
-                  <div className="ainetsoft-input-group">
+                
+                <div className="supreme-form-row">
+                  <label><span className="req">*</span> Địa chỉ lấy hàng</label>
+                  <div style={{ flex: 1, maxWidth: '600px' }}>
                     {formData.stockAddresses.map((addr, idx) => (
                       <div key={idx} className="address-display-box" style={{marginBottom: '10px'}}><div className="addr-text"><strong>{[addr.fullName, formatPhone(addr.phoneNumber)].filter(Boolean).join(' | ')}</strong><p>{[addr.detailAddress, addr.ward, addr.province].filter(Boolean).join(', ')}</p></div><div className="trash-action-area" onClick={() => setFormData({...formData, stockAddresses: formData.stockAddresses.filter((_, i) => i !== idx)})}><FaTrash className="trash-icon" /></div></div>
                     ))}
@@ -755,12 +765,13 @@ const SellerRegister = () => {
                     {formErrors.addresses && <p className="red-msg-inline">{formErrors.addresses}</p>}
                   </div>
                 </div>
-                {/* 🚀 FIXED: Email field is now disabled and greyed out */}
-                <div className="ainetsoft-row">
+                
+                {/* email row unified with profile locked state */}
+                <div className="supreme-form-row">
                   <label><span className="req">*</span> Email liên hệ</label>
-                  <div className="ainetsoft-input-group">
+                  <div style={{ flex: 1, maxWidth: '600px' }}>
                     <input 
-                      className={formErrors.email ? "error-border" : ""} 
+                      className={formErrors.email ? "error-border input-locked" : "input-locked"} 
                       value={formData.email} 
                       disabled 
                       style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed', color: '#8c8c8c' }} 
@@ -769,6 +780,7 @@ const SellerRegister = () => {
                     {formErrors.email && <p className="red-msg-inline">{formErrors.email}</p>}
                   </div>
                 </div>
+                
                 <div className="onboarding-footer"><button className="btn-ainetsoft-primary" onClick={() => { if(validateStep1()) setCurrentStep(2); }}>Tiếp theo</button></div>
               </div>
             )}
@@ -793,14 +805,32 @@ const SellerRegister = () => {
               </div>
             )}
 
-            {/* STEP 3 (100% PRESERVED) */}
+            {/* STEP 3 (100% PRESERVED LOGIC) */}
             {currentStep === 3 && (
               <div className="step-content">
                 <div className="ainetsoft-radio-group" style={{marginBottom: '25px'}}>{['INDIVIDUAL', 'HOUSEHOLD', 'ENTERPRISE'].map(t => (<label key={t} className="radio-item"><input type="radio" checked={formData.businessType === t} onChange={() => setFormData({...formData, businessType: t})} /><span className="radio-mark"></span> {getBusinessLabel(t)}</label>))}</div>
-                {formData.businessType !== 'INDIVIDUAL' && (<div className="ainetsoft-row"><label><span className="req">*</span> Tên công ty</label><div className="ainetsoft-input-group"><input className={formErrors.companyName ? "error-border" : ""} value={formData.companyName} onChange={e => setFormData({...formData, companyName: e.target.value})} placeholder="Tên chính thức" />{formErrors.companyName && <p className="red-msg-inline">{formErrors.companyName}</p>}</div></div>)}
-                <div className="ainetsoft-row"><label><span className="req">*</span> Địa chỉ đăng ký</label><div className="ainetsoft-input-group"><input className={formErrors.registeredAddress ? "error-border" : ""} value={formData.registeredAddress} onChange={e => setFormData({...formData, registeredAddress: e.target.value})} placeholder="Địa chỉ theo GPKD" />{formErrors.registeredAddress && <p className="red-msg-inline">{formErrors.registeredAddress}</p>}</div></div>
-                <div className="ainetsoft-row"><label><span className="req">*</span> Email nhận hóa đơn</label>
-                  <div className="ainetsoft-input-group">
+                
+                {formData.businessType !== 'INDIVIDUAL' && (
+                  <div className="supreme-form-row">
+                    <label><span className="req">*</span> Tên công ty</label>
+                    <div style={{ flex: 1, maxWidth: '600px' }}>
+                      <input className={formErrors.companyName ? "error-border" : ""} value={formData.companyName} onChange={e => setFormData({...formData, companyName: e.target.value})} placeholder="Tên chính thức" />
+                      {formErrors.companyName && <p className="red-msg-inline">{formErrors.companyName}</p>}
+                    </div>
+                  </div>
+                )}
+                
+                <div className="supreme-form-row">
+                  <label><span className="req">*</span> Địa chỉ đăng ký</label>
+                  <div style={{ flex: 1, maxWidth: '600px' }}>
+                    <input className={formErrors.registeredAddress ? "error-border" : ""} value={formData.registeredAddress} onChange={e => setFormData({...formData, registeredAddress: e.target.value})} placeholder="Địa chỉ theo GPKD" />
+                    {formErrors.registeredAddress && <p className="red-msg-inline">{formErrors.registeredAddress}</p>}
+                  </div>
+                </div>
+                
+                <div className="supreme-form-row">
+                  <label><span className="req">*</span> Email nhận hóa đơn</label>
+                  <div style={{ flex: 1, maxWidth: '600px' }}>
                     {formData.invoiceEmails.map((email, idx) => (
                       <div key={idx} className="email-input-item" style={{display: 'flex', gap: '10px', marginBottom: '8px'}}>
                         <input className={formErrors.invoiceEmail ? "error-border" : ""} value={email} onChange={e => handleInvoiceEmailChange(idx, e.target.value)} placeholder="Email" />
@@ -811,13 +841,31 @@ const SellerRegister = () => {
                     {formErrors.invoiceEmail && <p className="red-msg-inline">{formErrors.invoiceEmail}</p>}
                   </div>
                 </div>
-                <div className="ainetsoft-row"><label><span className="req">*</span> MST</label><div className="ainetsoft-input-group"><input className={formErrors.taxCode ? "error-border" : ""} value={formData.taxCode} onChange={e => setFormData({...formData, taxCode: formatMST(e.target.value)})} maxLength={17} placeholder="111 111 111 1" />{formErrors.taxCode && <p className="red-msg-inline">{formErrors.taxCode}</p>}</div></div>
-                {formData.businessType !== 'INDIVIDUAL' && (<div className="ainetsoft-row"><label><span className="req">*</span> GPKD</label><div className="ainetsoft-input-group"><div className={`license-upload-box ${formData.licensePreview ? "has-img" : ""} ${formErrors.license ? "error-border-dashed" : ""}`} onClick={() => document.getElementById('input-license')?.click()} >{formData.licensePreview ? (<><div className="btn-clear-img" onClick={(e) => clearImage('license', e)}><FaTimes /></div><img src={formData.licensePreview} alt="License" /></>) : (<div className="upload-placeholder"><FaCamera className="cam-icon" /><span>Tải lên GPKD</span></div>)}</div><input id="input-license" type="file" hidden onChange={e => handleFileChange(e, 'license')} />{formErrors.license && <p className="red-msg-inline">{formErrors.license}</p>}</div></div>)}
+                
+                <div className="supreme-form-row">
+                  <label><span className="req">*</span> MST</label>
+                  <div style={{ flex: 1, maxWidth: '600px' }}>
+                    <input className={formErrors.taxCode ? "error-border" : ""} value={formData.taxCode} onChange={e => setFormData({...formData, taxCode: formatMST(e.target.value)})} maxLength={17} placeholder="111 111 111 1" />
+                    {formErrors.taxCode && <p className="red-msg-inline">{formErrors.taxCode}</p>}
+                  </div>
+                </div>
+                
+                {formData.businessType !== 'INDIVIDUAL' && (
+                  <div className="supreme-form-row">
+                    <label><span className="req">*</span> GPKD</label>
+                    <div style={{ flex: 1, maxWidth: '600px' }}>
+                      <div className={`license-upload-box ${formData.licensePreview ? "has-img" : ""} ${formErrors.license ? "error-border-dashed" : ""}`} onClick={() => document.getElementById('input-license')?.click()} >{formData.licensePreview ? (<><div className="btn-clear-img" onClick={(e) => clearImage('license', e)}><FaTimes /></div><img src={formData.licensePreview} alt="License" /></>) : (<div className="upload-placeholder"><FaCamera className="cam-icon" /><span>Tải lên GPKD</span></div>)}</div>
+                      <input id="input-license" type="file" hidden onChange={e => handleFileChange(e, 'license')} />
+                      {formErrors.license && <p className="red-msg-inline">{formErrors.license}</p>}
+                    </div>
+                  </div>
+                )}
+                
                 <div className="onboarding-footer"><button className="btn-ainetsoft-lite" onClick={() => setCurrentStep(2)}>Quay lại</button><button className="btn-ainetsoft-primary" onClick={() => { if(validateStep3()) setCurrentStep(4); }}>Tiếp theo</button></div>
               </div>
             )}
 
-            {/* STEP 4 (UPDATED ACTION: GATES MISMATCH) */}
+            {/* STEP 4 (100% PRESERVED AI/OCR LOGIC) */}
             {currentStep === 4 && (
               <div className="step-content">
                 {serverError && (<div className="ocr-error-banner"><FaExclamationTriangle /><p>{serverError}</p></div>)}
@@ -826,8 +874,10 @@ const SellerRegister = () => {
                   <label className="radio-item"><input type="radio" checked={formData.identityType === 'CCCD'} onChange={() => {setFormData({...formData, identityType: 'CCCD'}); setServerError(null);}} /><span className="radio-mark"></span> CCCD</label>
                   <label className="radio-item"><input type="radio" checked={formData.identityType === 'PASSPORT'} onChange={() => {setFormData({...formData, identityType: 'PASSPORT'}); setServerError(null);}} /><span className="radio-mark"></span> Hộ chiếu</label>
                 </div>
-                <div className="ainetsoft-row"><label><span className="req">*</span> Số {formData.identityType}</label>
-                  <div className="ainetsoft-input-group">
+                
+                <div className="supreme-form-row">
+                  <label><span className="req">*</span> Số {formData.identityType}</label>
+                  <div style={{ flex: 1, maxWidth: '600px' }}>
                     <input 
                       className={(formErrors.cccdNumber || (serverError && serverError.includes("Số định danh"))) ? "error-border" : ""} 
                       value={formData.cccdNumber} 
@@ -840,12 +890,13 @@ const SellerRegister = () => {
                     )}
                   </div>
                 </div>
+                
                 <div className="id-upload-grid">
                   <div style={{display: 'flex', flexDirection: 'column'}}>
                     <div className={`upload-box ${(formErrors.frontImage || (serverError && serverError.includes("Mặt trước"))) ? "error-border-dashed" : ""}`} onClick={() => document.getElementById('input-front')?.click()}>
                       {formData.frontPreview ? (<div style={{position: 'relative', height: '100%'}}><div className="btn-clear-img" onClick={(e) => clearImage('front', e)}><FaTimes /></div><img src={formData.frontPreview} alt="Front" className="preview-img" /></div>) : (<div className="upload-placeholder">{formData.identityType === 'CCCD' ? <FaIdCard className="cam-icon" /> : <FaPassport className="cam-icon" />}<span>Mặt trước {formData.identityType}</span></div>)}
                     </div>
-                    {/* 🚀 AI PROCESSING FEEDBACK */}
+                    {/* 🚀 AI PROCESSING FEEDBACK PRESERVED */}
                     {isOcrLoading && <div className="ocr-processing-hint"><i className="fa fa-spinner fa-spin"></i> AI đang xác thực thông tin...</div>}
                     {(formErrors.frontImage || (serverError && serverError.includes("Mặt trước"))) && <p className="red-msg-inline">{formErrors.frontImage || "Vui lòng kiểm tra lại ảnh mặt trước."}</p>}
                   </div>

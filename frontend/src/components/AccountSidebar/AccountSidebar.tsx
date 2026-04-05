@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   FaUser, FaStore, FaShoppingBag, FaShieldAlt, FaComments, FaTruck, 
-  FaFileAlt, FaBalanceScale, FaList, FaSitemap, FaEdit, FaCog 
+  FaBalanceScale, FaList, FaSitemap, FaEdit, FaCog, FaUserCircle, 
+  FaUniversity, FaMapMarkerAlt, FaKey, FaChartPie, FaBoxes, FaClipboardList, FaBuilding
 } from 'react-icons/fa'; 
 import api from '../../services/api'; 
 import './AccountSidebar.css';
@@ -60,121 +61,89 @@ const AccountSidebar = () => {
   }, []);
 
   return (
-    <aside className="account-sidebar">
-      <div className="sidebar-user-info">
-        <div className="sidebar-avatar-wrapper">
+    <aside className="account-sidebar-supreme">
+      <div className="sidebar-profile-box">
+        <div className="avatar-circle">
           <img 
             src={userAvatar || "/logo_without_text.png"} 
-            alt="User Avatar" 
-            className="sidebar-avatar-img"
+            alt="User" 
             onError={(e) => { e.currentTarget.src = "/logo_without_text.png"; }}
           />
         </div>
-        <div className="sidebar-user-text">
-          <span className="sidebar-username">{userName}</span>
-          <NavLink to="/user/profile" className="edit-profile-link">Sửa hồ sơ</NavLink>
+        <div className="profile-info">
+          <span className="display-name">{userName}</span>
+          <NavLink to="/user/profile" className="edit-trigger"><FaEdit /> Sửa hồ sơ</NavLink>
         </div>
       </div>
 
-      <nav className="sidebar-menu">
-        {/* --- USER SECTION --- */}
-        <div className="menu-section">
-          <div className="menu-header">
-            <FaUser className="menu-icon profile-icon" />
+      <nav className="sidebar-navigation">
+        <div className="nav-section">
+          <div className="section-header">
+            <FaUser className="header-icon icon-blue" />
             <span>Tài khoản của tôi</span>
           </div>
-          <div className="menu-sub-items">
-            <NavLink to="/user/profile" className={({isActive}) => isActive ? 'active' : ''}>Hồ sơ</NavLink>
-            <NavLink to="/user/bank" className={({isActive}) => isActive ? 'active' : ''}>Ngân hàng</NavLink>
-            <NavLink to="/user/address" className={({isActive}) => isActive ? 'active' : ''}>Địa chỉ</NavLink>
-            <NavLink to="/user/password" className={({isActive}) => isActive ? 'active' : ''}>Đổi mật khẩu</NavLink>
+          <div className="section-links">
+            <NavLink to="/user/profile" className={({isActive}) => isActive ? 'active' : ''}><FaUserCircle className="icon-blue" /> Hồ sơ cá nhân</NavLink>
+            <NavLink to="/user/bank" className={({isActive}) => isActive ? 'active' : ''}><FaUniversity className="icon-green" /> Tài khoản ngân hàng</NavLink>
+            <NavLink to="/user/address" className={({isActive}) => isActive ? 'active' : ''}><FaMapMarkerAlt className="icon-red" /> Địa chỉ nhận hàng</NavLink>
+            <NavLink to="/user/password" className={({isActive}) => isActive ? 'active' : ''}><FaKey className="icon-gold" /> Đổi mật khẩu</NavLink>
           </div>
         </div>
 
-        <NavLink to="/user/purchase" className={({isActive}) => `menu-header single-item ${isActive ? 'active' : ''}`}>
-          <FaShoppingBag className="menu-icon purchase-icon" />
-          <span>Đơn mua</span>
+        <NavLink to="/user/purchase" className={({isActive}) => `standalone-link ${isActive ? 'active' : ''}`}>
+          <FaShoppingBag className="header-icon icon-orange-red" />
+          <span>Đơn mua của tôi</span>
         </NavLink>
 
-        {/* --- SELLER SECTION --- */}
         {isSeller && (
-          <div className="menu-section seller-menu-section">
-            <div className="menu-header">
-              <FaStore className="menu-icon seller-icon" />
-              <span className="seller-title">Kênh Người Bán</span>
+          <div className="nav-section section-divider">
+            <div className="section-header seller-header">
+              <FaStore className="header-icon icon-orange" />
+              <span>Kênh Người Bán</span>
             </div>
-            <div className="menu-sub-items">
-              <NavLink to="/seller/dashboard" className={({isActive}) => isActive ? 'active' : ''}>Quản lý shop</NavLink>
-              <NavLink to="/seller/products" className={({isActive}) => isActive ? 'active' : ''}>Sản phẩm của tôi</NavLink>
-              <NavLink to="/seller/orders" className={({isActive}) => isActive ? 'active' : ''}>Đơn hàng bán</NavLink>
-              <NavLink to="/seller/settings" className={({isActive}) => isActive ? 'active' : ''}>Thiết lập shop</NavLink>
+            <div className="section-links">
+              <NavLink to="/seller/dashboard" className={({isActive}) => isActive ? 'active' : ''}><FaChartPie className="icon-orange" /> Quản lý cửa hàng</NavLink>
+              <NavLink to="/seller/products" className={({isActive}) => isActive ? 'active' : ''}><FaBoxes className="icon-purple" /> Danh sách sản phẩm</NavLink>
+              <NavLink to="/seller/orders" className={({isActive}) => isActive ? 'active' : ''}><FaClipboardList className="icon-blue" /> Quản lý đơn hàng</NavLink>
+              <NavLink to="/seller/settings" className={({isActive}) => isActive ? 'active' : ''}><FaCog className="icon-slate" /> Thiết lập shop</NavLink>
             </div>
           </div>
         )}
 
-        {/* --- ADMIN SECTION (REORGANIZED) --- */}
         {isAdmin && (
-          <div className="menu-section admin-menu-section">
-            <div className="menu-header">
-              <FaShieldAlt className="menu-icon admin-icon" />
-              <span className="admin-title">Quản trị viên</span>
+          <div className="nav-section section-divider">
+            <div className="section-header admin-header">
+              <FaShieldAlt className="header-icon icon-navy" />
+              <span>Quản trị viên</span>
             </div>
-            
-            <div className="menu-sub-items">
-              <NavLink to="/admin/dashboard" className={({isActive}) => isActive ? 'active' : ''}>
-                Tổng quan Admin
+            <div className="section-links">
+              {/* 🚀 UPDATED: Added 'always-red' class and changed icon to icon-orange */}
+              <NavLink 
+                to="/admin/dashboard" 
+                className={({isActive}) => `always-red ${isActive ? 'active' : ''}`}
+              >
+                <FaChartPie className="icon-orange" /> Tổng quan hệ thống
               </NavLink>
-
-              {/* 📂 GROUP 1: QUẢN LÝ NỘI DUNG */}
-              <div className="admin-inner-group">QUẢN LÝ NỘI DUNG</div>
               
-              <NavLink to="/admin/articles" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaEdit className="sub-menu-icon" /> 
-                Quản lý Bài viết
-              </NavLink>
-
-              <NavLink to="/admin/help-hierarchy" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaSitemap className="sub-menu-icon" /> 
-                Phân cấp Trợ giúp
-              </NavLink>
-
-              <NavLink to="/admin/content/legal" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaBalanceScale className="sub-menu-icon" /> 
-                Chính sách pháp lý
-              </NavLink>
-
-              {/* ⚙️ GROUP 2: CẤU HÌNH HỆ THỐNG */}
-              <div className="admin-inner-group">CẤU HÌNH HỆ THỐNG</div>
-
-              <NavLink to="/admin/footer-menus" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaList className="sub-menu-icon" /> 
-                Quản lý Menu Footer
-              </NavLink>
-
-              <NavLink to="/admin/content/company" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaCog className="sub-menu-icon" /> 
-                Thông tin Công ty
-              </NavLink>
-
-              <NavLink to="/admin/shipping" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaTruck className="sub-menu-icon" /> 
-                Cấu hình vận chuyển
-              </NavLink>
-
-              {/* 💬 GROUP 3: TƯƠNG TÁC */}
-              <div className="admin-inner-group">TƯƠNG TÁC</div>
+              <div className="group-label">Quản lý nội dung</div>
+              <NavLink to="/admin/articles" className={({isActive}) => isActive ? 'active' : ''}><FaEdit className="icon-teal" /> Quản lý bài viết</NavLink>
+              <NavLink to="/admin/help-hierarchy" className={({isActive}) => isActive ? 'active' : ''}><FaSitemap className="icon-purple" /> Phân cấp trợ giúp</NavLink>
+              <NavLink to="/admin/content/legal" className={({isActive}) => isActive ? 'active' : ''}><FaBalanceScale className="icon-slate" /> Chính sách pháp lý</NavLink>
               
-              <NavLink to="/admin/chat" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaComments className="sub-menu-icon" /> 
-                Quản lý Chat
-              </NavLink>
+              <div className="group-label">Cấu hình hệ thống</div>
+              <NavLink to="/admin/footer-menus" className={({isActive}) => isActive ? 'active' : ''}><FaList className="icon-blue" /> Quản lý Menu Footer</NavLink>
+              <NavLink to="/admin/content/company" className={({isActive}) => isActive ? 'active' : ''}><FaBuilding className="icon-indigo" /> Thông tin Công ty</NavLink>
+              <NavLink to="/admin/shipping" className={({isActive}) => isActive ? 'active' : ''}><FaTruck className="icon-green" /> Cấu hình vận chuyển</NavLink>
+              
+              <div className="group-label">Tương tác</div>
+              <NavLink to="/admin/chat" className={({isActive}) => isActive ? 'active' : ''}><FaComments className="icon-cyan" /> Quản lý Chat trực tuyến</NavLink>
             </div>
           </div>
         )}
 
         {!isSeller && !isAdmin && (
-          <NavLink to="/seller/register" className={({isActive}) => `menu-header single-item seller-invite ${isActive ? 'active' : ''}`}>
-            <FaStore className="menu-icon" />
+          <NavLink to="/seller/register" className={({isActive}) => `standalone-link ${isActive ? 'active' : ''}`}>
+            <FaStore className="header-icon icon-orange" />
             <span>Trở thành Người bán</span>
           </NavLink>
         )}

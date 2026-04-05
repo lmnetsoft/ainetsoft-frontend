@@ -7,8 +7,12 @@ import lombok.Builder;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
+
+import jakarta.validation.constraints.Past;
+import jakarta.validation.constraints.Pattern;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Period;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -27,20 +31,34 @@ public class User {
     private String email;
 
     @Indexed(unique = true, sparse = true)
+    @Pattern(regexp = "^\\+[1-9]\\d{1,14}$", message = "Số điện thoại phải bao gồm mã vùng (ví dụ: +84)")
     private String phone;
 
     private String password; 
     private String fullName;
     private String gender;
+
+    @Past(message = "Ngày sinh không hợp lệ")
     private LocalDate birthDate; 
+
     private String avatarUrl; 
 
-    // --- 🚀 NEW: EMAIL VERIFICATION FLOW ---
     @Builder.Default
-    private boolean emailVerified = false; // Prevents "Fake" accounts from accessing Seller features
+    private boolean emailVerified = false; 
     
-    private String verificationToken;      // Token sent via Azure email link
+    private String verificationToken;      
+
+    // 🚀 NEW: ADMIN CHAT SUPPORT FIELDS
+    @Builder.Default
+    private List<String> tags = new ArrayList<>();
+    
+    private String chatNote;
     // ---------------------------------------
+
+    public boolean isOldEnough() {
+        if (this.birthDate == null) return false;
+        return Period.between(this.birthDate, LocalDate.now()).getYears() >= 16;
+    }
 
     public String getAvatar() {
         return this.avatarUrl;
@@ -57,7 +75,7 @@ public class User {
     private String accountStatus = "ACTIVE"; 
 
     @Builder.Default
-    private String sellerVerification = "NONE"; // NONE, PENDING, APPROVED, REJECTED
+    private String sellerVerification = "NONE"; 
     
     private String rejectionReason;
 
@@ -74,7 +92,6 @@ public class User {
     @Builder.Default
     private List<CartItem> cart = new ArrayList<>();
 
-    // Support for multiple stock addresses (Địa chỉ lấy hàng)
     @Builder.Default
     private List<AddressInfo> addresses = new ArrayList<>();
 
@@ -104,10 +121,9 @@ public class User {
     public static class ShopProfile {
         private String shopName;
 
-        // --- NEW: NICE URL & COOLDOWN LOGIC ---
         @Indexed(unique = true, sparse = true)
-        private String shopSlug;              // URL-friendly name (e.g., thanh-nguyen)
-        private LocalDateTime lastShopNameChange; // Tracks the 30-day constraint
+        private String shopSlug;              
+        private LocalDateTime lastShopNameChange; 
         
         private String shopDescription;
         private String shopAddress; 
@@ -115,22 +131,16 @@ public class User {
         private String businessEmail; 
         private String businessPhone; 
         
-        // --- Updated for Step 3: Business & Tax Information ---
-        private String businessType;      // INDIVIDUAL, HOUSEHOLD, ENTERPRISE
-        private String companyName;       // Tên công ty / Hộ kinh doanh
-        private String registeredAddress; // Địa chỉ đăng ký kinh doanh
+        private String businessType;      
+        private String companyName;       
+        private String registeredAddress; 
         
         @Builder.Default
-        private List<String> invoiceEmails = new ArrayList<>(); // Support multiple emails (up to 5)
+        private List<String> invoiceEmails = new ArrayList<>(); 
         
-        private String taxCode;           // Mã số thuế
-        private String businessLicenseUrl; // URL for the uploaded business license image
+        private String taxCode;           
+        private String businessLicenseUrl; 
         
-        /**
-         * 2026 Dynamic Shipping Requirement:
-         * Stores the list of IDs from the ShippingMethod collection 
-         * that this seller has toggled ON.
-         */
         @Builder.Default
         private List<String> enabledShippingMethodIds = new ArrayList<>();
 
@@ -145,8 +155,8 @@ public class User {
     @AllArgsConstructor
     @Builder
     public static class IdentityInfo {
-        private String identityType; // CCCD or PASSPORT
-        private String cccdNumber;   // Stores the 12-digit ID or Passport number
+        private String identityType; 
+        private String cccdNumber;   
         private String frontImageUrl; 
         private String backImageUrl;  
         private LocalDateTime submittedAt;

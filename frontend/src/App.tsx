@@ -110,7 +110,7 @@ function App() {
             
             <main className="content">
               <Routes>
-                {/* --- PUBLIC ROUTES --- */}
+                {/* --- 1. PUBLIC ROUTES --- */}
                 <Route path="/" element={<Home />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/login" element={<Login />} />
@@ -119,9 +119,7 @@ function App() {
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/product/:id" element={<ProductDetail />} />
                 
-                {/* 🚀 NEW: Help Center Public Route */}
                 <Route path="/tro-giup/:slug?" element={<ContentPage />} />
-                
                 <Route path="/regulations" element={<ContentPage type="regulations" />} />
                 <Route path="/contact" element={<ContentPage type="contact" />} />
                 <Route path="/legal/:slug" element={<ContentPage />} />
@@ -129,77 +127,49 @@ function App() {
                 <Route path="/shop/:identifier" element={<PublicShop />} />
                 <Route path="/my-shop" element={<PublicShop />} />
 
-                {/* --- PROTECTED USER ROUTES --- */}
+                {/* --- 2. PROTECTED ROUTES WITHOUT SIDEBAR --- */}
                 <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
-                <Route path="/user/notifications" element={<ProtectedRoute><NotificationPage /></ProtectedRoute>} />
-                <Route path="/user/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-                <Route path="/user/password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} /> 
-                <Route path="/user/bank" element={<ProtectedRoute><Bank /></ProtectedRoute>} /> 
-                <Route path="/user/address" element={<ProtectedRoute><Address /></ProtectedRoute>} />
-                <Route path="/user/purchase" element={<ProtectedRoute><Purchase /></ProtectedRoute>} />
-                <Route path="/seller/register" element={<ProtectedRoute><SellerRegister /></ProtectedRoute>} />
-                
-                {/* --- PROTECTED SELLER ROUTES --- */}
-                <Route 
-                  path="/seller/dashboard" 
-                  element={<ProtectedRoute allowedRoles={['SELLER']}><SellerDashboard /></ProtectedRoute>} 
-                />
-                <Route path="/seller/products" element={<ProtectedRoute allowedRoles={['SELLER']}><MyProducts /></ProtectedRoute>} />
-                <Route path="/seller/add-product" element={<ProtectedRoute allowedRoles={['SELLER']}><AddProduct /></ProtectedRoute>} />
-                <Route path="/seller/add" element={<ProtectedRoute allowedRoles={['SELLER']}><AddProduct /></ProtectedRoute>} />
-                <Route path="/seller/edit-product/:id" element={<ProtectedRoute allowedRoles={['SELLER']}><EditProduct /></ProtectedRoute>} />
-                <Route path="/seller/edit/:id" element={<ProtectedRoute allowedRoles={['SELLER']}><EditProduct /></ProtectedRoute>} />
-                <Route path="/seller/orders" element={<ProtectedRoute allowedRoles={['SELLER']}><SellerOrders /></ProtectedRoute>} />
-                <Route path="/seller/settings" element={<ProtectedRoute allowedRoles={['SELLER']}><SellerSettings /></ProtectedRoute>} />
 
-                {/* --- 🚀 PROTECTED ADMIN ROUTES --- */}
-                <Route 
-                  path="/admin/dashboard" 
-                  element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminLayout><AdminDashboard /></AdminLayout></ProtectedRoute>} 
-                />
-                <Route 
-                  path="/admin/chat" 
-                  element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminLayout><AdminChat /></AdminLayout></ProtectedRoute>} 
-                />
-                <Route 
-                  path="/admin/chat/:recipientId" 
-                  element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminLayout><AdminChat /></AdminLayout></ProtectedRoute>} 
-                />
-                <Route 
-                  path="/admin/shipping" 
-                  element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminLayout><ShippingManagement /></AdminLayout></ProtectedRoute>} 
-                />
+                {/* 🚀 3. THE PERSISTENT LAYOUT ZONE 🚀
+                    We wrap all pages that need the sidebar inside ONE AdminLayout.
+                    This stops the "white background jump" and fixes height alignment.
+                */}
+                <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
+                  
+                  {/* --- User Account Routes --- */}
+                  <Route path="/user/notifications" element={<NotificationPage />} />
+                  <Route path="/user/profile" element={<Profile />} />
+                  <Route path="/user/password" element={<ChangePassword />} />
+                  <Route path="/user/bank" element={<Bank />} />
+                  <Route path="/user/address" element={<Address />} />
+                  <Route path="/user/purchase" element={<Purchase />} />
+                  <Route path="/seller/register" element={<SellerRegister />} />
 
-                {/* 🚀 NEW: Footer Menu Management */}
-                <Route 
-                  path="/admin/footer-menus" 
-                  element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminLayout><FooterMenuManagement /></AdminLayout></ProtectedRoute>} 
-                />
+                  {/* --- Seller Routes --- */}
+                  <Route path="/seller/dashboard" element={<ProtectedRoute allowedRoles={['SELLER']}><SellerDashboard /></ProtectedRoute>} />
+                  <Route path="/seller/products" element={<ProtectedRoute allowedRoles={['SELLER']}><MyProducts /></ProtectedRoute>} />
+                  <Route path="/seller/add-product" element={<ProtectedRoute allowedRoles={['SELLER']}><AddProduct /></ProtectedRoute>} />
+                  <Route path="/seller/add" element={<ProtectedRoute allowedRoles={['SELLER']}><AddProduct /></ProtectedRoute>} />
+                  <Route path="/seller/edit-product/:id" element={<ProtectedRoute allowedRoles={['SELLER']}><EditProduct /></ProtectedRoute>} />
+                  <Route path="/seller/edit/:id" element={<ProtectedRoute allowedRoles={['SELLER']}><EditProduct /></ProtectedRoute>} />
+                  <Route path="/seller/orders" element={<ProtectedRoute allowedRoles={['SELLER']}><SellerOrders /></ProtectedRoute>} />
+                  <Route path="/seller/settings" element={<ProtectedRoute allowedRoles={['SELLER']}><SellerSettings /></ProtectedRoute>} />
 
-                {/* 🚀 NEW: Help Hierarchy (Parent-Child) Management */}
-                <Route 
-                  path="/admin/help-hierarchy" 
-                  element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminLayout><HelpHierarchyManagement /></AdminLayout></ProtectedRoute>} 
-                />
+                  {/* --- Admin Routes --- */}
+                  <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboard /></ProtectedRoute>} />
+                  <Route path="/admin/chat" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminChat /></ProtectedRoute>} />
+                  <Route path="/admin/chat/:recipientId" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminChat /></ProtectedRoute>} />
+                  <Route path="/admin/shipping" element={<ProtectedRoute allowedRoles={['ADMIN']}><ShippingManagement /></ProtectedRoute>} />
+                  <Route path="/admin/footer-menus" element={<ProtectedRoute allowedRoles={['ADMIN']}><FooterMenuManagement /></ProtectedRoute>} />
+                  <Route path="/admin/help-hierarchy" element={<ProtectedRoute allowedRoles={['ADMIN']}><HelpHierarchyManagement /></ProtectedRoute>} />
+                  <Route path="/admin/content/:category" element={<ProtectedRoute allowedRoles={['ADMIN']}><SystemContentManagement /></ProtectedRoute>} />
+                  <Route path="/admin/content" element={<ProtectedRoute allowedRoles={['ADMIN']}><SystemContentManagement /></ProtectedRoute>} />
+                  <Route path="/admin/articles" element={<ProtectedRoute allowedRoles={['ADMIN']}><SystemContentManagement /></ProtectedRoute>} />
+                </Route>
 
-                <Route 
-                  path="/admin/content/:category" 
-                  element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminLayout><SystemContentManagement /></AdminLayout></ProtectedRoute>} 
-                />
-                <Route 
-                  path="/admin/content" 
-                  element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminLayout><SystemContentManagement /></AdminLayout></ProtectedRoute>} 
-                />
-
-                {/* THE "NICE URL" ROOT ROUTE */}
+                {/* Root Catch for Shop Slugs */}
                 <Route path="/:shopSlug" element={<PublicShop />} />
-
                 <Route path="*" element={<NotFound />} />
-                {/* 🚀 Add this specific route for the new Article Manager */}
-                <Route 
-                  path="/admin/articles" 
-                  element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminLayout><SystemContentManagement /></AdminLayout></ProtectedRoute>} 
-                />                
               </Routes>
             </main>
             

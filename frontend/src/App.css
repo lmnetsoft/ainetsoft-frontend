@@ -1,14 +1,19 @@
 #root {
   width: 100%;
+  /* 🚀 FORCE ROOT STRETCH */
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
 .app-wrapper {
-  /* 🚀 CHANGE: We use a very light neutral background for the site */
+  /* 🚀 CHANGE: Use a very light neutral background for the site */
   background-color: #f8fafc;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   width: 100%;
+  flex: 1; /* Grow to fill #root */
 }
 
 .container {
@@ -27,11 +32,22 @@ footer {
   align-items: center;
 }
 
+/* 🚀 THE CRITICAL FIX: Changed from 'display: block' to 'flex' 
+   This unblocks the "ceiling" that was stopping your layout from growing.
+*/
 .content {
   flex: 1 0 auto;
   width: 100%;
-  display: block; 
+  display: flex; 
+  flex-direction: column;
   padding-bottom: 60px;
+}
+
+/* Target the invisible div created by React Router inside .content */
+.content > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 ul {

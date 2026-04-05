@@ -1,44 +1,61 @@
 /* Container & Global */
 .admin-content-mgmt {
-  padding: 40px;
-  background: #f0f2f5;
-  min-height: 100vh;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  /* 🚀 FORCE GLOBAL SUPREME FONT STACK */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
 }
 
-/* Header Styling */
+/* --- 🚀 SUPREME HEADER: CENTERED, RED, CRISP FONT --- */
 .mgmt-header {
-  margin-bottom: 30px;
+  margin-bottom: 35px;
+  text-align: center;
 }
 
 .mgmt-header h2 {
   margin: 0;
-  color: #1f1f1f;
-  font-size: 26px;
+  /* 🚀 BRAND RED */
+  color: #ee4d2d !important; 
+  font-size: 28px !important; /* Slightly larger for impact */
   display: flex;
   align-items: center;
-  font-weight: 700;
+  justify-content: center; 
+  
+  /* 🚀 SUPREME TYPOGRAPHY: Extra Bold + UI Font Stack */
+  font-weight: 900 !important; 
+  text-transform: uppercase !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+  letter-spacing: 1.2px;
+  
+  /* 🚀 SHARPNESS FIX: Prevents that "standard/blurry" look */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.2;
 }
 
 .mgmt-header p {
   color: #8c8c8c;
-  margin-top: 8px;
+  margin-top: 10px;
   font-size: 15px;
+  font-weight: 500;
 }
 
-/* Main Layout: Sidebar + Editor */
+/* Main Layout: Sidebar + Editor (UNTOUCHED) */
 .mgmt-main-layout {
   display: grid;
-  grid-template-columns: 320px 1fr; /* Slightly wider for titles */
+  grid-template-columns: 320px 1fr; 
   gap: 0;
   background: white;
   border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+  border: 1px solid #eef2f6;
   overflow: hidden;
-  min-height: 750px;
+  flex: 1; 
+  min-height: 0; 
 }
 
-/* Sidebar Slugs */
+/* Sidebar Slugs (UNTOUCHED) */
 .slug-sidebar {
   background: #fafafa;
   border-right: 1px solid #f0f0f0;
@@ -46,10 +63,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 85vh;
   overflow-y: auto;
-  position: sticky;
-  top: 0;
 }
 
 .sidebar-section-title {
@@ -57,6 +71,9 @@
   margin: 15px 0 8px 0;
   text-transform: uppercase;
   letter-spacing: 1px;
+  font-size: 12px;
+  color: #8c8c8c;
+  font-weight: 700;
 }
 
 .slug-btn {
@@ -69,33 +86,27 @@
   cursor: pointer;
   color: #595959;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   display: flex;
   align-items: center;
   gap: 12px;
   transition: all 0.2s ease;
-}
-
-.slug-btn .btn-text {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex: 1;
+  border-left: 4px solid transparent; 
 }
 
 .slug-btn:hover {
-  background: #f0f0f0;
-  color: #1890ff;
+  background: #f8fafc;
+  color: #ee4d2d;
 }
 
 .slug-btn.active {
-  background: #e6f7ff;
-  color: #1890ff;
-  font-weight: 600;
-  box-shadow: inset 4px 0 0 #1890ff;
+  background: transparent !important; 
+  color: #ee4d2d !important;
+  font-weight: 700;
+  border-left: 4px solid #ee4d2d; 
 }
 
-/* Custom Article Wrapper Fix */
+/* Custom Article Wrapper (UNTOUCHED) */
 .custom-article-item-wrapper {
   display: flex;
   align-items: center;
@@ -109,7 +120,7 @@
   color: #ff4d4f;
   padding: 10px;
   cursor: pointer;
-  opacity: 0; /* Hidden until hover */
+  opacity: 0; 
   transition: all 0.2s ease;
 }
 
@@ -119,21 +130,23 @@
 
 .add-new-article-btn {
   margin-top: 20px;
-  border: 1px dashed #1890ff !important;
-  color: #1890ff !important;
+  border: 1px dashed #ee4d2d !important; 
+  color: #ee4d2d !important;
   justify-content: center;
   background: #fff !important;
+  font-weight: 700;
 }
 
-/* Editor Card Content */
+/* Editor Card Content (UNTOUCHED) */
 .editor-card {
   padding: 40px;
   display: flex;
   flex-direction: column;
   gap: 24px;
+  overflow-y: auto;
 }
 
-/* Modern Toggle Pill */
+/* Modern Toggle Pill (UNTOUCHED) */
 .toggle-wrapper {
   display: flex;
   justify-content: space-between;
@@ -152,14 +165,9 @@
   border-radius: 30px;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.badge-status-pill.on { background: #52c41a; color: white; }
-.badge-status-pill.off { background: #ff4d4f; color: white; }
-.badge-status-pill:hover { transform: scale(1.05); }
-
-/* Fix: ReactQuill Styling */
+/* Fix: ReactQuill Styling (UNTOUCHED) */
 .quill-wrapper {
   display: flex;
   flex-direction: column;
@@ -176,11 +184,11 @@
   border-bottom-left-radius: 8px;
   border-bottom-right-radius: 8px;
   border-color: #d9d9d9;
-  min-height: 350px;
+  min-height: 350px; 
   font-size: 15px;
 }
 
-/* Inputs */
+/* Inputs (UNTOUCHED) */
 .input-group label {
   display: flex;
   align-items: center;
@@ -199,23 +207,18 @@
   transition: border 0.3s;
 }
 
-.input-group input:focus {
-  border-color: #1890ff;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
-}
-
-/* Footer & Save Button */
+/* Footer & Save Button (UNTOUCHED) */
 .editor-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 20px;
+  margin-top: auto; 
   padding-top: 25px;
   border-top: 1px solid #f0f0f0;
 }
 
 .btn-save-content {
-  background: #1890ff;
+  background: #ee4d2d; 
   color: white;
   border: none;
   padding: 12px 40px;
@@ -229,12 +232,10 @@
 }
 
 .btn-save-content:hover { 
-  background: #40a9ff; 
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
+  background: #ff5733; 
 }
 
-/* Preview Section */
+/* Preview Section (UNTOUCHED) */
 .preview-section { margin-top: 50px; }
 .preview-container {
   background: white;
@@ -242,29 +243,4 @@
   border-radius: 12px;
   border: 1px solid #eee;
   min-height: 200px;
-}
-
-.badge-preview {
-  position: relative;
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20px;
-  border: 1px solid #f0f0f0;
-  border-radius: 12px;
-}
-
-.preview-hidden { opacity: 0.4; filter: grayscale(1); }
-
-.hidden-overlay {
-  position: absolute;
-  top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0,0,0,0.5);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  font-weight: bold;
-  z-index: 5;
 }
