@@ -102,14 +102,26 @@ const AdminChat = () => {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
+  /**
+   * 🚀 APPENDED PRO LOGIC: 
+   * Catches the 404 response and displays the friendly message from the backend 
+   * if the user does not have an official profile.
+   */
   const handleToggleTag = async (tag: string) => {
     if (!recipientId) return;
     try {
       const res = await api.post(`/chat/admin/tags/toggle`, { userId: recipientId, tag });
       setConversations(prev => prev.map(c => c.userId === recipientId ? { ...c, tags: res.data.tags } : c));
-    } catch (err) { alert("Lỗi cập nhật tag"); }
+    } catch (err: any) { 
+      const friendlyMsg = err.response?.data?.message || "Lỗi cập nhật tag";
+      alert(friendlyMsg); 
+    }
   };
 
+  /**
+   * 🚀 APPENDED PRO LOGIC: 
+   * Provides informative feedback when attempting to save notes for non-existent users.
+   */
   const handleSaveNote = async () => {
     if (!recipientId) return;
     setSaveStatus('saving');
@@ -117,7 +129,11 @@ const AdminChat = () => {
       await api.post(`/chat/admin/notes`, { userId: recipientId, content: note });
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
-    } catch { setSaveStatus('idle'); }
+    } catch (err: any) { 
+      setSaveStatus('idle'); 
+      const friendlyMsg = err.response?.data?.message || "Không thể lưu ghi chú";
+      alert(friendlyMsg);
+    }
   };
 
   const currentConv = conversations.find(c => c.userId === recipientId);
@@ -161,7 +177,7 @@ const AdminChat = () => {
            </div>
         </div>
 
-        <div className={`admin-chat-main-grid ${isNoteOpen ? 'with-notes' : ''}`}>
+        <div className={`admin-chat-main-grid ${isNoteOpen && recipientId ? 'with-notes' : ''}`}>
           {/* COLUMN 1: SIDEBAR */}
           <div className="admin-inbox-sidebar">
             <div className="search-bar-wrapper">
@@ -186,6 +202,18 @@ const AdminChat = () => {
                         <span className="conv-user-id">{identity.name}</span>
                         <span className="conv-time">{formatTimeAgo(conv.lastActiveAt)}</span>
                       </div>
+
+                      {/* 🚀 SUPREME SIDEBAR TAGS: Display tags from DB */}
+                      {conv.tags && conv.tags.length > 0 && (
+                        <div className="sidebar-tag-container">
+                          {conv.tags.map(tag => (
+                            <span key={tag} className={`sidebar-tag-pill tag-${tag.toLowerCase()}`}>
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
                       <span className="conv-preview">{conv.lastMessageContent}</span>
                     </div>
                   </div>

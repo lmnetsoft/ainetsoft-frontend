@@ -30,11 +30,6 @@ public class User {
     @Indexed(unique = true, sparse = true)
     private String email;
 
-    /**
-     * 🚀 FIXED: Phone number format
-     * Enforces international format starting with + (e.g., +84 for Vietnam).
-     * This ensures the database stores the region code correctly.
-     */
     @Indexed(unique = true, sparse = true)
     @Pattern(regexp = "^\\+[1-9]\\d{1,14}$", message = "Số điện thoại phải bao gồm mã vùng (ví dụ: +84)")
     private String phone;
@@ -43,26 +38,23 @@ public class User {
     private String fullName;
     private String gender;
 
-    /**
-     * 🚀 FIXED: 16+ Age Requirement
-     * Added @Past to ensure birthDate isn't in the future.
-     */
     @Past(message = "Ngày sinh không hợp lệ")
     private LocalDate birthDate; 
 
     private String avatarUrl; 
 
-    // --- 🚀 NEW: EMAIL VERIFICATION FLOW ---
     @Builder.Default
     private boolean emailVerified = false; 
     
     private String verificationToken;      
+
+    // 🚀 NEW: ADMIN CHAT SUPPORT FIELDS
+    @Builder.Default
+    private List<String> tags = new ArrayList<>();
+    
+    private String chatNote;
     // ---------------------------------------
 
-    /**
-     * 🚀 LOGIC: Check if user is 16+
-     * Call this in your Service layer before saving.
-     */
     public boolean isOldEnough() {
         if (this.birthDate == null) return false;
         return Period.between(this.birthDate, LocalDate.now()).getYears() >= 16;
