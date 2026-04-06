@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Header from './components/Header/Header';
 import Footer from './components/Footer/Footer';
@@ -48,15 +48,21 @@ import MyProducts from './pages/Seller/MyProducts';
 import SellerOrders from './pages/Seller/SellerOrders';
 import SellerSettings from './pages/Seller/SellerSettings';
 
-// Admin Components
+// Admin Components (Existing)
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import AdminChat from './pages/Admin/AdminChat'; 
 import ShippingManagement from './pages/Admin/ShippingManagement'; 
 import SystemContentManagement from './pages/Admin/SystemContentManagement';
-
-// 🚀 NEW: Footer & Help Hierarchy Management Components
 import FooterMenuManagement from './pages/Admin/FooterMenuManagement';
 import HelpHierarchyManagement from './pages/Admin/HelpHierarchyManagement';
+
+// 🚀 NEW: MIGRATED ADMIN PAGES (Stand-alone versions of dashboard tabs)
+import AdminUsers from './pages/Admin/AdminUsers'; 
+import SellerModeration from './pages/Admin/SellerModeration'; 
+import ProductModeration from './pages/Admin/ProductModeration';
+import AdminAuditLogs from './pages/Admin/AdminAuditLogs';
+// Note: If you haven't created these specific files yet, ensure they export
+// the moderation logic we previously had inside the Dashboard.
 
 import './App.css';
 
@@ -130,9 +136,9 @@ function App() {
                 {/* --- 2. PROTECTED ROUTES WITHOUT SIDEBAR --- */}
                 <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
 
-                {/* 🚀 3. THE PERSISTENT LAYOUT ZONE 🚀
-                    We wrap all pages that need the sidebar inside ONE AdminLayout.
-                    This stops the "white background jump" and fixes height alignment.
+                {/* 🚀 3. THE PERSISTENT LAYOUT ZONE 🚀 
+                    Wrapping all account-based pages in AdminLayout ensures 
+                    the Sidebar is always present and the layout is stable.
                 */}
                 <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
                   
@@ -156,15 +162,28 @@ function App() {
                   <Route path="/seller/settings" element={<ProtectedRoute allowedRoles={['SELLER']}><SellerSettings /></ProtectedRoute>} />
 
                   {/* --- Admin Routes --- */}
+                  {/* The Main Overview Page */}
                   <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboard /></ProtectedRoute>} />
+                  
+                  {/* 🚀 MIGRATED ADMIN ROUTES (New Data Points) */}
+                  <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminUsers /></ProtectedRoute>} />
+                  <Route path="/admin/seller-moderation" element={<ProtectedRoute allowedRoles={['ADMIN']}><SellerModeration /></ProtectedRoute>} />
+                  <Route path="/admin/product-moderation" element={<ProtectedRoute allowedRoles={['ADMIN']}><ProductModeration /></ProtectedRoute>} />
+                  <Route path="/admin/audit-logs" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminAuditLogs /></ProtectedRoute>} />
+                  
+                  {/* Placeholder routes for future standalone moderation pages */}
+                  <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={['ADMIN']}><div className="admin-dashboard-wrapper"><h2>Trang Báo cáo vi phạm</h2></div></ProtectedRoute>} />
+                  <Route path="/admin/reviews" element={<ProtectedRoute allowedRoles={['ADMIN']}><div className="admin-dashboard-wrapper"><h2>Quản lý đánh giá</h2></div></ProtectedRoute>} />
+
+                  {/* Existing System Config Routes */}
                   <Route path="/admin/chat" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminChat /></ProtectedRoute>} />
                   <Route path="/admin/chat/:recipientId" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminChat /></ProtectedRoute>} />
                   <Route path="/admin/shipping" element={<ProtectedRoute allowedRoles={['ADMIN']}><ShippingManagement /></ProtectedRoute>} />
                   <Route path="/admin/footer-menus" element={<ProtectedRoute allowedRoles={['ADMIN']}><FooterMenuManagement /></ProtectedRoute>} />
                   <Route path="/admin/help-hierarchy" element={<ProtectedRoute allowedRoles={['ADMIN']}><HelpHierarchyManagement /></ProtectedRoute>} />
+                  <Route path="/admin/articles" element={<ProtectedRoute allowedRoles={['ADMIN']}><SystemContentManagement /></ProtectedRoute>} />
                   <Route path="/admin/content/:category" element={<ProtectedRoute allowedRoles={['ADMIN']}><SystemContentManagement /></ProtectedRoute>} />
                   <Route path="/admin/content" element={<ProtectedRoute allowedRoles={['ADMIN']}><SystemContentManagement /></ProtectedRoute>} />
-                  <Route path="/admin/articles" element={<ProtectedRoute allowedRoles={['ADMIN']}><SystemContentManagement /></ProtectedRoute>} />
                 </Route>
 
                 {/* Root Catch for Shop Slugs */}

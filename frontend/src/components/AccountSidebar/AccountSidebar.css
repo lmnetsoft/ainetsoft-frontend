@@ -1,5 +1,6 @@
 .account-sidebar-supreme {
   width: 100%;
+  /* Handling background/border in parent container for scroll stability */
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
@@ -34,7 +35,8 @@
 
 .display-name {
   display: block;
-  font-weight: 700;
+  /* ⬇️ UPDATED: Reduced from 700 for a cleaner profile look */
+  font-weight: 600; 
   font-size: 14px;
   color: #002147; 
   margin-bottom: 2px;
@@ -64,7 +66,7 @@
   margin-bottom: 15px; 
 }
 
-/* Merged groups have a specific divider logic */
+/* Merged groups divider logic */
 .merged-group {
   border-top: 1px solid #f1f5f9;
   padding-top: 10px;
@@ -78,13 +80,13 @@
   gap: 12px;
   padding: 10px 20px;
   font-size: 14px;
-  font-weight: 700; 
+  /* ⬇️ UPDATED: Changed from 700 to 500 to keep the red from being "too loud" */
+  font-weight: 500; 
   color: #ee4d2d !important;
   text-decoration: none;
   transition: background 0.2s;
 }
 
-/* Standalone links need to look clickable/hoverable */
 .standalone-link:hover {
   background: #f8fafc;
 }
@@ -97,7 +99,7 @@
 }
 
 .section-links a {
-  padding: 8px 20px 8px 52px; /* 52px ensures alignment under text, not icon */
+  padding: 8px 20px 8px 52px; 
   font-size: 13.5px;
   color: #64748b;
   text-decoration: none;
@@ -115,10 +117,11 @@
   transition: all 0.2s; 
 }
 
-/* Special class for "Tổng quan hệ thống" */
+/* Always-red links (Admin Dashboard link) */
 .section-links a.always-red {
   color: #ee4d2d !important;
-  font-weight: 700;
+  /* ⬇️ UPDATED: Unified weight to 500 */
+  font-weight: 500;
 }
 
 .section-links a.always-red svg {
@@ -126,7 +129,7 @@
   opacity: 1;
 }
 
-/* --- ICON COLORS --- */
+/* --- ICON COLORS (SUPREME PRESERVED) --- */
 .icon-blue { color: #3498db !important; }
 .icon-green { color: #27ae60 !important; }
 .icon-red { color: #e74c3c !important; }
@@ -152,10 +155,11 @@
 
 /* --- ACTIVE STATE --- */
 .section-links a.active, .standalone-link.active {
-  background: #fff5f2 !important; /* Very light orange tint for active */
+  background: #fff5f2 !important; 
   color: #ee4d2d !important;
   border-left: 4px solid #ee4d2d; 
-  font-weight: 700;
+  /* ⬇️ UPDATED: 600 provides highlight without being bulky like 700 */
+  font-weight: 600;
 }
 
 .section-links a.active svg, .standalone-link.active svg {
@@ -163,13 +167,14 @@
   color: #ee4d2d !important;
 }
 
-/* --- GROUP LABELS --- */
+/* --- GROUP LABELS (Optimized for migrated items) --- */
 .group-label {
   padding: 18px 20px 8px 52px; 
-  font-size: 12px; 
+  font-size: 11px; /* Slightly smaller for better hierarchy */
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-weight: 700;
+  letter-spacing: 0.8px;
+  /* ⬇️ UPDATED: Switched from 700 to 500 (Medium) */
+  font-weight: 500;
   color: #94a3b8 !important; 
   margin-top: 5px;
 }

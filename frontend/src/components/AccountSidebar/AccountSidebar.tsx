@@ -3,7 +3,8 @@ import { NavLink } from 'react-router-dom';
 import { 
   FaUser, FaStore, FaShoppingBag, FaShieldAlt, FaComments, FaTruck, 
   FaBalanceScale, FaList, FaSitemap, FaEdit, FaCog, FaUserCircle, 
-  FaUniversity, FaMapMarkerAlt, FaKey, FaChartPie, FaBoxes, FaClipboardList, FaBuilding
+  FaUniversity, FaMapMarkerAlt, FaKey, FaChartPie, FaBoxes, FaClipboardList, 
+  FaBuilding, FaUserShield, FaHistory, FaExclamationTriangle, FaStar, FaFileAlt
 } from 'react-icons/fa'; 
 import api from '../../services/api'; 
 import './AccountSidebar.css';
@@ -107,7 +108,7 @@ const AccountSidebar = () => {
           <span>Đơn mua của tôi</span>
         </NavLink>
 
-        {/* --- Section: Seller (Merged Header + List) --- */}
+        {/* --- Section: Seller --- */}
         {isSeller && (
           <div className="nav-section merged-group">
             <div className="section-header">
@@ -131,7 +132,7 @@ const AccountSidebar = () => {
           </div>
         )}
 
-        {/* --- Section: Admin (Merged Header + List) --- */}
+        {/* --- Section: Admin (Unified Command Center) --- */}
         {isAdmin && (
           <div className="nav-section merged-group">
             <div className="section-header">
@@ -146,6 +147,20 @@ const AccountSidebar = () => {
                 <FaChartPie className="icon-orange" /> Tổng quan hệ thống
               </NavLink>
               
+              {/* MIGRATED FROM DASHBOARD TABS */}
+              <div className="group-label">Người dùng & Đối tác</div>
+              <NavLink to="/admin/users" className={({isActive}) => isActive ? 'active' : ''}><FaUserShield className="icon-blue" /> Quản lý người dùng</NavLink>
+              <NavLink to="/admin/seller-moderation" className={({isActive}) => isActive ? 'active' : ''}><FaStore className="icon-green" /> Duyệt Shop</NavLink>
+              
+              <div className="group-label">Kiểm duyệt sản phẩm</div>
+              <NavLink to="/admin/product-moderation" className={({isActive}) => isActive ? 'active' : ''}><FaBoxes className="icon-orange" /> Duyệt sản phẩm</NavLink>
+              <NavLink to="/admin/reviews" className={({isActive}) => isActive ? 'active' : ''}><FaStar className="icon-gold" /> Quản lý đánh giá</NavLink>
+
+              <div className="group-label">Báo cáo & Nhật ký</div>
+              <NavLink to="/admin/reports" className={({isActive}) => isActive ? 'active' : ''}><FaExclamationTriangle className="icon-red" /> Báo cáo vi phạm</NavLink>
+              <NavLink to="/admin/report-categories" className={({isActive}) => isActive ? 'active' : ''}><FaFileAlt className="icon-purple" /> Danh mục báo cáo</NavLink>
+              <NavLink to="/admin/audit-logs" className={({isActive}) => isActive ? 'active' : ''}><FaHistory className="icon-slate" /> Nhật ký hệ thống</NavLink>
+
               <div className="group-label">Quản lý nội dung</div>
               <NavLink to="/admin/articles" className={({isActive}) => isActive ? 'active' : ''}><FaEdit className="icon-teal" /> Quản lý bài viết</NavLink>
               <NavLink to="/admin/help-hierarchy" className={({isActive}) => isActive ? 'active' : ''}><FaSitemap className="icon-purple" /> Phân cấp trợ giúp</NavLink>
@@ -162,7 +177,6 @@ const AccountSidebar = () => {
           </div>
         )}
 
-        {/* --- Fallback: Become a Seller --- */}
         {!isSeller && !isAdmin && (
           <NavLink to="/seller/register" className={({isActive}) => `standalone-link ${isActive ? 'active' : ''}`}>
             <FaStore className="header-icon icon-orange" />
