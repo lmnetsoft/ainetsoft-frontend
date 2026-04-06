@@ -8,7 +8,7 @@ import './Profile.css';
 const Address = () => {
   const [addressData, setAddressData] = useState({
     receiverName: '', 
-    phone: '84', // 🚀 Default to 84 for consistent +84 display
+    phone: '84', 
     province: '',
     ward: '',
     detail: ''
@@ -25,10 +25,6 @@ const Address = () => {
         setLoading(true);
         const data = await getUserProfile();
         
-        /**
-         * 🚀 NORMALIZATION LOGIC: 
-         * Synchronized with Profile page to ensure consistent phone format
-         */
         let rawPhone = (data.addresses && data.addresses.length > 0) 
           ? data.addresses[0].phone 
           : data.phone;
@@ -88,7 +84,6 @@ const Address = () => {
 
     try {
       setIsSaving(true);
-      // Ensure phone has + prefix for storage
       const finalPhone = addressData.phone.startsWith('+') ? addressData.phone : `+${addressData.phone}`;
 
       const payload = {
@@ -108,99 +103,103 @@ const Address = () => {
     }
   };
 
-  if (loading) return <div className="profile-loading-box">Đang tải địa chỉ...</div>;
-
   return (
     <div className="user-profile-supreme-layout">
-      <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
-      
-      <div className="profile-content-header centered-header">
-        <h1>ĐỊA CHỈ CỦA TÔI</h1>
-        <p>Vietnam là mặc định, đồng bộ với hồ sơ cá nhân</p>
-      </div>
-      
-      <hr className="supreme-divider" />
-
-      <div className="profile-main-grid">
-        <form className="profile-data-form" onSubmit={(e) => e.preventDefault()}>
+      {/* 🚀 STABILITY FIX: Wrap content in loading check inside the mounted container */}
+      {loading ? (
+        <div className="profile-loading-box">Đang tải địa chỉ...</div>
+      ) : (
+        <>
+          <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
           
-          <div className="supreme-form-row">
-            <label>Tên người nhận <span className="req">*</span></label>
-            <div className="input-group-container">
-              <input 
-                type="text" 
-                value={addressData.receiverName} 
-                onChange={(e) => setAddressData({...addressData, receiverName: e.target.value})} 
-                placeholder="Nhập tên người nhận"
-              />
-            </div>
+          <div className="profile-content-header centered-header">
+            <h1>ĐỊA CHỈ CỦA TÔI</h1>
+            <p>Vietnam là mặc định, đồng bộ với hồ sơ cá nhân</p>
           </div>
+          
+          <hr className="supreme-divider" />
 
-          <div className="supreme-form-row">
-            <label>Số điện thoại <span className="req">*</span></label>
-            <div className="input-group-container">
-              {/* 🚀 FIXED: Added forceDialCode and countryCodeEditable to match Profile page */}
-              <PhoneInput
-                country={'vn'} 
-                preferredCountries={['vn']}
-                value={addressData.phone}
-                onChange={(phone) => setAddressData({ ...addressData, phone })}
-                enableSearch={true}
-                searchPlaceholder="Tìm kiếm quốc gia..."
-                containerClass="supreme-phone-container"
-                inputStyle={{ width: '100%', height: '45px', paddingLeft: '48px', fontSize: '0.9375rem' }}
-                specialLabel={""}
-                forceDialCode={true}
-                countryCodeEditable={false}
-              />
-            </div>
+          <div className="profile-main-grid">
+            <form className="profile-data-form" onSubmit={(e) => e.preventDefault()}>
+              
+              <div className="supreme-form-row">
+                <label>Tên người nhận <span className="req">*</span></label>
+                <div className="input-group-container">
+                  <input 
+                    type="text" 
+                    value={addressData.receiverName} 
+                    onChange={(e) => setAddressData({...addressData, receiverName: e.target.value})} 
+                    placeholder="Nhập tên người nhận"
+                  />
+                </div>
+              </div>
+
+              <div className="supreme-form-row">
+                <label>Số điện thoại <span className="req">*</span></label>
+                <div className="input-group-container">
+                  <PhoneInput
+                    country={'vn'} 
+                    preferredCountries={['vn']}
+                    value={addressData.phone}
+                    onChange={(phone) => setAddressData({ ...addressData, phone })}
+                    enableSearch={true}
+                    searchPlaceholder="Tìm kiếm quốc gia..."
+                    containerClass="supreme-phone-container"
+                    inputStyle={{ width: '100%', height: '45px', paddingLeft: '48px', fontSize: '0.9375rem' }}
+                    specialLabel={""}
+                    forceDialCode={true}
+                    countryCodeEditable={false}
+                  />
+                </div>
+              </div>
+
+              <div className="supreme-form-row">
+                <label>Tỉnh / Thành phố <span className="req">*</span></label>
+                <div className="input-group-container">
+                  <input 
+                    type="text" 
+                    value={addressData.province} 
+                    onChange={(e) => setAddressData({...addressData, province: e.target.value})} 
+                    placeholder="Tỉnh / Thành phố"
+                  />
+                </div>
+              </div>
+
+              <div className="supreme-form-row">
+                <label>Phường / Xã <span className="req">*</span></label>
+                <div className="input-group-container">
+                  <input 
+                    type="text" 
+                    value={addressData.ward} 
+                    onChange={(e) => setAddressData({...addressData, ward: e.target.value})} 
+                    placeholder="Phường / Xã"
+                  />
+                </div>
+              </div>
+
+              <div className="supreme-form-row">
+                <label>Địa chỉ cụ thể <span className="req">*</span></label>
+                <div className="input-group-container">
+                  <input 
+                    type="text" 
+                    value={addressData.detail} 
+                    onChange={(e) => setAddressData({...addressData, detail: e.target.value})} 
+                    placeholder="Số nhà, tên đường..."
+                  />
+                </div>
+              </div>
+
+              <div className="form-actions">
+                <button type="button" className="save-btn-supreme" onClick={handleSave} disabled={isSaving}>
+                  {isSaving ? "Đang lưu..." : "Lưu địa chỉ"}
+                </button>
+              </div>
+            </form>
+
+            <div className="profile-avatar-column" style={{ border: 'none' }}></div>
           </div>
-
-          <div className="supreme-form-row">
-            <label>Tỉnh / Thành phố <span className="req">*</span></label>
-            <div className="input-group-container">
-              <input 
-                type="text" 
-                value={addressData.province} 
-                onChange={(e) => setAddressData({...addressData, province: e.target.value})} 
-                placeholder="Tỉnh / Thành phố"
-              />
-            </div>
-          </div>
-
-          <div className="supreme-form-row">
-            <label>Phường / Xã <span className="req">*</span></label>
-            <div className="input-group-container">
-              <input 
-                type="text" 
-                value={addressData.ward} 
-                onChange={(e) => setAddressData({...addressData, ward: e.target.value})} 
-                placeholder="Phường / Xã"
-              />
-            </div>
-          </div>
-
-          <div className="supreme-form-row">
-            <label>Địa chỉ cụ thể <span className="req">*</span></label>
-            <div className="input-group-container">
-              <input 
-                type="text" 
-                value={addressData.detail} 
-                onChange={(e) => setAddressData({...addressData, detail: e.target.value})} 
-                placeholder="Số nhà, tên đường..."
-              />
-            </div>
-          </div>
-
-          <div className="form-actions">
-            <button type="button" className="save-btn-supreme" onClick={handleSave} disabled={isSaving}>
-              {isSaving ? "Đang lưu..." : "Lưu địa chỉ"}
-            </button>
-          </div>
-        </form>
-
-        <div className="profile-avatar-column" style={{ border: 'none' }}></div>
-      </div>
+        </>
+      )}
     </div>
   );
 };

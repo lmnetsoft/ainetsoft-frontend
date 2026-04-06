@@ -1,184 +1,144 @@
-/* --- 1. Horizontal Navigation Tabs (Static & Sticky) --- */
+/* --- 1. CORE SUPREME LAYOUT --- */
+.user-page-supreme-layout {
+    width: 100%;
+    background-color: #ffffff !important; 
+    padding: 0; /* Let internal containers handle padding */
+    box-sizing: border-box;
+
+    /* 🚀 THE SUPREME HEIGHT FIX: Matches the sidebar perfectly */
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    
+    border-radius: 10px;
+    border: 1px solid #eef2f6;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    overflow: hidden; /* Keeps the tabs border-radius clean at the top */
+}
+
+.purchase-main-view {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    width: 100%;
+}
+
+/* --- 2. Horizontal Navigation Tabs --- */
 .purchase-tabs-container {
-  display: flex;
-  background-color: #ffffff;
-  margin-bottom: 12px;
-  border-radius: 4px; /* Unified radius */
-  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  width: 100%;
-  border-bottom: 1px solid #f1f5f9;
+    display: flex;
+    background-color: #ffffff;
+    /* 🚀 THE FIX: Removed margin and shadow to integrate into the main box */
+    margin-bottom: 0; 
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    width: 100%;
+    border-bottom: 1px solid #f1f5f9;
 }
 
 .purchase-tab-item {
-  flex: 1;
-  text-align: center;
-  padding: 16px 0;
-  font-size: 0.95rem;
-  color: #64748b; /* text-muted */
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-  font-weight: 600; /* FIXED: Static weight to prevent vibration */
+    flex: 1;
+    text-align: center;
+    padding: 18px 0; /* Slightly taller for premium feel */
+    font-size: 0.95rem;
+    color: #64748b; 
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    font-weight: 600; 
 }
 
 .purchase-tab-item:hover { color: #ee4d2d; }
-
 .purchase-tab-item.active {
-  color: #ee4d2d; /* shopee-orange */
-  border-bottom: 2px solid #ee4d2d;
+    color: #ee4d2d; 
+    border-bottom: 2px solid #ee4d2d;
 }
 
-/* --- 2. Order Card (Refined Supreme Look) --- */
+/* --- 3. Content List Area --- */
+.purchase-list-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background-color: #fcfdfe; /* Subtle off-white for the list area */
+    padding: 20px;
+}
+
+/* --- 4. Order Card (Refined Supreme Look) --- */
 .order-card-item {
-  background: #fff;
-  padding: 24px;
-  margin-bottom: 15px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-  border-radius: 4px;
-  border: 1px solid #f1f5f9;
+    background: #fff;
+    padding: 24px;
+    margin-bottom: 15px;
+    /* 🚀 THE FIX: Lighter shadow since it's inside a white container */
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    border-radius: 8px;
+    border: 1px solid #f1f5f9;
 }
 
 .order-item-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 15px;
-  border-bottom: 1px solid #f8fafc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #f8fafc;
 }
 
-.shop-name-group {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
+.shop-name-group { display: flex; align-items: center; gap: 10px; }
+.shop-name-group strong { color: #002147; font-size: 0.95rem; }
 
-.shop-name-group strong {
-  color: #002147; /* ainet-navy */
-  font-size: 0.95rem;
-}
+/* Status Colors */
+.status-tag { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; color: #ee4d2d; }
 
-/* --- 3. Dynamic Status Colors --- */
-.status-tag {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.85rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: #ee4d2d;
-}
-
-.status-tag.shipping, .status-tag.completed { color: #26aa99; }
-.status-tag.cancelled { color: #ff4d4f; }
-
-/* --- 4. Product Row --- */
-.item-row {
-  display: flex;
-  gap: 15px;
-  padding: 15px 0;
-  border-bottom: 1px solid #f8fafc;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
+/* Product Rows */
+.item-row { display: flex; gap: 15px; padding: 15px 0; border-bottom: 1px solid #f8fafc; cursor: pointer; transition: background 0.2s; }
 .item-row:hover { background: #fcfdfe; }
-
-.item-thumb {
-  width: 80px;
-  height: 80px;
-  object-fit: cover;
-  border-radius: 2px;
-  border: 1px solid #f1f5f9;
-}
-
+.item-thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 4px; border: 1px solid #f1f5f9; }
 .item-info { flex: 1; }
-.item-title {
-  font-size: 0.95rem;
-  color: #2d3436;
-  margin: 0 0 5px 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
+.item-title { font-size: 0.95rem; color: #2d3436; margin: 0 0 5px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .item-count { font-size: 0.85rem; color: #94a3b8; }
 .current-price { color: #ee4d2d; font-weight: 600; }
 
-/* --- 5. Shipping Summary Box --- */
-.order-shipping-summary {
-  display: flex;
-  gap: 12px;
-  background: #fffcf5; /* Shopee style */
-  margin-top: 15px;
-  padding: 15px;
-  border-radius: 4px;
-  border: 1px solid #fdf2d9;
+/* Shipping Box */
+.order-shipping-summary { display: flex; gap: 12px; background: #fffcf5; margin-top: 15px; padding: 15px; border-radius: 8px; border: 1px solid #fdf2d9; }
+
+/* --- 5. Empty State: THE HEIGHT FIX --- */
+.purchase-empty-state {
+    flex: 1; /* 🚀 Fills the remaining vertical space */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff !important;
+    padding: 60px 0;
+    text-align: center;
 }
 
-.shipping-text strong { font-size: 0.9rem; color: #002147; display: block; margin-bottom: 2px; }
-.shipping-text p { font-size: 0.85rem; color: #64748b; margin: 0; }
-
-/* --- 6. Footer Actions & Buttons --- */
-.order-item-footer {
-  margin-top: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 15px;
+.go-shopping-btn {
+    margin-top: 20px;
+    padding: 12px 40px;
+    background-color: #ee4d2d;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s;
 }
+.go-shopping-btn:hover { background-color: #d73211; }
 
-.grand-total {
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: #ee4d2d;
-  margin-left: 10px;
-}
+/* Footer Actions */
+.order-item-footer { margin-top: 20px; display: flex; flex-direction: column; align-items: flex-end; gap: 15px; }
+.grand-total { font-size: 1.4rem; font-weight: 700; color: #ee4d2d; margin-left: 10px; }
+.footer-actions { display: flex; gap: 12px; }
 
-.footer-actions {
-  display: flex;
-  gap: 12px;
-}
-
-/* Secondary Buttons */
 .view-detail-btn, .contact-seller-btn {
-  padding: 10px 22px;
-  border-radius: 4px;
-  border: 1px solid #d1d5db;
-  background: #fff;
-  color: #475569;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 600;
-  transition: all 0.2s;
-}
-
-.view-detail-btn:hover, .contact-seller-btn:hover {
-  border-color: #002147;
-  color: #002147;
-  background: #f8fafc;
-}
-
-/* Primary Action (Supreme Orange) */
-.buy-again-btn {
-  background-color: #ee4d2d;
-  color: white;
-  border: none;
-  padding: 10px 25px;
-  border-radius: 4px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.buy-again-btn:hover { background-color: #d73211; }
-
-.purchase-empty-state p {
-  color: #64748b;
-  font-size: 0.95rem;
-  margin: 0;
+    padding: 10px 22px;
+    border-radius: 4px;
+    border: 1px solid #d1d5db;
+    background: #fff;
+    color: #475569;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
 }

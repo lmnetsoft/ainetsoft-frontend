@@ -1,283 +1,282 @@
-/* --- 1. CORE SUPREME LAYOUT --- */
-.user-profile-supreme-layout {
-  width: 100%;
-  background-color: #ffffff !important; 
-  padding: 30px 40px;
-  box-sizing: border-box;
+/* --- 0. SUPREME FONT UNIFICATION --- */
+/* Forces all elements to use the same professional font stack */
+.user-profile-supreme-layout,
+.user-profile-supreme-layout *,
+.supreme-phone-container *,
+.bank-dropdown-menu * {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
-/* 🚀 FIXED: Global Unified Red Title */
+/* --- 1. CORE SUPREME LAYOUT (SHARED) --- */
+.user-profile-supreme-layout {
+    width: 100%;
+    background-color: #ffffff !important; 
+    padding: 30px 40px;
+    box-sizing: border-box;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    border-radius: 10px;
+    border: 1px solid #eef2f6;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+/* --- GLOBAL HEADER --- */
 .profile-content-header.centered-header {
-  text-align: center;
-  margin-bottom: 30px; /* Increased spacing */
-  width: 100%;
+    text-align: center;
+    margin-bottom: 30px; 
+    width: 100%;
 }
 
 .profile-content-header h1 {
-  /* 🚀 THE FIX: Red color and larger font for "Form Title" feel */
-  font-size: 26px; 
-  font-weight: 800;
-  color: #ee4d2d; 
-  margin: 0 0 8px 0;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+    font-size: 26px; 
+    font-weight: 800;
+    color: #ee4d2d; 
+    margin: 0 0 8px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .profile-content-header p {
-  font-size: 0.9375rem;
-  color: #64748b;
+    font-size: 0.9375rem;
+    color: #64748b;
 }
 
 .supreme-divider {
-  border: 0;
-  border-top: 1px solid #f1f5f9;
-  margin: 25px 0;
+    border: 0;
+    border-top: 1px solid #f1f5f9;
+    margin: 25px 0;
 }
 
 /* --- 2. INPUT GEOMETRY --- */
 .supreme-form-row input,
 .input-field {
-  width: 100%;
-  height: 45px !important;
-  padding: 0 15px !important;
-  border: 1px solid #d1d5db !important;
-  border-radius: 4px !important;
-  box-sizing: border-box !important;
-  font-size: 0.9375rem;
+    width: 100%;
+    height: 45px !important;
+    padding: 0 15px !important;
+    border: 1px solid #d1d5db !important;
+    border-radius: 4px !important;
+    box-sizing: border-box !important;
+    font-size: 0.9375rem;
 }
 
 .input-group-container {
-  flex: 1;
-  max-width: 600px;
+    flex: 1;
+    max-width: 600px;
+    position: relative;
 }
 
-/* --- 3. HORIZONTAL ALIGNMENT --- */
+/* --- 3. GRID & ALIGNMENT --- */
 .profile-main-grid {
-  display: grid;
-  grid-template-columns: 1fr 280px; 
-  gap: 40px;
-  align-items: start;
+    display: grid;
+    grid-template-columns: 1fr 280px; 
+    gap: 40px;
+    align-items: start;
+    flex: 1;
 }
 
 .supreme-form-row {
-  display: flex;
-  flex-direction: row; 
-  align-items: center; 
-  margin-bottom: 25px;
+    display: flex;
+    flex-direction: row; 
+    align-items: center; 
+    margin-bottom: 25px;
 }
 
 .supreme-form-row label {
-  width: 20%; 
-  text-align: right; 
-  margin-right: 30px; 
-  color: #64748b;
-  font-size: 0.9rem;
-  font-weight: 500;
+    width: 20%; 
+    text-align: right; 
+    margin-right: 30px; 
+    color: #64748b;
+    font-size: 0.9rem;
+    font-weight: 500;
 }
 
-.req {
-  color: #ef4444;
-  margin-left: 4px;
-}
+.req { color: #ef4444; margin-left: 4px; font-weight: 700; }
 
-.gender-options {
-  display: flex;
-  gap: 30px;
-}
-
-.gender-options label {
-  width: auto;
-  margin-right: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #334155;
-  cursor: pointer;
-}
-
-/* 🚀 SUPREME FIX: Added specific size control for the radio circles */
-.gender-options input[type="radio"] {
-  width: 18px !important;  /* Standard professional size */
-  height: 18px !important; /* Prevents stretching seen in screenshot */
-  margin: 0;
-  cursor: pointer;
-  accent-color: #ee4d2d;  /* Matches your Supreme Red/Orange brand */
-}
-
-/* --- 4. BUTTONS ALIGNMENT --- */
-.form-actions {
-  display: flex;
-  gap: 15px;
-  padding-left: calc(20% + 30px); 
-  margin-top: 20px;
-}
-
-.save-btn-supreme {
-  background-color: #ee4d2d;
-  color: white;
-  padding: 12px 30px;
-  border: none;
-  border-radius: 4px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.become-seller-btn {
-  background-color: white;
-  color: #ee4d2d;
-  border: 1px solid #ee4d2d;
-  padding: 11px 25px;
-  border-radius: 4px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-/* --- 5. AVATAR SECTION --- */
-.profile-avatar-column {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding-left: 40px;
-  border-left: 1px solid #f1f5f9;
-}
-
-.avatar-preview-box {
-  width: 120px;
-  height: 120px;
-  margin-bottom: 20px;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 1px solid #edf2f7;
-}
-
+/* --- 4. GENDER & BUTTONS & AVATAR --- */
+.gender-options { display: flex; gap: 30px; }
+.gender-options label { width: auto; margin-right: 0; display: flex; align-items: center; gap: 8px; color: #334155; cursor: pointer; }
+.gender-options input[type="radio"] { width: 18px !important; height: 18px !important; accent-color: #ee4d2d; }
+.form-actions { display: flex; gap: 15px; padding-left: calc(20% + 30px); margin-top: 20px; }
+.save-btn-supreme { background-color: #ee4d2d; color: white; padding: 12px 30px; border: none; border-radius: 4px; font-weight: 600; cursor: pointer; }
+.become-seller-btn { background-color: white; color: #ee4d2d; border: 1px solid #ee4d2d; padding: 11px 25px; border-radius: 4px; font-weight: 600; cursor: pointer; }
+.profile-avatar-column { display: flex; flex-direction: column; align-items: center; padding-left: 40px; border-left: 1px solid #f1f5f9; }
+.avatar-preview-box { width: 120px; height: 120px; margin-bottom: 20px; border-radius: 50%; overflow: hidden; border: 1px solid #edf2f7; }
 .avatar-preview-box img { width: 100%; height: 100%; object-fit: cover; }
 
-/* Preservation of your Phone and Dropdown Styles */
-.supreme-phone-container .form-control {
-  padding-left: 48px !important; 
-  width: 100% !important;
-  height: 45px !important;
-  border: 1px solid #d1d5db !important;
-}
-
-.react-tel-input .country-list {
-  width: 300px !important;
-  z-index: 1000 !important;
-}
+/* ----------------------------------------------------------- */
+/* --- 🚀 6A. DEDICATED BANK STYLES (THE SCROLL FIX) --- */
+/* ----------------------------------------------------------- */
 
 .searchable-select-box {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 45px;
-  padding: 0 15px;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  background: #fff;
-  cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 45px;
+    padding: 0 15px;
+    border: 1px solid #d1d5db !important; 
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+    box-sizing: border-box;
 }
 
 .bank-dropdown-menu {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  z-index: 1000;
-  background: #fff;
-  border: 1px solid #d1d5db;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  max-height: 300px;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    max-height: 300px;
+    border-radius: 8px;
+    overflow: hidden; 
 }
 
-@media (max-width: 1024px) {
-  .profile-main-grid { grid-template-columns: 1fr; }
-  .profile-avatar-column { border-left: none; padding: 0 0 30px 0; order: -1; }
-  .supreme-form-row { flex-direction: column; align-items: flex-start; }
-  .supreme-form-row label { width: 100%; text-align: left; margin-bottom: 8px; }
-  .form-actions { padding-left: 0; }
+.bank-dropdown-menu .search-input-wrapper {
+    padding: 12px 15px;
+    background: #ffffff;
+    border-bottom: 1px solid #f1f5f9;
+    position: relative !important;
 }
 
-/* 🚀 THE NEW MODERN SEARCH BAR STYLE */
-.search-input-wrapper {
-  padding: 12px;
-  background: #ffffff;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  border-bottom: 1px solid #f1f5f9;
-  position: sticky;
-  top: 0;
-  z-index: 10;
+.bank-dropdown-menu .search-icon {
+    position: absolute !important;
+    left: 28px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    color: #94a3b8;
+    font-size: 15px;
+    pointer-events: none;
 }
 
-.search-icon {
-  color: #94a3b8;
-  font-size: 14px;
+.bank-dropdown-menu input {
+    width: 100% !important;
+    height: 38px !important;
+    padding: 0 12px 0 40px !important;
+    font-size: 14px !important;
+    border: 1px solid #d1d5db !important;
+    border-radius: 6px !important;
+    background-color: #f8fafc !important;
 }
 
-.search-input-wrapper input {
-  flex: 1;
-  /* Resetting global 45px height for a tighter search feel */
-  height: 38px !important; 
-  padding: 0 12px !important;
-  font-size: 13.5px !important;
-  border: 1px solid #e2e8f0 !important;
-  border-radius: 6px !important;
-  background-color: #f8fafc !important;
-  transition: all 0.2s ease !important;
-}
-
-.search-input-wrapper input:focus {
-  background-color: #ffffff !important;
-  border-color: #ee4d2d !important;
-  box-shadow: 0 0 0 3px rgba(238, 77, 45, 0.1) !important;
-  outline: none;
-}
-
-/* Red Asterisk Styling */
-.req {
-  color: #ef4444;
-  margin-left: 4px;
-  font-weight: 700;
-}
-
-/* 🚀 IMPROVED LIST STYLE */
 .bank-list-results {
-  list-style: none;
-  padding: 5px 0;
-  margin: 0;
-  overflow-y: auto;
-  max-height: 250px;
+    list-style: none;
+    padding: 5px 0;
+    margin: 0;
+    max-height: 235px; 
+    overflow-y: auto !important; 
+    -webkit-overflow-scrolling: touch; 
+    scrollbar-width: none; 
+    -ms-overflow-style: none;
+}
+
+.bank-list-results::-webkit-scrollbar {
+    display: none !important;
 }
 
 .bank-list-results li {
-  padding: 12px 15px;
-  font-size: 14px;
-  cursor: pointer;
-  color: #334155;
-  transition: background 0.15s;
+    padding: 12px 25px !important; 
+    font-size: 14px;
+    cursor: pointer;
+    color: #334155;
+    transition: background 0.15s;
+    text-align: left;
 }
 
-.bank-list-results li:hover {
-  background-color: #fff5f2;
-  color: #ee4d2d;
+.bank-list-results li:hover { background-color: #fff5f2; color: #ee4d2d; }
+
+/* ----------------------------------------------------------- */
+/* --- 🚀 6B. DEDICATED PHONE STYLES (UNTOUCHED) --- */
+/* ----------------------------------------------------------- */
+
+.supreme-phone-container .form-control {
+    width: 100% !important;
+    height: 45px !important;
+    padding-left: 55px !important;
+    border: 1px solid #d1d5db !important;
 }
 
-/* --- 🚀 UPDATED: SUPREME RED NOTIFICATIONS/HINTS --- */
-.upload-hint {
-  margin-top: 15px;
-  text-align: center;
-  /* 🚀 THE FIX: Changed from grey to Supreme Red */
-  color: #ee4d2d !important; 
-  font-size: 0.8rem;
-  font-weight: 500; /* Made slightly bolder for readability */
+.react-tel-input .country-list {
+    width: 500px !important; 
+    min-width: 500px !important;
+    border-radius: 8px !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.12) !important;
+    border: 1px solid #d1d5db !important;
+    overflow-x: hidden !important;
 }
 
-/* New class for the side info on the Bank/Address pages */
-.supreme-side-hint {
-  color: #ee4d2d !important;
-  font-size: 13px;
-  line-height: 1.6;
-  text-align: center;
-  font-weight: 500;
+.react-tel-input .country-list::-webkit-scrollbar { display: none !important; }
+
+.react-tel-input .search {
+    padding: 12px 15px !important;
+    background: #ffffff !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    position: relative !important;
+}
+
+.react-tel-input .search-box {
+    width: 100% !important;
+    margin: 0 !important;
+    height: 40px !important;
+    padding: 0 12px 0 40px !important; 
+    border: 1px solid #d1d5db !important;
+    border-radius: 6px !important;
+    background-color: #f8fafc !important; 
+    font-size: 14px !important;
+    color: #334155 !important;
+    box-sizing: border-box !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'%3E%3C/path%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: 12px center !important; 
+    background-size: 18px !important;
+}
+
+.react-tel-input .search-emoji { display: none !important; }
+
+.react-tel-input .country-list .country {
+    padding: 12px 15px !important;
+    text-align: left !important;
+}
+
+/* --- HINTS & RESPONSIVE --- */
+.upload-hint { margin-top: 15px; text-align: center; color: #ee4d2d !important; font-size: 0.8rem; font-weight: 500; }
+.supreme-side-hint { color: #ee4d2d !important; font-size: 13px; line-height: 1.6; text-align: center; font-weight: 500; }
+
+@media (max-width: 1024px) {
+    .profile-main-grid { grid-template-columns: 1fr; }
+    .profile-avatar-column { border-left: none; padding: 0 0 30px 0; order: -1; }
+    .supreme-form-row { flex-direction: column; align-items: flex-start; }
+    .supreme-form-row label { width: 100%; text-align: left; margin-bottom: 8px; }
+    .form-actions { padding-left: 0; }
+    .react-tel-input .country-list { width: 100% !important; min-width: 100% !important; }
+}
+
+
+/* --- 7. ANTI-VIBRATION & STABILITY --- */
+/* Forces the browser to reserve scrollbar space so the page doesn't shift left/right */
+html {
+    scrollbar-gutter: stable;
+}
+
+/* Ensure the layout has a minimum height so it doesn't collapse during menu swaps */
+.user-profile-supreme-layout {
+    min-height: 600px !important;
+    transition: none !important; /* Transitions can cause vibration during component re-mounts */
+}
+
+/* Ensure loading box doesn't collapse the layout */
+.profile-loading-box {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+    width: 100%;
+    color: #64748b;
+    font-weight: 500;
 }

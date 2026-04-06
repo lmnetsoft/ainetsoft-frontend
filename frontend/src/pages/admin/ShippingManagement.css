@@ -1,9 +1,50 @@
-/* src/pages/Admin/ShippingManagement.css */
+.shipping-management-page {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
 
+.admin-dashboard-wrapper {
+    background: #ffffff;
+    border-radius: 10px;
+    border: 1px solid #eef2f6;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+
+    display: flex;
+    flex-direction: column;
+
+    flex: 1;
+    min-height: 100%;
+    padding: 28px;
+    box-sizing: border-box;
+}
 /* --- 1. Global Font Consistency --- */
-.shipping-management-page, 
+.shipping-management-page,
 .shipping-management-page * {
     font-family: var(--ui-font) !important;
+}
+
+.shipping-management-page {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-height: 100%;
+    box-sizing: border-box;
+}
+
+.admin-dashboard-wrapper {
+    background: #ffffff;
+    border-radius: 10px;
+    border: 1px solid #eef2f6;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 100%;
+    width: 100%;
+    padding: 28px;
+    box-sizing: border-box;
 }
 
 /* --- 2. Layout & Descriptions --- */
@@ -33,10 +74,9 @@
 }
 
 .shipping-method-item:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
-/* Styling for the disabled state toggled by Admin */
 .shipping-method-item.is-disabled {
     background: #fcfcfc;
     border-color: #f1f2f6;
@@ -96,7 +136,7 @@
     background: #e4e6eb;
 }
 
-/* --- 5. Professional Slider Switch (FIXED: Vivid Green) --- */
+/* --- 5. Switch --- */
 .admin-switch {
     position: relative;
     display: inline-block;
@@ -113,31 +153,36 @@
 .admin-slider {
     position: absolute;
     cursor: pointer;
-    top: 0; left: 0; right: 0; bottom: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     background-color: #ccc;
-    transition: .4s;
+    transition: 0.4s;
     border-radius: 34px;
 }
 
 .admin-slider:before {
     position: absolute;
     content: "";
-    height: 18px; width: 18px;
-    left: 3px; bottom: 3px;
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
     background-color: white;
-    transition: .4s;
+    transition: 0.4s;
     border-radius: 50%;
 }
 
 input:checked + .admin-slider {
-    background-color: #2ecc71; /* Vivid Shopee/Logistics Green */
+    background-color: #2ecc71;
 }
 
 input:checked + .admin-slider:before {
     transform: translateX(20px);
 }
 
-/* --- 6. Details Panel (Accordion Content) --- */
+/* --- 6. Details Panel --- */
 .method-details-panel {
     padding: 20px 25px;
     background: #fafbfc;
@@ -146,8 +191,14 @@ input:checked + .admin-slider:before {
 }
 
 @keyframes slideDown {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .details-grid {
@@ -178,7 +229,8 @@ input:checked + .admin-slider:before {
     gap: 12px;
 }
 
-.btn-edit-ship, .btn-delete-ship {
+.btn-edit-ship,
+.btn-delete-ship {
     padding: 8px 16px;
     border-radius: 6px;
     font-size: 0.85rem;
@@ -190,13 +242,31 @@ input:checked + .admin-slider:before {
     transition: 0.2s;
 }
 
-.btn-edit-ship { background: white; border: 1px solid #ddd; color: var(--text-dark); }
-.btn-edit-ship:hover { background: #f8f9fa; border-color: var(--orange); color: var(--orange); }
+.btn-edit-ship {
+    background: white;
+    border: 1px solid #ddd;
+    color: var(--text-dark);
+}
 
-.btn-delete-ship { background: #fff5f5; border: 1px solid #ffdbd4; color: #ff4757; }
-.btn-delete-ship:hover { background: #ff4757; color: white; border-color: #ff4757; }
+.btn-edit-ship:hover {
+    background: #f8f9fa;
+    border-color: var(--orange);
+    color: var(--orange);
+}
 
-/* --- 7. Centered Add Placeholder --- */
+.btn-delete-ship {
+    background: #fff5f5;
+    border: 1px solid #ffdbd4;
+    color: #ff4757;
+}
+
+.btn-delete-ship:hover {
+    background: #ff4757;
+    color: white;
+    border-color: #ff4757;
+}
+
+/* --- 7. Add Placeholder --- */
 .add-more-container {
     padding: 20px 0;
     display: flex;
@@ -263,7 +333,7 @@ input:checked + .admin-slider:before {
     color: var(--text-dark);
 }
 
-.form-group-admin input, 
+.form-group-admin input,
 .form-group-admin textarea {
     padding: 12px 15px;
     border: 1px solid var(--border-light);

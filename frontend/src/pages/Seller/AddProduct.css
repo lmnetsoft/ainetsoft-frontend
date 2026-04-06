@@ -1,40 +1,59 @@
-/* --- 1. GLOBAL RESET & FONT CONSISTENCY --- */
+/* --- 1. GLOBAL RESET & FONT CONSISTENCY (PRESERVED) --- */
 * { 
     box-sizing: border-box; 
     /* Strictly synchronized with your left sidebar/main menu font */
     font-family: -apple-system, HelveticaNeue, "Helvetica Neue", Helvetica, Arial, sans-serif;
 } 
 
-.add-product-wrapper {
-    background-color: #f8f9fa;
-    min-height: 100vh;
-    padding: 30px 0 80px 0;
+.add-product-supreme-layout {
+    /* 🚀 THE SUPREME SHELL: Solid white background that matches sidebar height */
+    background-color: #ffffff !important;
+    min-height: 100%;
+    padding: 35px 40px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border-radius: 10px;
+    border: 1px solid #eef2f6;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
 
 .add-product-main {
     flex: 1;
     max-width: 1000px;
     margin: 0 auto;
+    width: 100%;
 }
 
-/* --- 2. FORM SECTIONS & HEADERS --- */
-.form-header {
-    background: white;
+/* --- 2. FORM SECTIONS & HEADERS (Surgically Centered & Red) --- */
+.form-header-supreme {
+    background: transparent;
     padding: 25px 30px;
-    border-radius: 8px;
     margin-bottom: 20px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    /* 🚀 THE FIX: Centered Title */
+    text-align: center;
+    border-bottom: 1px solid #f1f5f9;
 }
 
-.form-header h1 { font-size: 1.4rem; font-weight: 600; color: #333; margin-bottom: 5px; }
-.form-header p { font-size: 0.9rem; color: #666; }
+.form-header-supreme h1 { 
+    /* 🚀 THE FIX: Red Color & Professional Font Stack for Title */
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+    font-size: 28px; 
+    font-weight: 850; 
+    color: #ee4d2d; 
+    margin-bottom: 8px; 
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    -webkit-font-smoothing: antialiased;
+}
+
+.form-header-supreme p { font-size: 0.95rem; color: #64748b; font-weight: 500; }
 
 .form-section {
     background: white;
     padding: 30px;
     border-radius: 8px;
     margin-bottom: 20px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
 .form-section h3 {
@@ -42,7 +61,8 @@
     font-weight: 700;
     margin-bottom: 20px;
     color: #333;
-    border-left: 4px solid #5b67f1; /* Preserved stable blue indicator */
+    /* 🚀 BRAND SYNC: Red indicator bar */
+    border-left: 5px solid #ee4d2d; 
     padding-left: 15px;
     display: flex;
     align-items: center;
@@ -51,7 +71,7 @@
     letter-spacing: 0.5px;
 }
 
-/* --- 3. MEDIA UPLOAD AREA (Preserved 120x120 logic) --- */
+/* --- 3. MEDIA UPLOAD AREA (PRESERVED 120x120 logic) --- */
 .media-upload-area {
     display: flex;
     flex-wrap: wrap; 
@@ -89,7 +109,7 @@
     border-radius: 7px;
 }
 
-/* --- 4. THE X BUTTONS (Visible & Professional) --- */
+/* --- 4. THE X BUTTONS (PRESERVED & RED) --- */
 .remove-img, .remove-video {
     position: absolute;
     top: -10px;
@@ -107,15 +127,13 @@
     font-weight: bold;
     z-index: 50;
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    transition: transform 0.2s ease;
-    background: #4a4a4a;
+    /* 🚀 Swapped to Red */
+    background: #ee4d2d;
 }
-
-.remove-video { background: #ff4757; }
 
 .primary-badge {
     position: absolute; bottom: 0; left: 0; right: 0;
-    background: rgba(91, 103, 241, 0.9); color: white;
+    background: rgba(0, 33, 71, 0.85); color: white;
     font-size: 10px; text-align: center; padding: 4px 0;
     border-bottom-left-radius: 7px; border-bottom-right-radius: 7px;
     font-weight: 600;
@@ -123,7 +141,7 @@
 
 .video-icon-overlay { position: absolute; color: white; font-size: 26px; opacity: 0.75; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
 
-/* --- 5. INPUTS & VERIFIED NUMBER STYLE --- */
+/* --- 5. INPUTS & VERIFIED NUMBER STYLE (PRESERVED) --- */
 .input-group { margin-bottom: 20px; }
 .input-group label { display: block; margin-bottom: 8px; font-size: 0.9rem; font-weight: 600; color: #444; }
 
@@ -140,18 +158,18 @@
     background: #fff;
 }
 
-/* Number display spacing for verifying zeros (1 000 000) */
+/* Number display spacing logic (PRESERVED) */
 .input-group input[type="text"], .input-field-group input {
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: 0.5px;
-    color: #222;
+    color: #1e293b;
 }
 
 .row-group { display: flex; gap: 20px; }
 .half { flex: 1; }
 .disabled-input { background-color: #f7fafc; color: #a0aec0; cursor: not-allowed; }
 
-/* --- 6. COLORFUL SHIPPING CONFIGURATION --- */
+/* --- 6. COLORFUL SHIPPING CONFIGURATION (PRESERVED) --- */
 .section-header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .shipping-config-grid { display: flex; flex-direction: column; gap: 15px; }
 
@@ -181,11 +199,6 @@
     border-bottom-left-radius: 12px;
 }
 
-/* Spacing fix for Tên Phương Thức vs Input */
-.card-top { display: flex; justify-content: space-between; align-items: center; }
-.edit-title-group { display: flex; align-items: center; gap: 15px; flex: 1; }
-.tiny-label-fixed { font-size: 0.8rem; color: #888; font-weight: 700; text-transform: uppercase; white-space: nowrap; }
-
 .editable-name-fixed {
     font-weight: 700; font-size: 1.05rem; color: #222;
     border: none; border-bottom: 2px solid #ddd;
@@ -193,39 +206,13 @@
 }
 .editable-name-fixed:focus { border-bottom-color: #ee4d2d; }
 
-/* --- BUTTON FIX: INSIDE CARD & VISIBLE X --- */
 .btn-del-card-fixed {
-    position: absolute;
-    top: 12px; 
-    right: 12px; 
-    width: 30px;
-    height: 30px;
-    padding: 0;
-    color: #fff;
-    background: #ff4757;
-    border: 2px solid #fff;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px; 
-    z-index: 60;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.18);
-    transition: transform 0.18s ease;
+    position: absolute; top: 12px; right: 12px; 
+    width: 30px; height: 30px; color: #fff; background: #ff4757;
+    border: 2px solid #fff; border-radius: 50%;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
 }
 
-.btn-del-card-fixed svg {
-    width: 14px;
-    height: 14px;
-    display: block;
-    fill: currentColor;
-    stroke: none;
-}
-
-.btn-del-card-fixed:hover { transform: scale(1.08); }
-
-/* --- GUIDED INPUT FIELDS --- */
 .card-inputs-guided {
     margin-top: 18px; padding-top: 18px; border-top: 1px dashed #ffdcd3;
     display: flex; flex-direction: column; gap: 15px;
@@ -236,7 +223,7 @@
 .input-field-group { display: flex; flex-direction: column; gap: 6px; }
 .input-field-group label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 6px; }
 
-/* Category Specific Colors */
+/* 🚀 PRESERVED: Category Specific Colors */
 .input-field-group:nth-child(1) label { color: #26a17b; } /* Money */
 .input-field-group:nth-child(2) label { color: #2673dd; } /* Time */
 .input-field-group.full-width label { color: #f69113; }   /* Voucher */
@@ -246,7 +233,54 @@
     border-radius: 20px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px;
 }
 
-/* --- 7. PROTECTION TOGGLES SECTION --- */
+/* --- 🚀 7. SPECS SECTION (RE-DESIGNED FOR image_530789.png) --- */
+.specs-container { display: flex; flex-direction: column; gap: 15px; }
+
+.spec-row {
+    display: flex; align-items: center; gap: 15px;
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* 🚀 FIX: Spec inputs now match main form inputs (12px padding) */
+.spec-row input {
+    flex: 1;
+    padding: 12px; 
+    border: 1px solid #e2e8f0; 
+    border-radius: 6px; 
+    font-size: 0.95rem; 
+    outline: none;
+    background: #fff;
+    font-weight: 600;
+}
+
+.remove-spec-pro {
+    background: #fff1f0; border: 1px solid #ffa39e; color: #ff4d4f;
+    width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+    border-radius: 6px; cursor: pointer; transition: all 0.2s;
+}
+
+/* 🚀 FIX: The "Add Attribute" button is no longer too wide */
+.add-spec-btn-pro {
+    background: #f8fafc;
+    border: 2px dashed #cbd5e0;
+    color: #64748b;
+    padding: 10px 25px;
+    border-radius: 6px;
+    width: fit-content; 
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 10px 0;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+}
+
+.add-spec-btn-pro:hover { border-color: #ee4d2d; color: #ee4d2d; background: #fffafa; }
+
+/* --- 8. PROTECTION TOGGLES SECTION (PRESERVED) --- */
 .protection-toggles-row {
     display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px;
 }
@@ -260,11 +294,10 @@
 .icon-prot { color: #ee4d2d; font-size: 1.6rem; }
 .icon-share { color: #2ecc71; font-size: 1.6rem; }
 
-/* --- 8. FOOTER ACTIONS --- */
-.form-actions { display: flex; justify-content: flex-end; gap: 15px; margin-top: 40px; padding-top: 30px; border-top: 1px solid #eee; }
+/* --- 9. FOOTER ACTIONS (PRESERVED) --- */
+.form-actions-supreme { display: flex; justify-content: flex-end; gap: 15px; margin-top: 40px; padding-top: 30px; border-top: 1px solid #eee; }
 .cancel-btn { background: white; border: 1px solid #e2e8f0; padding: 12px 40px; border-radius: 8px; cursor: pointer; font-weight: 600; }
 .submit-btn { background: #ee4d2d; color: white; border: none; padding: 12px 45px; border-radius: 8px; font-weight: 700; cursor: pointer; }
 
-/* --- 9. ANIMATIONS --- */
-.animate-fade-in { animation: fadeIn 0.4s ease-out; }
+/* --- 10. ANIMATIONS (PRESERVED) --- */
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }

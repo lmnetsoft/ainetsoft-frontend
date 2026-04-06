@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  FaTruck, FaPlus, FaTrash, FaEdit, FaChevronDown, FaChevronUp, 
-  FaTimes, FaShippingFast 
+import {
+  FaTruck,
+  FaPlus,
+  FaTrash,
+  FaEdit,
+  FaChevronDown,
+  FaChevronUp,
+  FaTimes,
+  FaShippingFast
 } from 'react-icons/fa';
-// 🚀 REMOVED: Redundant sidebar import
 import adminService from '../../services/admin.service';
 import { toast } from 'react-hot-toast';
 import './AdminDashboard.css';
@@ -13,7 +18,7 @@ const ShippingManagement = () => {
   const [methods, setMethods] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  
+
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -21,11 +26,11 @@ const ShippingManagement = () => {
     description: '',
     baseCost: 0,
     estimatedTime: '',
-    active: true 
+    active: true
   });
 
   useEffect(() => {
-    fetchData(true); 
+    fetchData(true);
   }, []);
 
   const fetchData = async (isInitialLoad = false) => {
@@ -34,28 +39,31 @@ const ShippingManagement = () => {
       const data = await adminService.getAllShippingMethods();
       setMethods(data);
     } catch (error) {
-      toast.error("Không thể tải danh sách vận chuyển");
+      toast.error('Không thể tải danh sách vận chuyển');
     } finally {
       setLoading(false);
     }
   };
 
   const handleToggleActive = async (e: React.MouseEvent | null, method: any) => {
-    if (e) e.stopPropagation(); 
+    if (e) e.stopPropagation();
 
-    const originalMethods = [...methods]; 
+    const originalMethods = [...methods];
     const newStatus = !method.active;
 
-    setMethods(prev => prev.map(m => 
-      m.id === method.id ? { ...m, active: newStatus } : m
-    ));
+    setMethods(prev =>
+      prev.map(m => (m.id === method.id ? { ...m, active: newStatus } : m))
+    );
 
     try {
-      await adminService.updateShippingMethod(method.id, { ...method, active: newStatus });
+      await adminService.updateShippingMethod(method.id, {
+        ...method,
+        active: newStatus
+      });
       toast.success(`Đã ${newStatus ? 'kích hoạt' : 'tắt'} ${method.name}`);
     } catch (error) {
       setMethods(originalMethods);
-      toast.error("Lỗi cập nhật trạng thái");
+      toast.error('Lỗi cập nhật trạng thái');
     }
   };
 
@@ -64,7 +72,13 @@ const ShippingManagement = () => {
       setForm({ ...method });
       setEditingId(method.id);
     } else {
-      setForm({ name: '', description: '', baseCost: 0, estimatedTime: '', active: true });
+      setForm({
+        name: '',
+        description: '',
+        baseCost: 0,
+        estimatedTime: '',
+        active: true
+      });
       setEditingId(null);
     }
     setShowModal(true);
@@ -75,27 +89,27 @@ const ShippingManagement = () => {
     try {
       if (editingId) {
         await adminService.updateShippingMethod(editingId, form);
-        toast.success("Cập nhật thành công");
+        toast.success('Cập nhật thành công');
       } else {
         await adminService.createShippingMethod(form);
-        toast.success("Thêm mới thành công");
+        toast.success('Thêm mới thành công');
       }
       setShowModal(false);
-      fetchData(false); 
+      fetchData(false);
     } catch (error) {
-      toast.error("Lỗi khi lưu dữ liệu");
+      toast.error('Lỗi khi lưu dữ liệu');
     }
   };
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (!window.confirm("Xác nhận xóa đơn vị vận chuyển này?")) return;
+    if (!window.confirm('Xác nhận xóa đơn vị vận chuyển này?')) return;
     try {
       await adminService.deleteShippingMethod(id);
-      toast.success("Đã xóa vĩnh viễn");
-      fetchData(false); 
+      toast.success('Đã xóa vĩnh viễn');
+      fetchData(false);
     } catch (error) {
-      toast.error("Không thể xóa phương thức đang sử dụng");
+      toast.error('Không thể xóa phương thức đang sử dụng');
     }
   };
 
@@ -103,7 +117,6 @@ const ShippingManagement = () => {
     setExpandedId(expandedId === id ? null : id);
   };
 
-  // 🚀 SURGICAL UPDATE: Return content without the redundant sidebar layout
   return (
     <div className="shipping-management-page">
       <div className="admin-dashboard-wrapper">
@@ -121,34 +134,42 @@ const ShippingManagement = () => {
         </header>
 
         <div className="shipping-config-section">
-          <p className="section-desc">Kích hoạt và cấu hình các phương thức vận chuyển phù hợp cho toàn sàn.</p>
-          
+          <p className="section-desc">
+            Kích hoạt và cấu hình các phương thức vận chuyển phù hợp cho toàn sàn.
+          </p>
+
           {loading && methods.length === 0 ? (
             <div className="tab-loading-spinner">Đang đồng bộ dữ liệu...</div>
           ) : (
             <div className="shipping-methods-list">
               {methods.map((m) => (
-                <div key={m.id} className={`shipping-method-item ${!m.active ? 'is-disabled' : ''}`}>
+                <div
+                  key={m.id}
+                  className={`shipping-method-item ${!m.active ? 'is-disabled' : ''}`}
+                >
                   <div className="method-main-row" onClick={() => toggleAccordion(m.id)}>
                     <div className="method-info-title">
                       <FaShippingFast className="method-icon-bg" />
                       <span>{m.name}</span>
                     </div>
-                    
+
                     <div className="method-controls">
                       <div className="thu-gon-wrapper">
                         <button className="thu-gon-btn">
-                          {expandedId === m.id ? 'Thu gọn' : 'Chi tiết'} 
+                          {expandedId === m.id ? 'Thu gọn' : 'Chi tiết'}
                           {expandedId === m.id ? <FaChevronUp /> : <FaChevronDown />}
                         </button>
                       </div>
-                      
-                      <div className="toggle-switch-wrapper" onClick={(e) => e.stopPropagation()}>
+
+                      <div
+                        className="toggle-switch-wrapper"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <label className="admin-switch">
-                          <input 
-                            type="checkbox" 
-                            checked={m.active} 
-                            onChange={() => handleToggleActive(null, m)} 
+                          <input
+                            type="checkbox"
+                            checked={m.active}
+                            onChange={() => handleToggleActive(null, m)}
                           />
                           <span className="admin-slider round"></span>
                         </label>
@@ -172,21 +193,26 @@ const ShippingManagement = () => {
                           <p>{m.estimatedTime}</p>
                         </div>
                       </div>
+
                       <div className="panel-actions">
-                        <button className="btn-edit-ship" onClick={() => handleOpenModal(m)}><FaEdit /> Chỉnh sửa</button>
-                        <button className="btn-delete-ship" onClick={(e) => handleDelete(e, m.id)}><FaTrash /> Xóa</button>
+                        <button className="btn-edit-ship" onClick={() => handleOpenModal(m)}>
+                          <FaEdit /> Chỉnh sửa
+                        </button>
+                        <button className="btn-delete-ship" onClick={(e) => handleDelete(e, m.id)}>
+                          <FaTrash /> Xóa
+                        </button>
                       </div>
                     </div>
                   )}
                 </div>
               ))}
-              
+
               <div className="add-more-container">
-                  <div className="add-more-placeholder" onClick={() => handleOpenModal()}>
-                    <div className="plus-icon-circle"><FaPlus /></div>
-                    <span>Thêm Đơn Vị Vận Chuyển</span>
-                    <p>Các đơn vị vận chuyển khác được AiNetsoft hỗ trợ</p>
-                  </div>
+                <div className="add-more-placeholder" onClick={() => handleOpenModal()}>
+                  <div className="plus-icon-circle"><FaPlus /></div>
+                  <span>Thêm Đơn Vị Vận Chuyển</span>
+                  <p>Các đơn vị vận chuyển khác được AiNetsoft hỗ trợ</p>
+                </div>
               </div>
             </div>
           )}
@@ -195,41 +221,81 @@ const ShippingManagement = () => {
 
       {showModal && (
         <div className="admin-modal-overlay">
-          <div className="seller-review-modal" style={{maxWidth: '500px'}}>
+          <div className="seller-review-modal" style={{ maxWidth: '500px' }}>
             <div className="modal-header">
               <div className="header-title">
                 <FaTruck className="title-icon" />
                 <h3>{editingId ? 'Cấu hình đơn vị' : 'Thêm đơn vị mới'}</h3>
               </div>
-              <button className="close-btn" onClick={() => setShowModal(false)}><FaTimes /></button>
+              <button className="close-btn" onClick={() => setShowModal(false)}>
+                <FaTimes />
+              </button>
             </div>
-            
+
             <form onSubmit={handleSubmit}>
-              <div className="review-grid" style={{gridTemplateColumns: '1fr', padding: '25px'}}>
+              <div
+                className="review-grid"
+                style={{ gridTemplateColumns: '1fr', padding: '25px' }}
+              >
                 <div className="form-group-admin">
                   <label>Tên hiển thị</label>
-                  <input required value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="vd: Hỏa Tốc" />
+                  <input
+                    required
+                    value={form.name}
+                    onChange={e => setForm({ ...form, name: e.target.value })}
+                    placeholder="vd: Hỏa Tốc"
+                  />
                 </div>
+
                 <div className="form-group-admin">
                   <label>Mô tả ngắn</label>
-                  <textarea required value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="vd: Nhận hàng trong 2 giờ" />
+                  <textarea
+                    required
+                    value={form.description}
+                    onChange={e => setForm({ ...form, description: e.target.value })}
+                    placeholder="vd: Nhận hàng trong 2 giờ"
+                  />
                 </div>
-                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px'}}>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                   <div className="form-group-admin">
                     <label>Giá gốc (VNĐ)</label>
-                    <input required type="number" value={form.baseCost} onChange={e => setForm({...form, baseCost: Number(e.target.value)})} />
+                    <input
+                      required
+                      type="number"
+                      value={form.baseCost}
+                      onChange={e =>
+                        setForm({ ...form, baseCost: Number(e.target.value) })
+                      }
+                    />
                   </div>
+
                   <div className="form-group-admin">
                     <label>Thời gian ước tính</label>
-                    <input required value={form.estimatedTime} onChange={e => setForm({...form, estimatedTime: e.target.value})} placeholder="vd: 2-3 ngày" />
+                    <input
+                      required
+                      value={form.estimatedTime}
+                      onChange={e =>
+                        setForm({ ...form, estimatedTime: e.target.value })
+                      }
+                      placeholder="vd: 2-3 ngày"
+                    />
                   </div>
                 </div>
               </div>
-              
+
               <div className="modal-footer-actions">
                 <div className="button-group">
-                  <button type="button" className="btn-reject-modal" onClick={() => setShowModal(false)}>Hủy</button>
-                  <button type="submit" className="btn-approve-modal">Lưu cấu hình</button>
+                  <button
+                    type="button"
+                    className="btn-reject-modal"
+                    onClick={() => setShowModal(false)}
+                  >
+                    Hủy
+                  </button>
+                  <button type="submit" className="btn-approve-modal">
+                    Lưu cấu hình
+                  </button>
                 </div>
               </div>
             </form>

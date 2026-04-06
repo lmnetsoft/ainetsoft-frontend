@@ -1,8 +1,18 @@
 .account-sidebar-supreme {
   width: 100%;
-  background: #ffffff;
+  /* 🚀 THE TRANSPARENT FIX 🚀 
+     The background/border is now handled by the parent (AdminLayout.css)
+     to ensure it never cuts off or loses the scrollbar.
+  */
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  
+  height: 100%;
+  display: flex;
+  flex-direction: column;
   padding: 25px 0;
-  border-right: none; 
+  box-sizing: border-box;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
 }
 
@@ -49,11 +59,15 @@
 .edit-trigger:hover { color: #ee4d2d; }
 
 /* --- Navigation --- */
-.sidebar-navigation { display: flex; flex-direction: column; gap: 2px; }
+.sidebar-navigation {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 .nav-section { margin-bottom: 10px; }
 .section-divider { border-top: 1px solid #f1f5f9; padding-top: 10px; margin-top: 5px; }
 
-/* 🚀 UPDATED: Section headers like "Tài khoản của tôi" and "Quản trị viên" now always Red */
+/* 🚀 Section headers and standalone links forced Red */
 .section-header, .standalone-link {
   display: flex;
   align-items: center;
@@ -61,7 +75,7 @@
   padding: 10px 20px;
   font-size: 14px;
   font-weight: 700; 
-  color: #ee4d2d !important; /* 🚀 Forced Red to match screenshot */
+  color: #ee4d2d !important;
   text-decoration: none;
   transition: background 0.2s;
 }
@@ -81,7 +95,7 @@
   border-left: 4px solid transparent; 
 }
 
-/* 🚀 NEW: Special class to keep "Tổng quan hệ thống" always red */
+/* 🚀 Special class to keep "Tổng quan hệ thống" always red */
 .section-links a.always-red {
   color: #ee4d2d !important;
   font-weight: 700;
@@ -131,10 +145,7 @@
   font-size: 14px; 
   font-weight: 700;
   color: #002147 !important; 
-  text-transform: none; 
-  letter-spacing: 0.2px;
   border-top: 1px solid #f1f5f9;
   margin-top: 10px;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
+
