@@ -1,13 +1,8 @@
 .account-sidebar-supreme {
   width: 100%;
-  /* 🚀 THE TRANSPARENT FIX 🚀 
-     The background/border is now handled by the parent (AdminLayout.css)
-     to ensure it never cuts off or loses the scrollbar.
-  */
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
-  
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -64,10 +59,19 @@
   flex-direction: column;
   gap: 2px;
 }
-.nav-section { margin-bottom: 10px; }
-.section-divider { border-top: 1px solid #f1f5f9; padding-top: 10px; margin-top: 5px; }
 
-/* 🚀 Section headers and standalone links forced Red */
+.nav-section { 
+  margin-bottom: 15px; 
+}
+
+/* Merged groups have a specific divider logic */
+.merged-group {
+  border-top: 1px solid #f1f5f9;
+  padding-top: 10px;
+  margin-top: 5px;
+}
+
+/* Section headers and standalone links */
 .section-header, .standalone-link {
   display: flex;
   align-items: center;
@@ -80,11 +84,20 @@
   transition: background 0.2s;
 }
 
+/* Standalone links need to look clickable/hoverable */
+.standalone-link:hover {
+  background: #f8fafc;
+}
+
 /* Sub-Links Alignment */
-.section-links { display: flex; flex-direction: column; gap: 1px; }
+.section-links { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 1px; 
+}
 
 .section-links a {
-  padding: 10px 20px 10px 52px; 
+  padding: 8px 20px 8px 52px; /* 52px ensures alignment under text, not icon */
   font-size: 13.5px;
   color: #64748b;
   text-decoration: none;
@@ -95,7 +108,14 @@
   border-left: 4px solid transparent; 
 }
 
-/* 🚀 Special class to keep "Tổng quan hệ thống" always red */
+.section-links a svg { 
+  font-size: 15px; 
+  width: 18px; 
+  opacity: 0.7; 
+  transition: all 0.2s; 
+}
+
+/* Special class for "Tổng quan hệ thống" */
 .section-links a.always-red {
   color: #ee4d2d !important;
   font-weight: 700;
@@ -106,9 +126,7 @@
   opacity: 1;
 }
 
-.section-links a svg { font-size: 15px; width: 18px; opacity: 0.7; transition: all 0.2s; }
-
-/* 🚀 VIBRANT ICON COLORS (UNTOUCHED) */
+/* --- ICON COLORS --- */
 .icon-blue { color: #3498db !important; }
 .icon-green { color: #27ae60 !important; }
 .icon-red { color: #e74c3c !important; }
@@ -123,12 +141,18 @@
 .icon-indigo { color: #6610f2 !important; }
 
 /* Hover States */
-.section-links a:hover { background: #f8fafc; color: #ee4d2d; }
-.section-links a:hover svg { opacity: 1; transform: scale(1.05); }
+.section-links a:hover { 
+  background: #f8fafc; 
+  color: #ee4d2d; 
+}
+.section-links a:hover svg { 
+  opacity: 1; 
+  transform: scale(1.05); 
+}
 
-/* 🚀 ACTIVE STATE */
+/* --- ACTIVE STATE --- */
 .section-links a.active, .standalone-link.active {
-  background: transparent !important; 
+  background: #fff5f2 !important; /* Very light orange tint for active */
   color: #ee4d2d !important;
   border-left: 4px solid #ee4d2d; 
   font-weight: 700;
@@ -139,13 +163,13 @@
   color: #ee4d2d !important;
 }
 
-/* 🚀 GROUP LABELS */
+/* --- GROUP LABELS --- */
 .group-label {
-  padding: 22px 20px 10px 52px; 
-  font-size: 14px; 
+  padding: 18px 20px 8px 52px; 
+  font-size: 12px; 
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   font-weight: 700;
-  color: #002147 !important; 
-  border-top: 1px solid #f1f5f9;
-  margin-top: 10px;
+  color: #94a3b8 !important; 
+  margin-top: 5px;
 }
-
