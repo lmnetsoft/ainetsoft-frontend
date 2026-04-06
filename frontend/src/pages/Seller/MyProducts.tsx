@@ -1,22 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaBoxOpen, FaPlus, FaEye, FaEdit, FaTrashAlt, FaCheckSquare } from 'react-icons/fa';
+import { FaPlus, FaEye, FaEdit, FaTrashAlt } from 'react-icons/fa';
 import api from '../../services/api'; 
-import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
+// 🚀 REMOVED: AccountSidebar to fix the "Double Menu" issue
 import ToastNotification from '../../components/Toast/ToastNotification';
 import { getUserProfile } from '../../services/authService'; 
 import './MyProducts.css';
 
 const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:8080';
 
-// FIX 1: Updated interface to use imageUrls to match backend Product.java
+// BITNAMILEGACY: Preserved interface and imageUrls logic
 interface Product {
   id: string; 
   name: string;
   price: number;
   stock: number;
   category: string;
-  imageUrls: string[]; // Changed from 'images' to 'imageUrls'
+  imageUrls: string[]; 
   status: string;
   sellerId?: string;
 }
@@ -96,7 +96,7 @@ const MyProducts = () => {
   };
 
   const handleBulkDelete = async () => {
-    if (!window.confirm(`Bạn có chắc muốn xóa ${selectedIds.length} sản phẩm đã chọn? Thao tác này sẽ dọn sạch toàn bộ tệp đính kèm trên server.`)) return;
+    if (!window.confirm(`Bạn có chắc muốn xóa ${selectedIds.length} sản phẩm đã chọn?`)) return;
     try {
       await api.post('/products/seller/delete-bulk', selectedIds);
       setToastMessage(`Đã dọn dẹp và xóa ${selectedIds.length} sản phẩm thành công!`);
@@ -121,121 +121,118 @@ const MyProducts = () => {
   const filteredProducts = products.filter(p => filter === 'ALL' || p.status === filter);
 
   return (
-    <div className="profile-wrapper">
+    /* 🚀 MASTER WRAPPER: Matches Profile/Dashboard for unified height */
+    <div className="my-products-supreme-layout">
       <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
-      <div className="container profile-container">
-        <AccountSidebar />
-        
-        <main className="profile-main-content">
-          <div className="content-header-seller">
-            <div>
-              <h1>Sản phẩm của tôi</h1>
-              <p>Quản lý và dọn dẹp kho hàng của bạn</p>
-            </div>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              {selectedIds.length > 0 && (
-                <button className="bulk-delete-btn" onClick={handleBulkDelete}>
-                  <FaTrashAlt /> Xóa {selectedIds.length} mục
-                </button>
-              )}
-              <button className="save-btn" onClick={() => navigate('/seller/add')}>
-                <FaPlus /> Thêm sản phẩm
+      
+      <main className="my-products-main-view">
+        {/* 🚀 SUPREME HEADER: Centered & Red */}
+        <div className="supreme-content-header centered-header">
+          <h1>Sản phẩm của tôi</h1>
+          <p>Quản lý và dọn dẹp kho hàng của bạn</p>
+        </div>
+
+        <div className="product-actions-toolbar">
+          <div className="toolbar-left">
+            {selectedIds.length > 0 && (
+              <button className="bulk-delete-btn" onClick={handleBulkDelete}>
+                <FaTrashAlt /> Xóa {selectedIds.length} mục đã chọn
               </button>
-            </div>
-          </div>
-
-          <hr className="divider" />
-
-          <div className="purchase-tabs-container">
-            {[
-              { id: 'ALL', label: `Tất cả (${products.length})` },
-              { id: 'APPROVED', label: 'Đang bán' },
-              { id: 'PENDING', label: 'Chờ duyệt' },
-              { id: 'REJECTED', label: 'Bị từ chối' }
-            ].map((tab) => (
-              <div 
-                key={tab.id}
-                className={`tab-item-seller ${filter === tab.id ? 'active' : ''}`}
-                onClick={() => setFilter(tab.id as any)}
-              >
-                {tab.label}
-              </div>
-            ))}
-          </div>
-
-          <div className="table-wrapper-seller">
-            {loading ? (
-              <div className="loading-placeholder-seller">Đang tải dữ liệu...</div>
-            ) : filteredProducts.length === 0 ? (
-              <div className="empty-placeholder-seller">Không tìm thấy sản phẩm nào.</div>
-            ) : (
-              <table className="seller-data-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: '40px' }}>
-                      <input 
-                        type="checkbox" 
-                        onChange={toggleSelectAll} 
-                        checked={selectedIds.length === filteredProducts.length && filteredProducts.length > 0} 
-                      />
-                    </th>
-                    <th>Sản phẩm</th>
-                    <th>Danh mục</th>
-                    <th>Giá</th>
-                    <th>Kho</th>
-                    <th>Trạng thái</th>
-                    <th style={{ textAlign: 'right' }}>Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredProducts.map(p => (
-                    <tr key={p.id} className={selectedIds.includes(p.id) ? "row-selected" : ""}>
-                      <td>
-                        <input 
-                          type="checkbox" 
-                          checked={selectedIds.includes(p.id)} 
-                          onChange={() => toggleSelectItem(p.id)} 
-                        />
-                      </td>
-                      <td>
-                        <div className="table-prod-info">
-                          {/* FIX 2: Correctly map imageUrls to fix the white square issue */}
-                          <img 
-                            src={formatMediaUrl(p.imageUrls?.[0])} 
-                            alt={p.name} 
-                            onError={(e) => { e.currentTarget.src = "/placeholder.png"; }}
-                          />
-                          <span style={{fontWeight: selectedIds.includes(p.id) ? '600' : '400'}}>{p.name}</span>
-                        </div>
-                      </td>
-                      <td>{p.category}</td>
-                      <td>₫{p.price.toLocaleString()}</td>
-                      <td className={p.stock < lowStockThreshold ? "low-stock" : ""}>
-                        {p.stock}
-                        {p.stock < lowStockThreshold && <span className="stock-warning"> !</span>}
-                      </td>
-                      <td>{getStatusBadge(p.status)}</td>
-                      <td style={{ textAlign: 'right' }}>
-                        <div className="action-btns" style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-                           <button className="preview-text-btn" onClick={() => navigate(`/product/${p.id}`, { state: { productPreview: p } })}>
-                             <FaEye /> Xem trước
-                           </button>
-                           <button className="edit-text-btn" onClick={() => navigate(`/seller/edit/${p.id}`)}>
-                             <FaEdit /> Sửa
-                           </button>
-                           <button className="del-text-btn" onClick={() => handleDelete(p.id)}>
-                             <FaTrashAlt /> Xóa
-                           </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             )}
           </div>
-        </main>
-      </div>
+          <button className="supreme-add-btn" onClick={() => navigate('/seller/add')}>
+            <FaPlus /> Thêm sản phẩm mới
+          </button>
+        </div>
+
+        <div className="purchase-tabs-container">
+          {[
+            { id: 'ALL', label: `Tất cả (${products.length})` },
+            { id: 'APPROVED', label: 'Đang bán' },
+            { id: 'PENDING', label: 'Chờ duyệt' },
+            { id: 'REJECTED', label: 'Bị từ chối' }
+          ].map((tab) => (
+            <div 
+              key={tab.id}
+              className={`tab-item-seller ${filter === tab.id ? 'active' : ''}`}
+              onClick={() => setFilter(tab.id as any)}
+            >
+              {tab.label}
+            </div>
+          ))}
+        </div>
+
+        <div className="table-wrapper-seller">
+          {loading ? (
+            <div className="loading-placeholder-seller">Đang tải dữ liệu...</div>
+          ) : filteredProducts.length === 0 ? (
+            <div className="empty-placeholder-seller">Không tìm thấy sản phẩm nào.</div>
+          ) : (
+            <table className="seller-data-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '40px' }}>
+                    <input 
+                      type="checkbox" 
+                      onChange={toggleSelectAll} 
+                      checked={selectedIds.length === filteredProducts.length && filteredProducts.length > 0} 
+                    />
+                  </th>
+                  <th>Sản phẩm</th>
+                  <th>Danh mục</th>
+                  <th>Giá</th>
+                  <th>Kho</th>
+                  <th>Trạng thái</th>
+                  <th style={{ textAlign: 'right' }}>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredProducts.map(p => (
+                  <tr key={p.id} className={selectedIds.includes(p.id) ? "row-selected" : ""}>
+                    <td>
+                      <input 
+                        type="checkbox" 
+                        checked={selectedIds.includes(p.id)} 
+                        onChange={() => toggleSelectItem(p.id)} 
+                      />
+                    </td>
+                    <td>
+                      <div className="table-prod-info">
+                        <img 
+                          src={formatMediaUrl(p.imageUrls?.[0])} 
+                          alt={p.name} 
+                          onError={(e) => { e.currentTarget.src = "/placeholder.png"; }}
+                        />
+                        <span style={{fontWeight: selectedIds.includes(p.id) ? '700' : '500'}}>{p.name}</span>
+                      </div>
+                    </td>
+                    <td>{p.category}</td>
+                    <td>₫{p.price.toLocaleString()}</td>
+                    <td className={p.stock < lowStockThreshold ? "low-stock" : ""}>
+                      {p.stock}
+                      {p.stock < lowStockThreshold && <span className="stock-warning"> !</span>}
+                    </td>
+                    <td>{getStatusBadge(p.status)}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <div className="action-btns-group">
+                         <button className="preview-text-btn" onClick={() => navigate(`/product/${p.id}`, { state: { productPreview: p } })}>
+                           <FaEye /> Xem trước
+                         </button>
+                         <button className="edit-text-btn" onClick={() => navigate(`/seller/edit/${p.id}`)}>
+                           <FaEdit /> Sửa
+                         </button>
+                         <button className="del-text-btn" onClick={() => handleDelete(p.id)}>
+                           <FaTrashAlt /> Xóa
+                         </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </main>
     </div>
   );
 };

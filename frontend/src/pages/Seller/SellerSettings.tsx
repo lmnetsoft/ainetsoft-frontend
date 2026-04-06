@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import ToastNotification from '../../components/Toast/ToastNotification';
 import { getUserProfile, updateShopSettings } from '../../services/authService';
-import { FaStore, FaMapMarkerAlt, FaShieldAlt, FaInfoCircle, FaFileInvoice, FaExternalLinkAlt, FaPhoneAlt, FaUserEdit, FaMap } from 'react-icons/fa';
+import { 
+    FaStore, FaMapMarkerAlt, FaShieldAlt, FaInfoCircle, 
+    FaExternalLinkAlt, FaPhoneAlt, FaUserEdit, FaMap 
+} from 'react-icons/fa';
 import './SellerSettings.css';
 
-// HELPER: Real-time Slug Preview
+// HELPER: Real-time Slug Preview (ORIGINAL LOGIC PRESERVED)
 const slugify = (text: string) => {
     return text.toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim();
 };
 
-// HELPERS: Input Display Formatters
+// HELPERS: Input Display Formatters (ORIGINAL LOGIC PRESERVED)
 const formatPhoneDisplay = (val: string) => {
+    if (!val) return ""; 
     const s = val.replace(/\D/g, '');
     if (s.length <= 3) return s;
     if (s.length <= 6) return `${s.slice(0, 3)} ${s.slice(3)}`;
@@ -19,6 +22,7 @@ const formatPhoneDisplay = (val: string) => {
 };
 
 const formatMSTDisplay = (val: string) => {
+    if (!val) return ""; 
     const s = val.replace(/\D/g, '');
     return s.replace(/(\d{3})(?=\d)/g, '$1 ').trim();
 };
@@ -55,11 +59,11 @@ const SellerSettings = () => {
             } catch (error) { console.error(error); } finally { setLoading(false); }
         };
         fetchShopInfo();
+        document.title = "Thiết lập Shop | AiNetsoft";
     }, []);
 
     const handleAddressUpdate = (index: number, field: string, value: string) => {
         const updated = [...addresses];
-        // Strip spaces before saving to state
         const cleanValue = (field === 'phone') ? value.replace(/\s/g, '') : value;
         updated[index] = { ...updated[index], [field]: cleanValue };
         setAddresses(updated);
@@ -101,41 +105,40 @@ const SellerSettings = () => {
         } finally { setIsSaving(false); }
     };
 
-    if (loading) return <div className="loading-spinner-container"><div className="loading-spinner"></div></div>;
-
     return (
-        <div className="profile-wrapper">
+        /* 🚀 STABILITY FIX: Layout wrapper stays mounted */
+        <main className="seller-settings-supreme-layout">
             <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
-            <div className="container profile-container">
-                <AccountSidebar />
-                <main className="profile-main-content">
-                    <div className="content-header">
-                        <div className="header-with-icon">
-                            <FaStore className="header-icon" />
-                            <div>
-                                <h1>Thiết lập Shop</h1>
-                                <p>Tùy chỉnh nhận diện và kho vận GPS</p>
-                            </div>
-                        </div>
-                    </div>
-                    <hr className="divider" />
 
-                    {/* 1. IDENTITY & NICE URL */}
+            {/* 🚀 TYPOGRAPHY FIX: Header unified with MyProducts */}
+            <div className="supreme-content-header centered-header">
+                <h1><FaStore className="title-icon-gap" /> Thiết lập Shop</h1>
+                <p>Tùy chỉnh nhận diện và kho vận GPS</p>
+            </div>
+            
+            <hr className="supreme-divider" />
+
+            {loading ? (
+                <div className="loading-placeholder-seller">Đang tải cấu hình shop...</div>
+            ) : (
+                <div className="settings-scroll-view">
                     <section className="settings-section">
                         <h3 className="section-subtitle"><FaInfoCircle /> Nhận diện & URL</h3>
-                        <div className="form-row">
-                            <label>Tên Shop <span className="required-star">*</span></label>
-                            <input 
-                                type="text" 
-                                className="shop-textarea" // Using shared styling
-                                style={{ height: 'auto', minHeight: '40px' }}
-                                disabled={daysUntilChange > 0}
-                                value={shopData.shopName} 
-                                onChange={(e) => setShopData({...shopData, shopName: e.target.value})} 
-                            />
+                        <div className="supreme-form-row vertical">
+                            <label>Tên Shop <span className="req">*</span></label>
+                            <div className="input-group-container">
+                                <input 
+                                    type="text" 
+                                    className="supreme-input"
+                                    disabled={daysUntilChange > 0}
+                                    value={shopData.shopName} 
+                                    onChange={(e) => setShopData({...shopData, shopName: e.target.value})} 
+                                />
+                                {daysUntilChange > 0 && <small className="input-hint red">Bạn có thể đổi tên lại sau {daysUntilChange} ngày nữa.</small>}
+                            </div>
                         </div>
 
-                        <div className="form-row">
+                        <div className="supreme-form-row vertical">
                             <label>Nice URL (Slug)</label>
                             <div className="slug-input-group">
                                 <div className="slug-display">
@@ -149,7 +152,6 @@ const SellerSettings = () => {
                         </div>
                     </section>
 
-                    {/* 2. EDITABLE WAREHOUSES */}
                     <section className="settings-section mt-30">
                         <h3 className="section-subtitle"><FaMapMarkerAlt /> Kho hàng ({addresses.length}/2)</h3>
                         <div className="warehouse-edit-grid">
@@ -157,49 +159,29 @@ const SellerSettings = () => {
                                 <div key={idx} className="pro-warehouse-card">
                                     <div className="card-side-info">
                                         <div className="input-group-mini">
-                                            <FaUserEdit />
-                                            <input 
-                                                value={addr.receiverName} 
-                                                onChange={(e) => handleAddressUpdate(idx, 'receiverName', e.target.value)}
-                                                placeholder="Tên kho"
-                                            />
+                                            <FaUserEdit className="mini-icon" />
+                                            <input value={addr.receiverName} onChange={(e) => handleAddressUpdate(idx, 'receiverName', e.target.value)} placeholder="Tên kho" />
                                         </div>
                                         <div className="input-group-mini">
-                                            <FaPhoneAlt />
-                                            <input 
-                                                /* FIX: Display formatted but save clean */
-                                                value={formatPhoneDisplay(addr.phone)} 
-                                                onChange={(e) => handleAddressUpdate(idx, 'phone', e.target.value)}
-                                                placeholder="Số điện thoại"
-                                            />
+                                            <FaPhoneAlt className="mini-icon red-icon" />
+                                            <input value={formatPhoneDisplay(addr.phone)} onChange={(e) => handleAddressUpdate(idx, 'phone', e.target.value)} placeholder="Số điện thoại" />
                                         </div>
                                         <div className="input-group-mini textarea-group">
-                                            <FaMap />
-                                            <textarea 
-                                                value={addr.detail} 
-                                                onChange={(e) => handleAddressUpdate(idx, 'detail', e.target.value)}
-                                                placeholder="Địa chỉ chi tiết"
-                                            />
+                                            <FaMap className="mini-icon" />
+                                            <textarea value={addr.detail} onChange={(e) => handleAddressUpdate(idx, 'detail', e.target.value)} placeholder="Địa chỉ chi tiết" />
                                         </div>
-                                        {/* FIX: Handle missing GPS values gracefully */}
                                         <div className={`gps-pill ${(!addr.latitude || !addr.longitude) ? 'gps-missing' : ''}`}>
-                                            {addr.latitude && addr.longitude 
-                                                ? `GPS Verified: ${addr.latitude}, ${addr.longitude}` 
-                                                : "Chưa xác định tọa độ"}
+                                            {addr.latitude && addr.longitude ? `GPS Verified: ${addr.latitude}, ${addr.longitude}` : "Chưa xác định tọa độ"}
                                         </div>
                                     </div>
                                     <div className="card-side-qr">
-                                        {/* FIX: Conditional QR rendering */}
                                         {addr.latitude && addr.longitude ? (
                                             <>
                                                 <img src={`https://api.qrserver.com/v1/create-qr-code/?size=85x85&data=${encodeURIComponent(`http://googleusercontent.com/maps.google.com/search/${addr.latitude},${addr.longitude}`)}`} alt="QR" />
-                                                <span>SCAN GPS</span>
+                                                <span className="qr-label">SCAN GPS</span>
                                             </>
                                         ) : (
-                                            <div className="qr-placeholder">
-                                                <FaMapMarkerAlt />
-                                                <span>NO GPS</span>
-                                            </div>
+                                            <div className="no-gps-box"><FaMapMarkerAlt size={30} /><p>NO GPS</p></div>
                                         )}
                                     </div>
                                 </div>
@@ -207,7 +189,6 @@ const SellerSettings = () => {
                         </div>
                     </section>
 
-                    {/* 3. LEGAL FIX */}
                     <section className="settings-section mt-30 compliance-box">
                         <h3 className="section-subtitle"><FaShieldAlt /> Thông tin Pháp lý</h3>
                         <div className="legal-info-grid">
@@ -216,7 +197,6 @@ const SellerSettings = () => {
                                 <input 
                                     type="text" 
                                     className="mst-input-clean"
-                                    /* FIX: Display formatted MST */
                                     value={formatMSTDisplay(shopData.taxCode)} 
                                     onChange={(e) => setShopData({...shopData, taxCode: e.target.value.replace(/\s/g, '')})} 
                                 />
@@ -232,13 +212,13 @@ const SellerSettings = () => {
                     </section>
 
                     <div className="form-actions-row">
-                        <button className="save-btn" onClick={handleSave} disabled={isSaving}>
+                        <button className="save-btn-supreme" onClick={handleSave} disabled={isSaving}>
                             {isSaving ? "Đang xử lý..." : "Lưu thiết lập"}
                         </button>
                     </div>
-                </main>
-            </div>
-        </div>
+                </div>
+            )}
+        </main>
     );
 };
 

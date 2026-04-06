@@ -1,75 +1,102 @@
 /* --- 🚀 THE MASTER SHELL --- */
 .admin-master-layout {
-  background-color: #f6f9fc; 
-  display: flex;
-  flex-direction: column;
-  flex: 1; 
-  min-height: 100vh;
+    background-color: #f6f9fc; 
+    display: flex;
+    flex-direction: column;
+    flex: 1; 
+    min-height: 100vh;
+    width: 100%;
 }
 
-/* 🚀 THE STRETCH & WIDTH FIX 
-   Using Grid ensures both Sidebar and Content are mathematically equal.
-*/
+/* 🚀 THE SUPREME ALIGNMENT FIX */
 .admin-layout-inner-container {
-  display: grid;
-  /* Sidebar fixed at 280px, Content takes all remaining space */
-  grid-template-columns: 280px 1fr; 
-  gap: 20px;
-  padding: 40px 20px;
-  width: 100%;
-  max-width: 1400px; 
-  margin: 0 auto;
-  /* 🚀 Forces both columns to match the taller one (usually Sidebar) */
-  align-items: stretch; 
-  flex: 1;
+    display: grid !important;
+    grid-template-columns: 280px 1fr; 
+    gap: 20px;
+    padding: 20px; 
+    width: 100%;
+    max-width: 1400px; 
+    margin: 0 auto;
+    /* 🚀 FORCE: Columns stay equal, but the sidebar will now scroll internally */
+    align-items: stretch !important; 
+    flex: 1;
 }
 
 .sidebar-column {
-  width: 280px;
-  min-width: 280px;
-  background: #ffffff;
-  border-radius: 10px;
-  border: 1px solid #eef2f6;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-  display: flex;
-  flex-direction: column;
-  /* height: 100% removed to let grid alignment handle stretch */
+    width: 280px;
+    min-width: 280px;
+    
+    /* 🚀 THE MASTER BACKGROUND FIX 🚀
+       Moving the white box here ensures the background is ALWAYS full height 
+       relative to the sidebar's viewable area.
+    */
+    background: #ffffff;
+    border-radius: 10px;
+    border: 1px solid #eef2f6;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    
+    /* 🚀 THE SCROLLBAR ENGINE 🚀
+       Locked to the viewport height minus the 20px padding top/bottom.
+    */
+    position: sticky;           
+    top: 20px;                  
+    height: calc(100vh - 40px); 
+    max-height: calc(100vh - 40px); 
+    overflow-y: auto;           
+    overflow-x: hidden;
+    
+    display: flex;
+    flex-direction: column;
 }
 
 .admin-main-view {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
+    display: flex !important;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+    height: auto;
 }
 
 .admin-content-wrapper {
-  width: 100%;
-  background: #ffffff;
-  border-radius: 10px;
-  border: 1px solid #eef2f6;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-  padding: 40px; 
-  /* 🚀 THIS FORCES THE WHITE BACKGROUND TO FILL THE REMAINING HEIGHT */
-  flex: 1; 
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-  /* Lock the stretch inside the grid cell */
-  min-height: 100%; 
+    width: 100%;
+    flex: 1 !important; 
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+}
+
+/* 🚀 THE FORCE-STRETCH ENGINE: 
+   Ensures the Profile/Dashboard white box matches the sidebar height.
+*/
+.admin-content-wrapper > * {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 100% !important;
+}
+
+/* 🎨 SUPREME SLIM SCROLLBARS FOR SIDEBAR */
+.sidebar-column::-webkit-scrollbar {
+    width: 5px;
+}
+.sidebar-column::-webkit-scrollbar-thumb {
+    background: #cbd5e0;
+    border-radius: 10px;
 }
 
 /* Responsive: Switch to stack on smaller screens */
 @media (max-width: 1024px) {
-  .admin-layout-inner-container { 
-    grid-template-columns: 1fr; 
-    padding: 20px;
-  }
-  .sidebar-column { 
-    width: 100%; 
-    min-height: auto;
-  }
-  .admin-content-wrapper {
-    min-height: auto;
-  }
+    .admin-layout-inner-container { 
+        grid-template-columns: 1fr; 
+        padding: 15px;
+        align-items: start !important;
+    }
+    .sidebar-column { 
+        width: 100%; 
+        position: relative; 
+        top: 0;
+        height: auto;
+        max-height: none;
+        overflow-y: visible;
+    }
 }

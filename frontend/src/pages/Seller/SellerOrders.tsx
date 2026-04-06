@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaBox, FaTruck, FaUser, FaPhoneAlt, FaClipboardList } from 'react-icons/fa';
+import { FaBox, FaUser, FaPhoneAlt, FaClipboardList } from 'react-icons/fa';
 import api from '../../services/api'; 
-import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
+// 🚀 REMOVED: AccountSidebar to fix the "Double Menu" issue
 import ToastNotification from '../../components/Toast/ToastNotification';
 import './SellerOrders.css';
 
@@ -32,7 +32,22 @@ const SellerOrders = () => {
       const res = await api.get(`/orders/seller?status=${activeTab}`);
       setOrders(res.data);
     } catch (err: any) {
-      setToastMessage("Không thể tải danh sách đơn hàng.");
+      // 🚀 SUPREME LOGIC: Replacing the generic message with descriptive errors
+      let message = "Không thể kết nối đến máy chủ.";
+
+      if (err.response) {
+        // Server responded with an error (401, 403, 500, etc.)
+        message = err.response.data?.message || `Lỗi hệ thống (${err.response.status})`;
+        
+        if (err.response.status === 401) {
+          message = "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại!";
+        }
+      } else if (err.request) {
+        // Request made but no response (Internet/Network issues)
+        message = "Lỗi mạng! Vui lòng kiểm tra kết nối internet của bạn.";
+      }
+
+      setToastMessage(message);
       setShowToast(true);
     } finally {
       setLoading(false);
@@ -46,27 +61,26 @@ const SellerOrders = () => {
       setShowToast(true);
       fetchOrders(); 
     } catch (err: any) {
-      setToastMessage("Lỗi khi cập nhật trạng thái.");
+      // 🚀 SUPREME LOGIC applied here too
+      const errMsg = err.response?.data?.message || "Lỗi khi cập nhật trạng thái.";
+      setToastMessage(errMsg);
       setShowToast(true);
     }
   };
 
   return (
-    <div className="profile-wrapper">
+    /* 🚀 MASTER WRAPPER: Matches fixed Profile/Bank/Dashboard pages for perfect alignment */
+    <div className="seller-orders-supreme-layout">
       <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
 
-      <div className="container profile-container">
-        <AccountSidebar />
-        
-        <main className="profile-main-content">
-          <div className="content-header">
-            <h1><FaClipboardList /> Quản lý Đơn hàng</h1>
+        <main className="seller-main-content">
+          {/* 🚀 SUPREME HEADER: Centered & Red */}
+          <div className="seller-header">
+            <h1><FaClipboardList style={{verticalAlign: 'middle', marginRight: '10px'}} /> Quản lý Đơn hàng</h1>
             <p>Xử lý và vận chuyển các đơn hàng từ khách hàng của bạn.</p>
           </div>
 
-          <hr className="divider" />
-
-          {/* Tab bar matching the horizontal Profile style */}
+          {/* Tab bar matching the horizontal Supreme style */}
           <div className="purchase-tabs-container">
             {tabs.map(tab => (
               <div 
@@ -81,10 +95,10 @@ const SellerOrders = () => {
 
           <div className="order-list-content">
             {loading ? (
-              <div className="loading-state-placeholder">Đang tải đơn hàng...</div>
+              <div className="loading-box">Đang tải đơn hàng...</div>
             ) : orders.length === 0 ? (
-              <div className="empty-state-seller">
-                <FaBox className="empty-icon" />
+              <div className="empty-orders-box">
+                <FaBox style={{fontSize: '3rem', marginBottom: '15px', opacity: 0.2}} />
                 <p>Chưa có đơn hàng nào trong mục này.</p>
               </div>
             ) : (
@@ -92,7 +106,7 @@ const SellerOrders = () => {
                 <div key={order.id} className="seller-order-item-card">
                   <div className="order-item-header">
                     <span className="order-id">Mã đơn: #{order.id.slice(-8).toUpperCase()}</span>
-                    <span className={`status-tag ${order.status.toLowerCase()}`}>
+                    <span className={`status-pill ${order.status.toLowerCase()}`}>
                        {order.status === 'PENDING' ? 'Chờ xác nhận' : order.status}
                     </span>
                   </div>
@@ -110,22 +124,22 @@ const SellerOrders = () => {
                           <p className="name">{item.productName}</p>
                           <p className="qty">Số lượng: x{item.quantity}</p>
                         </div>
-                        <div className="price">₫{item.price.toLocaleString()}</div>
+                        <div className="revenue-total">₫{item.price.toLocaleString()}</div>
                       </div>
                     ))}
                   </div>
 
                   <div className="order-item-footer">
-                    <div className="revenue-total">
+                    <div className="total-amount">
                       Tổng thu: <span>₫{order.totalAmount.toLocaleString()}</span>
                     </div>
-                    <div className="btn-group">
+                    <div className="action-buttons">
                       {order.status === 'PENDING' && (
                         <button className="confirm-btn-seller" onClick={() => handleUpdateStatus(order.id, 'SHIPPING')}>
                           Xác nhận giao hàng
                         </button>
                       )}
-                      <button className="detail-btn-seller" onClick={() => navigate(`/seller/order/${order.id}`)}>
+                      <button className="btn-detail" onClick={() => navigate(`/seller/order/${order.id}`)}>
                         Chi tiết
                       </button>
                     </div>
@@ -135,7 +149,6 @@ const SellerOrders = () => {
             )}
           </div>
         </main>
-      </div>
     </div>
   );
 };

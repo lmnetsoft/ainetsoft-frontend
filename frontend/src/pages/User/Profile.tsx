@@ -16,19 +16,32 @@ const Profile = () => {
   const maxBirthDate = new Date(today.getFullYear() - 16, today.getMonth(), today.getDate())
     .toISOString().split('T')[0];
 
-  const [formData, setFormData] = useState({
-    email: '',
-    phone: '84', 
-    fullName: '',
-    gender: 'other',
-    birthDate: '',
-    avatarUrl: '',
-    provider: 'LOCAL', 
-    addresses: [] as any[],
-    bankAccounts: [] as any[]
-  });
+  // 🚀 SYNC FIX: Load initial state from cache immediately to stop the "Page Flash"
+  const getInitialData = () => {
+    const cached = localStorage.getItem('user');
+    if (cached) {
+      const data = JSON.parse(cached);
+      return {
+        email: data.email || '',
+        phone: data.phone?.replace(/\D/g, '').replace(/^084/, '84') || '84',
+        fullName: data.fullName || '',
+        gender: data.gender || 'other',
+        birthDate: data.birthDate || '',
+        avatarUrl: data.avatarUrl || '',
+        provider: data.provider || 'LOCAL', 
+        addresses: data.addresses || [],
+        bankAccounts: data.bankAccounts || []
+      };
+    }
+    return {
+      email: '', phone: '84', fullName: '', gender: 'other',
+      birthDate: '', avatarUrl: '', provider: 'LOCAL',
+      addresses: [], bankAccounts: []
+    };
+  };
 
-  const [loading, setLoading] = useState(true);
+  const [formData, setFormData] = useState(getInitialData());
+  const [loading, setLoading] = useState(!localStorage.getItem('user')); 
   const [isSaving, setIsSaving] = useState(false);
   const [isSeller, setIsSeller] = useState(false);
   const [showToast, setShowToast] = useState(false);
@@ -44,7 +57,6 @@ const Profile = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        setLoading(true);
         const data = await getUserProfile();
         
         let normalizedPhone = '84';
@@ -182,11 +194,15 @@ const Profile = () => {
     }
   };
 
-  if (loading) return <div className="profile-loading-box">Đang tải hồ sơ...</div>;
+  // 🚀 VIBRATION FIX: We no longer unmount the whole component during loading.
+  // This keeps the right column width stable so the Sidebar doesn't jump.
 
   return (
     <div className="user-profile-supreme-layout">
       <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
+
+      {/* 🚀 Internal overlay instead of full-page reload */}
+      {loading && <div className="supreme-loading-overlay">Đang tải hồ sơ...</div>}
 
       <div className="profile-content-header centered-header">
         <h1>Hồ sơ của tôi</h1>

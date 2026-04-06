@@ -1,251 +1,171 @@
-/* 1. MAIN LAYOUT - Matches Dashboard Width */
-.seller-orders-wrapper {
-  background-color: #f5f5f5;
-  min-height: 100vh;
+/* --- 1. THE SUPREME MASTER CONTAINER --- */
+.seller-orders-supreme-layout {
+    width: 100%;
+    background-color: #ffffff !important; 
+    padding: 30px 40px;
+    box-sizing: border-box;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    border-radius: 10px;
+    border: 1px solid #eef2f6;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
 
-.seller-container {
-  display: flex;
-  gap: 24px;
-  max-width: 1400px; /* Standard wide width */
-  margin: 0 auto;
-  padding: 24px;
-}
-
-/* Gray background wrapper like Dashboard */
 .seller-main-content {
-  flex: 1;
-  background: #f5f5f5; 
-  min-width: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: transparent; 
 }
 
-/* 2. HEADER SECTION */
+/* --- 2. SUPREME CENTERED HEADER --- */
 .seller-header {
-  margin-bottom: 24px;
+    text-align: center;
+    margin-bottom: 35px;
+    padding-bottom: 25px;
+    border-bottom: 1px solid #f1f5f9;
 }
 
 .seller-header h1 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #333;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+    font-size: 28px; 
+    font-weight: 800;
+    color: #ee4d2d; 
+    margin: 0 0 8px 0;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.2;
 }
 
 .seller-header p {
-  color: #888;
-  font-size: 0.9rem;
+    color: #64748b;
+    font-size: 0.95rem;
 }
 
-/* 3. HORIZONTAL TABS - Fixed vertical alignment */
-.order-tabs {
-  display: flex;
-  background: white;
-  margin-bottom: 16px;
-  border-radius: 4px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-}
-
-.tab-item {
-  flex: 1;
-  text-align: center;
-  padding: 16px 0;
-  cursor: pointer;
-  font-size: 1rem;
-  color: #555;
-  border-bottom: 3px solid transparent;
-  transition: 0.2s;
-}
-
-.tab-item.active {
-  color: #ee4d2d;
-  border-bottom-color: #ee4d2d;
-  font-weight: 600;
-}
-
-/* 4. ORDER CARDS - Wide White Cards */
-.seller-order-card {
-  background: white;
-  padding: 24px;
-  border-radius: 4px;
-  margin-bottom: 16px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  border-bottom: 1px solid #f0f0f0;
-  padding-bottom: 15px;
-  margin-bottom: 15px;
-}
-
-.order-id { font-weight: bold; color: #333; }
-
-.status-pill {
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 500;
-  background: #f5f5f5;
-}
-
-.status-pill.pending { background: #fff1f0; color: #f5222d; }
-.status-pill.shipping { background: #e6f7ff; color: #1890ff; }
-
-/* 5. ITEM ROWS */
-.order-item-detail {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 12px 0;
-}
-
-.order-item-detail img {
-  width: 64px;
-  height: 64px;
-  object-fit: cover;
-  border-radius: 4px;
-}
-
-.item-meta .name { font-weight: 500; color: #333; }
-.item-meta .qty { color: #888; font-size: 0.85rem; }
-
-/* 6. FOOTER ACTIONS */
-.card-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid #f0f0f0;
-}
-
-.total-amount {
-  font-size: 1.4rem;
-  font-weight: 600;
-  color: #ee4d2d;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 12px;
-}
-
-.btn-confirm {
-  background: #ee4d2d;
-  color: white;
-  border: none;
-  padding: 10px 24px;
-  border-radius: 4px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.btn-detail {
-  background: white;
-  border: 1px solid #d9d9d9;
-  padding: 10px 20px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-/* States */
-.loading-box, .empty-orders-box {
-  background: white;
-  padding: 80px;
-  text-align: center;
-  border-radius: 4px;
-  color: #999;
-}
-
-/* Inherits global profile structure from your Profile.css */
-
-.content-header-seller {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-/* HORIZONTAL TABS STYLE (Match your expected horizontal list) */
+/* --- 3. HORIZONTAL TABS --- */
 .purchase-tabs-container {
-  display: flex;
-  border-bottom: 1px solid #efefef;
-  margin-bottom: 25px;
+    display: flex;
+    border-bottom: 1px solid #f1f5f9;
+    margin-bottom: 25px;
 }
 
 .tab-item-seller {
-  padding: 15px 30px;
-  cursor: pointer;
-  color: #555;
-  font-size: 0.9375rem;
-  border-bottom: 2px solid transparent;
-  transition: 0.2s;
+    flex: 1;
+    padding: 15px 0;
+    text-align: center;
+    cursor: pointer;
+    color: #64748b;
+    font-size: 0.95rem;
+    border-bottom: 3px solid transparent;
+    transition: 0.2s;
+    font-weight: 600;
 }
 
 .tab-item-seller.active {
-  color: #5b67f1;
-  border-bottom-color: #5b67f1;
-  font-weight: 600;
+    color: #ee4d2d;
+    border-bottom-color: #ee4d2d;
 }
 
-/* Order/Product Item Cards inside Main Content */
+/* --- 4. ORDER CARDS --- */
 .seller-order-item-card {
-  border: 1px solid #efefef;
-  padding: 20px;
-  border-radius: 4px;
-  margin-bottom: 20px;
+    background: white;
+    padding: 24px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    border: 1px solid #f1f5f9;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
 }
 
 .order-item-header {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #f8fafc;
 }
+
+.order-id { font-weight: 800; color: #002147; font-family: monospace; }
+
+.status-pill {
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+.status-pill.pending { background: #fff1f0; color: #f5222d; border: 1px solid #ffa39e; }
+.status-pill.shipping { background: #e6f7ff; color: #1890ff; border: 1px solid #91d5ff; }
 
 .seller-cust-info {
-  display: flex;
-  gap: 20px;
-  color: #666;
-  font-size: 0.9rem;
-  margin-bottom: 15px;
+    display: flex;
+    gap: 20px;
+    color: #475569;
+    font-size: 0.9rem;
+    margin: 15px 0;
+    font-weight: 500;
 }
 
+/* --- 5. PRODUCT ROWS --- */
 .prod-row {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  padding: 10px 0;
-  border-bottom: 1px solid #fafafa;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px 0;
+    border-bottom: 1px solid #f8fafc;
 }
 
-.prod-row img { width: 50px; height: 50px; object-fit: cover; }
-.prod-meta { flex: 1; }
+.prod-row img {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid #eee;
+}
 
+.prod-meta .name { font-weight: 700; color: #2d3436; font-size: 0.95rem; }
+.prod-meta .qty { color: #94a3b8; font-size: 0.85rem; }
+
+/* --- 6. FOOTER --- */
 .order-item-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #f1f5f9;
 }
 
-.revenue-total span {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #ee4d2d;
+.total-amount span {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #ee4d2d;
 }
 
 .confirm-btn-seller {
-  background: #5b67f1;
-  color: white;
-  border: none;
-  padding: 8px 20px;
-  border-radius: 4px;
-  cursor: pointer;
+    background: #ee4d2d;
+    color: white;
+    border: none;
+    padding: 10px 25px;
+    border-radius: 4px;
+    font-weight: 700;
+    cursor: pointer;
 }
 
-/* Table styling for Products */
-.seller-data-table { width: 100%; border-collapse: collapse; }
-.seller-data-table th { text-align: left; padding: 15px 10px; color: #888; border-bottom: 1px solid #eee; }
-.seller-data-table td { padding: 15px 10px; border-bottom: 1px solid #fafafa; font-size: 0.9rem; }
-.table-prod-info { display: flex; align-items: center; gap: 10px; }
-.table-prod-info img { width: 40px; height: 40px; object-fit: cover; }
-.edit-text-btn { color: #5b67f1; background: none; border: none; cursor: pointer; }
+.btn-detail {
+    background: white;
+    border: 1px solid #d1d5db;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #475569;
+}
+
+.loading-box, .empty-orders-box {
+    padding: 80px;
+    text-align: center;
+    color: #94a3b8;
+    font-weight: 600;
+}

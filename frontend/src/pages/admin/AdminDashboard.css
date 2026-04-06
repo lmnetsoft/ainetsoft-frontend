@@ -9,13 +9,15 @@
   --ui-font: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Inter", sans-serif;
 }
 
-/* --- 1. Master Layout: STABLE & CENTERED --- */
+/* --- 1. Master Layout: COORDINATION --- */
 .admin-master-layout {
   display: flex;
   min-height: 100vh;
   background-color: var(--chat-bg);
   width: 100%;
   font-family: var(--ui-font);
+  /* 🚀 THE FIX: Allows the layout to grow with the content */
+  flex: 1;
 }
 
 .sidebar-fixed-column {
@@ -23,54 +25,58 @@
   min-width: var(--sidebar-width);
   background: var(--white);
   border-right: 1px solid var(--border-light);
-  height: 100vh;
-  position: sticky;
-  top: 0;
+  height: 100%;
 }
 
 .admin-main-view {
   flex: 1;
-  padding: 30px;
-  overflow-y: auto;
+  /* 🚀 THE FIX: Removed hard padding/overflow to prevent the "Trap" */
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  min-width: 0;
 }
 
-/* --- 2. Dashboard Wrapper: X-FIX --- */
+/* --- 2. Dashboard Wrapper: THE SUPREME STRETCH --- */
 .admin-dashboard-wrapper {
   width: 100%;
   max-width: 1200px; 
   margin: 0 auto; 
-  background: transparent; 
-  border-radius: 0;
-  box-shadow: none;
-  padding: 0;
-  border: none;
+  background: #ffffff; 
+  border-radius: 10px;
+  border: 1px solid #eef2f6;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  padding: 40px; 
+  
+  /* 🚀 THE FIX: Forces the dashboard content to fill the full height of the sidebar */
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 100%; 
+  box-sizing: border-box;
 }
 
-/* --- 3. Header: SUPREME CENTERED ALIGNMENT (UPDATED) --- */
+/* --- 3. Header: SUPREME CENTERED ALIGNMENT (UNTOUCHED) --- */
 .admin-page-header {
   display: flex;
-  flex-direction: column; /* 🚀 Stacks title and badges */
+  flex-direction: column;
   justify-content: center;
-  align-items: center;    /* 🚀 Centers the entire header block */
+  align-items: center;
   margin-bottom: 30px;
   border-bottom: 1px solid #f1f2f6;
   padding-bottom: 20px;
   gap: 15px;
-  position: relative;     /* 🚀 Context for absolute refresh button */
+  position: relative;
   width: 100%;
 }
 
 .header-left {
   display: flex;
   flex-direction: column;
-  align-items: center;    /* 🚀 Centers H1 and Badge container */
+  align-items: center;
   gap: 8px;
 }
 
 .header-left h1 {
-  /* 🚀 SUPREME STANDARD: Center, Bold, Red, Uppercase */
   font-family: var(--ui-font) !important;
   font-size: 26px !important;
   font-weight: 800 !important;
@@ -132,7 +138,6 @@
   color: var(--text-muted);
   transition: 0.2s;
   white-space: nowrap;
-  /* 🚀 FIXED: Snaps to right while title centers */
   position: absolute;
   right: 0;
   top: 10px;
@@ -175,10 +180,10 @@
 .metric-label { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; margin-bottom: 2px; }
 .metric-value { font-size: 1.6rem; font-weight: 800; color: var(--text-dark); }
 
-/* --- 5. Tabs: SUPREME CENTERED (UPDATED) --- */
+/* --- 5. Tabs (UNTOUCHED) --- */
 .content-tabs { 
   display: flex; 
-  justify-content: center; /* 🚀 Centers the navigation */
+  justify-content: center; 
   gap: 15px; 
   margin-bottom: 25px; 
   border-bottom: 2px solid #f1f2f6; 
@@ -217,7 +222,7 @@
 .animate-fade-in { animation: fadeInStatic 0.3s ease-out; }
 @keyframes fadeInStatic { from { opacity: 0; } to { opacity: 1; } }
 
-/* --- 9. Moderation Table Specifics (UNTOUCHED) --- */
+/* --- 9. Moderation Table (UNTOUCHED) --- */
 .user-profile-cell { display: flex; align-items: center; gap: 12px; }
 .moderation-avatar-wrapper { width: 44px; height: 44px; border-radius: 50%; overflow: hidden; border: 2px solid #f1f2f6; flex-shrink: 0; background: #f8f9fa; }
 .moderation-avatar-wrapper img { width: 100%; height: 100%; object-fit: cover; }
@@ -251,7 +256,7 @@
     transform: translateY(-1px);
 }
 
-/* --- 10. Master Review Modal Styling (UPDATED) --- */
+/* --- 10. Master Review Modal (UNTOUCHED) --- */
 .admin-modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
 .seller-review-modal { 
   width: 100%; 
@@ -312,7 +317,7 @@
 .zoom-content-wrapper img { max-width: 100%; max-height: 85vh; border-radius: 8px; }
 .close-zoom-btn { position: absolute; top: -45px; right: 0; background: none; border: none; color: white; font-size: 1.8rem; cursor: pointer; }
 
-/* FIXED: Modal Close Button & X Icon (UNTOUCHED) */
+/* FIXED: Modal Close Button & X Icon (UNTOUCHED) --- */
 .close-btn {
   background: #f1f2f6 !important; border: none !important; width: 36px !important; height: 36px !important;
   border-radius: 50% !important; display: flex !important; align-items: center !important;
@@ -322,28 +327,7 @@
 .close-btn:hover { background: var(--orange) !important; color: white !important; }
 .close-btn:hover svg { color: white !important; }
 
-/* 🚀 FIXED: Modal Header Action Buttons (removes the rectangle "bounding" look) */
-.modal-header button:not(.close-btn) {
-  background: transparent !important;
-  border: none !important;
-  width: 36px !important;
-  height: 36px !important;
-  border-radius: 50% !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  cursor: pointer !important;
-  color: #64748b !important;
-  padding: 0 !important;
-  transition: all 0.2s;
-}
-
-.modal-header button:not(.close-btn):hover {
-  background: #f1f2f6 !important;
-  color: var(--orange) !important;
-}
-
-/* --- 12. ADMIN TABLE: FIXED WIDTH & SPREAD (UNTOUCHED) --- */
+/* --- 12. ADMIN TABLE (UNTOUCHED) --- */
 .admin-table-container { background: #fff; border-radius: 12px; border: 1px solid var(--border-light); overflow: hidden; margin-top: 10px; width: 100%; }
 .admin-data-table, .admin-table { width: 100% !important; border-collapse: collapse; table-layout: auto; }
 .admin-data-table th, .admin-table th { background: #fafbfc; padding: 18px 20px; text-align: left; font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border-light); }
@@ -366,7 +350,7 @@
 .admin-prod-thumb img { width: 100%; height: 100%; object-fit: cover; }
 .empty-row { padding: 80px !important; text-align: center; color: var(--text-muted); font-style: italic; }
 
-/* --- 15. VIOLATION REPORTS & TASK MANAGEMENT (UNTOUCHED) --- */
+/* --- 15. VIOLATION REPORTS (UNTOUCHED) --- */
 .resolved-row { background-color: #fafbfc !important; opacity: 0.6; filter: grayscale(0.4); }
 .report-detail-text { margin-top: 8px; font-size: 0.8rem; color: var(--text-muted); background: #f1f2f6; padding: 8px 12px; border-radius: 6px; border-left: 3px solid var(--border-light); max-width: 320px; line-height: 1.4; }
 .status-badge-mini { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; padding: 4px 12px; border-radius: 20px; display: inline-block; letter-spacing: 0.02em; }
@@ -380,3 +364,22 @@
 
 .tab-loading-spinner { padding: 100px; text-align: center; font-weight: 700; color: var(--orange); animation: fadeInOut 1.5s infinite; }
 @keyframes fadeInOut { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+.modal-header button,
+.seller-review-modal button {
+    border: none !important;      
+    outline: none !important;     
+    background: transparent;
+    padding: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.modal-header button:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 50%;
+    color: var(--orange);
+}

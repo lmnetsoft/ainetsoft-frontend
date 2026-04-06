@@ -113,100 +113,104 @@ const Bank = () => {
     }
   };
 
-  if (loading) return <div className="profile-loading-box">Đang tải dữ liệu...</div>;
-
   return (
     <div className="user-profile-supreme-layout">
-      <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
-      
-      <div className="profile-content-header centered-header">
-        <h1>TÀI KHOẢN NGÂN HÀNG</h1>
-        <p>Thông tin này giúp bạn rút doanh thu bán hàng về ví cá nhân</p>
-      </div>
-      
-      <hr className="supreme-divider" />
-
-      <div className="profile-main-grid">
-        <form className="profile-data-form" onSubmit={(e) => e.preventDefault()}>
+      {/* 🚀 STABILITY FIX: Keep the layout mounted during loading */}
+      {loading ? (
+        <div className="profile-loading-box">Đang tải dữ liệu...</div>
+      ) : (
+        <>
+          <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
           
-          <div className="supreme-form-row">
-            <label>Tên Ngân hàng <span className="req">*</span></label>
-            <div className="input-group-container" ref={dropdownRef} style={{ position: 'relative' }}>
-              <div 
-                className={`searchable-select-box ${isDropdownOpen ? 'active' : ''}`}
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              >
-                <span>{bankData.bankName || "-- Chọn Ngân hàng --"}</span>
-                <FaChevronDown className={`chevron-icon ${isDropdownOpen ? 'rotate' : ''}`} />
+          <div className="profile-content-header centered-header">
+            <h1>TÀI KHOẢN NGÂN HÀNG</h1>
+            <p>Thông tin này giúp bạn rút doanh thu bán hàng về ví cá nhân</p>
+          </div>
+          
+          <hr className="supreme-divider" />
+
+          <div className="profile-main-grid">
+            <form className="profile-data-form" onSubmit={(e) => e.preventDefault()}>
+              
+              <div className="supreme-form-row">
+                <label>Tên Ngân hàng <span className="req">*</span></label>
+                <div className="input-group-container" ref={dropdownRef} style={{ position: 'relative' }}>
+                  <div 
+                    className={`searchable-select-box ${isDropdownOpen ? 'active' : ''}`}
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  >
+                    <span>{bankData.bankName || "-- Chọn Ngân hàng --"}</span>
+                    <FaChevronDown className={`chevron-icon ${isDropdownOpen ? 'rotate' : ''}`} />
+                  </div>
+
+                  {isDropdownOpen && (
+                    <div className="bank-dropdown-menu">
+                      <div className="search-input-wrapper">
+                        <FaSearch className="search-icon" />
+                        <input 
+                          type="text" 
+                          placeholder="Tìm kiếm ngân hàng..." 
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          onClick={(e) => e.stopPropagation()} 
+                          autoFocus
+                        />
+                      </div>
+                      <ul className="bank-list-results">
+                        {filteredBanks.length > 0 ? (
+                          filteredBanks.map(bank => (
+                            <li key={bank} onClick={() => handleSelectBank(bank)}>
+                              {bank}
+                            </li>
+                          ))
+                        ) : (
+                          <li className="no-results">Không tìm thấy ngân hàng</li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {isDropdownOpen && (
-                <div className="bank-dropdown-menu">
-                  <div className="search-input-wrapper">
-                    <FaSearch className="search-icon" />
-                    <input 
-                      type="text" 
-                      placeholder="Tìm kiếm ngân hàng..." 
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      onClick={(e) => e.stopPropagation()} 
-                      autoFocus
-                    />
-                  </div>
-                  <ul className="bank-list-results">
-                    {filteredBanks.length > 0 ? (
-                      filteredBanks.map(bank => (
-                        <li key={bank} onClick={() => handleSelectBank(bank)}>
-                          {bank}
-                        </li>
-                      ))
-                    ) : (
-                      <li className="no-results">Không tìm thấy ngân hàng</li>
-                    )}
-                  </ul>
+              <div className="supreme-form-row">
+                <label>Số tài khoản <span className="req">*</span></label>
+                <div className="input-group-container">
+                  <input 
+                    type="text" 
+                    value={bankData.accountNumber} 
+                    onChange={(e) => setBankData({...bankData, accountNumber: e.target.value.replace(/\D/g, '')})}
+                    placeholder="Nhập số tài khoản (8-15 chữ số)"
+                  />
                 </div>
-              )}
+              </div>
+
+              <div className="supreme-form-row">
+                <label>Tên chủ tài khoản <span className="req">*</span></label>
+                <div className="input-group-container">
+                  <input 
+                    type="text" 
+                    value={bankData.accountHolder} 
+                    onChange={(e) => setBankData({...bankData, accountHolder: e.target.value.toUpperCase()})}
+                    placeholder="NGUYEN VAN A (Không dấu hoặc có dấu)"
+                  />
+                </div>
+              </div>
+
+              <div className="form-actions">
+                <button type="button" className="save-btn-supreme" onClick={handleSave} disabled={isSaving}>
+                  {isSaving ? "Đang lưu..." : "Lưu tài khoản"}
+                </button>
+              </div>
+            </form>
+
+            <div className="profile-avatar-column" style={{ border: 'none' }}>
+                <div className="bank-info-illustration" style={{ padding: '20px' }}>
+                    <p className="supreme-side-hint">Vui lòng đảm bảo số tài khoản chính xác (8-15 chữ số) để giao dịch không bị gián đoạn.</p>
+                </div>
             </div>
           </div>
-
-          <div className="supreme-form-row">
-            <label>Số tài khoản <span className="req">*</span></label>
-            <div className="input-group-container">
-              <input 
-                type="text" 
-                value={bankData.accountNumber} 
-                onChange={(e) => setBankData({...bankData, accountNumber: e.target.value.replace(/\D/g, '')})}
-                placeholder="Nhập số tài khoản (8-15 chữ số)"
-              />
-            </div>
-          </div>
-
-          <div className="supreme-form-row">
-            <label>Tên chủ tài khoản <span className="req">*</span></label>
-            <div className="input-group-container">
-              <input 
-                type="text" 
-                value={bankData.accountHolder} 
-                onChange={(e) => setBankData({...bankData, accountHolder: e.target.value.toUpperCase()})}
-                placeholder="NGUYEN VAN A (Không dấu hoặc có dấu)"
-              />
-            </div>
-          </div>
-
-          <div className="form-actions">
-            <button type="button" className="save-btn-supreme" onClick={handleSave} disabled={isSaving}>
-              {isSaving ? "Đang lưu..." : "Lưu tài khoản"}
-            </button>
-          </div>
-        </form>
-
-        <div className="profile-avatar-column" style={{ border: 'none' }}>
-            <div className="bank-info-illustration" style={{ padding: '20px' }}>
-                {/* 🚀 THE FIX: Applied supreme-side-hint class and removed inline styles */}
-                <p className="supreme-side-hint">Vui lòng đảm bảo số tài khoản chính xác (8-15 chữ số) để giao dịch không bị gián đoạn.</p>
-            </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 };

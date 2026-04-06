@@ -24,9 +24,19 @@
   -webkit-font-smoothing: antialiased;
 }
 
-/* 🚀 STABILITY FIX: Prevents layout shift when scrollbars appear */
-html {
-  overflow-y: scroll;
+/* 🚀 THE SUPREME FIX: Remove 'overflow: hidden' to allow Home Page to scroll naturally */
+html, 
+body {
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+  -webkit-text-size-adjust: 100%;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 * {
@@ -36,12 +46,9 @@ html {
 }
 
 body {
-  margin: 0;
   min-width: 320px;
-  min-height: 100vh;
   background-color: var(--bg-white);
   color: var(--text-primary);
-  overflow-x: hidden;
 }
 
 a {

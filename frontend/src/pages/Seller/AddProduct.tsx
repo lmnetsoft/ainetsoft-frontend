@@ -2,13 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   FaTruck, FaShieldAlt, FaShareAlt, FaPlus, FaTrash, 
-  FaClock, FaTicketAlt, FaInfoCircle, FaCheckCircle, 
+  FaClock, FaTicketAlt, FaCheckCircle, 
   FaMoneyBillWave, FaTimes 
 } from 'react-icons/fa';
 import api, { getCategories } from '../../services/api'; 
-import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
+// 🚀 REMOVED: AccountSidebar to fix the "Double Menu" issue
 import ToastNotification from '../../components/Toast/ToastNotification';
-import heic2any from 'heic2any'; // CRITICAL: Support for iPhone HEIC photos
+import heic2any from 'heic2any'; 
 import './AddProduct.css';
 
 const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:8080';
@@ -36,7 +36,7 @@ const AddProduct = () => {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
-  // --- 1. DATA STATE ---
+  // --- 1. DATA STATE (PRESERVED) ---
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -49,12 +49,12 @@ const AddProduct = () => {
     allowSharing: true 
   });
 
-  // --- 2. CONFIGURATION STATE (Situational Logic) ---
+  // --- 2. CONFIGURATION STATE (PRESERVED) ---
   const [globalShippingMethods, setGlobalShippingMethods] = useState<ShippingMethod[]>([]);
   const [selectedShipping, setSelectedShipping] = useState<SelectedShipping[]>([]);
   const [specs, setSpecs] = useState<{ key: string; value: string }[]>([{ key: '', value: '' }]);
 
-  // --- 3. MEDIA & UI STATE ---
+  // --- 3. MEDIA & UI STATE (PRESERVED) ---
   const [categories, setCategories] = useState<Category[]>([]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -65,7 +65,7 @@ const AddProduct = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
-  // --- 4. HELPERS: NUMBER FORMATTING (Visual Verification: 1 000 000) ---
+  // --- 4. HELPERS (PRESERVED) ---
   const formatDisplayNumber = (num: number | string) => {
     if (num === '' || num === undefined || num === null || num === 0) return '';
     const val = num.toString().replace(/\s+/g, '');
@@ -77,7 +77,7 @@ const AddProduct = () => {
     return clean === '' ? 0 : Number(clean);
   };
 
-  // --- 5. DATA INITIALIZATION & SECURITY LOOP (Preserved) ---
+  // --- 5. DATA INITIALIZATION & SECURITY LOOP (PRESERVED) ---
   useEffect(() => {
     const checkStatusAndFetchData = async () => {
       try {
@@ -103,7 +103,7 @@ const AddProduct = () => {
             const shipRes = await api.get('/api/shipping-methods');
             setGlobalShippingMethods(shipRes.data);
         } catch (shipErr) {
-            console.warn("Lưu ý: Không thể lấy mẫu vận chuyển từ Admin. Chế độ thủ công đã sẵn sàng.");
+            console.warn("Manual mode ready.");
         }
       } catch (error) {
         console.error("Auth check failed:", error);
@@ -113,7 +113,7 @@ const AddProduct = () => {
     checkStatusAndFetchData();
   }, [navigate]);
 
-  // --- 6. SHIPPING HANDLERS ---
+  // --- 6. SHIPPING HANDLERS (PRESERVED) ---
   const toggleShippingMethod = (method: ShippingMethod) => {
     const exists = selectedShipping.find(s => s.methodId === method.id);
     if (exists) {
@@ -144,7 +144,7 @@ const AddProduct = () => {
     }]);
   };
 
-  // --- 7. MEDIA HANDLERS (Preserved HEIC & 15MB Validation) ---
+  // --- 7. MEDIA HANDLERS (PRESERVED) ---
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (imageFiles.length + files.length > 5) {
@@ -179,7 +179,7 @@ const AddProduct = () => {
 
   const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && file.size <= 15 * 1024 * 1024) { // 15MB Limit
+    if (file && file.size <= 15 * 1024 * 1024) { 
       setVideoFile(file);
       setVideoPreview(URL.createObjectURL(file));
     } else if (file) {
@@ -188,14 +188,14 @@ const AddProduct = () => {
     }
   };
 
-  // --- 8. SPECS HANDLERS ---
+  // --- 8. SPECS HANDLERS (PRESERVED) ---
   const updateSpec = (index: number, field: 'key' | 'value', val: string) => {
     const newSpecs = [...specs];
     newSpecs[index][field] = val;
     setSpecs(newSpecs);
   };
 
-  // --- 9. FINAL SUBMISSION ---
+  // --- 9. FINAL SUBMISSION (PRESERVED) ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim() || formData.price <= 0 || imageFiles.length === 0) {
@@ -239,20 +239,19 @@ const AddProduct = () => {
   };
 
   return (
-    <div className="add-product-wrapper">
+    /* 🚀 SUPREME WRAPPER: White background matching sidebar height */
+    <div className="add-product-supreme-layout">
       <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
-
-      <div className="container seller-container">
-        <AccountSidebar />
         
         <main className="add-product-main">
-          <div className="form-header">
+          {/* 🚀 SUPREME TITLE: Centered and Red */}
+          <div className="form-header-supreme">
             <h1>Đăng bán sản phẩm mới</h1>
             <p>Sản phẩm sẽ được Admin duyệt trước khi hiển thị công khai.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="product-form">
-            {/* SECTION 1: MEDIA */}
+            {/* SECTION 1: MEDIA (PRESERVED) */}
             <section className="form-section">
               <div className="section-title"><h3>HÌNH ẢNH & VIDEO</h3></div>
               <div className="media-upload-area">
@@ -287,11 +286,11 @@ const AddProduct = () => {
               </div>
             </section>
 
-            {/* SECTION 2: BASIC INFO */}
+            {/* SECTION 2: BASIC INFO (PRESERVED) */}
             <section className="form-section">
               <div className="section-title"><h3>THÔNG TIN CƠ BẢN</h3></div>
               <div className="input-group">
-                <label>Tên sản phẩm</label>
+                <label>Tên sản phẩm <span style={{color: '#ee4d2d'}}>*</span></label>
                 <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="Nhập tên sản phẩm (VD: iPhone 15 Pro Max)" />
               </div>
               <div className="input-group">
@@ -312,13 +311,13 @@ const AddProduct = () => {
               </div>
             </section>
 
-            {/* SECTION 3: SHIPPING CONFIGURATION */}
+            {/* SECTION 3: SHIPPING (PRESERVED) */}
             <section className="form-section">
               <div className="section-header-flex">
                 <div className="section-title"><h3><FaTruck /> CẤU HÌNH VẬN CHUYỂN</h3></div>
                 <button type="button" className="btn-manual-ship" onClick={addManualShipping}><FaPlus /> Thêm mới</button>
               </div>
-              <p className="sub-hint">Kích hoạt các phương thức và tùy chỉnh chi phí/thời gian cho riêng sản phẩm này.</p>
+              <p className="sub-hint">Kích hoạt các phương thức và tùy chỉnh cho sản phẩm này.</p>
               
               <div className="shipping-config-grid">
                 {globalShippingMethods.map(method => {
@@ -348,12 +347,8 @@ const AddProduct = () => {
                                </div>
                                <div className="input-field-group">
                                   <label><FaClock /> THỜI GIAN</label>
-                                  <input type="text" value={data?.estimatedTime} onChange={e => updateShippingDetail(method.id, 'estimatedTime', e.target.value)} placeholder="VD: Ngày mai 08:00" />
+                                  <input type="text" value={data?.estimatedTime} onChange={e => updateShippingDetail(method.id, 'estimatedTime', e.target.value)} placeholder="VD: 2-3 ngày" />
                                </div>
-                            </div>
-                            <div className="input-field-group full-width">
-                               <label><FaTicketAlt /> ƯU ĐÃI</label>
-                               <input type="text" value={data?.voucherNote} onChange={e => updateShippingDetail(method.id, 'voucherNote', e.target.value)} placeholder="VD: Tặng Voucher 20.000đ..." />
                             </div>
                          </div>
                        )}
@@ -363,7 +358,6 @@ const AddProduct = () => {
 
                 {selectedShipping.filter(s => s.methodId.startsWith('manual')).map(m => (
                   <div key={m.methodId} className="ship-config-card selected manual">
-                      {/* PROFESSIONAL CLOSE BUTTON INSIDE THE CARD */}
                       <button type="button" className="btn-del-card-fixed" onClick={() => setSelectedShipping(selectedShipping.filter(s => s.methodId !== m.methodId))}>
                         <FaTimes />
                       </button>
@@ -382,29 +376,30 @@ const AddProduct = () => {
                               </div>
                               <div className="input-field-group"><label><FaClock /> THỜI GIAN</label><input type="text" value={m.estimatedTime} onChange={e => updateShippingDetail(m.methodId, 'estimatedTime', e.target.value)} /></div>
                           </div>
-                          <div className="input-field-group full-width"><label><FaTicketAlt /> ƯU ĐÃI</label><input type="text" value={m.voucherNote} onChange={e => updateShippingDetail(m.methodId, 'voucherNote', e.target.value)} /></div>
                       </div>
                   </div>
                 ))}
               </div>
             </section>
 
-            {/* SECTION 4: SPECS */}
+            {/* SECTION 4: SPECS (FIXED) */}
             <section className="form-section">
               <div className="section-title"><h3>THÔNG SỐ KỸ THUẬT</h3></div>
               <div className="specs-container">
                 {specs.map((spec, index) => (
                   <div key={index} className="spec-row">
-                    <input type="text" placeholder="RAM" value={spec.key} onChange={(e) => updateSpec(index, 'key', e.target.value)} />
-                    <input type="text" placeholder="16GB" value={spec.value} onChange={(e) => updateSpec(index, 'value', e.target.value)} />
-                    {specs.length > 1 && <button type="button" className="remove-spec" onClick={() => setSpecs(specs.filter((_, i) => i !== index))}><FaTrash/></button>}
+                    <input type="text" placeholder="Thuộc tính" value={spec.key} onChange={(e) => updateSpec(index, 'key', e.target.value)} />
+                    <input type="text" placeholder="Giá trị" value={spec.value} onChange={(e) => updateSpec(index, 'value', e.target.value)} />
+                    {specs.length > 1 && <button type="button" className="remove-spec-pro" onClick={() => setSpecs(specs.filter((_, i) => i !== index))}><FaTrash/></button>}
                   </div>
                 ))}
-                <button type="button" className="add-spec-btn" onClick={() => setSpecs([...specs, {key:'', value:''}])}>+ Thêm thuộc tính</button>
+                <button type="button" className="add-spec-btn-pro" onClick={() => setSpecs([...specs, {key:'', value:''}])}>
+                   <FaPlus /> Thêm thuộc tính
+                </button>
               </div>
             </section>
 
-            {/* SECTION 5: SALES & PROTECTION */}
+            {/* SECTION 5: SALES (PRESERVED) */}
             <section className="form-section">
               <div className="section-title"><h3>DỊCH VỤ & BẢO VỆ</h3></div>
               <div className="row-group">
@@ -441,7 +436,7 @@ const AddProduct = () => {
               </div>
             </section>
 
-            <div className="form-actions">
+            <div className="form-actions-supreme">
               <button type="button" className="cancel-btn" onClick={() => navigate(-1)}>Hủy bỏ</button>
               <button type="submit" className="submit-btn" disabled={isSubmitting}>
                 {isSubmitting ? "Đang xử lý..." : "Lưu & Đăng bán"}
@@ -449,7 +444,6 @@ const AddProduct = () => {
             </div>
           </form>
         </main>
-      </div>
     </div>
   );
 };

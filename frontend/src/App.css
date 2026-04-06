@@ -9,7 +9,6 @@
 .app-wrapper {
   /* 🚀 CHANGE: Use a very light neutral background for the site */
   background-color: #f8fafc;
-  min-height: 100vh;
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -36,7 +35,7 @@ footer {
    This unblocks the "ceiling" that was stopping your layout from growing.
 */
 .content {
-  flex: 1 0 auto;
+  flex: 1; 
   width: 100%;
   display: flex; 
   flex-direction: column;
