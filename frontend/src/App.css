@@ -1,18 +1,21 @@
 #root {
   width: 100%;
-  /* 🚀 FORCE ROOT STRETCH */
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
 }
 
 .app-wrapper {
-  /* 🚀 CHANGE: Use a very light neutral background for the site */
   background-color: #f8fafc;
   display: flex;
   flex-direction: column;
   width: 100%;
-  flex: 1; /* Grow to fill #root */
+  flex: 1;
+}
+
+/* 🚀 THE DYNAMIC LOCK: This only activates in Admin/Seller/User areas */
+.app-wrapper.management-mode {
+  height: 100vh;
+  overflow: hidden;
 }
 
 .container {
@@ -31,22 +34,27 @@ footer {
   align-items: center;
 }
 
-/* 🚀 THE CRITICAL FIX: Changed from 'display: block' to 'flex' 
-   This unblocks the "ceiling" that was stopping your layout from growing.
-*/
 .content {
   flex: 1; 
   width: 100%;
   display: flex; 
   flex-direction: column;
-  padding-bottom: 60px;
 }
 
-/* Target the invisible div created by React Router inside .content */
+/* 🚀 LOCK CONTENT ONLY IN MANAGEMENT MODE */
+.management-mode .content {
+  overflow: hidden;
+  min-height: 0;
+}
+
 .content > div {
   flex: 1;
   display: flex;
   flex-direction: column;
+}
+
+.management-mode .content > div {
+  min-height: 0;
 }
 
 ul {
