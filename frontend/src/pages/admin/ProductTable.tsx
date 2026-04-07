@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { FaSearch, FaTrash, FaTimesCircle, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { FaSearch, FaTrash, FaTimesCircle, FaChevronLeft, FaChevronRight, FaExternalLinkAlt } from 'react-icons/fa';
+import { Link } from 'react-router-dom'; // 🚀 Added for professional navigation
 
 interface ProductTableProps {
   products: any[];
   onDelete: (id: string) => void;
-  // 🚀 NEW: Pagination Props
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
@@ -19,7 +19,6 @@ const ProductTable: React.FC<ProductTableProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Client-side filter for the current page's data
   const filteredProducts = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
     if (!term) return products;
@@ -82,7 +81,22 @@ const ProductTable: React.FC<ProductTableProps> = ({
                 <td>
                   <div className="user-meta-info">
                     <span className="user-full-name">{p.name}</span>
-                    <small className="user-uid-text">Shop: <strong>{p.shopName || p.sellerName || "Chưa xác định"}</strong></small>
+                    <small className="user-uid-text">
+                      Shop: <strong>
+                        {/* 🚀 FIXED: Links directly to the Shop Page using the Slug */}
+                        {p.sellerSlug ? (
+                          <Link 
+                            to={`/${p.sellerSlug}`} 
+                            className="admin-shop-nav-link" 
+                            title="Xem trang bán hàng công khai"
+                          >
+                            {p.shopName || p.sellerName || "Chưa xác định"} <FaExternalLinkAlt size={10} style={{marginLeft: '4px'}} />
+                          </Link>
+                        ) : (
+                          p.shopName || p.sellerName || "Chưa xác định"
+                        )}
+                      </strong>
+                    </small>
                   </div>
                 </td>
                 <td>{p.categoryName || "N/A"}</td>
@@ -104,7 +118,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
         </tbody>
       </table>
 
-      {/* 🚀 NEW: PAGINATION CONTROLS FOOTER */}
+      {/* --- PAGINATION CONTROLS FOOTER --- */}
       {totalPages > 1 && (
         <div className="table-pagination-footer">
           <div className="pagination-info">

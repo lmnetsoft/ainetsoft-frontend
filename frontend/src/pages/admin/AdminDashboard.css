@@ -536,3 +536,18 @@
   cursor: not-allowed;
   background: #f1f2f6;
 }
+
+/* --- ADMIN SHOP LINK STYLES --- */
+.admin-shop-nav-link {
+  color: var(--orange) !important;
+  text-decoration: none;
+  font-weight: 700;
+  transition: opacity 0.2s;
+  display: inline-flex;
+  align-items: center;
+}
+
+.admin-shop-nav-link:hover {
+  text-decoration: underline;
+  opacity: 0.8;
+}
