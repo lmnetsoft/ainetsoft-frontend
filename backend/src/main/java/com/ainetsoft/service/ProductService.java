@@ -70,6 +70,26 @@ public class ProductService {
 
     // --- PUBLIC PRODUCT LOGIC ---
 
+    /**
+     * 🚀 NEW: Fetches public shop details and its approved products using the Slug.
+     * Required to fix the 404 error on /shop/:slug
+     */
+    public Map<String, Object> getPublicShopData(String slug) {
+        // 1. Find the seller by their Nice URL (Slug)
+        User seller = userRepository.findByShopProfile_ShopSlug(slug)
+                .orElseThrow(() -> new RuntimeException("Cửa hàng không tồn tại hoặc đã đổi địa chỉ."));
+
+        // 2. Fetch only APPROVED products for this specific seller
+        List<Product> products = productRepository.findBySellerIdAndStatus(seller.getId(), "APPROVED");
+
+        // 3. Package the data for the frontend
+        Map<String, Object> response = new HashMap<>();
+        response.put("seller", seller);
+        response.put("products", products);
+        
+        return response;
+    }
+
     public List<Product> getAllActiveProducts() {
         return productRepository.findByStatus("APPROVED");
     }
@@ -82,18 +102,13 @@ public class ProductService {
     // =======================================================
     // 🛠️ FIXED: WISHLIST PERSISTENCE LOGIC (Set<String> Fix)
     // =======================================================
-    
-    /**
-     * Requirement 4: Fixed Compilation Error.
-     * Uses Set<String> to match the User model requirement.
-     */
+
     @Transactional
     public void toggleFavorite(String productId, String userEmail) {
         Product product = getProductById(productId);
         User user = userRepository.findByIdentifier(userEmail)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
 
-        // 🛠️ FIX: Changed from List to Set
         Set<String> favorites = user.getFavoriteProductIds();
         if (favorites == null) favorites = new HashSet<>();
 
@@ -117,7 +132,7 @@ public class ProductService {
     @Transactional
     public void createProductReport(String productId, String reporterIdentifier, Map<String, Object> reportData) {
         Product product = getProductById(productId);
-        
+
         User reporter = userRepository.findByIdentifier(reporterIdentifier)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
 
@@ -126,7 +141,7 @@ public class ProductService {
                 .productName(product.getName())
                 .sellerId(product.getSellerId())
                 .reporterId(reporter.getId())
-                .reporterName(reporter.getFullName()) 
+                .reporterName(reporter.getFullName())
                 .reason((String) reportData.get("reason"))
                 .details((String) reportData.get("details"))
                 .evidenceUrls((List<String>) reportData.get("evidenceUrls"))
@@ -197,8 +212,8 @@ public class ProductService {
         product.setAllowSharing(product.isAllowSharing());
 
         product.setSellerId(user.getId());
-        product.setShopName(user.getFullName()); 
-        product.setStatus("PENDING"); 
+        product.setShopName(user.getFullName());
+        product.setStatus("PENDING");
         product.setCreatedAt(LocalDateTime.now());
         product.setUpdatedAt(LocalDateTime.now());
 

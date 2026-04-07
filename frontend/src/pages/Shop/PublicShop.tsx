@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FaStore, FaStar, FaBox, FaMapMarkerAlt, FaCommentDots } from 'react-icons/fa';
 import api from '../../services/api';
-import { getUserProfileBySlug, getUserProfile } from '../../services/authService'; // NEW: Import Slug lookup
 import './PublicShop.css';
 
 const PublicShop = () => {
@@ -21,44 +20,43 @@ const PublicShop = () => {
         setLoading(true);
         setError(null);
 
-        let profileData: any = null;
         const target = identifier || shopSlug;
+        if (!target) throw new Error("Không xác định được cửa hàng.");
 
-        // 1. Determine Fetch Strategy
-        if (!target) {
-            // Case: /my-shop (Self-view)
-            profileData = await getUserProfile();
-        } else if (target.length === 24 && /^[0-9a-fA-F]+$/.test(target)) {
-            // Case: Old ID-based URL (24-char hex)
-            const res = await api.get(`/auth/shop-info/${target}`);
-            profileData = res.data;
-        } else {
-            // Case: Professional Nice URL (Slug)
-            profileData = await getUserProfileBySlug(target);
-        }
+        /**
+         * 🚀 FIXED: Call the unified Public Gateway we created in Backend.
+         * This returns { seller: {...}, products: [...] } in one go.
+         */
+        const res = await api.get(`/products/public/shop/${target}`);
+        const { seller, products } = res.data;
 
-        if (!profileData) throw new Error("Không tìm thấy thông tin cửa hàng.");
-
-        // 2. Map and Set Shop Info
-        // Note: Backend profile might return nested shopProfile or flattened response
-        const info = profileData.shopProfile ? { 
-            ...profileData.shopProfile, 
-            id: profileData.id, 
-            fullName: profileData.fullName 
-        } : profileData;
+        // 1. Map Seller/Shop Info
+        // We look for nested shopProfile, fallback to seller object itself
+        const info = seller.shopProfile ? { 
+            ...seller.shopProfile, 
+            id: seller.id, 
+            fullName: seller.fullName 
+        } : { 
+            ...seller, 
+            id: seller.id 
+        };
 
         setShopInfo(info);
 
-        // 3. Fetch Products using the actual User ID found in the profile
-        const prodRes = await api.get(`/products/public/seller/${profileData.id}`);
-        setProducts(prodRes.data);
+        // 2. Set Products
+        setProducts(products || []);
 
-        // Update Page Title
-        document.title = `${info.shopName || 'Cửa hàng'} | AiNetsoft`;
+        // 3. Update Page Title
+        document.title = `${info.shopName || info.fullName || 'Cửa hàng'} | AiNetsoft`;
 
       } catch (err: any) {
         console.error("Lỗi khi tải dữ liệu cửa hàng:", err);
-        setError(err.message || "Cửa hàng này không tồn tại.");
+        // Handle 404 vs other errors
+        if (err.response?.status === 404) {
+            setError("Cửa hàng không tồn tại hoặc đã đổi địa chỉ truy cập.");
+        } else {
+            setError(err.message || "Không thể tải thông tin cửa hàng lúc này.");
+        }
       } finally {
         setLoading(false);
       }
@@ -68,12 +66,17 @@ const PublicShop = () => {
     window.scrollTo(0, 0);
   }, [identifier, shopSlug]);
 
-  if (loading) return <div className="loading-shop">Đang tải gian hàng...</div>;
+  if (loading) return (
+    <div className="container" style={{padding: '100px 0', textAlign: 'center'}}>
+        <div className="tab-loading-spinner">Đang tải gian hàng...</div>
+    </div>
+  );
 
   if (error) return (
     <div className="container" style={{padding: '100px 0', textAlign: 'center'}}>
-        <h2>{error}</h2>
-        <button onClick={() => navigate('/')} className="save-btn" style={{marginTop: '20px'}}>Về trang chủ</button>
+        <h2>Rất tiếc!</h2>
+        <p style={{color: 'var(--text-muted)', margin: '15px 0'}}>{error}</p>
+        <button onClick={() => navigate('/')} className="save-btn" style={{marginTop: '20px'}}>Quay lại trang chủ</button>
     </div>
   );
 
@@ -94,7 +97,6 @@ const PublicShop = () => {
             <div className="shop-details-main">
               <div className="shop-title-row">
                 <h1>{shopInfo?.shopName || shopInfo?.fullName || "Tên Cửa Hàng"}</h1>
-                {/* Chat with Shop Button (Uses verified User ID) */}
                 <button 
                   className="btn-chat-shop" 
                   onClick={() => navigate(`/chat/${shopInfo?.id}`)}
@@ -102,7 +104,9 @@ const PublicShop = () => {
                   <FaCommentDots /> Chat với Shop
                 </button>
               </div>
-              <p className="shop-bio">{shopInfo?.shopDescription || shopInfo?.shopBio || "Chào mừng bạn đến với gian hàng chính hãng của chúng tôi."}</p>
+              <p className="shop-bio">
+                {shopInfo?.shopDescription || shopInfo?.shopBio || "Chào mừng bạn đến với gian hàng chính hãng của chúng tôi."}
+              </p>
               
               <div className="shop-stats-badges">
                 <span className="stat-badge"><FaStar className="star-icon" /> {shopInfo?.rating || '5.0'} / 5</span>
@@ -133,13 +137,18 @@ const PublicShop = () => {
             {products.map(product => (
               <div key={product.id} className="shop-product-card" onClick={() => navigate(`/product/${product.id}`)}>
                 <div className="prod-img-box">
-                  <img src={product.images && product.images[0] ? product.images[0] : "/logo_without_text.png"} alt={product.name} />
+                  {/* 🛠️ FIXED: Using imageUrls array from backend Product model */}
+                  <img 
+                    src={product.imageUrls && product.imageUrls[0] ? product.imageUrls[0] : "/logo_without_text.png"} 
+                    alt={product.name} 
+                    onError={(e) => { e.currentTarget.src = "/logo_without_text.png"; }}
+                  />
                 </div>
                 <div className="prod-info-box">
                   <h4 className="prod-name">{product.name}</h4>
                   <div className="prod-price-row">
                     <span className="currency">₫</span>
-                    <span className="amount">{product.price.toLocaleString('vi-VN')}</span>
+                    <span className="amount">{product.price?.toLocaleString('vi-VN')}</span>
                   </div>
                   <div className="prod-footer">
                     <span className="sold-count">Đã bán {product.soldCount || 0}</span>

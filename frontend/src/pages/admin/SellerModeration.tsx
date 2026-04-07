@@ -263,7 +263,6 @@ const SellerModeration = () => {
       <div className="admin-page-header">
         <div className="header-icon-wrap"><FaUserClock className="main-icon" /></div>
         <div className="header-text">
-          <h2>Phê duyệt Người bán</h2>
           <p>Đối soát định danh, mã số thuế và vị trí kho hàng GPS</p>
         </div>
       </div>

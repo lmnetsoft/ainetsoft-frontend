@@ -12,7 +12,7 @@ import api, {
   reportProduct, 
   getProductReviews, 
   getReviewStats,
-  submitReview // 🛠️ FIX: Added the specific helper from api.ts
+  submitReview 
 } from '../../services/api'; 
 import ToastNotification from '../../components/Toast/ToastNotification';
 import { useChat } from '../../context/ChatContext'; 
@@ -20,7 +20,7 @@ import './ProductDetail.css';
 
 const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:8080';
 
-// --- INTERFACES (Kept exactly as original) ---
+// --- INTERFACES ---
 interface ShippingConfig {
   methodId: string;
   methodName: string;
@@ -32,6 +32,8 @@ interface ShippingConfig {
 interface Product {
   id: string;
   sellerId?: string;
+  /** 🚀 NEW: Syncing with DataSeeder slug for professional navigation */
+  sellerSlug?: string; 
   name: string;
   description: string;
   price: number;
@@ -97,14 +99,12 @@ const ProductDetail = () => {
   const [reportDetails, setReportDetails] = useState('');
   const [isReporting, setIsReporting] = useState(false);
 
-  // --- REVIEW SUBMISSION STATES ---
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [userRating, setUserRating] = useState(5);
   const [hoverRating, setHoverRating] = useState(0);
   const [reviewComment, setReviewComment] = useState("");
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   
-  // 🛠️ NEW: State to store a real order ID from user history
   const [validOrderId, setValidOrderId] = useState<string | null>(null);
 
   const formatMediaUrl = (url?: string) => {
@@ -135,7 +135,6 @@ const ProductDetail = () => {
     }
   };
 
-  // --- 🛠️ STEP 1: CHECK PURCHASE HISTORY (FIXES 400 ERROR) ---
   useEffect(() => {
     const checkPurchase = async () => {
       if (localStorage.getItem('isAuthenticated') && id) {
@@ -197,7 +196,6 @@ const ProductDetail = () => {
     }
   };
 
-  // --- 🛠️ REVIEW MODAL HANDLERS (RESTORING SECURITY) ---
   const handleOpenReviewModal = () => {
     if (!localStorage.getItem('isAuthenticated')) {
       setToastMessage("Vui lòng đăng nhập để gửi đánh giá!");
@@ -205,7 +203,6 @@ const ProductDetail = () => {
       setTimeout(() => navigate('/login'), 1500);
       return;
     }
-    // Only open if they actually bought it
     if (!validOrderId) {
       setToastMessage("Bạn cần mua và hoàn thành đơn hàng để đánh giá sản phẩm này.");
       setShowToast(true);
@@ -219,7 +216,6 @@ const ProductDetail = () => {
     if (!id || !reviewComment.trim() || !validOrderId) return;
     try {
       setIsSubmittingReview(true);
-      // Use the clean submitReview helper and the REAL orderId
       await submitReview({
         productId: id,
         rating: userRating,
@@ -245,7 +241,6 @@ const ProductDetail = () => {
     }
   };
 
-  // --- SOCIAL, REPORT, MEDIA HANDLERS (Exactly as original) ---
   const handleShare = async (platform: 'facebook' | 'messenger' | 'link' | 'twitter') => {
     if (!product) return;
     const currentUrl = window.location.href;
@@ -392,7 +387,6 @@ const ProductDetail = () => {
 
   const descriptionLines = (product.description || "").split('\n');
 
-  // --- JSX RENDER (RESTORED ALL COMPONENTS) ---
   return (
     <div className="product-detail-wrapper">
       <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
@@ -603,7 +597,13 @@ const ProductDetail = () => {
             <h3>{product.shopName}</h3>
             <div className="shop-actions">
               <button className="chat-now-btn" onClick={handleChatWithSeller}><FaCommentDots /> Chat ngay</button>
-              <button className="view-shop-btn" onClick={() => navigate(`/shop/${product.sellerId || product.id}`)}><FaStoreAlt /> Xem Shop</button>
+              {/* 🚀 FIXED: Now uses the professional Slug instead of the ID */}
+              <button 
+                className="view-shop-btn" 
+                onClick={() => navigate(`/${product.sellerSlug || product.sellerId}`)}
+              >
+                <FaStoreAlt /> Xem Shop
+              </button>
             </div>
           </div>
         </div>

@@ -6,6 +6,11 @@ import {
   FaUniversity, FaMapMarkerAlt, FaKey, FaChartPie, FaBoxes, FaClipboardList, FaBuilding
 } from 'react-icons/fa'; 
 import api from '../../services/api'; 
+
+// 🚀 FIX: Import the logo so Vite bundles it correctly
+// Make sure this path points exactly to your logo file
+import defaultLogo from '../../assets/images/logo.png'; 
+
 import './AccountSidebar.css';
 
 const AccountSidebar = () => {
@@ -17,17 +22,24 @@ const AccountSidebar = () => {
   useEffect(() => {
     const handleSync = () => {
       setUserName(localStorage.getItem('userName') || 'Thành viên');
-      setUserAvatar(localStorage.getItem('userAvatar') || '');
+      
+      const storedAvatar = localStorage.getItem('userAvatar');
+      // 🚀 FIX: Ensure we don't use the string "null" as a path
+      setUserAvatar(storedAvatar && storedAvatar !== 'null' ? storedAvatar : '');
       
       const userStr = localStorage.getItem('user');
       const rolesStr = localStorage.getItem('userRoles');
       
       let roles: string[] = [];
       if (userStr) {
-        const userObj = JSON.parse(userStr);
-        roles = userObj.roles || [];
+        try {
+          const userObj = JSON.parse(userStr);
+          roles = userObj.roles || [];
+        } catch (e) { roles = []; }
       } else if (rolesStr) {
-        roles = JSON.parse(rolesStr);
+        try {
+          roles = JSON.parse(rolesStr);
+        } catch (e) { roles = []; }
       }
 
       setIsSeller(roles.includes('SELLER'));
@@ -66,9 +78,15 @@ const AccountSidebar = () => {
       <div className="sidebar-profile-box">
         <div className="avatar-circle">
           <img 
-            src={userAvatar || "/logo_without_text.png"} 
+            /* 🚀 FIX: Use the imported defaultLogo if userAvatar is missing */
+            src={userAvatar ? userAvatar : defaultLogo} 
             alt="User" 
-            onError={(e) => { e.currentTarget.src = "/logo_without_text.png"; }}
+            onError={(e) => { 
+              const target = e.currentTarget;
+              if (target.src !== defaultLogo) {
+                target.src = defaultLogo; 
+              }
+            }}
           />
         </div>
         <div className="profile-info">
@@ -107,7 +125,7 @@ const AccountSidebar = () => {
           <span>Đơn mua của tôi</span>
         </NavLink>
 
-        {/* --- Section: Seller (Merged Header + List) --- */}
+        {/* --- Section: Seller --- */}
         {isSeller && (
           <div className="nav-section merged-group">
             <div className="section-header">
@@ -131,7 +149,7 @@ const AccountSidebar = () => {
           </div>
         )}
 
-        {/* --- Section: Admin (Merged Header + List) --- */}
+        {/* --- Section: Admin --- */}
         {isAdmin && (
           <div className="nav-section merged-group">
             <div className="section-header">
@@ -162,7 +180,6 @@ const AccountSidebar = () => {
           </div>
         )}
 
-        {/* --- Fallback: Become a Seller --- */}
         {!isSeller && !isAdmin && (
           <NavLink to="/seller/register" className={({isActive}) => `standalone-link ${isActive ? 'active' : ''}`}>
             <FaStore className="header-icon icon-orange" />

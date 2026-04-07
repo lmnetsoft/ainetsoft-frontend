@@ -98,7 +98,7 @@
 
 .master-badge {
   background: var(--orange);
-  color: white;
+  color: white;      
   padding: 4px 10px;
   border-radius: 20px;
   font-size: 0.7rem;
@@ -365,8 +365,64 @@
 .tab-loading-spinner { padding: 100px; text-align: center; font-weight: 700; color: var(--orange); animation: fadeInOut 1.5s infinite; }
 @keyframes fadeInOut { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
 
+/* --- 🚀 16. NEW: ENHANCED SEARCH BAR STYLES (Fix for image_51ed03.png) --- */
+.table-filter-header {
+  padding: 20px 25px;
+  background: #fdfdfd;
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+}
+
+.search-box-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 450px; /* Makes it much larger and "nicer" as requested */
+}
+
+.search-box-wrapper input {
+  width: 100%;
+  height: 44px;
+  padding: 0 16px 0 45px; /* Creates room for the search icon */
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-dark);
+  background: var(--white);
+  border: 1.5px solid var(--border-light);
+  border-radius: 12px; /* Modern rounded appearance */
+  outline: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.search-box-wrapper input::placeholder {
+  color: #a4b0be;
+}
+
+.search-box-wrapper input:focus {
+  border-color: var(--orange);
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(238, 77, 45, 0.08); /* Modern focus ring */
+}
+
+.search-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #a4b0be;
+  font-size: 1.1rem;
+  pointer-events: none; /* Prevents icon from blocking mouse clicks on input */
+  transition: color 0.2s;
+}
+
+.search-box-wrapper input:focus + .search-icon {
+  color: var(--orange); /* Icon lights up when typing */
+}
+
+/* --- FIX: Only target utility buttons, not the main Footer Action Buttons --- */
 .modal-header button,
-.seller-review-modal button {
+.seller-review-modal .close-btn,
+.seller-review-modal .mod-btn {
     border: none !important;      
     outline: none !important;     
     background: transparent;
@@ -378,8 +434,120 @@
     transition: all 0.2s ease;
 }
 
+/* Ensure the Approve button keeps its orange background */
+.btn-approve-modal { 
+    background: var(--orange) !important; 
+    border: 1px solid var(--orange) !important; 
+    color: white !important;
+    opacity: 1;
+}
+
+/* Ensure buttons appear clearly even if disabled by React logic */
+.button-group button:disabled {
+    cursor: not-allowed;
+    filter: grayscale(0.8);
+    opacity: 0.5;
+}
+
 .modal-header button:hover {
     background-color: rgba(0, 0, 0, 0.05);
     border-radius: 50%;
     color: var(--orange);
+}
+
+/* --- 🚀 ENHANCED SEARCH BOX: CLEAR BUTTON STYLES --- */
+
+/* 1. Add extra padding to the right of the input so text doesn't hide behind the X */
+.search-box-wrapper input {
+  padding-right: 45px !important; 
+}
+
+/* 2. Style the X button */
+.clear-search-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none !important;
+  border: none !important;
+  color: #a4b0be;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px;
+  transition: color 0.2s, transform 0.1s;
+  z-index: 5; /* Ensure it stays above the input */
+}
+
+.clear-search-btn:hover {
+  color: var(--orange);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.clear-search-btn:active {
+  transform: translateY(-50%) scale(0.9);
+}
+
+/* --- TABLE PAGINATION STYLES --- */
+.table-pagination-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 25px;
+  background: #fafbfc;
+  border-top: 1px solid var(--border-light);
+}
+
+.pagination-info {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.pagination-controls {
+  display: flex;
+  gap: 10px;
+}
+
+.page-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: white;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.page-nav-btn:hover:not(:disabled) {
+  border-color: var(--orange);
+  color: var(--orange);
+  background: #fff8f6;
+}
+
+.page-nav-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f1f2f6;
+}
+
+/* --- ADMIN SHOP LINK STYLES --- */
+.admin-shop-nav-link {
+  color: var(--orange) !important;
+  text-decoration: none;
+  font-weight: 700;
+  transition: opacity 0.2s;
+  display: inline-flex;
+  align-items: center;
+}
+
+.admin-shop-nav-link:hover {
+  text-decoration: underline;
+  opacity: 0.8;
 }

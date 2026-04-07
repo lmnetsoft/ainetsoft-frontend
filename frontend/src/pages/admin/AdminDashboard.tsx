@@ -1,17 +1,27 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react'; // 🚀 Added useRef
 import { 
   FaUsers, FaBox, FaStore, FaClock, 
   FaChartBar, FaSync, FaHistory, FaShieldAlt,
   FaExclamationTriangle, FaStar, FaTrash, FaCheck, FaTimes, FaListUl, FaTags, FaPlus, FaSearch
 } from 'react-icons/fa';
-// 🚀 REMOVED: Redundant sidebar import as it is now handled by AdminLayout
 import adminService from '../../services/admin.service';
 import SellerModeration from './SellerModeration'; 
 import ProductModeration from './ProductModeration'; 
+
+// Modular components
+import UserTable from './UserTable';
+import ReportTable from './ReportTable';
+import ReviewTable from './ReviewTable';
+import ReasonManagement from './ReasonManagement';
+import LogTable from './LogTable';
+import ProductTable from './ProductTable';
 import { toast } from 'react-hot-toast';
 import './AdminDashboard.css';
 
 const AdminDashboard = () => {
+  // 🚀 NEW: Anchor for smooth scrolling to prevent window "jumping"
+  const scrollAnchorRef = useRef<HTMLDivElement>(null);
+
   const [activeTab, setActiveTab] = useState('summary');
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -29,13 +39,19 @@ const AdminDashboard = () => {
   const [reasons, setReasons] = useState<any[]>([]); 
   const [users, setUsers] = useState<any[]>([]); 
   const [logs, setLogs] = useState<any[]>([]); 
+  const [allProducts, setAllProducts] = useState<any[]>([]); 
+  
+  // 🚀 Pagination states for products
+  const [productPage, setProductPage] = useState(0);
+  const [productTotalPages, setProductTotalPages] = useState(0);
+
   const [loading, setLoading] = useState(true);
   const [tabLoading, setTabLoading] = useState(false);
 
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [newReasonName, setNewReasonName] = useState("");
 
-  // --- 1. DATA FETCHERS (PRESERVED) ---
+  // --- 1. DATA FETCHERS ---
 
   const fetchSummary = async (showToast = false) => {
     try {
@@ -68,6 +84,23 @@ const AdminDashboard = () => {
       setUsers(data || []);
     } catch (err) { console.error("Users Fetch Error:", err); } 
     finally { setTabLoading(false); }
+  };
+
+  /**
+   * 🚀 Handles Page object response
+   */
+  const fetchProducts = async () => {
+    try {
+      setTabLoading(true);
+      const data = await adminService.getAllProducts(productPage, 10); 
+      setAllProducts(data.content || []);
+      setProductTotalPages(data.totalPages || 0);
+    } catch (err) { 
+      console.error("Products Fetch Error:", err); 
+      setAllProducts([]);
+    } finally { 
+      setTabLoading(false); 
+    }
   };
 
   const fetchLogs = async () => {
@@ -117,11 +150,12 @@ const AdminDashboard = () => {
     finally { setTabLoading(false); }
   };
 
-  // --- 2. THE REFRESH ENGINE (PRESERVED) ---
+  // --- 2. THE REFRESH ENGINE ---
 
   const handleManualRefresh = async () => {
     await fetchSummary(true);
     if (activeTab === 'users') await fetchUsers();
+    if (activeTab === 'products') await fetchProducts();
     if (activeTab === 'reports') await fetchReports();
     if (activeTab === 'reviews') await fetchReviews();
     if (activeTab === 'reasons') await fetchReasons();
@@ -135,16 +169,25 @@ const AdminDashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
+  /**
+   * 🚀 Re-fetches when tab OR page changes AND handles smooth scroll.
+   */
   useEffect(() => {
     if (activeTab === 'users') fetchUsers();
+    if (activeTab === 'products') fetchProducts(); 
     if (activeTab === 'reports') fetchReports();
     if (activeTab === 'reviews') fetchReviews();
     if (activeTab === 'reasons') fetchReasons();
     if (activeTab === 'logs') fetchLogs();
-  }, [activeTab]);
+
+    // 🚀 THE SMOOTH FIX: Scroll back to the top of the table area smoothly
+    if (scrollAnchorRef.current) {
+        scrollAnchorRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [activeTab, productPage]);
 
 
-  // --- 3. ACTIONS (PRESERVED) ---
+  // --- 3. ACTIONS ---
 
   const handleResolveReport = async (reportId: string, action: 'RESOLVED' | 'DISMISSED') => {
     try {
@@ -174,6 +217,16 @@ const AdminDashboard = () => {
     } catch (err) { toast.error("Thao tác thất bại."); }
   };
 
+  const handleDeleteProduct = async (id: string) => {
+    if (!window.confirm("Xác nhận xóa vĩnh viễn sản phẩm này?")) return;
+    try {
+      await adminService.deleteProduct(id);
+      toast.success("Đã xóa sản phẩm thành công.");
+      fetchProducts();
+      fetchSummary();
+    } catch (err) { toast.error("Lỗi khi xóa sản phẩm."); }
+  };
+
   const handleAddReason = async () => {
     if (!newReasonName.trim()) { toast.error("Vui lòng nhập tên lý do"); return; }
     try {
@@ -195,210 +248,40 @@ const AdminDashboard = () => {
     } catch (err) { toast.error("Không thể xóa"); }
   };
 
-  // --- 4. RENDERER (PRESERVED) ---
+  // --- 4. RENDERER ---
 
   const renderContent = () => {
     if (tabLoading) return <div className="tab-loading-spinner">Đang xử lý dữ liệu...</div>;
 
     switch (activeTab) {
       case 'users': 
-        const filteredUsers = users.filter(u => 
-          u.fullName?.toLowerCase().includes(userSearchTerm.toLowerCase()) || 
-          u.email?.toLowerCase().includes(userSearchTerm.toLowerCase())
-        );
-        return (
-          <div className="admin-table-container">
-            <div className="table-filter-header">
-              <div className="search-box-wrapper">
-                <FaSearch className="search-icon" />
-                <input 
-                  type="text" 
-                  placeholder="Tìm kiếm người dùng theo tên hoặc email..." 
-                  value={userSearchTerm}
-                  onChange={(e) => setUserSearchTerm(e.target.value)}
-                />
-              </div>
-            </div>
-            <table className="admin-data-table">
-              <thead>
-                <tr>
-                  <th>Họ tên</th>
-                  <th>Email / SĐT</th>
-                  <th>Vai trò</th>
-                  <th>Trạng thái</th>
-                  <th>Ngày tham gia</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.length === 0 ? <tr><td colSpan={5} className="empty-row">Không tìm thấy người dùng phù hợp.</td></tr> : 
-                  filteredUsers.map(u => (
-                    <tr key={u.id}>
-                      <td><strong>{u.fullName}</strong></td>
-                      <td><small>{u.email}<br/>{u.phone}</small></td>
-                      <td>{u.roles?.join(', ')}</td>
-                      <td><span className={`status-badge ${u.accountStatus?.toLowerCase()}`}>{u.accountStatus}</span></td>
-                      <td>{new Date(u.createdAt).toLocaleDateString('vi-VN')}</td>
-                    </tr>
-                  ))
-                }
-              </tbody>
-            </table>
-          </div>
-        );
+        return <UserTable users={users} userSearchTerm={userSearchTerm} setUserSearchTerm={setUserSearchTerm} />;
 
       case 'sellers': return <SellerModeration />;
       
-      case 'products':
-      case 'products_mod': return <ProductModeration />;
+      case 'products': 
+        return (
+          <ProductTable 
+            products={allProducts} 
+            onDelete={handleDeleteProduct} 
+            currentPage={productPage}
+            totalPages={productTotalPages}
+            onPageChange={setProductPage}
+          />
+        );
+
+      case 'products_mod': return <ProductModeration />; 
       
       case 'reports': 
-        return (
-          <div className="admin-table-container">
-            <table className="admin-data-table">
-              <thead>
-                <tr>
-                  <th>Sản phẩm</th>
-                  <th>Lý do & Chi tiết</th>
-                  <th>Người báo cáo</th>
-                  <th>Ngày gửi</th>
-                  <th>Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reports.length === 0 ? <tr><td colSpan={5} className="empty-row">Không có báo cáo vi phạm nào.</td></tr> : 
-                  reports.map(r => {
-                    const isProcessed = r.status === 'RESOLVED' || r.status === 'DISMISSED';
-                    return (
-                      <tr key={r.id} className={isProcessed ? 'resolved-row' : ''}>
-                        <td><strong>{r.productName || "Sản phẩm ẩn"}</strong></td>
-                        <td>
-                          <div className="reason-container">
-                            <span className="reason-tag">{r.reason}</span>
-                            {r.details && <div className="report-detail-text"><small>Ghi chú: </small>{r.details}</div>}
-                          </div>
-                        </td>
-                        <td>{r.reporterName || 'Người dùng ẩn'}</td>
-                        <td>{r.createdAt ? new Date(r.createdAt).toLocaleDateString('vi-VN') : '---'}</td>
-                        <td className="action-btns">
-                          {!isProcessed ? (
-                            <>
-                              <button className="mod-btn approve" onClick={() => handleResolveReport(r.id, 'RESOLVED')} title="Xác nhận vi phạm"><FaCheck /></button>
-                              <button className="mod-btn reject" onClick={() => handleResolveReport(r.id, 'DISMISSED')} title="Bác bỏ"><FaTimes /></button>
-                            </>
-                          ) : (
-                            <span className={`status-badge-mini ${r.status.toLowerCase()}`}>{r.status === 'RESOLVED' ? 'Đã xử lý' : 'Đã bác bỏ'}</span>
-                          )}
-                          <button className="mod-btn delete-grey" onClick={() => handleDeleteReport(r.id)} title="Xóa vĩnh viễn"><FaTrash /></button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                }
-              </tbody>
-            </table>
-          </div>
-        );
+        return <ReportTable reports={reports} handleResolveReport={handleResolveReport} handleDeleteReport={handleDeleteReport} />;
 
       case 'reviews':
-        return (
-          <div className="admin-table-container">
-            <table className="admin-data-table">
-              <thead>
-                <tr>
-                  <th>Người dùng</th>
-                  <th>Sản phẩm</th>
-                  <th>Đánh giá</th>
-                  <th>Nội dung</th>
-                  <th>Ngày</th>
-                  <th>Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {allReviews.length === 0 ? <tr><td colSpan={6} className="empty-row">Chưa có đánh giá nào.</td></tr> : 
-                  allReviews.map(rev => (
-                    <tr key={rev.id}>
-                      <td><strong>{rev.userName}</strong></td>
-                      <td>{rev.productName || 'N/A'}</td>
-                      <td><span className="rating-badge">{rev.rating} <FaStar size={10} /></span></td>
-                      <td className="comment-cell" title={rev.comment}>{rev.comment}</td>
-                      <td>{new Date(rev.createdAt).toLocaleDateString('vi-VN')}</td>
-                      <td className="action-btns">
-                        <button className="mod-btn reject" onClick={() => handleDeleteReview(rev.id)} title="Xóa đánh giá này"><FaTrash /></button>
-                      </td>
-                    </tr>
-                  ))
-                }
-              </tbody>
-            </table>
-          </div>
-        );
+        return <ReviewTable allReviews={allReviews} handleDeleteReview={handleDeleteReview} />;
 
       case 'reasons': 
-        return (
-          <div className="admin-table-container">
-            <div className="reasons-header">
-              <input 
-                type="text" 
-                placeholder="Thêm lý do báo cáo mới..." 
-                value={newReasonName}
-                onChange={e => setNewReasonName(e.target.value)}
-              />
-              <button className="btn-add-reason" onClick={handleAddReason}><FaPlus /> Thêm mới</button>
-            </div>
-            <table className="admin-data-table">
-              <thead>
-                <tr>
-                  <th>Tên lý do vi phạm</th>
-                  <th>Trạng thái</th>
-                  <th>Ngày tạo</th>
-                  <th>Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reasons.map(reason => (
-                  <tr key={reason.id}>
-                    <td><strong>{reason.name}</strong></td>
-                    <td><span className="status-badge active">Đang hiển thị</span></td>
-                    <td>{new Date(reason.createdAt).toLocaleDateString('vi-VN')}</td>
-                    <td className="action-btns">
-                      <button className="mod-btn reject" onClick={() => handleDeleteReason(reason.id)}><FaTrash /></button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        );
+        return <ReasonManagement reasons={reasons} newReasonName={newReasonName} setNewReasonName={setNewReasonName} handleAddReason={handleAddReason} handleDeleteReason={handleDeleteReason} />;
 
-      case 'logs':
-        return (
-          <div className="admin-table-container">
-            <table className="admin-data-table">
-              <thead>
-                <tr>
-                  <th>Thời gian</th>
-                  <th>Admin</th>
-                  <th>Hành động</th>
-                  <th>Đối tượng</th>
-                  <th>Chi tiết</th>
-                </tr>
-              </thead>
-              <tbody>
-                {logs.length === 0 ? <tr><td colSpan={5} className="empty-row">Chưa có nhật ký hoạt động nào.</td></tr> : 
-                  logs.map(log => (
-                    <tr key={log.id}>
-                      <td><small>{new Date(log.timestamp).toLocaleString('vi-VN')}</small></td>
-                      <td><strong>{log.adminEmail}</strong></td>
-                      <td><span className="action-tag">{log.actionType}</span></td>
-                      <td>{log.targetName}</td>
-                      <td className="comment-cell">{log.description}</td>
-                    </tr>
-                  ))
-                }
-              </tbody>
-            </table>
-          </div>
-        );
+      case 'logs': return <LogTable logs={logs} />;
 
       case 'summary': 
         return (
@@ -424,8 +307,6 @@ const AdminDashboard = () => {
     }
   };
 
-  // 🚀 SURGICAL UPDATE: Removed the local AccountSidebar and admin-master-layout wrapper.
-  // The component now returns the content directly to the global AdminLayout.
   return (
     <div className="admin-dashboard-wrapper">
       <header className="admin-page-header">
@@ -439,13 +320,15 @@ const AdminDashboard = () => {
       <section className="metrics-grid">
         <div className={`metric-card ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}><div className="metric-icon users"><FaUsers /></div><div className="metric-data"><span className="metric-label">Tổng Người dùng</span><span className="metric-value">{stats.totalUsers.toLocaleString()}</span></div></div>
         <div className={`metric-card ${activeTab === 'products' ? 'active' : ''}`} onClick={() => setActiveTab('products')}><div className="metric-icon products"><FaBox /></div><div className="metric-data"><span className="metric-label">Sản phẩm</span><span className="metric-value">{stats.totalProducts}</span></div></div>
-        <div className={`metric-card ${stats.pendingProducts > 0 ? 'urgent' : ''}`} onClick={() => setActiveTab('products_mod')}><div className="metric-icon pending"><FaClock /></div><div className="metric-data"><span className="metric-label">Chờ Duyệt (SP)</span><span className="metric-value">{stats.pendingProducts}</span></div></div>
-        <div className={`metric-card ${stats.pendingSellers > 0 ? 'urgent' : ''}`} onClick={() => setActiveTab('sellers')}><div className="metric-icon sellers"><FaStore /></div><div className="metric-data"><span className="metric-label">Chờ Duyệt (Shop)</span><span className="metric-value">{stats.pendingSellers}</span></div></div>
+        <div className={`metric-card ${stats.pendingProducts > 0 || activeTab === 'products_mod' ? 'urgent active' : ''}`} onClick={() => setActiveTab('products_mod')}><div className="metric-icon pending"><FaClock /></div><div className="metric-data"><span className="metric-label">Chờ Duyệt (SP)</span><span className="metric-value">{stats.pendingProducts}</span></div></div>
+        <div className={`metric-card ${stats.pendingSellers > 0 || activeTab === 'sellers' ? 'urgent active' : ''}`} onClick={() => setActiveTab('sellers')}><div className="metric-icon sellers"><FaStore /></div><div className="metric-data"><span className="metric-label">Chờ Duyệt (Shop)</span><span className="metric-value">{stats.pendingSellers}</span></div></div>
       </section>
 
-      <nav className="content-tabs">
+      {/* 🚀 Anchor for smooth scroll - Attached to nav */}
+      <nav className="content-tabs" ref={scrollAnchorRef}> 
         <button className={activeTab === 'summary' ? 'active' : ''} onClick={() => setActiveTab('summary')}>Tổng quan</button>
         <button className={activeTab === 'users' ? 'active' : ''} onClick={() => setActiveTab('users')}>Người dùng</button>
+        <button className={activeTab === 'products' ? 'active' : ''} onClick={() => setActiveTab('products')}>Tất cả sản phẩm</button>
         <button className={activeTab === 'products_mod' ? 'active' : ''} onClick={() => setActiveTab('products_mod')}>Duyệt Sản phẩm {stats.pendingProducts > 0 && <span className="notif-badge danger">{stats.pendingProducts}</span>}</button>
         <button className={activeTab === 'sellers' ? 'active' : ''} onClick={() => setActiveTab('sellers')}>Duyệt Shop {stats.pendingSellers > 0 && <span className="notif-badge">{stats.pendingSellers}</span>}</button>
         <button className={activeTab === 'reports' ? 'active' : ''} onClick={() => setActiveTab('reports')}>Báo cáo vi phạm {stats.totalReports > 0 && <span className="notif-badge danger">{stats.totalReports}</span>}</button>

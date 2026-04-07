@@ -7,10 +7,12 @@ const AdminLayout = () => {
   return (
     <div className="admin-master-layout">
       <div className="admin-layout-inner-container">
+        {/* 🚀 THE STICKY NAV ENGINE */}
         <aside className="sidebar-column">
           <AccountSidebar />
         </aside>
 
+        {/* 🚀 THE DYNAMIC CONTENT STAGE */}
         <main className="admin-main-view">
           <div className="admin-content-wrapper">
             <Outlet />

@@ -42,11 +42,25 @@ public class ProductController {
         return ResponseEntity.ok(productService.getProductById(id));
     }
 
+    /**
+     * 🚀 NEW: Public endpoint to fetch Shop info and its Approved products by Slug.
+     * Required to fix the 404 error on /shop/:slug or /:slug
+     * URL: GET /api/products/public/shop/{slug}
+     */
+    @GetMapping("/public/shop/{slug}")
+    public ResponseEntity<?> getPublicShopData(@PathVariable String slug) {
+        try {
+            return ResponseEntity.ok(productService.getPublicShopData(slug));
+        } catch (RuntimeException e) {
+            log.error("Shop fetch error for slug {}: {}", slug, e.getMessage());
+            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
+        }
+    }
+
     // --- 2. SOCIAL & INTERACTION ENDPOINTS ---
 
     /**
-     * 🛠️ NEW: Toggle Favorite (The Heart Icon)
-     * Requirement 4: Persistence fix for the 404 error.
+     * Toggle Favorite (The Heart Icon)
      */
     @PostMapping("/{id}/favorite")
     public ResponseEntity<?> toggleFavorite(@PathVariable String id, Principal principal) {

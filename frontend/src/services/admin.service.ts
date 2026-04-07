@@ -38,12 +38,18 @@ export const adminService = {
       approved, 
       adminNote: note || (approved ? "Hồ sơ hợp lệ" : "Hồ sơ không đạt yêu cầu") 
     };
-    // .then(res => res.data) captures the backend's success or warning message string
     return api.post(`/admin/sellers/process/${userId}`, payload).then(res => res.data);
   },
 
-  // --- PRODUCT MODERATION ---
+  // --- PRODUCT MODERATION & MANAGEMENT (PAGINATION UPDATE) ---
   
+  /**
+   * 🚀 UPDATED: Fetches products with Pagination.
+   * Now accepts page and size to match backend: GET /api/admin/products/all?page=x&size=y
+   */
+  getAllProducts: (page = 0, size = 10) => 
+    api.get('/admin/products/all', { params: { page, size } }).then(res => res.data),
+
   /**
    * Fetches products waiting for approval.
    */
@@ -51,8 +57,6 @@ export const adminService = {
   
   /**
    * Approves a product to make it public.
-   * FIXED: Removed body payload because the backend @PostMapping for approve 
-   * does not accept a RequestBody.
    */
   approveProduct: (productId: string) => 
     api.post(`/admin/products/approve/${productId}`).then(res => res.data),
@@ -62,6 +66,12 @@ export const adminService = {
    */
   rejectProduct: (productId: string, reason: string) => 
     api.post(`/admin/products/reject/${productId}`, null, { params: { reason } }).then(res => res.data),
+
+  /**
+   * Permanently deletes a product from the system.
+   */
+  deleteProduct: (productId: string) => 
+    api.delete(`/admin/products/${productId}`).then(res => res.data),
 
   // --- VIOLATION REPORT MANAGEMENT (BÁO VI PHẠM) ---
 
@@ -82,7 +92,7 @@ export const adminService = {
   deleteReport: (reportId: string) => 
     api.delete(`/admin/reports/${reportId}`).then(res => res.data),
 
-  // --- 🛠️ NEW: DYNAMIC VIOLATION CATEGORIES (DANH MỤC BÁO CÁO) ---
+  // --- DYNAMIC VIOLATION CATEGORIES (DANH MỤC BÁO CÁO) ---
 
   /**
    * Fetches the list of reasons (Sản phẩm giả, Lừa đảo, v.v.) from DB.
@@ -101,7 +111,7 @@ export const adminService = {
   deleteViolationReason: (id: string) => 
     api.delete(`/report-reasons/admin/${id}`).then(res => res.data),
 
-  // --- 🚚 NEW: DYNAMIC SHIPPING CONFIGURATION (CẤU HÌNH VẬN CHUYỂN) ---
+  // --- DYNAMIC SHIPPING CONFIGURATION (CẤU HÌNH VẬN CHUYỂN) ---
 
   /**
    * Fetches all shipping methods (including inactive ones) for Admin.
@@ -109,12 +119,12 @@ export const adminService = {
   getAllShippingMethods: () => api.get('/shipping-methods').then(res => res.data),
 
   /**
-   * Creates a new global shipping method (Hỏa tốc, Nhanh, v.v.).
+   * Creates a new global shipping method.
    */
   createShippingMethod: (data: any) => api.post('/shipping-methods', data).then(res => res.data),
 
   /**
-   * Updates an existing shipping method or toggles its active status.
+   * Updates an existing shipping method.
    */
   updateShippingMethod: (id: string, data: any) => api.put(`/shipping-methods/${id}`, data).then(res => res.data),
 
@@ -148,24 +158,14 @@ export const adminService = {
     
   getAuditLogs: () => api.get('/admin/audit-logs').then(res => res.data),
 
-  // --- 🚀 NEW: QUICK RESPONSE TEMPLATES (PHẢN HỒI NHANH) ---
+  // --- QUICK RESPONSE TEMPLATES (PHẢN HỒI NHANH) ---
 
-  /**
-   * Fetches predefined feedback templates for quick moderation responses.
-   * @param type e.g., 'SELLER_REJECTION' or 'PRODUCT_REJECTION'
-   */
   getFeedbackTemplates: (type: string) => 
     api.get('/admin/feedback-templates', { params: { type } }).then(res => res.data),
 
-  /**
-   * Creates or updates a response template.
-   */
   saveFeedbackTemplate: (data: any) => 
     api.post('/admin/feedback-templates', data).then(res => res.data),
 
-  /**
-   * Deletes a response template by ID.
-   */
   deleteFeedbackTemplate: (id: string) => 
     api.delete(`/admin/feedback-templates/${id}`).then(res => res.data),
 };

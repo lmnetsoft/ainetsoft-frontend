@@ -6,6 +6,8 @@ import com.ainetsoft.model.*;
 import com.ainetsoft.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page; // 🚀 NEW IMPORT
+import org.springframework.data.domain.Pageable; // 🚀 NEW IMPORT
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -70,7 +72,7 @@ public class AdminService {
         userRepository.save(target);
 
         recordAudit(performingAdmin, "PROMOTE_USER", target.getId(), target.getEmail(), 
-                "Cấp quyền Admin với: " + permissions.toString());
+                "Cấp quyền Admin with: " + permissions.toString());
 
         return "Đã nâng cấp " + target.getEmail() + " thành Quản trị viên.";
     }
@@ -219,7 +221,14 @@ public class AdminService {
         }
     }
 
-    // --- PRODUCT MODERATION (100% PRESERVED) ---
+    // --- PRODUCT MODERATION (PAGINATION UPDATE) ---
+
+    /**
+     * 🚀 UPDATED: Fetches products with Pagination for the general Product List tab.
+     */
+    public Page<Product> getAllProducts(Pageable pageable) {
+        return productRepository.findAll(pageable);
+    }
 
     public List<Product> getPendingProducts() {
         return productRepository.findByStatus("PENDING");
@@ -265,6 +274,19 @@ public class AdminService {
         
         recordAudit(performingAdmin, "REJECT_PRODUCT", product.getId(), product.getName(), "Từ chối: " + reason);
         return "Đã từ chối sản phẩm.";
+    }
+
+    /**
+     * 🚀 NEW: Admin-level permanent deletion of a product.
+     */
+    @Transactional
+    public void deleteProduct(String productId, User performingAdmin) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Sản phẩm không tồn tại!"));
+        
+        productRepository.delete(product);
+        
+        recordAudit(performingAdmin, "DELETE_PRODUCT", product.getId(), product.getName(), "Admin xóa vĩnh viễn sản phẩm");
     }
 
     // --- REPORT MANAGEMENT (100% PRESERVED) ---
@@ -337,7 +359,6 @@ public class AdminService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
         
-        // 🚀 Ensure we use 'user' variable correctly for security check
         if (user.isGlobalAdmin() || "admin@ainetsoft.com".equals(user.getEmail())) {
             throw new RuntimeException("KHÔNG THỂ khóa tài khoản Global Admin!");
         }

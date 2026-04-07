@@ -6,6 +6,9 @@ import com.ainetsoft.model.User;
 import com.ainetsoft.repository.UserRepository;
 import com.ainetsoft.service.AdminService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest; // 🚀 NEW IMPORT
+import org.springframework.data.domain.Pageable;    // 🚀 NEW IMPORT
+import org.springframework.data.domain.Sort;        // 🚀 NEW IMPORT
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -54,7 +57,7 @@ public class AdminController {
             @PathVariable String userId,
             @RequestBody Set<String> permissions) {
         User currentAdmin = getCurrentAdmin();
-        validateGlobalAdmin(currentAdmin); 
+        validateGlobalAdmin(currentAdmin);
         return ResponseEntity.ok(adminService.promoteToAdmin(userId, permissions, currentAdmin));
     }
 
@@ -82,12 +85,27 @@ public class AdminController {
 
     @PostMapping("/sellers/process/{userId}")
     public ResponseEntity<?> processSellerUpgrade(
-            @PathVariable String userId, 
+            @PathVariable String userId,
             @RequestBody SellerApprovalRequest request) {
         return ResponseEntity.ok(adminService.processSellerApproval(userId, request, getCurrentAdmin()));
     }
 
-    // --- PRODUCT MODERATION ---
+    // --- PRODUCT MODERATION & MANAGEMENT (PAGINATION UPDATE) ---
+
+    /**
+     * 🚀 UPDATED: Fetches products with Pagination.
+     * Accessible via: GET /api/admin/products/all?page=0&size=10
+     */
+    @GetMapping("/products/all")
+    public ResponseEntity<?> getAllProducts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        
+        // Creates a request for a specific chunk of data sorted by newest first
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        
+        return ResponseEntity.ok(adminService.getAllProducts(pageable));
+    }
 
     @GetMapping("/products/pending")
     public ResponseEntity<?> getPendingProducts() {
@@ -101,9 +119,18 @@ public class AdminController {
 
     @PostMapping("/products/reject/{productId}")
     public ResponseEntity<?> rejectProduct(
-            @PathVariable String productId, 
+            @PathVariable String productId,
             @RequestParam String reason) {
         return ResponseEntity.ok(adminService.rejectProduct(productId, reason, getCurrentAdmin()));
+    }
+
+    /**
+     * Admin-level product deletion.
+     */
+    @DeleteMapping("/products/{productId}")
+    public ResponseEntity<?> deleteProduct(@PathVariable String productId) {
+        adminService.deleteProduct(productId, getCurrentAdmin());
+        return ResponseEntity.ok().build();
     }
 
     // --- REVIEW MODERATION ---
@@ -136,5 +163,5 @@ public class AdminController {
         adminService.deleteFeedbackTemplate(id, getCurrentAdmin());
         return ResponseEntity.ok().build();
     }
-    
+
 }
