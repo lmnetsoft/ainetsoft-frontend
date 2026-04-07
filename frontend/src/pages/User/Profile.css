@@ -33,7 +33,8 @@
 
 .profile-content-header h1 {
     font-size: 26px; 
-    font-weight: 800;
+    /* 🚀 UPDATED: Softened to 600 (Semi-bold) per clean style preference */
+    font-weight: 600;
     color: #ee4d2d; 
     margin: 0 0 8px 0;
     text-transform: uppercase;
@@ -107,10 +108,7 @@
 .avatar-preview-box { width: 120px; height: 120px; margin-bottom: 20px; border-radius: 50%; overflow: hidden; border: 1px solid #edf2f7; }
 .avatar-preview-box img { width: 100%; height: 100%; object-fit: cover; }
 
-/* ----------------------------------------------------------- */
-/* --- 🚀 6A. DEDICATED BANK STYLES (THE SCROLL FIX) --- */
-/* ----------------------------------------------------------- */
-
+/* 🚀 6A. DEDICATED BANK STYLES (PRESERVED) */
 .searchable-select-box {
     display: flex;
     align-items: center;
@@ -172,13 +170,9 @@
     max-height: 235px; 
     overflow-y: auto !important; 
     -webkit-overflow-scrolling: touch; 
-    scrollbar-width: none; 
-    -ms-overflow-style: none;
 }
 
-.bank-list-results::-webkit-scrollbar {
-    display: none !important;
-}
+.bank-list-results::-webkit-scrollbar { display: none !important; }
 
 .bank-list-results li {
     padding: 12px 25px !important; 
@@ -188,11 +182,10 @@
     transition: background 0.15s;
     text-align: left;
 }
-
 .bank-list-results li:hover { background-color: #fff5f2; color: #ee4d2d; }
 
 /* ----------------------------------------------------------- */
-/* --- 🚀 6B. DEDICATED PHONE STYLES (UNTOUCHED) --- */
+/* --- 🚀 6B. DEDICATED PHONE STYLES (WIDTH ADJUSTED) --- */
 /* ----------------------------------------------------------- */
 
 .supreme-phone-container .form-control {
@@ -203,8 +196,9 @@
 }
 
 .react-tel-input .country-list {
-    width: 500px !important; 
-    min-width: 500px !important;
+    /* 🚀 TARGETED FIX: Increased to 600px to match the input field's max-width */
+    width: 520px !important; 
+    min-width: 520px !important;
     border-radius: 8px !important;
     box-shadow: 0 10px 25px rgba(0,0,0,0.12) !important;
     border: 1px solid #d1d5db !important;
@@ -254,23 +248,20 @@
     .supreme-form-row { flex-direction: column; align-items: flex-start; }
     .supreme-form-row label { width: 100%; text-align: left; margin-bottom: 8px; }
     .form-actions { padding-left: 0; }
+    /* Mobile fallback: dropdown becomes 100% of the small screen */
     .react-tel-input .country-list { width: 100% !important; min-width: 100% !important; }
 }
 
-
 /* --- 7. ANTI-VIBRATION & STABILITY --- */
-/* Forces the browser to reserve scrollbar space so the page doesn't shift left/right */
 html {
     scrollbar-gutter: stable;
 }
 
-/* Ensure the layout has a minimum height so it doesn't collapse during menu swaps */
 .user-profile-supreme-layout {
     min-height: 600px !important;
-    transition: none !important; /* Transitions can cause vibration during component re-mounts */
+    transition: none !important; 
 }
 
-/* Ensure loading box doesn't collapse the layout */
 .profile-loading-box {
     display: flex;
     justify-content: center;
