@@ -37,6 +37,13 @@ public class Product {
 
     private String sellerId;   
     private String shopName;
+    
+    /**
+     * 🚀 NEW: The "Nice URL" of the Shop (e.g., 'ainetsoft-mall').
+     * Storing this directly on the product allows the Frontend to 
+     * redirect to the Shop page without an extra database lookup.
+     */
+    private String sellerSlug; 
 
     @Builder.Default
     private Map<String, String> specifications = new HashMap<>();
