@@ -142,6 +142,9 @@ function App() {
                 */}
                 <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
                   
+																		
+																						  
+
                   {/* --- User Account Routes --- */}
                   <Route path="/user/notifications" element={<NotificationPage />} />
                   <Route path="/user/profile" element={<Profile />} />
