@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react'; // 🚀 Added useRef
 import { 
   FaUsers, FaBox, FaStore, FaClock, 
   FaChartBar, FaSync, FaHistory, FaShieldAlt,
@@ -14,11 +14,14 @@ import ReportTable from './ReportTable';
 import ReviewTable from './ReviewTable';
 import ReasonManagement from './ReasonManagement';
 import LogTable from './LogTable';
-import ProductTable from './ProductTable'; // 🚀 Added
+import ProductTable from './ProductTable';
 import { toast } from 'react-hot-toast';
 import './AdminDashboard.css';
 
 const AdminDashboard = () => {
+  // 🚀 NEW: Anchor for smooth scrolling to prevent window "jumping"
+  const scrollAnchorRef = useRef<HTMLDivElement>(null);
+
   const [activeTab, setActiveTab] = useState('summary');
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -36,14 +39,19 @@ const AdminDashboard = () => {
   const [reasons, setReasons] = useState<any[]>([]); 
   const [users, setUsers] = useState<any[]>([]); 
   const [logs, setLogs] = useState<any[]>([]); 
-  const [allProducts, setAllProducts] = useState<any[]>([]); // 🚀 Added state
+  const [allProducts, setAllProducts] = useState<any[]>([]); 
+  
+  // 🚀 Pagination states for products
+  const [productPage, setProductPage] = useState(0);
+  const [productTotalPages, setProductTotalPages] = useState(0);
+
   const [loading, setLoading] = useState(true);
   const [tabLoading, setTabLoading] = useState(false);
 
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [newReasonName, setNewReasonName] = useState("");
 
-  // --- 1. DATA FETCHERS (PRESERVED & EXTENDED) ---
+  // --- 1. DATA FETCHERS ---
 
   const fetchSummary = async (showToast = false) => {
     try {
@@ -78,14 +86,21 @@ const AdminDashboard = () => {
     finally { setTabLoading(false); }
   };
 
-  // 🚀 NEW: Fetcher for the general product list
+  /**
+   * 🚀 Handles Page object response
+   */
   const fetchProducts = async () => {
     try {
       setTabLoading(true);
-      const data = await adminService.getAllProducts(); // Logic in adminService needed
-      setAllProducts(data || []);
-    } catch (err) { console.error("Products Fetch Error:", err); }
-    finally { setTabLoading(false); }
+      const data = await adminService.getAllProducts(productPage, 10); 
+      setAllProducts(data.content || []);
+      setProductTotalPages(data.totalPages || 0);
+    } catch (err) { 
+      console.error("Products Fetch Error:", err); 
+      setAllProducts([]);
+    } finally { 
+      setTabLoading(false); 
+    }
   };
 
   const fetchLogs = async () => {
@@ -135,12 +150,12 @@ const AdminDashboard = () => {
     finally { setTabLoading(false); }
   };
 
-  // --- 2. THE REFRESH ENGINE (PRESERVED) ---
+  // --- 2. THE REFRESH ENGINE ---
 
   const handleManualRefresh = async () => {
     await fetchSummary(true);
     if (activeTab === 'users') await fetchUsers();
-    if (activeTab === 'products') await fetchProducts(); // 🚀 Added
+    if (activeTab === 'products') await fetchProducts();
     if (activeTab === 'reports') await fetchReports();
     if (activeTab === 'reviews') await fetchReviews();
     if (activeTab === 'reasons') await fetchReasons();
@@ -150,22 +165,29 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchSummary();
     fetchReports();
-    fetchProducts(); // 🚀 Added
     const interval = setInterval(() => { fetchSummary(); }, 120000);
     return () => clearInterval(interval);
   }, []);
 
+  /**
+   * 🚀 Re-fetches when tab OR page changes AND handles smooth scroll.
+   */
   useEffect(() => {
     if (activeTab === 'users') fetchUsers();
-    if (activeTab === 'products') fetchProducts(); // 🚀 Added
+    if (activeTab === 'products') fetchProducts(); 
     if (activeTab === 'reports') fetchReports();
     if (activeTab === 'reviews') fetchReviews();
     if (activeTab === 'reasons') fetchReasons();
     if (activeTab === 'logs') fetchLogs();
-  }, [activeTab]);
+
+    // 🚀 THE SMOOTH FIX: Scroll back to the top of the table area smoothly
+    if (scrollAnchorRef.current) {
+        scrollAnchorRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [activeTab, productPage]);
 
 
-  // --- 3. ACTIONS (PRESERVED) ---
+  // --- 3. ACTIONS ---
 
   const handleResolveReport = async (reportId: string, action: 'RESOLVED' | 'DISMISSED') => {
     try {
@@ -195,7 +217,6 @@ const AdminDashboard = () => {
     } catch (err) { toast.error("Thao tác thất bại."); }
   };
 
-  // 🚀 NEW: Action to delete a product from the list
   const handleDeleteProduct = async (id: string) => {
     if (!window.confirm("Xác nhận xóa vĩnh viễn sản phẩm này?")) return;
     try {
@@ -227,58 +248,40 @@ const AdminDashboard = () => {
     } catch (err) { toast.error("Không thể xóa"); }
   };
 
-  // --- 4. RENDERER (SPLIT: Products vs Moderation) ---
+  // --- 4. RENDERER ---
 
   const renderContent = () => {
     if (tabLoading) return <div className="tab-loading-spinner">Đang xử lý dữ liệu...</div>;
 
     switch (activeTab) {
       case 'users': 
-        return (
-          <UserTable 
-            users={users} 
-            userSearchTerm={userSearchTerm} 
-            setUserSearchTerm={setUserSearchTerm} 
-          />
-        );
+        return <UserTable users={users} userSearchTerm={userSearchTerm} setUserSearchTerm={setUserSearchTerm} />;
 
       case 'sellers': return <SellerModeration />;
       
-      case 'products': // 🚀 SPLIT: Now uses ProductTable
-        return <ProductTable products={allProducts} onDelete={handleDeleteProduct} />;
+      case 'products': 
+        return (
+          <ProductTable 
+            products={allProducts} 
+            onDelete={handleDeleteProduct} 
+            currentPage={productPage}
+            totalPages={productTotalPages}
+            onPageChange={setProductPage}
+          />
+        );
 
-      case 'products_mod': return <ProductModeration />; // 🚀 SPLIT: Now specifically for Moderation
+      case 'products_mod': return <ProductModeration />; 
       
       case 'reports': 
-        return (
-          <ReportTable 
-            reports={reports} 
-            handleResolveReport={handleResolveReport} 
-            handleDeleteReport={handleDeleteReport} 
-          />
-        );
+        return <ReportTable reports={reports} handleResolveReport={handleResolveReport} handleDeleteReport={handleDeleteReport} />;
 
       case 'reviews':
-        return (
-          <ReviewTable 
-            allReviews={allReviews} 
-            handleDeleteReview={handleDeleteReview} 
-          />
-        );
+        return <ReviewTable allReviews={allReviews} handleDeleteReview={handleDeleteReview} />;
 
       case 'reasons': 
-        return (
-          <ReasonManagement 
-            reasons={reasons} 
-            newReasonName={newReasonName} 
-            setNewReasonName={setNewReasonName} 
-            handleAddReason={handleAddReason} 
-            handleDeleteReason={handleDeleteReason} 
-          />
-        );
+        return <ReasonManagement reasons={reasons} newReasonName={newReasonName} setNewReasonName={setNewReasonName} handleAddReason={handleAddReason} handleDeleteReason={handleDeleteReason} />;
 
-      case 'logs':
-        return <LogTable logs={logs} />;
+      case 'logs': return <LogTable logs={logs} />;
 
       case 'summary': 
         return (
@@ -316,17 +319,13 @@ const AdminDashboard = () => {
 
       <section className="metrics-grid">
         <div className={`metric-card ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}><div className="metric-icon users"><FaUsers /></div><div className="metric-data"><span className="metric-label">Tổng Người dùng</span><span className="metric-value">{stats.totalUsers.toLocaleString()}</span></div></div>
-        
-        {/* 🚀 FIXED: Pointing to 'products' tab */}
         <div className={`metric-card ${activeTab === 'products' ? 'active' : ''}`} onClick={() => setActiveTab('products')}><div className="metric-icon products"><FaBox /></div><div className="metric-data"><span className="metric-label">Sản phẩm</span><span className="metric-value">{stats.totalProducts}</span></div></div>
-        
-        {/* 🚀 FIXED: Pointing to 'products_mod' tab */}
         <div className={`metric-card ${stats.pendingProducts > 0 || activeTab === 'products_mod' ? 'urgent active' : ''}`} onClick={() => setActiveTab('products_mod')}><div className="metric-icon pending"><FaClock /></div><div className="metric-data"><span className="metric-label">Chờ Duyệt (SP)</span><span className="metric-value">{stats.pendingProducts}</span></div></div>
-        
         <div className={`metric-card ${stats.pendingSellers > 0 || activeTab === 'sellers' ? 'urgent active' : ''}`} onClick={() => setActiveTab('sellers')}><div className="metric-icon sellers"><FaStore /></div><div className="metric-data"><span className="metric-label">Chờ Duyệt (Shop)</span><span className="metric-value">{stats.pendingSellers}</span></div></div>
       </section>
 
-      <nav className="content-tabs">
+      {/* 🚀 Anchor for smooth scroll - Attached to nav */}
+      <nav className="content-tabs" ref={scrollAnchorRef}> 
         <button className={activeTab === 'summary' ? 'active' : ''} onClick={() => setActiveTab('summary')}>Tổng quan</button>
         <button className={activeTab === 'users' ? 'active' : ''} onClick={() => setActiveTab('users')}>Người dùng</button>
         <button className={activeTab === 'products' ? 'active' : ''} onClick={() => setActiveTab('products')}>Tất cả sản phẩm</button>

@@ -6,6 +6,9 @@ import com.ainetsoft.model.User;
 import com.ainetsoft.repository.UserRepository;
 import com.ainetsoft.service.AdminService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest; // 🚀 NEW IMPORT
+import org.springframework.data.domain.Pageable;    // 🚀 NEW IMPORT
+import org.springframework.data.domain.Sort;        // 🚀 NEW IMPORT
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -87,15 +90,21 @@ public class AdminController {
         return ResponseEntity.ok(adminService.processSellerApproval(userId, request, getCurrentAdmin()));
     }
 
-    // --- PRODUCT MODERATION & MANAGEMENT ---
+    // --- PRODUCT MODERATION & MANAGEMENT (PAGINATION UPDATE) ---
 
     /**
-     * 🚀 NEW: Fetches ALL products for the general Product Table.
-     * Maps to: GET /api/admin/products/all
+     * 🚀 UPDATED: Fetches products with Pagination.
+     * Accessible via: GET /api/admin/products/all?page=0&size=10
      */
     @GetMapping("/products/all")
-    public ResponseEntity<?> getAllProducts() {
-        return ResponseEntity.ok(adminService.getAllProducts());
+    public ResponseEntity<?> getAllProducts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        
+        // Creates a request for a specific chunk of data sorted by newest first
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        
+        return ResponseEntity.ok(adminService.getAllProducts(pageable));
     }
 
     @GetMapping("/products/pending")
@@ -116,8 +125,7 @@ public class AdminController {
     }
 
     /**
-     * 🚀 NEW: Admin-level product deletion.
-     * Maps to: DELETE /api/admin/products/{productId}
+     * Admin-level product deletion.
      */
     @DeleteMapping("/products/{productId}")
     public ResponseEntity<?> deleteProduct(@PathVariable String productId) {

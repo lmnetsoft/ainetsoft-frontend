@@ -41,13 +41,14 @@ export const adminService = {
     return api.post(`/admin/sellers/process/${userId}`, payload).then(res => res.data);
   },
 
-  // --- PRODUCT MODERATION & MANAGEMENT ---
+  // --- PRODUCT MODERATION & MANAGEMENT (PAGINATION UPDATE) ---
   
   /**
-   * 🚀 NEW: Fetches ALL products in the system (Approved & Pending).
-   * Required for the "Sản phẩm (55)" dashboard card.
+   * 🚀 UPDATED: Fetches products with Pagination.
+   * Now accepts page and size to match backend: GET /api/admin/products/all?page=x&size=y
    */
-  getAllProducts: () => api.get('/admin/products/all').then(res => res.data),
+  getAllProducts: (page = 0, size = 10) => 
+    api.get('/admin/products/all', { params: { page, size } }).then(res => res.data),
 
   /**
    * Fetches products waiting for approval.
@@ -67,7 +68,7 @@ export const adminService = {
     api.post(`/admin/products/reject/${productId}`, null, { params: { reason } }).then(res => res.data),
 
   /**
-   * 🚀 NEW: Permanently deletes a product from the system.
+   * Permanently deletes a product from the system.
    */
   deleteProduct: (productId: string) => 
     api.delete(`/admin/products/${productId}`).then(res => res.data),

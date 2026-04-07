@@ -6,6 +6,8 @@ import com.ainetsoft.model.*;
 import com.ainetsoft.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page; // 🚀 NEW IMPORT
+import org.springframework.data.domain.Pageable; // 🚀 NEW IMPORT
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -70,7 +72,7 @@ public class AdminService {
         userRepository.save(target);
 
         recordAudit(performingAdmin, "PROMOTE_USER", target.getId(), target.getEmail(), 
-                "Cấp quyền Admin với: " + permissions.toString());
+                "Cấp quyền Admin with: " + permissions.toString());
 
         return "Đã nâng cấp " + target.getEmail() + " thành Quản trị viên.";
     }
@@ -219,13 +221,13 @@ public class AdminService {
         }
     }
 
-    // --- PRODUCT MODERATION (100% PRESERVED & EXTENDED) ---
+    // --- PRODUCT MODERATION (PAGINATION UPDATE) ---
 
     /**
-     * 🚀 NEW: Fetches ALL products for the general Product List tab.
+     * 🚀 UPDATED: Fetches products with Pagination for the general Product List tab.
      */
-    public List<Product> getAllProducts() {
-        return productRepository.findAll();
+    public Page<Product> getAllProducts(Pageable pageable) {
+        return productRepository.findAll(pageable);
     }
 
     public List<Product> getPendingProducts() {

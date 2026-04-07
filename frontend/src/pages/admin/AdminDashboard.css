@@ -454,3 +454,85 @@
     border-radius: 50%;
     color: var(--orange);
 }
+
+/* --- 🚀 ENHANCED SEARCH BOX: CLEAR BUTTON STYLES --- */
+
+/* 1. Add extra padding to the right of the input so text doesn't hide behind the X */
+.search-box-wrapper input {
+  padding-right: 45px !important; 
+}
+
+/* 2. Style the X button */
+.clear-search-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none !important;
+  border: none !important;
+  color: #a4b0be;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px;
+  transition: color 0.2s, transform 0.1s;
+  z-index: 5; /* Ensure it stays above the input */
+}
+
+.clear-search-btn:hover {
+  color: var(--orange);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.clear-search-btn:active {
+  transform: translateY(-50%) scale(0.9);
+}
+
+/* --- TABLE PAGINATION STYLES --- */
+.table-pagination-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 25px;
+  background: #fafbfc;
+  border-top: 1px solid var(--border-light);
+}
+
+.pagination-info {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.pagination-controls {
+  display: flex;
+  gap: 10px;
+}
+
+.page-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: white;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.page-nav-btn:hover:not(:disabled) {
+  border-color: var(--orange);
+  color: var(--orange);
+  background: #fff8f6;
+}
+
+.page-nav-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f1f2f6;
+}
