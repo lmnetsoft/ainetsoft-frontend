@@ -219,7 +219,14 @@ public class AdminService {
         }
     }
 
-    // --- PRODUCT MODERATION (100% PRESERVED) ---
+    // --- PRODUCT MODERATION (100% PRESERVED & EXTENDED) ---
+
+    /**
+     * 🚀 NEW: Fetches ALL products for the general Product List tab.
+     */
+    public List<Product> getAllProducts() {
+        return productRepository.findAll();
+    }
 
     public List<Product> getPendingProducts() {
         return productRepository.findByStatus("PENDING");
@@ -265,6 +272,19 @@ public class AdminService {
         
         recordAudit(performingAdmin, "REJECT_PRODUCT", product.getId(), product.getName(), "Từ chối: " + reason);
         return "Đã từ chối sản phẩm.";
+    }
+
+    /**
+     * 🚀 NEW: Admin-level permanent deletion of a product.
+     */
+    @Transactional
+    public void deleteProduct(String productId, User performingAdmin) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Sản phẩm không tồn tại!"));
+        
+        productRepository.delete(product);
+        
+        recordAudit(performingAdmin, "DELETE_PRODUCT", product.getId(), product.getName(), "Admin xóa vĩnh viễn sản phẩm");
     }
 
     // --- REPORT MANAGEMENT (100% PRESERVED) ---
@@ -337,7 +357,6 @@ public class AdminService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
         
-        // 🚀 Ensure we use 'user' variable correctly for security check
         if (user.isGlobalAdmin() || "admin@ainetsoft.com".equals(user.getEmail())) {
             throw new RuntimeException("KHÔNG THỂ khóa tài khoản Global Admin!");
         }

@@ -54,7 +54,7 @@ public class AdminController {
             @PathVariable String userId,
             @RequestBody Set<String> permissions) {
         User currentAdmin = getCurrentAdmin();
-        validateGlobalAdmin(currentAdmin); 
+        validateGlobalAdmin(currentAdmin);
         return ResponseEntity.ok(adminService.promoteToAdmin(userId, permissions, currentAdmin));
     }
 
@@ -82,12 +82,21 @@ public class AdminController {
 
     @PostMapping("/sellers/process/{userId}")
     public ResponseEntity<?> processSellerUpgrade(
-            @PathVariable String userId, 
+            @PathVariable String userId,
             @RequestBody SellerApprovalRequest request) {
         return ResponseEntity.ok(adminService.processSellerApproval(userId, request, getCurrentAdmin()));
     }
 
-    // --- PRODUCT MODERATION ---
+    // --- PRODUCT MODERATION & MANAGEMENT ---
+
+    /**
+     * 🚀 NEW: Fetches ALL products for the general Product Table.
+     * Maps to: GET /api/admin/products/all
+     */
+    @GetMapping("/products/all")
+    public ResponseEntity<?> getAllProducts() {
+        return ResponseEntity.ok(adminService.getAllProducts());
+    }
 
     @GetMapping("/products/pending")
     public ResponseEntity<?> getPendingProducts() {
@@ -101,9 +110,19 @@ public class AdminController {
 
     @PostMapping("/products/reject/{productId}")
     public ResponseEntity<?> rejectProduct(
-            @PathVariable String productId, 
+            @PathVariable String productId,
             @RequestParam String reason) {
         return ResponseEntity.ok(adminService.rejectProduct(productId, reason, getCurrentAdmin()));
+    }
+
+    /**
+     * 🚀 NEW: Admin-level product deletion.
+     * Maps to: DELETE /api/admin/products/{productId}
+     */
+    @DeleteMapping("/products/{productId}")
+    public ResponseEntity<?> deleteProduct(@PathVariable String productId) {
+        adminService.deleteProduct(productId, getCurrentAdmin());
+        return ResponseEntity.ok().build();
     }
 
     // --- REVIEW MODERATION ---
@@ -136,5 +155,5 @@ public class AdminController {
         adminService.deleteFeedbackTemplate(id, getCurrentAdmin());
         return ResponseEntity.ok().build();
     }
-    
+
 }

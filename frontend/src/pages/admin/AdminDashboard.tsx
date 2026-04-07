@@ -8,13 +8,13 @@ import adminService from '../../services/admin.service';
 import SellerModeration from './SellerModeration'; 
 import ProductModeration from './ProductModeration'; 
 
-// 🚀 NEW: Importing the modular components we verified
+// Modular components
 import UserTable from './UserTable';
 import ReportTable from './ReportTable';
 import ReviewTable from './ReviewTable';
 import ReasonManagement from './ReasonManagement';
 import LogTable from './LogTable';
-
+import ProductTable from './ProductTable'; // 🚀 Added
 import { toast } from 'react-hot-toast';
 import './AdminDashboard.css';
 
@@ -36,13 +36,14 @@ const AdminDashboard = () => {
   const [reasons, setReasons] = useState<any[]>([]); 
   const [users, setUsers] = useState<any[]>([]); 
   const [logs, setLogs] = useState<any[]>([]); 
+  const [allProducts, setAllProducts] = useState<any[]>([]); // 🚀 Added state
   const [loading, setLoading] = useState(true);
   const [tabLoading, setTabLoading] = useState(false);
 
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [newReasonName, setNewReasonName] = useState("");
 
-  // --- 1. DATA FETCHERS (PRESERVED) ---
+  // --- 1. DATA FETCHERS (PRESERVED & EXTENDED) ---
 
   const fetchSummary = async (showToast = false) => {
     try {
@@ -74,6 +75,16 @@ const AdminDashboard = () => {
       const data = await adminService.getAllUsers();
       setUsers(data || []);
     } catch (err) { console.error("Users Fetch Error:", err); } 
+    finally { setTabLoading(false); }
+  };
+
+  // 🚀 NEW: Fetcher for the general product list
+  const fetchProducts = async () => {
+    try {
+      setTabLoading(true);
+      const data = await adminService.getAllProducts(); // Logic in adminService needed
+      setAllProducts(data || []);
+    } catch (err) { console.error("Products Fetch Error:", err); }
     finally { setTabLoading(false); }
   };
 
@@ -129,6 +140,7 @@ const AdminDashboard = () => {
   const handleManualRefresh = async () => {
     await fetchSummary(true);
     if (activeTab === 'users') await fetchUsers();
+    if (activeTab === 'products') await fetchProducts(); // 🚀 Added
     if (activeTab === 'reports') await fetchReports();
     if (activeTab === 'reviews') await fetchReviews();
     if (activeTab === 'reasons') await fetchReasons();
@@ -138,12 +150,14 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchSummary();
     fetchReports();
+    fetchProducts(); // 🚀 Added
     const interval = setInterval(() => { fetchSummary(); }, 120000);
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
     if (activeTab === 'users') fetchUsers();
+    if (activeTab === 'products') fetchProducts(); // 🚀 Added
     if (activeTab === 'reports') fetchReports();
     if (activeTab === 'reviews') fetchReviews();
     if (activeTab === 'reasons') fetchReasons();
@@ -181,6 +195,17 @@ const AdminDashboard = () => {
     } catch (err) { toast.error("Thao tác thất bại."); }
   };
 
+  // 🚀 NEW: Action to delete a product from the list
+  const handleDeleteProduct = async (id: string) => {
+    if (!window.confirm("Xác nhận xóa vĩnh viễn sản phẩm này?")) return;
+    try {
+      await adminService.deleteProduct(id);
+      toast.success("Đã xóa sản phẩm thành công.");
+      fetchProducts();
+      fetchSummary();
+    } catch (err) { toast.error("Lỗi khi xóa sản phẩm."); }
+  };
+
   const handleAddReason = async () => {
     if (!newReasonName.trim()) { toast.error("Vui lòng nhập tên lý do"); return; }
     try {
@@ -202,7 +227,7 @@ const AdminDashboard = () => {
     } catch (err) { toast.error("Không thể xóa"); }
   };
 
-  // --- 4. RENDERER (UPDATED: Using Modular Components) ---
+  // --- 4. RENDERER (SPLIT: Products vs Moderation) ---
 
   const renderContent = () => {
     if (tabLoading) return <div className="tab-loading-spinner">Đang xử lý dữ liệu...</div>;
@@ -219,8 +244,10 @@ const AdminDashboard = () => {
 
       case 'sellers': return <SellerModeration />;
       
-      case 'products':
-      case 'products_mod': return <ProductModeration />;
+      case 'products': // 🚀 SPLIT: Now uses ProductTable
+        return <ProductTable products={allProducts} onDelete={handleDeleteProduct} />;
+
+      case 'products_mod': return <ProductModeration />; // 🚀 SPLIT: Now specifically for Moderation
       
       case 'reports': 
         return (
@@ -289,14 +316,20 @@ const AdminDashboard = () => {
 
       <section className="metrics-grid">
         <div className={`metric-card ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}><div className="metric-icon users"><FaUsers /></div><div className="metric-data"><span className="metric-label">Tổng Người dùng</span><span className="metric-value">{stats.totalUsers.toLocaleString()}</span></div></div>
+        
+        {/* 🚀 FIXED: Pointing to 'products' tab */}
         <div className={`metric-card ${activeTab === 'products' ? 'active' : ''}`} onClick={() => setActiveTab('products')}><div className="metric-icon products"><FaBox /></div><div className="metric-data"><span className="metric-label">Sản phẩm</span><span className="metric-value">{stats.totalProducts}</span></div></div>
-        <div className={`metric-card ${stats.pendingProducts > 0 ? 'urgent' : ''}`} onClick={() => setActiveTab('products_mod')}><div className="metric-icon pending"><FaClock /></div><div className="metric-data"><span className="metric-label">Chờ Duyệt (SP)</span><span className="metric-value">{stats.pendingProducts}</span></div></div>
-        <div className={`metric-card ${stats.pendingSellers > 0 ? 'urgent' : ''}`} onClick={() => setActiveTab('sellers')}><div className="metric-icon sellers"><FaStore /></div><div className="metric-data"><span className="metric-label">Chờ Duyệt (Shop)</span><span className="metric-value">{stats.pendingSellers}</span></div></div>
+        
+        {/* 🚀 FIXED: Pointing to 'products_mod' tab */}
+        <div className={`metric-card ${stats.pendingProducts > 0 || activeTab === 'products_mod' ? 'urgent active' : ''}`} onClick={() => setActiveTab('products_mod')}><div className="metric-icon pending"><FaClock /></div><div className="metric-data"><span className="metric-label">Chờ Duyệt (SP)</span><span className="metric-value">{stats.pendingProducts}</span></div></div>
+        
+        <div className={`metric-card ${stats.pendingSellers > 0 || activeTab === 'sellers' ? 'urgent active' : ''}`} onClick={() => setActiveTab('sellers')}><div className="metric-icon sellers"><FaStore /></div><div className="metric-data"><span className="metric-label">Chờ Duyệt (Shop)</span><span className="metric-value">{stats.pendingSellers}</span></div></div>
       </section>
 
       <nav className="content-tabs">
         <button className={activeTab === 'summary' ? 'active' : ''} onClick={() => setActiveTab('summary')}>Tổng quan</button>
         <button className={activeTab === 'users' ? 'active' : ''} onClick={() => setActiveTab('users')}>Người dùng</button>
+        <button className={activeTab === 'products' ? 'active' : ''} onClick={() => setActiveTab('products')}>Tất cả sản phẩm</button>
         <button className={activeTab === 'products_mod' ? 'active' : ''} onClick={() => setActiveTab('products_mod')}>Duyệt Sản phẩm {stats.pendingProducts > 0 && <span className="notif-badge danger">{stats.pendingProducts}</span>}</button>
         <button className={activeTab === 'sellers' ? 'active' : ''} onClick={() => setActiveTab('sellers')}>Duyệt Shop {stats.pendingSellers > 0 && <span className="notif-badge">{stats.pendingSellers}</span>}</button>
         <button className={activeTab === 'reports' ? 'active' : ''} onClick={() => setActiveTab('reports')}>Báo cáo vi phạm {stats.totalReports > 0 && <span className="notif-badge danger">{stats.totalReports}</span>}</button>

@@ -53,7 +53,6 @@ const ProductModeration = () => {
   return (
     <div className="moderation-container">
       <div className="moderation-header">
-        <h3><FaBoxOpen /> Phê duyệt Sản Phẩm</h3>
         <p>Hệ thống phát hiện {products.length} sản phẩm đang chờ lệnh phê duyệt.</p>
       </div>
 
