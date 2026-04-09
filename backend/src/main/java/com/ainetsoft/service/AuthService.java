@@ -3,7 +3,6 @@ package com.ainetsoft.service;
 import com.ainetsoft.config.JwtUtils;
 import com.ainetsoft.config.VietnamProvinceConfig;
 import com.ainetsoft.dto.*;
-import com.ainetsoft.service.NotificationService;
 import com.ainetsoft.model.User;
 import com.ainetsoft.model.CartItem;
 import com.ainetsoft.model.PasswordResetToken;
@@ -38,14 +37,12 @@ public class AuthService {
     private final JwtUtils jwtUtils;
     private final FileStorageService fileStorageService;
     private final NotificationService notificationService;
-    
-    // 🚀 Added for the Best approach: Side Detection
     private final AzureOCRService ocrService;
 
     private final String UPLOAD_DIR = "uploads/cccd/";
     private final String LICENSE_DIR = "uploads/license/";
 
-    // --- SLUG GENERATOR UTILITY (PRESERVED) ---
+    // --- SLUG GENERATOR UTILITY ---
     private String generateSlug(String input) {
         if (input == null || input.isEmpty()) return "";
         String normalized = Normalizer.normalize(input, Normalizer.Form.NFD);
@@ -121,6 +118,7 @@ public class AuthService {
         }
 
         return UserResponse.builder()
+                .id(user.getId()) // 🚀 ADDED: Required for frontend bank-account fetching
                 .email(user.getEmail())
                 .phone(user.getPhone())
                 .fullName(displayName)
@@ -134,7 +132,7 @@ public class AuthService {
                 .shopProfile(user.getShopProfile()) 
                 .identityInfo(user.getIdentityInfo()) 
                 .addresses(user.getAddresses() != null ? user.getAddresses() : new ArrayList<>())
-                .bankAccounts(user.getBankAccounts() != null ? (List)user.getBankAccounts() : new ArrayList<>())
+                // REMOVED: bankAccounts call
                 .cart(user.getCart() != null ? user.getCart() : new ArrayList<>())
                 .sellerVerification(user.getSellerVerification())
                 .rejectionReason(user.getRejectionReason())
@@ -182,9 +180,7 @@ public class AuthService {
         if (request.getAvatarUrl() != null) user.setAvatarUrl(request.getAvatarUrl());
         if (request.getShopProfile() != null) user.setShopProfile(request.getShopProfile());
         if (request.getAddresses() != null) user.setAddresses(request.getAddresses());
-        if (request.getBankAccounts() != null) {
-            user.setBankAccounts((List)request.getBankAccounts());
-        }
+        // REMOVED: bankAccounts update block
 
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
@@ -259,9 +255,7 @@ public class AuthService {
         }
 
         try {
-            // 🚀 STEP 1: STRICT AI IMAGE VERIFICATION (FRONT vs BACK)
             if (front != null && !front.isEmpty() && back != null && !back.isEmpty()) {
-                // A. 100% BYTE COMPARISON (Catches identical files instantly)
                 if (Arrays.equals(front.getBytes(), back.getBytes())) {
                     throw new RuntimeException("Ảnh mặt trước và mặt sau là cùng một tệp tin. Vui lòng tải lên đúng 2 mặt khác nhau.");
                 }
@@ -273,13 +267,10 @@ public class AuthService {
                 String sideF = frontResult.getSide();
                 String sideB = backResult.getSide();
 
-                // B. STRICT SIDE COMPARISON
-                // Only block if AI is SURE they are the same side (e.g., both "front" or both "back")
                 if (!"unknown".equals(sideF) && !"unknown".equals(sideB) && sideF.equalsIgnoreCase(sideB)) {
                     throw new RuntimeException("Bạn đã tải lên cùng một mặt của thẻ. Vui lòng cung cấp cả mặt trước và mặt sau.");
                 }
 
-                // Block if sides are clearly swapped
                 if ("back".equals(sideF)) {
                     throw new RuntimeException("Ảnh tải lên ô 'Mặt trước' thực tế là mặt sau. Vui lòng tải lên đúng mặt thẻ.");
                 }
@@ -287,7 +278,6 @@ public class AuthService {
                     throw new RuntimeException("Ảnh tải lên ô 'Mặt sau' thực tế là mặt trước. Vui lòng tải lên đúng mặt thẻ.");
                 }
 
-                // C. NUMBER VERIFICATION (Cross-check with user input)
                 if (frontResult.getIdNumber() != null && dto.getCccdNumber() != null) {
                     String normalizedInput = dto.getCccdNumber().toUpperCase().replaceAll("[^A-Z0-9]", "");
                     String normalizedExtracted = frontResult.getIdNumber();
@@ -368,14 +358,7 @@ public class AuthService {
                     .enabledShippingMethodIds(dto.getShippingMethods() != null ? enabledShippingIds : currentShop.getEnabledShippingMethodIds())
                     .build());
 
-            if (dto.getBankName() != null && dto.getAccountNumber() != null) {
-                user.setBankAccounts(Collections.singletonList(User.BankInfo.builder()
-                        .bankName(dto.getBankName())
-                        .accountNumber(dto.getAccountNumber())
-                        .accountHolder(dto.getAccountHolder() != null ? dto.getAccountHolder().toUpperCase() : "")
-                        .isDefault(true)
-                        .build()));
-            }
+            // REMOVED: bankAccounts setter block inside upgradeToSeller logic
 
             User.ShopProfile profile = user.getShopProfile();
             User.IdentityInfo identity = user.getIdentityInfo();
@@ -561,6 +544,7 @@ public class AuthService {
                 .orElseThrow(() -> new RuntimeException("Cửa hàng với link '" + slug + "' không tồn tại!"));
 
         return UserResponse.builder()
+                .id(user.getId()) // 🚀 ADDED: Required for frontend bank-account fetching
                 .email(user.getEmail())
                 .phone(user.getPhone())
                 .fullName(user.getFullName())

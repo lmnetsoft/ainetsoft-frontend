@@ -14,6 +14,7 @@ import java.util.Set;
 @AllArgsConstructor
 @Builder
 public class UserResponse {
+    private String id; // 🚀 The "Glue": Necessary to link dedicated collections like bank accounts
     private String email;
     private String phone;
     private String fullName;
@@ -30,12 +31,9 @@ public class UserResponse {
     private String rejectionReason;
     private User.ShopProfile shopProfile;
     
-    // --- APPENDED FIX START ---
-    // This allows the CCCD number and front/back images to reach your React app
+    // Identity info for verification
     private User.IdentityInfo identityInfo; 
-    // --- APPENDED FIX END ---
     
     private List<User.AddressInfo> addresses;
-    private List<User.BankInfo> bankAccounts;
     private List<com.ainetsoft.model.CartItem> cart;
 }

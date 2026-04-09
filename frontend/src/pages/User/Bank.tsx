@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ToastNotification from '../../components/Toast/ToastNotification';
-import { getUserProfile, updateProfile } from '../../services/authService';
+import { getUserProfile } from '../../services/authService';
+import api from '../../services/api'; 
 import { FaSearch, FaChevronDown } from 'react-icons/fa'; 
 import './Profile.css'; 
 
 const Bank = () => {
   const [bankData, setBankData] = useState({
+    id: '', // Mongodb ID for the bank account record
     bankName: '',
     accountNumber: '',
-    accountHolder: ''
+    accountHolder: '',
+    userId: '' // The ID of the current user
   });
 
   const [loading, setLoading] = useState(true);
@@ -39,12 +42,26 @@ const Bank = () => {
     const fetchBankInfo = async () => {
       try {
         setLoading(true);
-        const data = await getUserProfile();
-        if (data.bankAccounts && data.bankAccounts.length > 0) {
-          setBankData(data.bankAccounts[0]);
+        // 1. Get the current user profile (now includes the 'id' field)
+        const user = await getUserProfile();
+        
+        if (user && user.id) {
+          // 2. Fetch bank data from the NEW dedicated collection
+          const response = await api.get(`/bank-accounts/user/${user.id}`);
+          
+          if (response.data && response.data.length > 0) {
+            // Fill form with the existing (default) account
+            setBankData({
+              ...response.data[0],
+              userId: user.id
+            });
+          } else {
+            // No bank account yet, just store the userId for saving
+            setBankData(prev => ({ ...prev, userId: user.id }));
+          }
         }
       } catch (error: any) {
-        console.error("Profile load error:", error);
+        console.error("Bank data fetch error:", error);
       } finally {
         setLoading(false);
       }
@@ -96,17 +113,26 @@ const Bank = () => {
 
     try {
       setIsSaving(true);
-      const cleanData = {
-        ...bankData,
+      
+      const payload = {
+        id: bankData.id || undefined, // If ID exists, backend updates; otherwise creates new
+        userId: bankData.userId,
+        bankName: bankData.bankName,
         accountNumber: bankData.accountNumber.replace(/\s/g, ''),
-        accountHolder: bankData.accountHolder.trim().toUpperCase()
+        accountHolder: bankData.accountHolder.trim().toUpperCase(),
+        isDefault: true
       };
 
-      await updateProfile({ bankAccounts: [cleanData] });
-      setToastMessage("Cập nhật ngân hàng thành công!");
+      // 🚀 TARGETING NEW ENDPOINT
+      const response = await api.post('/bank-accounts', payload);
+      
+      // Update local state with the ID returned from MongoDB
+      setBankData(prev => ({ ...prev, id: response.data.id }));
+
+      setToastMessage("Lưu tài khoản ngân hàng thành công!");
       setShowToast(true);
     } catch (error: any) {
-      setToastMessage(error.message || "Cập nhật thất bại.");
+      setToastMessage(error.response?.data?.message || "Lỗi khi lưu thông tin.");
       setShowToast(true);
     } finally {
       setIsSaving(false);
@@ -115,7 +141,6 @@ const Bank = () => {
 
   return (
     <div className="user-profile-supreme-layout">
-      {/* 🚀 STABILITY FIX: Keep the layout mounted during loading */}
       {loading ? (
         <div className="profile-loading-box">Đang tải dữ liệu...</div>
       ) : (
