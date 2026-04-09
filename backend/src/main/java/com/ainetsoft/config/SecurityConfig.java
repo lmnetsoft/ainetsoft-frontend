@@ -75,9 +75,9 @@ public class SecurityConfig {
                     "/ws/**",
                     "/api/report-reasons",
                     "/api/system-content/**",
-                    "/api/help/tree",           // 🚀 NEW: Visitors see the help sidebar
-                    "/api/footer-menus/**",     // 🚀 NEW: Visitors see footer columns
-                    "/api/footer-icons/**"      // 🚀 NEW: Visitors see payment/shipping icons
+                    "/api/help/tree",
+                    "/api/footer-menus/**",
+                    "/api/footer-icons/**"
                 ).permitAll() 
 
                 .requestMatchers("/api/chat/history/**").permitAll()
@@ -90,7 +90,6 @@ public class SecurityConfig {
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/chat/admin/**").hasRole("ADMIN")
                 
-                // 🚀 NEW: Restrict management of menus and help nodes to ADMINs only
                 .requestMatchers(HttpMethod.POST, "/api/footer-menus/**", "/api/help/nodes/**", "/api/footer-icons/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/footer-menus/**", "/api/help/nodes/**", "/api/footer-icons/**").hasRole("ADMIN")
 
@@ -101,6 +100,7 @@ public class SecurityConfig {
                     "/api/auth/sync-cart",
                     "/api/auth/change-password",
                     "/api/auth/upgrade-seller",
+                    "/api/bank-accounts/**", // 🚀 NEW: Explicitly allow new standalone bank API
                     "/api/orders/**",
                     "/api/notifications/**",
                     "/api/products/seller/**",
