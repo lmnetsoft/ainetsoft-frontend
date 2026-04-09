@@ -4,7 +4,8 @@ import {
   FaUser, FaStore, FaShoppingBag, FaShieldAlt, FaComments, FaTruck, 
   FaBalanceScale, FaList, FaSitemap, FaEdit, FaCog, FaUserCircle, 
   FaUniversity, FaMapMarkerAlt, FaKey, FaChartPie, FaBoxes, FaClipboardList, FaBuilding,
-  FaWallet // 🚀 NEW: Icon for Withdrawal
+  FaWallet,
+  FaFileInvoiceDollar // 🚀 IMPORTED: Icon for Withdrawal Management
 } from 'react-icons/fa'; 
 import api from '../../services/api'; 
 
@@ -135,7 +136,6 @@ const AccountSidebar = () => {
               <NavLink to="/seller/orders" className={({isActive}) => isActive ? 'active' : ''}>
                 <FaClipboardList className="icon-blue" /> Quản lý đơn hàng
               </NavLink>
-              {/* 🚀 NEW: Dedicated Withdrawal Link */}
               <NavLink to="/seller/withdrawal" className={({isActive}) => isActive ? 'active' : ''}>
                 <FaWallet className="icon-green" style={{ color: '#2ecc71' }} /> Rút tiền doanh thu
               </NavLink>
@@ -170,6 +170,11 @@ const AccountSidebar = () => {
               <NavLink to="/admin/content/company" className={({isActive}) => isActive ? 'active' : ''}><FaBuilding className="icon-indigo" /> Thông tin Công ty</NavLink>
               <NavLink to="/admin/shipping" className={({isActive}) => isActive ? 'active' : ''}><FaTruck className="icon-green" /> Cấu hình vận chuyển</NavLink>
               
+              {/* 🚀 NEW: Admin Withdrawal Link */}
+              <NavLink to="/admin/withdrawals" className={({isActive}) => isActive ? 'active' : ''}>
+                <FaFileInvoiceDollar className="icon-gold" /> Quản lý Rút tiền
+              </NavLink>
+
               <div className="group-label">Tương tác</div>
               <NavLink to="/admin/chat" className={({isActive}) => isActive ? 'active' : ''}><FaComments className="icon-cyan" /> Quản lý Chat trực tuyến</NavLink>
             </div>
