@@ -47,15 +47,20 @@ import EditProduct from './pages/Seller/EditProduct';
 import MyProducts from './pages/Seller/MyProducts';
 import SellerOrders from './pages/Seller/SellerOrders';
 import SellerSettings from './pages/Seller/SellerSettings';
+<<<<<<< feature/seller_setting
+import Withdrawal from './pages/Seller/Withdrawal'; 
+=======
 import Withdrawal from './pages/Seller/Withdrawal'; // 🚀 NEW: Import for the Wallet page
+>>>>>>> main
 
-// Admin Components (Existing)
+// Admin Components
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import AdminChat from './pages/Admin/AdminChat'; 
 import ShippingManagement from './pages/Admin/ShippingManagement'; 
 import SystemContentManagement from './pages/Admin/SystemContentManagement';
 import FooterMenuManagement from './pages/Admin/FooterMenuManagement';
 import HelpHierarchyManagement from './pages/Admin/HelpHierarchyManagement';
+import AdminWithdrawals from './pages/Admin/AdminWithdrawals'; // 🚀 NEW: Import for Admin Management
 
 // 🚀 MIGRATED ADMIN PAGES
 import AdminUsers from './pages/Admin/AdminUsers'; 
@@ -155,7 +160,11 @@ function App() {
                   <Route path="/seller/edit/:id" element={<ProtectedRoute allowedRoles={['SELLER']}><EditProduct /></ProtectedRoute>} />
                   <Route path="/seller/orders" element={<ProtectedRoute allowedRoles={['SELLER']}><SellerOrders /></ProtectedRoute>} />
                   <Route path="/seller/settings" element={<ProtectedRoute allowedRoles={['SELLER']}><SellerSettings /></ProtectedRoute>} />
+<<<<<<< feature/seller_setting
+                  <Route path="/seller/withdrawal" element={<ProtectedRoute allowedRoles={['SELLER']}><Withdrawal /></ProtectedRoute>} />
+=======
                   <Route path="/seller/withdrawal" element={<ProtectedRoute allowedRoles={['SELLER']}><Withdrawal /></ProtectedRoute>} /> {/* 🚀 NEW: Wallet route */}
+>>>>>>> main
 
                   {/* --- Admin Routes --- */}
                   <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboard /></ProtectedRoute>} />
@@ -164,6 +173,12 @@ function App() {
                   <Route path="/admin/product-moderation" element={<ProtectedRoute allowedRoles={['ADMIN']}><ProductModeration /></ProtectedRoute>} />
                   <Route path="/admin/audit-logs" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminAuditLogs /></ProtectedRoute>} />
                   
+<<<<<<< feature/seller_setting
+                  {/* 🚀 NEW: Admin Withdrawal Management Route */}
+                  <Route path="/admin/withdrawals" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminWithdrawals /></ProtectedRoute>} />
+
+=======
+>>>>>>> main
                   <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={['ADMIN']}><div className="admin-dashboard-wrapper"><h2>Trang Báo cáo vi phạm</h2></div></ProtectedRoute>} />
                   <Route path="/admin/reviews" element={<ProtectedRoute allowedRoles={['ADMIN']}><div className="admin-dashboard-wrapper"><h2>Quản lý đánh giá</h2></div></ProtectedRoute>} />
 
