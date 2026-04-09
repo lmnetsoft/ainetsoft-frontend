@@ -21,9 +21,9 @@ public class UpdateProfileRequest {
     private LocalDate birthDate;
     private String avatarUrl;
 
-    // --- NEW: Support for Shop Settings Updates ---
+    // --- Support for Shop Settings Updates ---
     private User.ShopProfile shopProfile;
 
     private List<User.AddressInfo> addresses;
-    private List<User.BankInfo> bankAccounts;
+    // Bank accounts removed to enforce separation of sensitive data
 }

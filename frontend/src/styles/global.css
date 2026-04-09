@@ -14,14 +14,19 @@ body {
   font-family: 'Inter', system-ui, sans-serif;
   background-color: var(--bg-gray);
   color: #333;
-  overflow-x: hidden; /* Prevent horizontal scroll */
+  overflow-x: hidden;
 }
 
 /* THE FIX: Unified container for Header, Content, and Footer */
 .container {
   width: 100%;
-  max-width: 1400px; /* Increased width */
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 0 20px; /* Consistent side padding */
+  padding: 0 20px;
+  box-sizing: border-box;
+}
+
+/* ADDED: Global box-sizing reset - Safe and necessary */
+*, *:before, *:after {
   box-sizing: border-box;
 }

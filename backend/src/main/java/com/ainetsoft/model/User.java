@@ -96,9 +96,6 @@ public class User {
     private List<AddressInfo> addresses = new ArrayList<>();
 
     @Builder.Default
-    private List<BankInfo> bankAccounts = new ArrayList<>();
-
-    @Builder.Default
     private boolean enabled = true;
 
     @Builder.Default
@@ -178,16 +175,5 @@ public class User {
         private String longitude; 
 
         public boolean isDefault() { return isDefault; }
-    }
-
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    public static class BankInfo {
-        private String bankName;
-        private String accountNumber;
-        private String accountHolder;
-        private boolean isDefault;
     }
 }

@@ -441,3 +441,47 @@ input:checked + .slider:before { transform: translateX(20px); }
     .summary-photo-grid { gap: 10px; }
     .summary-photo-item img { height: 160px; border: 1px solid #000 !important; }
 }
+
+/* ==========================================================================
+    ULTIMATE BUTTON ALIGNMENT RESET
+   ========================================================================== */
+
+.onboarding-footer { 
+    display: flex !important; 
+    justify-content: flex-end !important; 
+    align-items: center !important; /* Force vertical center of the row */
+    gap: 15px; 
+    margin-top: 60px; 
+    border-top: 1px solid #f1f1f1; 
+    padding-top: 30px; 
+}
+
+/* Force both buttons to behave identically regardless of parent styles */
+.btn-ainetsoft-primary, 
+.btn-ainetsoft-lite { 
+    box-sizing: border-box !important;
+    height: 44px !important;           /* Absolute fixed height */
+    padding: 0 50px !important; 
+    margin: 0 !important;              /* Remove any inherited margins */
+    display: flex !important; 
+    align-items: center !important;    /* Vertical center of text */
+    justify-content: center !important;/* Horizontal center of text */
+    font-size: 0.95rem !important;
+    font-weight: 500 !important;
+    line-height: 1 !important;         /* CRITICAL: Stops text from shifting baseline */
+    border-radius: 2px;
+    cursor: pointer;
+    white-space: nowrap;               /* Prevents text wrapping */
+}
+
+.btn-ainetsoft-primary { 
+    background: #ee4d2d; 
+    color: white; 
+    border: 1px solid #ee4d2d !important; /* Matches height of the 1px Lite border */
+}
+
+.btn-ainetsoft-lite { 
+    background: white; 
+    border: 1px solid #dbdbdb !important; 
+    color: #555; 
+}
