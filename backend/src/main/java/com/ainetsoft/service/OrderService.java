@@ -1,10 +1,7 @@
 package com.ainetsoft.service;
 
-import com.ainetsoft.model.Order;
-import com.ainetsoft.model.OrderItem;
-import com.ainetsoft.model.User;
-import com.ainetsoft.model.Product;
-import com.ainetsoft.model.CartItem;
+import com.ainetsoft.model.*;
+import com.ainetsoft.repository.BankAccountRepository; // 🚀 NEW: Standalone repo
 import com.ainetsoft.repository.OrderRepository;
 import com.ainetsoft.repository.ProductRepository;
 import com.ainetsoft.repository.UserRepository;
@@ -29,22 +26,21 @@ public class OrderService {
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
     private final NotificationService notificationService;
+    private final BankAccountRepository bankAccountRepository; // 🚀 NEW: Link to new collection
 
     /**
      * Calculates statistics for a specific seller.
-     * Fixes the 404 error by providing data for the Seller Dashboard.
+     * Updated to check if seller is "Withdrawal Ready" with the new bank system.
      */
     public Map<String, Object> getSellerStats(String sellerId) {
         List<Order> allOrders = orderRepository.findAll();
         
-        // Filter orders that contain at least one item from this seller
         List<Order> sellerOrders = allOrders.stream()
                 .filter(o -> o.getItems().stream().anyMatch(i -> sellerId.equals(i.getSellerId())))
                 .collect(Collectors.toList());
 
         long totalOrders = sellerOrders.size();
         
-        // Revenue is ONLY the sum of items belonging to this seller in COMPLETED orders
         double totalRevenue = sellerOrders.stream()
                 .filter(o -> "COMPLETED".equals(o.getStatus()))
                 .flatMap(o -> o.getItems().stream())
@@ -56,10 +52,14 @@ public class OrderService {
                 .filter(o -> "PENDING".equals(o.getStatus()))
                 .count();
 
+        // 🚀 NEW: Check if seller has a bank account linked in the new collection
+        boolean hasBankAccount = !bankAccountRepository.findByUserId(sellerId).isEmpty();
+
         Map<String, Object> stats = new HashMap<>();
         stats.put("totalOrders", totalOrders);
         stats.put("totalRevenue", totalRevenue);
         stats.put("pendingOrders", pendingOrders);
+        stats.put("isWithdrawalReady", hasBankAccount); // Elite feature: Notify seller if bank is missing
         return stats;
     }
 
@@ -194,12 +194,18 @@ public class OrderService {
                 .findFirst()
                 .orElse(user.getAddresses().get(0));
 
+        // 🚀 ELITE LOGIC: Fetch the user's default bank account from the NEW collection
+        // This can be used for automated refunds or to verify payment origin
+        BankAccount userBank = bankAccountRepository.findByUserIdAndIsDefault(user.getId(), true)
+                .orElse(null);
+
         Order newOrder = Order.builder()
                 .userId(user.getId())
                 .items(orderItems)
                 .totalAmount(totalAmount)
                 .shippingAddress(shippingAddr)
                 .paymentMethod(paymentMethod)
+                // .bankAccountSnapshot(userBank) // Optional: If your Order model supports snapshots
                 .status("PENDING")
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())

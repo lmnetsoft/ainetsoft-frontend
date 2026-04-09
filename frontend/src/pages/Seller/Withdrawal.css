@@ -1,0 +1,155 @@
+.withdrawal-page-container {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.withdrawal-header h2 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.withdrawal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 25px;
+    margin-top: 30px;
+}
+
+.withdrawal-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    padding: 25px;
+}
+
+.main-balance-card {
+    background: linear-gradient(135deg, #ee4d2d 0%, #ff7337 100%);
+    color: white;
+    height: fit-content;
+}
+
+.balance-info span {
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+.balance-info h3 {
+    font-size: 32px;
+    margin: 10px 0 25px 0;
+}
+
+.request-form label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.input-with-symbol {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.input-with-symbol input {
+    width: 100%;
+    padding: 12px 15px;
+    border-radius: 8px;
+    border: none;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    font-size: 16px;
+}
+
+.input-with-symbol input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.currency-symbol {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.withdraw-btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 8px;
+    border: none;
+    background: white;
+    color: #ee4d2d;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.withdraw-btn:hover {
+    transform: scale(1.02);
+}
+
+.withdraw-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.history-card {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.item-main {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.item-icon-box {
+    background: #fff5f2;
+    color: #ee4d2d;
+    padding: 10px;
+    border-radius: 50%;
+    display: flex;
+}
+
+.item-amount {
+    font-weight: bold;
+    color: #333;
+}
+
+.item-date {
+    font-size: 12px;
+    color: #888;
+}
+
+.item-status-box {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.status-icon {
+    font-size: 18px;
+    margin-bottom: 4px;
+}
+
+.status-icon.pending { color: #ffa500; }
+.status-icon.completed { color: #2ecc71; }
+.status-icon.rejected { color: #e74c3c; }
+
+.status-text {
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+}

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaMapMarkerAlt, FaRegCreditCard, FaMoneyBillWave } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaRegCreditCard, FaMoneyBillWave, FaUniversity } from 'react-icons/fa';
 import { getUserProfile } from '../../services/authService';
 import { placeOrder } from '../../services/orderService'; 
+import api from '../../services/api'; // 🚀 NEW: Import api to fetch standalone bank data
 import ToastNotification from '../../components/Toast/ToastNotification';
 import './Checkout.css';
 
@@ -16,6 +17,7 @@ const Checkout = () => {
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<any>(null);
   const [paymentMethod, setPaymentMethod] = useState('COD');
+  const [userBank, setUserBank] = useState<any>(null); // 🚀 NEW: State for the new bank collection data
 
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -29,15 +31,28 @@ const Checkout = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const data = await getUserProfile();
-        setCartItems(data.cart || []);
+        // 1. Get profile (This now includes the 'id' we added to the backend)
+        const user = await getUserProfile();
+        setCartItems(user.cart || []);
         
-        const defaultAddr = data.addresses?.find((addr: any) => addr.isDefault);
-        setSelectedAddress(defaultAddr || data.addresses?.[0]);
+        const defaultAddr = user.addresses?.find((addr: any) => addr.isDefault);
+        setSelectedAddress(defaultAddr || user.addresses?.[0]);
 
-        if (!data.cart || data.cart.length === 0) {
+        if (!user.cart || user.cart.length === 0) {
           navigate('/cart');
+          return;
         }
+
+        // 2. 🚀 ELITE FETCH: Get bank data from the dedicated collection
+        if (user.id) {
+          const bankRes = await api.get(`/bank-accounts/user/${user.id}`);
+          if (bankRes.data && bankRes.data.length > 0) {
+            // Find the default account or just take the first one
+            const defaultBank = bankRes.data.find((b: any) => b.isDefault) || bankRes.data[0];
+            setUserBank(defaultBank);
+          }
+        }
+
       } catch (err: any) {
         setToastMessage("Vui lòng đăng nhập để thanh toán.");
         setShowToast(true);
@@ -54,7 +69,6 @@ const Checkout = () => {
   const shippingFee = 30000; 
   const total = subtotal + shippingFee;
 
-  // 🛠️ FIXED: Bundling the correct data for the Backend
   const handlePlaceOrder = async () => {
     if (!selectedAddress) {
       setToastMessage("Vui lòng thêm địa chỉ giao hàng trước khi đặt hàng!");
@@ -62,17 +76,22 @@ const Checkout = () => {
       return;
     }
 
+    // 🚀 ELITE CHECK: If they chose BANK, ensure they have a bank account saved
+    if (paymentMethod === 'BANK' && !userBank) {
+        setToastMessage("Vui lòng cập nhật thông tin Ngân hàng trong hồ sơ trước khi chọn phương thức này!");
+        setShowToast(true);
+        return;
+    }
+
     try {
       setIsSubmitting(true);
 
-      // 1. Create the payload that matches your Backend 'Order' model
       const checkoutData = {
         paymentMethod: paymentMethod,
         shippingAddress: selectedAddress,
         totalAmount: total
       };
 
-      // 2. Send the bundle to the server
       await placeOrder(checkoutData);
       
       setToastMessage("Đặt hàng thành công!");
@@ -160,6 +179,23 @@ const Checkout = () => {
                 <FaRegCreditCard /> Chuyển khoản ngân hàng
               </label>
             </div>
+
+            {/* 🚀 NEW: Bank Preview Logic */}
+            {paymentMethod === 'BANK' && (
+                <div className="bank-preview-box">
+                    {userBank ? (
+                        <div className="bank-info-mini">
+                            <FaUniversity className="bank-icon" />
+                            <div>
+                                <p><strong>{userBank.bankName}</strong></p>
+                                <p>{userBank.accountNumber} - {userBank.accountHolder}</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <p className="bank-warning">⚠️ Bạn chưa lưu tài khoản ngân hàng nào. <span onClick={() => navigate('/user/bank')} style={{color: '#ee4d2d', cursor: 'pointer', textDecoration: 'underline'}}>Thêm ngay</span></p>
+                    )}
+                </div>
+            )}
           </div>
 
           <div className="checkout-section summary-card">

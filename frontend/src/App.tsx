@@ -47,6 +47,7 @@ import EditProduct from './pages/Seller/EditProduct';
 import MyProducts from './pages/Seller/MyProducts';
 import SellerOrders from './pages/Seller/SellerOrders';
 import SellerSettings from './pages/Seller/SellerSettings';
+import Withdrawal from './pages/Seller/Withdrawal'; // 🚀 NEW: Import for the Wallet page
 
 // Admin Components (Existing)
 import AdminDashboard from './pages/Admin/AdminDashboard';
@@ -56,19 +57,16 @@ import SystemContentManagement from './pages/Admin/SystemContentManagement';
 import FooterMenuManagement from './pages/Admin/FooterMenuManagement';
 import HelpHierarchyManagement from './pages/Admin/HelpHierarchyManagement';
 
-// 🚀 NEW: MIGRATED ADMIN PAGES (Stand-alone versions of dashboard tabs)
+// 🚀 MIGRATED ADMIN PAGES
 import AdminUsers from './pages/Admin/AdminUsers'; 
 import SellerModeration from './pages/Admin/SellerModeration'; 
 import ProductModeration from './pages/Admin/ProductModeration';
 import AdminAuditLogs from './pages/Admin/AdminAuditLogs';
-// Note: If you haven't created these specific files yet, ensure they export
-// the moderation logic we previously had inside the Dashboard.
 
 import './App.css';
 
 /**
  * INTERNAL COMPONENT: GlobalChatOverlay
- * Renders the ChatPage (as a popup) globally when toggled.
  */
 const GlobalChatOverlay = () => {
   const { isChatOpen } = useChat();
@@ -136,14 +134,8 @@ function App() {
                 {/* --- 2. PROTECTED ROUTES WITHOUT SIDEBAR --- */}
                 <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
 
-                {/* 🚀 3. THE PERSISTENT LAYOUT ZONE 🚀 
-                    Wrapping all account-based pages in AdminLayout ensures 
-                    the Sidebar is always present and the layout is stable.
-                */}
+                {/* 🚀 3. THE PERSISTENT LAYOUT ZONE 🚀 */}
                 <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
-                  
-																		
-																						  
 
                   {/* --- User Account Routes --- */}
                   <Route path="/user/notifications" element={<NotificationPage />} />
@@ -163,22 +155,18 @@ function App() {
                   <Route path="/seller/edit/:id" element={<ProtectedRoute allowedRoles={['SELLER']}><EditProduct /></ProtectedRoute>} />
                   <Route path="/seller/orders" element={<ProtectedRoute allowedRoles={['SELLER']}><SellerOrders /></ProtectedRoute>} />
                   <Route path="/seller/settings" element={<ProtectedRoute allowedRoles={['SELLER']}><SellerSettings /></ProtectedRoute>} />
+                  <Route path="/seller/withdrawal" element={<ProtectedRoute allowedRoles={['SELLER']}><Withdrawal /></ProtectedRoute>} /> {/* 🚀 NEW: Wallet route */}
 
                   {/* --- Admin Routes --- */}
-                  {/* The Main Overview Page */}
                   <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboard /></ProtectedRoute>} />
-                  
-                  {/* 🚀 MIGRATED ADMIN ROUTES (New Data Points) */}
                   <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminUsers /></ProtectedRoute>} />
                   <Route path="/admin/seller-moderation" element={<ProtectedRoute allowedRoles={['ADMIN']}><SellerModeration /></ProtectedRoute>} />
                   <Route path="/admin/product-moderation" element={<ProtectedRoute allowedRoles={['ADMIN']}><ProductModeration /></ProtectedRoute>} />
                   <Route path="/admin/audit-logs" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminAuditLogs /></ProtectedRoute>} />
                   
-                  {/* Placeholder routes for future standalone moderation pages */}
                   <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={['ADMIN']}><div className="admin-dashboard-wrapper"><h2>Trang Báo cáo vi phạm</h2></div></ProtectedRoute>} />
                   <Route path="/admin/reviews" element={<ProtectedRoute allowedRoles={['ADMIN']}><div className="admin-dashboard-wrapper"><h2>Quản lý đánh giá</h2></div></ProtectedRoute>} />
 
-                  {/* Existing System Config Routes */}
                   <Route path="/admin/chat" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminChat /></ProtectedRoute>} />
                   <Route path="/admin/chat/:recipientId" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminChat /></ProtectedRoute>} />
                   <Route path="/admin/shipping" element={<ProtectedRoute allowedRoles={['ADMIN']}><ShippingManagement /></ProtectedRoute>} />

@@ -3,12 +3,11 @@ import { NavLink } from 'react-router-dom';
 import { 
   FaUser, FaStore, FaShoppingBag, FaShieldAlt, FaComments, FaTruck, 
   FaBalanceScale, FaList, FaSitemap, FaEdit, FaCog, FaUserCircle, 
-  FaUniversity, FaMapMarkerAlt, FaKey, FaChartPie, FaBoxes, FaClipboardList, FaBuilding
+  FaUniversity, FaMapMarkerAlt, FaKey, FaChartPie, FaBoxes, FaClipboardList, FaBuilding,
+  FaWallet // 🚀 NEW: Icon for Withdrawal
 } from 'react-icons/fa'; 
 import api from '../../services/api'; 
 
-// 🚀 FIX: Import the logo so Vite bundles it correctly
-// Make sure this path points exactly to your logo file
 import defaultLogo from '../../assets/images/logo.png'; 
 
 import './AccountSidebar.css';
@@ -24,7 +23,6 @@ const AccountSidebar = () => {
       setUserName(localStorage.getItem('userName') || 'Thành viên');
       
       const storedAvatar = localStorage.getItem('userAvatar');
-      // 🚀 FIX: Ensure we don't use the string "null" as a path
       setUserAvatar(storedAvatar && storedAvatar !== 'null' ? storedAvatar : '');
       
       const userStr = localStorage.getItem('user');
@@ -74,11 +72,9 @@ const AccountSidebar = () => {
 
   return (
     <aside className="account-sidebar-supreme">
-      {/* --- Profile Box --- */}
       <div className="sidebar-profile-box">
         <div className="avatar-circle">
           <img 
-            /* 🚀 FIX: Use the imported defaultLogo if userAvatar is missing */
             src={userAvatar ? userAvatar : defaultLogo} 
             alt="User" 
             onError={(e) => { 
@@ -97,7 +93,6 @@ const AccountSidebar = () => {
 
       <nav className="sidebar-navigation">
         
-        {/* --- Section: My Account --- */}
         <div className="nav-section">
           <div className="section-header">
             <FaUser className="header-icon icon-blue" />
@@ -119,13 +114,11 @@ const AccountSidebar = () => {
           </div>
         </div>
 
-        {/* --- Standalone: Purchase History --- */}
         <NavLink to="/user/purchase" className={({isActive}) => `standalone-link ${isActive ? 'active' : ''}`}>
           <FaShoppingBag className="header-icon icon-orange-red" />
           <span>Đơn mua của tôi</span>
         </NavLink>
 
-        {/* --- Section: Seller --- */}
         {isSeller && (
           <div className="nav-section merged-group">
             <div className="section-header">
@@ -142,6 +135,10 @@ const AccountSidebar = () => {
               <NavLink to="/seller/orders" className={({isActive}) => isActive ? 'active' : ''}>
                 <FaClipboardList className="icon-blue" /> Quản lý đơn hàng
               </NavLink>
+              {/* 🚀 NEW: Dedicated Withdrawal Link */}
+              <NavLink to="/seller/withdrawal" className={({isActive}) => isActive ? 'active' : ''}>
+                <FaWallet className="icon-green" style={{ color: '#2ecc71' }} /> Rút tiền doanh thu
+              </NavLink>
               <NavLink to="/seller/settings" className={({isActive}) => isActive ? 'active' : ''}>
                 <FaCog className="icon-slate" /> Thiết lập shop
               </NavLink>
@@ -149,7 +146,6 @@ const AccountSidebar = () => {
           </div>
         )}
 
-        {/* --- Section: Admin --- */}
         {isAdmin && (
           <div className="nav-section merged-group">
             <div className="section-header">

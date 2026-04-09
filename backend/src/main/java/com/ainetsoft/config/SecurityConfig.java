@@ -70,7 +70,7 @@ public class SecurityConfig {
                     "/login/oauth2/**",
                     "/error",
                     "/api/uploads/**",
-                    "/uploads/**",
+                    "/api/uploads/**",
                     "/api/chat/download/**",
                     "/ws/**",
                     "/api/report-reasons",
@@ -94,13 +94,17 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.DELETE, "/api/footer-menus/**", "/api/help/nodes/**", "/api/footer-icons/**").hasRole("ADMIN")
 
                 // --- 3. AUTHENTICATED USER ENDPOINTS ---
+                // 🚀 ELITE FIX: Order matters. Admin rule must come before general Seller rule.
+                .requestMatchers("/api/withdrawals/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/withdrawals/**").hasRole("SELLER")
+
                 .requestMatchers(
                     "/api/auth/me", 
                     "/api/auth/profile", 
                     "/api/auth/sync-cart",
                     "/api/auth/change-password",
                     "/api/auth/upgrade-seller",
-                    "/api/bank-accounts/**", // 🚀 NEW: Explicitly allow new standalone bank API
+                    "/api/bank-accounts/**", 
                     "/api/orders/**",
                     "/api/notifications/**",
                     "/api/products/seller/**",
