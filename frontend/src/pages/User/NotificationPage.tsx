@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  FaBell, FaCheckDouble, FaExclamationCircle, 
+  FaBell, FaCheckDouble, FaExclamationCircle, FaRegClock, FaArrowLeft
 } from 'react-icons/fa';
 import { 
   getMyNotifications, 
@@ -43,7 +43,7 @@ const NotificationPage = () => {
 
   useEffect(() => {
     fetchNotifications();
-    document.title = "Thông báo của tôi | AiNetsoft";
+    document.title = "Thông báo hệ thống | AiNetsoft Admin";
   }, []);
 
   const handleMarkRead = async (id: string) => {
@@ -75,6 +75,9 @@ const NotificationPage = () => {
     }
 
     switch (noti.type) {
+      case 'WITHDRAWAL': // 🚀 NEW: Admin priority navigation
+        navigate('/admin/withdrawals');
+        break;
       case 'SYSTEM_WARNING':
         navigate('/user/profile');
         break;
@@ -99,6 +102,7 @@ const NotificationPage = () => {
   const getIconClass = (type: string) => {
     switch (type) {
       case 'ORDER': return 'order';
+      case 'WITHDRAWAL': return 'warning'; // Pulse red style
       case 'SELLER_APPROVAL': return 'seller';
       case 'SYSTEM_WARNING': return 'warning';
       default: return 'system';
@@ -106,51 +110,61 @@ const NotificationPage = () => {
   };
 
   return (
-    <div className="notification-content-wrapper">
-      <main className="notification-main">
-        <div className="noti-header">
+    <div className="admin-withdrawal-container">
+      {/* 🚀 ELITE CENTERED HEADER */}
+      <div className="admin-page-header">
+          <h1>THÔNG BÁO HỆ THỐNG</h1>
+          <p>Cập nhật trạng thái giao dịch và hoạt động toàn sàn 2026</p>
+      </div>
+
+      <main className="notification-content-card">
+        <div className="noti-header-elite">
           <div className="noti-header-left">
             <h3>Thông báo mới nhận</h3>
-            <p>Cập nhật trạng thái đơn hàng và hệ thống</p>
           </div>
           {notifications.some(n => !n.isRead) && (
-            <button className="btn-mark-all" onClick={handleMarkAllRead}>
+            <button className="btn-mark-all-elite" onClick={handleMarkAllRead}>
               <FaCheckDouble /> Đánh dấu đã đọc tất cả
             </button>
           )}
         </div>
 
-        <div className="noti-list">
+        <div className="noti-list-elite">
           {loading ? (
-            <div className="noti-loading-box">
+            <div className="no-data-msg">
               <div className="spinner"></div>
-              <p>Đang tải thông báo...</p>
+              <p>Đang kiểm tra thông báo...</p>
             </div>
           ) : notifications.length === 0 ? (
-            <div className="noti-empty">
-              <FaBell className="empty-icon" />
-              <p>Bạn chưa có thông báo nào.</p>
-              <button className="btn-ainetsoft-lite" onClick={() => navigate('/')}>
-                Quay lại trang chủ
+            <div className="empty-state-elite">
+              <div className="empty-icon-circle">
+                <FaBell />
+              </div>
+              <h3>Bạn chưa có thông báo nào</h3>
+              <p>Mọi cập nhật quan trọng về hệ thống sẽ xuất hiện tại đây.</p>
+              <button className="btn-confirm-modal" onClick={() => navigate('/')}>
+                <FaArrowLeft style={{marginRight: '8px'}} /> Quay lại trang chủ
               </button>
             </div>
           ) : (
             notifications.map((noti) => (
               <div 
                 key={noti.id} 
-                className={`noti-item ${noti.isRead ? 'read' : 'unread'} ${noti.type === 'SYSTEM_WARNING' ? 'critical' : ''}`}
+                className={`notification-item-elite ${noti.isRead ? 'read' : 'unread'} ${noti.type === 'WITHDRAWAL' ? 'critical' : ''}`}
                 onClick={() => handleNotificationClick(noti)}
               >
                 <div className="noti-icon-box">
                   <FaExclamationCircle className={`type-icon ${getIconClass(noti.type)}`} />
                 </div>
                 
-                <div className="noti-content">
-                  <h4 className="noti-title">{noti.title}</h4>
-                  <p className="noti-message">{noti.message}</p>
-                  <span className="noti-time">
-                    {new Date(noti.createdAt).toLocaleString('vi-VN')}
-                  </span>
+                <div className="noti-text-box">
+                  <div className="noti-top-flex">
+                    <span className="noti-title-bold">{noti.title}</span>
+                    <span className="noti-time-muted">
+                      <FaRegClock /> {new Date(noti.createdAt).toLocaleString('vi-VN')}
+                    </span>
+                  </div>
+                  <p className="noti-message-text">{noti.message}</p>
                 </div>
 
                 {!noti.isRead && <div className="unread-dot"></div>}

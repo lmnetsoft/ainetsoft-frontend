@@ -98,7 +98,27 @@ public class WithdrawalService {
                 .build();
 
         log.info("🚀 Financial Request Created: {} VND for Shop: {}", amount, request.getShopName());
-        return withdrawalRepository.save(request);
+        WithdrawalRequest savedRequest = withdrawalRepository.save(request);
+
+        // 🚀 NEW: Notify all Administrators about this new request
+        try {
+            List<User> admins = userRepository.findByRolesContaining("ADMIN");
+            String adminMsg = "Shop " + request.getShopName() + " vừa gửi yêu cầu rút " + String.format("%,.0f", amount) + "₫";
+            
+            admins.forEach(admin -> {
+                notificationService.createNotification(
+                    admin.getId(),
+                    "Yêu cầu rút tiền mới",
+                    adminMsg,
+                    "WITHDRAWAL",
+                    savedRequest.getId()
+                );
+            });
+        } catch (Exception e) {
+            log.error("Failed to notify admins: {}", e.getMessage());
+        }
+
+        return savedRequest;
     }
 
     public List<WithdrawalRequest> getSellerHistory(String sellerId) {
