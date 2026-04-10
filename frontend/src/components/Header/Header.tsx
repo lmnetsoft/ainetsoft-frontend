@@ -16,7 +16,7 @@ const Header: React.FC = () => {
 
   // PRESERVED & UPDATED: Chat and Notification logic
   const { unreadCount, resetChat, setIsChatOpen } = useChat(); 
-  const { notificationCount: systemCount, withdrawalCount } = useNotification(); // 🚀 Integrated withdrawalCount
+  const { notificationCount: systemCount, withdrawalCount } = useNotification(); 
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isSeller, setIsSeller] = useState(false);
@@ -60,10 +60,6 @@ const Header: React.FC = () => {
     }
   };
 
-  /**
-   * 🚀 CRITICAL CLEANUP HELPER: Wipes all sensitive session data.
-   * This is used by both handleLogout and verifySession if the token expires.
-   */
   const clearStorage = () => {
     localStorage.removeItem('isAuthenticated');
     localStorage.removeItem('userName');
@@ -71,7 +67,7 @@ const Header: React.FC = () => {
     localStorage.removeItem('userRoles');
     localStorage.removeItem('userPermissions'); 
     localStorage.removeItem('isGlobalAdmin'); 
-    localStorage.removeItem('jwt_token'); // Essential security cleanup
+    localStorage.removeItem('jwt_token'); 
     loadUserData();
   };
 
@@ -94,7 +90,6 @@ const Header: React.FC = () => {
           clearStorage();
         }
       } catch (err) {
-        // Silently fail, but if error indicates 401/expired, clear storage
         if (localStorage.getItem('isAuthenticated') === 'true') {
            clearStorage();
         }
@@ -119,7 +114,7 @@ const Header: React.FC = () => {
       console.error('Logout error:', err);
     } finally {
       resetChat(); 
-      clearStorage(); // Triggers total cleanup
+      clearStorage(); 
       setShowDropdown(false);
       navigate('/');
     }
@@ -141,20 +136,23 @@ const Header: React.FC = () => {
 
   const handleNotificationClick = () => {
     if (isAdmin) {
-      // 🚀 NEW: Priority redirect for Admin if there are pending money requests
+      // 🚀 PRIORITY 1: Pending money requests (Admin Action)
       if (withdrawalCount > 0) {
         navigate('/admin/withdrawals');
-      } else if (unreadCount > 0) {
+      } 
+      // 🚀 PRIORITY 2: Unread chats (Support Action)
+      else if (unreadCount > 0) {
         navigate('/admin/chat');
-      } else {
-        navigate('/admin/dashboard');
+      } 
+      // 🚀 PRIORITY 3: Show the actual notification list (System Alerts)
+      else {
+        navigate('/user/notifications'); // Fixed: Don't just dump to Dashboard
       }
     } else {
       navigate('/user/notifications');
     }
   };
 
-  // 🚀 ELITE ALERTS MATH: Include pending withdrawals for Admin pulsing logic
   const totalAlerts = unreadCount + (systemCount || 0) + (isAdmin ? withdrawalCount : 0);
 
   return (
@@ -185,7 +183,6 @@ const Header: React.FC = () => {
                 onClick={handleNotificationClick}
                 style={{ cursor: 'pointer' }}
               >
-                {/* 🚀 Visual Alert: Pulse RED if money requests are waiting for Admin */}
                 <FaBell className={`nav-icon ${systemCount > 0 || (isAdmin && withdrawalCount > 0) ? 'pulse-animation' : ''}`} 
                         style={{ color: (isAdmin && withdrawalCount > 0) ? '#ff4d4f' : 'inherit' }} />
                 <span className={`blue-link ${totalAlerts > 0 ? 'alert-red-text' : ''}`}>

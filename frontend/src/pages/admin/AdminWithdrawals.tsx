@@ -13,9 +13,11 @@ const AdminWithdrawals = () => {
     const [showToast, setShowToast] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
     
+    // Modal & Action State
     const [processingId, setProcessingId] = useState<string | null>(null);
     const [adminNote, setAdminNote] = useState('');
     
+    // Filter State
     const [isOpen, setIsOpen] = useState(false);
     const [filterStatus, setFilterStatus] = useState('ALL');
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -45,8 +47,7 @@ const AdminWithdrawals = () => {
             if (!loading) setRefreshing(true);
             const res = await api.get('/withdrawals/admin/all');
             
-            // 🚀 ELITE SORT: Newest on Top (Descending by Date)
-            // This ensures 10/4/2026 appears before 31/3/2026
+            // 🚀 Newest on Top
             const sortedData = res.data.sort((a: any, b: any) => 
                 new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
             );
@@ -71,9 +72,12 @@ const AdminWithdrawals = () => {
             await api.put(`/withdrawals/admin/process/${id}`, { status, adminNote });
             setToastMessage(status === 'COMPLETED' ? "Giải ngân thành công!" : "Đã từ chối yêu cầu.");
             setShowToast(true);
+            
+            // Reset modal state
             setProcessingId(null);
             setAdminNote('');
-            fetchRequests(); // Re-fetch and re-sort automatically
+            
+            fetchRequests(); 
         } catch (err: any) {
             setToastMessage("Lỗi xử lý hệ thống.");
             setShowToast(true);
@@ -172,7 +176,9 @@ const AdminWithdrawals = () => {
                                     </td>
                                     <td className="text-center">
                                         {req.status?.toUpperCase() === 'PENDING' ? (
-                                            <button className="btn-approve-action" onClick={() => setProcessingId(req.id)}><FaCheck /> Phê duyệt</button>
+                                            <button className="btn-approve-action" onClick={() => setProcessingId(req.id)}>
+                                                <FaCheck /> Phê duyệt
+                                            </button>
                                         ) : (
                                             <div className="completion-info">
                                                 <FaClock /> {req.processedAt ? new Date(req.processedAt).toLocaleDateString('vi-VN') : '--'}
@@ -188,10 +194,11 @@ const AdminWithdrawals = () => {
                 </table>
             </div>
 
-            {/* 🚀 FIXED ELITE MODAL OVERLAY (Resolved layout issue from image_e1dd4f.png) */}
+            {/* 🚀 MODAL OVERLAY SECTION */}
             {processingId && (
-                <div className="elite-modal-backdrop">
-                    <div className="elite-modal-window">
+                <div className="elite-modal-backdrop" onClick={() => setProcessingId(null)}>
+                    {/* onClick stopPropagation prevents the modal from closing when you click the content box */}
+                    <div className="elite-modal-window" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header-elite">
                             <h3>Xác nhận giải ngân</h3>
                             <button className="btn-close-modal" onClick={() => setProcessingId(null)}><FaTimes /></button>
@@ -200,7 +207,7 @@ const AdminWithdrawals = () => {
                         <div className="modal-body-elite">
                             <div className="warning-callout">
                                 <FaExclamationTriangle className="icon-warn" />
-                                <p>Đảm bảo bạn đã thực hiện chuyển khoản qua App Ngân hàng trước khi xác nhận hệ thống.</p>
+                                <p>Đảm bảo bạn đã thực hiện chuyển khoản qua App Ngân hàng trước khi xác nhận trên hệ thống.</p>
                             </div>
                             
                             <div className="form-group-elite">
@@ -215,8 +222,12 @@ const AdminWithdrawals = () => {
                         </div>
 
                         <div className="modal-footer-elite">
-                            <button className="btn-reject-modal" onClick={() => handleProcess(processingId, 'REJECTED')}>Từ chối yêu cầu</button>
-                            <button className="btn-confirm-modal" onClick={() => handleProcess(processingId, 'COMPLETED')}>Xác nhận đã chuyển tiền</button>
+                            <button className="btn-reject-modal" onClick={() => handleProcess(processingId, 'REJECTED')}>
+                                Từ chối yêu cầu
+                            </button>
+                            <button className="btn-confirm-modal" onClick={() => handleProcess(processingId, 'COMPLETED')}>
+                                Xác nhận đã chuyển tiền
+                            </button>
                         </div>
                     </div>
                 </div>

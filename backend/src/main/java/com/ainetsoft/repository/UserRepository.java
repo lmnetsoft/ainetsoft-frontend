@@ -30,6 +30,10 @@ public interface UserRepository extends MongoRepository<User, String> {
 
     // --- ADMIN DASHBOARD STATS ---
     long countByRolesContaining(String role);
+    
+    // 🚀 NEW: Find Admin users to send them notifications
+    List<User> findByRolesContaining(String role);
+
     long countBySellerVerification(String status);
     List<User> findBySellerVerification(String status);
     long countByAccountStatus(String accountStatus);
