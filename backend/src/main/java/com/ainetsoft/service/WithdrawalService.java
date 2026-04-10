@@ -2,8 +2,10 @@ package com.ainetsoft.service;
 
 import com.ainetsoft.model.BankAccount;
 import com.ainetsoft.model.Order;
+import com.ainetsoft.model.User;
 import com.ainetsoft.model.WithdrawalRequest;
 import com.ainetsoft.repository.OrderRepository;
+import com.ainetsoft.repository.UserRepository;
 import com.ainetsoft.repository.WithdrawalRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,14 +22,16 @@ public class WithdrawalService {
 
     private final WithdrawalRepository withdrawalRepository;
     private final OrderRepository orderRepository;
+    private final UserRepository userRepository; // 🚀 Required to fetch Shop/Seller names
     private final BankAccountService bankAccountService;
     private final NotificationService notificationService;
 
     /**
-     * 🚀 ELITE LOGIC: Calculates the actual wallet balance.
+     * 💰 Calculates the live wallet balance by checking nested order items.
      */
     public double getSellerBalance(String sellerId) {
-        List<Order> completedOrders = orderRepository.findBySellerIdAndStatus(sellerId, "COMPLETED");
+        // Find orders where this seller has items and status is COMPLETED
+        List<Order> completedOrders = orderRepository.findByItemsSellerIdAndStatus(sellerId, "COMPLETED");
         
         double totalRevenue = completedOrders.stream()
                 .flatMap(o -> o.getItems().stream())
@@ -35,17 +39,26 @@ public class WithdrawalService {
                 .mapToDouble(item -> item.getPrice() * item.getQuantity())
                 .sum();
 
+        // Subtract any committed funds (Pending or Completed withdrawals)
         List<WithdrawalRequest> requests = withdrawalRepository.findBySellerIdOrderByCreatedAtDesc(sellerId);
-        double totalWithdrawn = requests.stream()
+        double totalDeducted = requests.stream()
                 .filter(r -> !"REJECTED".equals(r.getStatus()))
                 .mapToDouble(WithdrawalRequest::getAmount)
                 .sum();
 
-        return totalRevenue - totalWithdrawn;
+        return totalRevenue - totalDeducted;
+    }
+
+    /**
+     * 🔔 Used by the Admin Header to show the pending notification count.
+     */
+    public long countPendingRequests() {
+        return withdrawalRepository.countByStatus("PENDING");
     }
 
     @Transactional
     public WithdrawalRequest createWithdrawalRequest(String sellerId, double amount) {
+        // 1. Validation Logic
         if (amount < 50000) {
             throw new RuntimeException("Số tiền rút tối thiểu là 50.000₫");
         }
@@ -61,14 +74,21 @@ public class WithdrawalService {
             throw new RuntimeException("Bạn đang có một yêu cầu rút tiền chờ xử lý.");
         }
 
+        // 2. Fetch User & Bank Snapshots
+        User seller = userRepository.findById(sellerId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin người bán!"));
+
         List<BankAccount> banks = bankAccountService.getBankAccountsByUserId(sellerId);
         BankAccount defaultBank = banks.stream()
                 .filter(BankAccount::isDefault)
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Vui lòng thiết lập tài khoản ngân hàng mặc định trước!"));
 
+        // 3. Build Request with Snapshots for Admin Dashboard
         WithdrawalRequest request = WithdrawalRequest.builder()
                 .sellerId(sellerId)
+                .shopName(seller.getShopProfile() != null ? seller.getShopProfile().getShopName() : "Unknown Shop")
+                .sellerFullName(seller.getFullName())
                 .amount(amount)
                 .bankName(defaultBank.getBankName())
                 .accountNumber(defaultBank.getAccountNumber())
@@ -77,36 +97,25 @@ public class WithdrawalService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        WithdrawalRequest saved = withdrawalRepository.save(request);
-        log.info("New Withdrawal Request: {} VND from Seller {}", amount, sellerId);
-        
-        return saved;
+        log.info("🚀 Financial Request Created: {} VND for Shop: {}", amount, request.getShopName());
+        return withdrawalRepository.save(request);
     }
 
     public List<WithdrawalRequest> getSellerHistory(String sellerId) {
         return withdrawalRepository.findBySellerIdOrderByCreatedAtDesc(sellerId);
     }
 
-    // --- 🚀 NEW: ADMIN LOGIC SECTION ---
-
-    /**
-     * Fetches all requests for the Admin dashboard.
-     */
     public List<WithdrawalRequest> getAllRequests() {
         return withdrawalRepository.findAll();
     }
 
-    /**
-     * 🛠️ ADMIN ACTION: Process a withdrawal request.
-     */
     @Transactional
     public WithdrawalRequest processRequest(String requestId, String status, String adminNote) {
         WithdrawalRequest request = withdrawalRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Yêu cầu không tồn tại!"));
 
-        // Security: Don't allow changing a finished request
         if (!"PENDING".equals(request.getStatus())) {
-            throw new RuntimeException("Yêu cầu này đã được xử lý trước đó và không thể thay đổi.");
+            throw new RuntimeException("Yêu cầu này đã được xử lý trước đó.");
         }
 
         request.setStatus(status.toUpperCase());
@@ -115,17 +124,17 @@ public class WithdrawalService {
 
         WithdrawalRequest saved = withdrawalRepository.save(request);
 
-        // Notify the seller about the decision
+        // 📩 Notify the seller of the result
         String message = status.equalsIgnoreCase("COMPLETED") 
-            ? "Yêu cầu rút tiền " + String.format("%,.0f", request.getAmount()) + "₫ đã thành công!" 
-            : "Yêu cầu rút tiền của bạn bị từ chối. Lý do: " + adminNote;
+            ? "Yêu cầu rút tiền " + String.format("%,.0f", request.getAmount()) + "₫ thành công!" 
+            : "Yêu cầu rút tiền bị từ chối. Lý do: " + adminNote;
 
         notificationService.createNotification(
-            request.getSellerId(), 
-            "Cập nhật yêu cầu rút tiền", 
-            message, 
-            "SYSTEM", 
-            null
+                request.getSellerId(), 
+                "Cập nhật tài chính", 
+                message, 
+                "SYSTEM", 
+                null
         );
 
         return saved;

@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
-
 import java.time.LocalDateTime;
 
 @Data
@@ -18,14 +17,18 @@ public class WithdrawalRequest {
     @Id
     private String id;
     private String sellerId;
+    
+    // 🚀 NEW: Snapshots for Admin readability
+    private String shopName;      
+    private String sellerFullName; 
+
     private double amount;
     
-    // Snapshot of bank info at time of request (for safety)
     private String bankName;
     private String accountNumber;
     private String accountHolder;
     
-    private String status; // PENDING, APPROVED, REJECTED, COMPLETED
+    private String status; // PENDING, COMPLETED, REJECTED
     private String adminNote;
     
     private LocalDateTime createdAt;

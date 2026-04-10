@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom'; // 🚀 Added useLocation
+import { useNavigate, useLocation } from 'react-router-dom'; 
 import { FaSearch, FaChevronDown, FaShoppingCart, FaBell, FaUserShield, FaCrown } from 'react-icons/fa';
 import logoImg from '../../assets/images/logo.png';
 import { getUserProfile, logoutUser } from '../../services/authService';
@@ -12,11 +12,11 @@ import './Header.css';
 
 const Header: React.FC = () => {
   const navigate = useNavigate();
-  const location = useLocation(); // 🚀 Hook to detect current path
+  const location = useLocation(); 
 
-  // PRESERVED: Chat and Notification logic
+  // PRESERVED & UPDATED: Chat and Notification logic
   const { unreadCount, resetChat, setIsChatOpen } = useChat(); 
-  const { notificationCount: systemCount } = useNotification(); 
+  const { notificationCount: systemCount, withdrawalCount } = useNotification(); // 🚀 Integrated withdrawalCount
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isSeller, setIsSeller] = useState(false);
@@ -27,9 +27,7 @@ const Header: React.FC = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [cartCount, setCartCount] = useState(3);
 
-  // 🚀 Logic to detect if we are in Help Center mode
   const isHelpCenter = location.pathname.startsWith('/tro-giup');
-
   const avatarFallback = '/logo.svg';
 
   const loadUserData = () => {
@@ -50,7 +48,7 @@ const Header: React.FC = () => {
       setUserName(rawName);
       setUserAvatar(rawAvatar !== 'undefined' && rawAvatar !== 'null' ? rawAvatar : '');
       setIsSeller(Array.isArray(storedRoles) && storedRoles.includes('SELLER'));
-      setIsAdmin(Array.isArray(storedRoles) && storedRoles.includes('ADMIN')); 
+      setIsAdmin(Array.isArray(storedRoles) && (storedRoles.includes('ADMIN') || storedRoles.includes('ROLE_ADMIN'))); 
       setIsGlobalAdmin(isGlobal); 
     } else {
       setIsLoggedIn(false);
@@ -60,6 +58,21 @@ const Header: React.FC = () => {
       setUserName('');
       setUserAvatar('');
     }
+  };
+
+  /**
+   * 🚀 CRITICAL CLEANUP HELPER: Wipes all sensitive session data.
+   * This is used by both handleLogout and verifySession if the token expires.
+   */
+  const clearStorage = () => {
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('userAvatar');
+    localStorage.removeItem('userRoles');
+    localStorage.removeItem('userPermissions'); 
+    localStorage.removeItem('isGlobalAdmin'); 
+    localStorage.removeItem('jwt_token'); // Essential security cleanup
+    loadUserData();
   };
 
   useEffect(() => {
@@ -81,18 +94,11 @@ const Header: React.FC = () => {
           clearStorage();
         }
       } catch (err) {
-        // Silently fail
+        // Silently fail, but if error indicates 401/expired, clear storage
+        if (localStorage.getItem('isAuthenticated') === 'true') {
+           clearStorage();
+        }
       }
-    };
-
-    const clearStorage = () => {
-      localStorage.removeItem('isAuthenticated');
-      localStorage.removeItem('userName');
-      localStorage.removeItem('userAvatar');
-      localStorage.removeItem('userRoles');
-      localStorage.removeItem('userPermissions'); 
-      localStorage.removeItem('isGlobalAdmin'); 
-      loadUserData();
     };
 
     verifySession();
@@ -113,27 +119,12 @@ const Header: React.FC = () => {
       console.error('Logout error:', err);
     } finally {
       resetChat(); 
-
-      localStorage.removeItem('isAuthenticated');
-      localStorage.removeItem('userName');
-      localStorage.removeItem('userAvatar');
-      localStorage.removeItem('userRoles');
-      localStorage.removeItem('userPermissions'); 
-      localStorage.removeItem('isGlobalAdmin'); 
-      localStorage.removeItem('jwt_token');
-
-      setIsLoggedIn(false);
-      setIsSeller(false);
-      setIsAdmin(false);
-      setIsGlobalAdmin(false);
-      setUserName('');
-      setUserAvatar('');
+      clearStorage(); // Triggers total cleanup
       setShowDropdown(false);
       navigate('/');
     }
   };
 
-  // 🚀 UPDATED: Context-Aware Search Logic
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -141,10 +132,8 @@ const Header: React.FC = () => {
     
     if (query && query.trim()) {
       if (isHelpCenter) {
-        // Mode 1: Search Help Articles
         navigate(`/tro-giup/tim-kiem?q=${encodeURIComponent(query)}`);
       } else {
-        // Mode 2: Search Products (Keep original behavior)
         navigate(`/?search=${encodeURIComponent(query)}`);
       }
     }
@@ -152,7 +141,10 @@ const Header: React.FC = () => {
 
   const handleNotificationClick = () => {
     if (isAdmin) {
-      if (unreadCount > 0) {
+      // 🚀 NEW: Priority redirect for Admin if there are pending money requests
+      if (withdrawalCount > 0) {
+        navigate('/admin/withdrawals');
+      } else if (unreadCount > 0) {
         navigate('/admin/chat');
       } else {
         navigate('/admin/dashboard');
@@ -162,7 +154,8 @@ const Header: React.FC = () => {
     }
   };
 
-  const totalAlerts = unreadCount + (systemCount || 0);
+  // 🚀 ELITE ALERTS MATH: Include pending withdrawals for Admin pulsing logic
+  const totalAlerts = unreadCount + (systemCount || 0) + (isAdmin ? withdrawalCount : 0);
 
   return (
     <header className="main-header">
@@ -192,12 +185,14 @@ const Header: React.FC = () => {
                 onClick={handleNotificationClick}
                 style={{ cursor: 'pointer' }}
               >
-                <FaBell className={`nav-icon ${systemCount > 0 ? 'pulse-animation' : ''}`} />
+                {/* 🚀 Visual Alert: Pulse RED if money requests are waiting for Admin */}
+                <FaBell className={`nav-icon ${systemCount > 0 || (isAdmin && withdrawalCount > 0) ? 'pulse-animation' : ''}`} 
+                        style={{ color: (isAdmin && withdrawalCount > 0) ? '#ff4d4f' : 'inherit' }} />
                 <span className={`blue-link ${totalAlerts > 0 ? 'alert-red-text' : ''}`}>
                   Thông báo
                 </span>
                 {totalAlerts > 0 && (
-                  <span className={`notification-badge ${systemCount > 0 ? 'pulse' : ''}`}>
+                  <span className={`notification-badge ${systemCount > 0 || (isAdmin && withdrawalCount > 0) ? 'pulse' : ''}`}>
                     {totalAlerts > 99 ? '99+' : totalAlerts}
                   </span>
                 )}
@@ -210,7 +205,6 @@ const Header: React.FC = () => {
 
         <div className="action-bar">
           <form className="search-wrapper" onSubmit={handleSearch}>
-            {/* 🚀 Updated placeholder based on context */}
             <input 
               type="text" 
               name="search" 
