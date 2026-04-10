@@ -16,9 +16,10 @@ import java.util.stream.Collectors;
 /**
  * 🏆 AINETSOFT OFFICIAL PRODUCTION SEEDER - v2026.SUPREME
  * ---------------------------------------------------------
- * - RESTORED: All 700+ Lines of original business logic.
- * - UPDATED: Expanded to seed seller_a, seller_b, seller_c for testing.
- * - FIXED: Mock products now sync with 'sellerSlug' for navigation.
+ * - RESTORED: All 636+ Lines of original business logic.
+ * - UPDATED: Seeds BankAccount profile to fix empty form issue.
+ * - FIXED: Bank details matched to "CAC THI CHO" / "0322222222".
+ * - SNAPSHOTS: Integrated shopName and sellerFullName for Admin UI.
  */
 @Slf4j
 @Component
@@ -40,6 +41,11 @@ public class DataSeeder implements CommandLineRunner {
     private final FooterIconRepository footerIconRepository;
     private final ContentNodeRepository helpNodeRepository;
     private final FooterMenuRepository footerMenuRepository;
+
+    // 🚀 FINANCE REPOSITORIES
+    private final OrderRepository orderRepository;
+    private final WithdrawalRepository withdrawalRepository;
+    private final BankAccountRepository bankAccountRepository; // 🚀 REQUIRED FOR PROFILE SYNC
 
     @Value("${app.seed.mock-data:true}")
     private boolean seedMockData;
@@ -92,10 +98,14 @@ public class DataSeeder implements CommandLineRunner {
         if (seedMockData) {
             log.info("🛠 Seeding 18 Categories and Multiple Elite Sellers...");
             List<Category> savedCats = seedCategories();
-            seedDefaultSellers(savedCats, globalMethods); // 🚀 UPDATED CALL
+            seedDefaultSellers(savedCats, globalMethods); 
             seedPendingModeration(savedCats, globalMethods);
             seedSubAdmin();
             seedRegularUsers();
+
+            // 🚀 FINANCE & BANKING SYNC
+            seedBankAccounts();      // 🚀 NEW: Seeds the Profile Form
+            seedWithdrawalTestData(); // 🚀 UPDATED: History with Names
         }
         
         log.info("✅ SUCCESS: DataSeeder has executed 1000+ lines with zero missing data.");
@@ -118,6 +128,11 @@ public class DataSeeder implements CommandLineRunner {
         footerIconRepository.deleteAll();
         helpNodeRepository.deleteAll();
         footerMenuRepository.deleteAll();
+
+        // 🚀 NEW: Clean Financial Collections
+        orderRepository.deleteAll();
+        withdrawalRepository.deleteAll();
+        bankAccountRepository.deleteAll(); // 🚀 CLEANED
         
         log.info("✅ Database reset complete.");
     }
@@ -196,15 +211,13 @@ public class DataSeeder implements CommandLineRunner {
             "<h3>Môi trường làm việc</h3><p>Linh hoạt, sáng tạo, và luôn lấy con người làm trọng tâm.</p>");
 
 
-        // --- 🚀 SECTION F: PRODUCTION METADATA (SYCNED WITH image_335820.png) ---
+        // --- 🚀 SECTION F: PRODUCTION METADATA ---
         seedIfMissing("footer_company_name", "Tên Công Ty", "CÔNG TY TNHH AINETSOFT VIỆT NAM");
         seedIfMissing("footer_address", "Địa chỉ trụ sở", "A2.804 Hưng Ngân Garden, Dương Thị Mười, Trung Mỹ Tây, TP. Hồ Chí Minh, Việt Nam");
         seedIfMissing("footer_hotline", "Hotline / CSKH", "1900 12336 (miễn phí)");
         seedIfMissing("footer_representative", "Người đại diện", "Nguyễn Văn Thành");
         seedIfMissing("footer_tax_code", "Mã số thuế", "04410045331");
         seedIfMissing("footer_registration_date", "Ngày cấp đăng ký", "10/02/2024");
-        
-        // Added the Issuing Agency field correctly mapped to footer logic
         seedIfMissing("footer_issuing_agency", "Nơi cấp đăng ký", "Sở KH&ĐT TP. Hồ Chí Minh");
 
 
@@ -466,9 +479,6 @@ public class DataSeeder implements CommandLineRunner {
 
     // --- 🚀 BUSINESS MOCK DATA (SYNCED FOR MULTI-SELLER) ---
 
-    /**
-     * 🚀 UPDATED: Seeds multiple professional sellers for public shop testing.
-     */
     private void seedDefaultSellers(List<Category> savedCats, List<ShippingMethod> globalMethods) {
         List<User> sellersToSeed = new ArrayList<>();
         
@@ -499,22 +509,15 @@ public class DataSeeder implements CommandLineRunner {
         }
     }
 
-    /**
-     * 🚀 UPDATED: Distributes 55 elite products across seeded sellers and syncs 'sellerSlug'.
-     */
     private void seedMockProducts(List<User> sellers, List<Category> savedCats, List<ShippingMethod> globalMethods) {
         if (productRepository.count() > 20 || savedCats.isEmpty()) return;
         Random rand = new Random();
         int prodGlobalCount = 1;
 
-        // Ensure we handle existing verified sellers if any
-        List<User> allSellers = sellers;
-
-        for (User seller : allSellers) {
+        for (User seller : sellers) {
             String slug = seller.getShopProfile().getShopSlug();
             String shopName = seller.getShopProfile().getShopName();
             
-            // Seed 15 products for each distinct seller
             for (int i = 1; i <= 15; i++) {
                 Category cat = savedCats.get(rand.nextInt(savedCats.size()));
                 Product p = Product.builder()
@@ -523,7 +526,7 @@ public class DataSeeder implements CommandLineRunner {
                         .categoryId(cat.getId()).categoryName(cat.getName())
                         .sellerId(seller.getId())
                         .shopName(shopName)
-                        .sellerSlug(slug) // 🚀 SYNC: Critical fix for navigation errors
+                        .sellerSlug(slug)
                         .status("APPROVED")
                         .imageUrls(Arrays.asList("https://picsum.photos/seed/" + (prodGlobalCount) + "/600/600"))
                         .build();
@@ -566,5 +569,84 @@ public class DataSeeder implements CommandLineRunner {
             sc.setLastUpdated(LocalDateTime.now());
             systemContentRepository.save(sc);
         }
+    }
+
+    // --- 🚀 FINANCE & BANKING SYNC (PHASE 4 FINAL) ---
+
+    /**
+     * 🚀 NEW: Seeds the Bank Account Profile for the seller.
+     * This fills the empty form seen in image_d58806.png
+     */
+    private void seedBankAccounts() {
+        User sellerA = userRepository.findByEmail("seller_a@ainetsoft.com").orElse(null);
+        if (sellerA == null) return;
+
+        // Uses the custom query defined in Step 1
+        if (bankAccountRepository.existsByUserId(sellerA.getId())) return;
+
+        BankAccount bank = BankAccount.builder()
+                .userId(sellerA.getId())
+                .bankName("ACB")
+                .accountNumber("0322222222") //
+                .accountHolder("CAC THI CHO") //
+                .isDefault(true)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        bankAccountRepository.save(bank);
+        log.info("🏦 Bank Account Profile established for: " + sellerA.getFullName());
+    }
+
+    /**
+     * 🚀 FINANCE SEEDER: Transaction History
+     * Matches Bank Details: ACB / 0322222222 / CAC THI CHO
+     */
+    private void seedWithdrawalTestData() {
+        User sellerA = userRepository.findByEmail("seller_a@ainetsoft.com")
+                .orElse(null);
+
+        if (sellerA == null) {
+            log.error("❌ Could not find seller_a to seed financial data!");
+            return;
+        }
+
+        String testSellerId = sellerA.getId(); 
+        if (withdrawalRepository.countBySellerId(testSellerId) > 0) return;
+
+        log.info("💰 Seeding Financial History with Name Snapshots for: " + sellerA.getFullName());
+
+        // 1. Revenue: Create COMPLETED orders (Total: 650,000 VND)
+        orderRepository.saveAll(List.of(
+            Order.builder()
+                .status("COMPLETED")
+                .items(List.of(OrderItem.builder().sellerId(testSellerId).price(500000.0).quantity(1).build()))
+                .createdAt(LocalDateTime.now().minusDays(3)).build(),
+            Order.builder()
+                .status("COMPLETED")
+                .items(List.of(OrderItem.builder().sellerId(testSellerId).price(150000.0).quantity(1).build()))
+                .createdAt(LocalDateTime.now().minusDays(2)).build()
+        ));
+
+        // 2. Withdrawal Records WITH Snapshots for Admin readability
+        WithdrawalRequest oldReq = WithdrawalRequest.builder()
+                .sellerId(testSellerId)
+                .shopName(sellerA.getShopProfile().getShopName()) // Snapshot
+                .sellerFullName(sellerA.getFullName())           // Snapshot
+                .amount(100000.0).status("COMPLETED")
+                .bankName("ACB").accountNumber("0322222222").accountHolder("CAC THI CHO") //
+                .createdAt(LocalDateTime.now().minusDays(10)).processedAt(LocalDateTime.now().minusDays(9))
+                .build();
+
+        WithdrawalRequest pendingReq = WithdrawalRequest.builder()
+                .sellerId(testSellerId)
+                .shopName(sellerA.getShopProfile().getShopName())
+                .sellerFullName(sellerA.getFullName())
+                .amount(50000.0).status("PENDING")
+                .bankName("ACB").accountNumber("0322222222").accountHolder("CAC THI CHO") //
+                .createdAt(LocalDateTime.now().minusMinutes(30))
+                .build();
+
+        withdrawalRepository.saveAll(List.of(oldReq, pendingReq));
+        log.info("✅ SUCCESS: Finance history linked to Seller ID: {}", testSellerId);
     }
 }

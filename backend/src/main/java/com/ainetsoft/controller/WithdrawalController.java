@@ -24,31 +24,33 @@ public class WithdrawalController {
     private final UserRepository userRepository;
 
     /**
-     * Helper to get the current seller.
+     * 🛠️ SECURITY FIX: Updated to handle both "SELLER" and "ROLE_SELLER" formats.
+     * This ensures compatibility between the DataSeeder and Spring Security.
      */
     private User getAuthenticatedSeller(Principal principal) {
         if (principal == null) return null;
         User user = userRepository.findByIdentifier(principal.getName()).orElse(null);
-        if (user != null && user.getRoles().contains("ROLE_SELLER")) {
+        if (user != null && (user.getRoles().contains("SELLER") || user.getRoles().contains("ROLE_SELLER"))) {
             return user;
         }
         return null;
     }
 
     /**
-     * 🚀 NEW: Helper to get the current admin.
+     * 🛠️ SECURITY FIX: Updated to handle both "ADMIN" and "ROLE_ADMIN" formats.
      */
     private User getAuthenticatedAdmin(Principal principal) {
         if (principal == null) return null;
         User user = userRepository.findByIdentifier(principal.getName()).orElse(null);
-        if (user != null && user.getRoles().contains("ROLE_ADMIN")) {
+        if (user != null && (user.getRoles().contains("ADMIN") || user.getRoles().contains("ROLE_ADMIN"))) {
             return user;
         }
         return null;
     }
 
     /**
-     * 💰 GET CURRENT WALLET BALANCE
+     * 💰 FOR SELLER: GET CURRENT WALLET BALANCE
+     * Returns the live calculated balance for the logged-in seller.
      */
     @GetMapping("/balance")
     public ResponseEntity<?> getBalance(Principal principal) {
@@ -63,7 +65,21 @@ public class WithdrawalController {
     }
 
     /**
-     * 📝 SUBMIT A WITHDRAWAL REQUEST
+     * 🔔 FOR ADMIN: GET PENDING REQUEST COUNT
+     * Fixes the NoResourceFoundException (404) for the Admin Notification Bell.
+     */
+    @GetMapping("/admin/pending-count")
+    public ResponseEntity<?> getPendingCount(Principal principal) {
+        User admin = getAuthenticatedAdmin(principal);
+        if (admin == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        long count = withdrawalService.countPendingRequests();
+        return ResponseEntity.ok(count);
+    }
+
+    /**
+     * 📝 FOR SELLER: SUBMIT A NEW WITHDRAWAL REQUEST
      */
     @PostMapping("/request")
     public ResponseEntity<?> requestWithdrawal(@RequestBody Map<String, Double> payload, Principal principal) {
@@ -87,7 +103,7 @@ public class WithdrawalController {
     }
 
     /**
-     * 📜 GET WITHDRAWAL HISTORY (For Seller)
+     * 📜 FOR SELLER: GET WITHDRAWAL HISTORY
      */
     @GetMapping("/history")
     public ResponseEntity<?> getHistory(Principal principal) {
@@ -100,10 +116,8 @@ public class WithdrawalController {
         return ResponseEntity.ok(history);
     }
 
-    // --- 🚀 NEW: ADMIN ENDPOINTS SECTION ---
-
     /**
-     * 📊 ADMIN: GET ALL WITHDRAWAL REQUESTS
+     * 📊 ADMIN: GET ALL WITHDRAWAL REQUESTS FOR MANAGEMENT
      */
     @GetMapping("/admin/all")
     public ResponseEntity<?> getAllRequests(Principal principal) {
@@ -117,6 +131,7 @@ public class WithdrawalController {
 
     /**
      * ✅ ADMIN: PROCESS REQUEST (APPROVE/REJECT)
+     * Finalizes the transaction and triggers the system notification.
      */
     @PutMapping("/admin/process/{requestId}")
     public ResponseEntity<?> processRequest(
