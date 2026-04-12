@@ -1,8 +1,8 @@
 /* --- Admin Withdrawal Elite Theme (Stable & Balanced) --- */
 :root {
     --primary-red: #ee4d2d;
-    --text-menu-dark: #555555;  /* 🚀 Consistent with Sidebar */
-    --text-menu-muted: #888888; /* 🚀 Consistent with Sidebar */
+    --text-menu-dark: #555555;
+    --text-menu-muted: #888888;
     --border-light: #efefef;
     --bg-icon: #fff5f2;
 }
@@ -47,7 +47,6 @@
 }
 .btn-refresh-elite:hover { color: var(--primary-red); }
 .is-syncing { animation: rotate-sync 1s linear infinite; color: var(--primary-red) !important; }
-@keyframes rotate-sync { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
 /* --- FAST CUSTOM DROPDOWN TOOLBAR --- */
 .admin-toolbar-elite {
@@ -73,12 +72,11 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.1); list-style: none; padding: 5px 0;
     animation: slide-fast 0.1s ease-out;
 }
-@keyframes slide-fast { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 .elite-options-list li { padding: 10px 15px; font-size: 14px; color: var(--text-menu-dark); cursor: pointer; }
 .elite-options-list li:hover { background: var(--bg-icon); color: var(--primary-red); }
 .elite-options-list li.selected { background: var(--bg-icon); color: var(--primary-red); font-weight: 600; }
 
-/* --- TABLE LAYOUT FIXES (RESTORED) --- */
+/* --- TABLE LAYOUT FIXES --- */
 .table-stable-wrapper { width: 100%; overflow-x: auto; }
 .elite-admin-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .elite-admin-table th {
@@ -109,7 +107,7 @@
 .badge-pill.pending { color: #f5a623; border-color: #f5a623; }
 .badge-pill.rejected { color: #ff4742; border-color: #ff4742; }
 
-/* --- 🛠️ MODAL SYSTEM (RE-ADDED & FIXED) --- */
+/* --- 🛠️ MODAL SYSTEM --- */
 .elite-modal-backdrop {
     position: fixed;
     top: 0; left: 0;
@@ -138,6 +136,35 @@
     align-items: center;
 }
 
+.modal-header-elite h3 {
+    margin: 0;
+    font-size: 18px;
+    color: var(--text-menu-dark);
+}
+
+/* 🚀 PRESERVED: CIRCULAR RED CLOSE BUTTON */
+.btn-close-modal {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50% !important;
+    background: transparent;
+    border: 1px solid #eee;
+    color: var(--text-menu-muted);
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    font-size: 14px;
+}
+
+.btn-close-modal:hover {
+    background-color: var(--primary-red) !important;
+    color: #ffffff !important;
+    border-color: var(--primary-red);
+    box-shadow: 0 0 0 4px rgba(238, 77, 45, 0.15);
+}
+
 .modal-body-elite { padding: 25px; }
 
 .warning-callout {
@@ -155,36 +182,62 @@
     border: 1px solid #ddd;
     border-radius: 4px;
     margin-top: 10px;
+    font-size: 14px;
+    resize: none;
 }
 
-/* 🚀 FIX: VISIBLE MODAL BUTTONS */
+/* 🚀 FIX: BULLETPROOF HORIZONTAL ALIGNMENT */
 .modal-footer-elite {
-    padding: 15px 20px;
+    padding: 20px;
     background: #fcfcfc;
     border-top: 1px solid var(--border-light);
     display: flex;
     justify-content: flex-end;
+    align-items: center; /* 🚀 Force container to center children on Y-axis */
     gap: 12px;
 }
 
-.btn-reject-modal {
-    padding: 10px 20px;
-    border: 1px solid #ddd;
-    background: #fff;
+.btn-reject-modal, 
+.btn-confirm-modal {
+    height: 40px !important;    /* 🚀 Locked mathematical height */
+    margin: 0 !important;      /* 🚀 Wipe browser default margins */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+    padding: 0 24px !important;
+    border-radius: 4px !important;
+    font-size: 14px !important;
     cursor: pointer;
-    border-radius: 4px;
+    transition: 0.2s;
+    line-height: 1 !important; /* 🚀 Reset line-height to prevent staggering */
+}
+
+.btn-reject-modal {
+    background: #fff;
+    border: 1px solid #ddd !important;
+    color: var(--primary-red);
+    font-weight: 500;
 }
 
 .btn-confirm-modal {
-    padding: 10px 20px;
-    background: var(--primary-red) !important; /* Ensure red is applied */
-    color: #ffffff !important;           /* Ensure text is white and visible */
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
+    background: var(--primary-red) !important;
+    color: #ffffff !important;
+    border: 1px solid var(--primary-red) !important; /* 🚀 Identical thickness to Reject button */
     font-weight: 600;
 }
 
+.btn-reject-modal:hover {
+    border-color: var(--primary-red);
+    background: #fffcfb;
+}
+
+.btn-confirm-modal:hover {
+    background: #d73211 !important;
+    border-color: #d73211 !important;
+}
+
+/* --- OTHER --- */
 .btn-approve-action {
     background: #fff;
     border: 1px solid #ddd;
@@ -196,3 +249,6 @@
 .btn-approve-action:hover { border-color: var(--primary-red); color: var(--primary-red); }
 
 .completion-info { color: var(--text-menu-dark); display: flex; align-items: center; gap: 8px; font-weight: 600; }
+
+@keyframes rotate-sync { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes slide-fast { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom'; // 🚀 Added for redirection
 import ToastNotification from '../../components/Toast/ToastNotification';
 import { getUserProfile } from '../../services/authService';
 import api from '../../services/api'; 
@@ -6,12 +7,18 @@ import { FaSearch, FaChevronDown } from 'react-icons/fa';
 import './Profile.css'; 
 
 const Bank = () => {
+  // 🚀 REDIRECTION LOGIC: Read ?redirect=seller-register from URL
+  const location = useLocation();
+  const navigate = useNavigate();
+  const queryParams = new URLSearchParams(location.search);
+  const redirectTarget = queryParams.get('redirect');
+
   const [bankData, setBankData] = useState({
-    id: '', // Mongodb ID for the bank account record
+    id: '', 
     bankName: '',
     accountNumber: '',
     accountHolder: '',
-    userId: '' // The ID of the current user
+    userId: '' 
   });
 
   const [loading, setLoading] = useState(true);
@@ -42,21 +49,17 @@ const Bank = () => {
     const fetchBankInfo = async () => {
       try {
         setLoading(true);
-        // 1. Get the current user profile (now includes the 'id' field)
         const user = await getUserProfile();
         
         if (user && user.id) {
-          // 2. Fetch bank data from the NEW dedicated collection
           const response = await api.get(`/bank-accounts/user/${user.id}`);
           
           if (response.data && response.data.length > 0) {
-            // Fill form with the existing (default) account
             setBankData({
               ...response.data[0],
               userId: user.id
             });
           } else {
-            // No bank account yet, just store the userId for saving
             setBankData(prev => ({ ...prev, userId: user.id }));
           }
         }
@@ -115,7 +118,7 @@ const Bank = () => {
       setIsSaving(true);
       
       const payload = {
-        id: bankData.id || undefined, // If ID exists, backend updates; otherwise creates new
+        id: bankData.id || undefined,
         userId: bankData.userId,
         bankName: bankData.bankName,
         accountNumber: bankData.accountNumber.replace(/\s/g, ''),
@@ -123,14 +126,18 @@ const Bank = () => {
         isDefault: true
       };
 
-      // 🚀 TARGETING NEW ENDPOINT
       const response = await api.post('/bank-accounts', payload);
-      
-      // Update local state with the ID returned from MongoDB
       setBankData(prev => ({ ...prev, id: response.data.id }));
 
       setToastMessage("Lưu tài khoản ngân hàng thành công!");
       setShowToast(true);
+
+      // 🚀 REDIRECT BACK: If the user was sent here for registration, send them back after 1.5s
+      if (redirectTarget === 'seller-register') {
+          setTimeout(() => {
+              navigate('/seller/register');
+          }, 1500);
+      }
     } catch (error: any) {
       setToastMessage(error.response?.data?.message || "Lỗi khi lưu thông tin.");
       setShowToast(true);

@@ -238,12 +238,23 @@ const SellerRegister = () => {
       try {
         setIsPageLoading(true);
         setIsShippingLoading(true);
-        const [rawProfile, shippingRes] = await Promise.all([
+        
+        // 🚀 NEW: Check for Bank Account in parallel with other data
+        const [rawProfile, shippingRes, bankRes] = await Promise.all([
           getUserProfile(),
-          api.get('/shipping-methods/active')
+          api.get('/shipping-methods/active'),
+          api.get('/bank-accounts/my') // Gatekeeper endpoint
         ]);
 
         const profileData = rawProfile?.data || rawProfile;
+        const bankAccounts = bankRes.data || [];
+
+        // 🚀 NEW: GATEKEEPER LOGIC
+        if (!Array.isArray(bankAccounts) || bankAccounts.length === 0) {
+            toast.error("Vui lòng thiết lập tài khoản ngân hàng trước khi đăng ký Người bán!", { duration: 5000 });
+            navigate('/user/bank?redirect=seller-register');
+            return;
+        }
 
         if (profileData.roles?.includes('SELLER')) {
             toast.success("Chào mừng trở lại, Người bán!");
@@ -703,7 +714,7 @@ const SellerRegister = () => {
         </div>
         <hr className="supreme-divider" />
         
-        {/* REJECTION BANNER WITH SMART DETECTION (PRESERVED) */}
+        {/* REJECTION BANNER WITH SMART DETECTION (100% RESTORED Logic) */}
         {isRejected && (
           <div className="preview-mode-banner no-print" style={{background: '#fff1f0', border: '1px solid #ffccc7', padding: '25px'}}>
             <h2 style={{color: '#cf1322', margin: '0 0 10px 0'}}><FaTimesCircle /> Hồ sơ bị từ chối</h2>
