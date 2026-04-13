@@ -551,3 +551,174 @@
   text-decoration: underline;
   opacity: 0.8;
 }
+
+/* --- 🚀 PHASE 1 FINAL: ELITE SEARCH & INTELLIGENT FILTERING --- */
+/* (Strict Append Block - Optimized for Stretching, Internal Icons, and Color Sync) */
+
+/* 1. Filter Bar Container - Forces stretching and professional spacing */
+.table-controls-row-elite {
+    display: flex;
+    justify-content: space-between; 
+    align-items: center;
+    gap: 25px;
+    margin-bottom: 30px;
+    background: #ffffff;
+    padding: 18px 20px;
+    border-radius: 12px;
+    border: 1px solid var(--border-light);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* 2. Enhanced Search Box - Stretches and includes Internal Icons */
+.admin-search-box-supreme {
+    position: relative;
+    flex: 1; /* 🚀 FORCES STRETCH: Occupies all available space */
+    display: flex;
+    align-items: center;
+}
+
+.admin-search-box-supreme input {
+    width: 100%;
+    height: 48px;
+    padding: 0 45px 0 48px !important; /* 🚀 Room for Search (left) and Clear (right) icons */
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--text-dark) !important; /* 🚀 Synchronized with Left Menu */
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    outline: none;
+    background: #f8fafc;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.admin-search-box-supreme input:focus {
+    border-color: var(--orange);
+    background: white;
+    box-shadow: 0 0 0 4px rgba(238, 77, 45, 0.08);
+}
+
+/* Magnifying Glass Icon positioning inside the input */
+.search-icon-inside {
+    position: absolute;
+    left: 18px;
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    pointer-events: none;
+    z-index: 2;
+    transition: color 0.2s;
+}
+
+.admin-search-box-supreme input:focus + .search-icon-inside {
+    color: var(--orange);
+}
+
+/* 🚀 Quick Clear (X) Button support */
+.clear-search-btn {
+    position: absolute;
+    right: 15px;
+    background: none !important;
+    border: none !important;
+    color: #cbd5e1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: all 0.2s;
+    padding: 0;
+    z-index: 5;
+}
+
+.clear-search-btn:hover {
+    color: var(--orange);
+    transform: scale(1.1);
+}
+
+/* 3. Intelligent Filter Group styling */
+.filter-group-colorful {
+    display: flex;
+    gap: 12px;
+}
+
+.select-wrapper-colorful {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: #f8fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    min-width: 195px;
+    transition: all 0.2s ease;
+}
+
+.select-wrapper-colorful:hover { border-color: var(--orange); }
+
+.icon-filter { color: var(--text-muted); font-size: 14px; position: absolute; left: 12px; z-index: 2; }
+.icon-dot { color: #cbd5e1; font-size: 8px; position: absolute; left: 14px; z-index: 2; }
+
+.select-wrapper-colorful select {
+    border: none;
+    background: transparent;
+    width: 100%;
+    padding: 12px 10px 12px 35px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-dark) !important; /* 🚀 Synchronized with Left Menu */
+    cursor: pointer;
+    outline: none;
+    -webkit-appearance: none;
+    z-index: 1;
+}
+
+/* 4. Dynamic Colorful States & Pills */
+.role-seller { border-color: #fb923c !important; background: #fffaf5 !important; }
+.role-admin { border-color: #3b82f6 !important; background: #f0f7ff !important; }
+.status-active { border-color: #22c55e !important; background: #f0fdf4 !important; }
+.status-banned { border-color: #ef4444 !important; background: #fef2f2 !important; }
+
+.status-pill-colorful {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 800;
+}
+.status-pill-colorful.active { background: #dcfce7; color: #15803d; }
+.status-pill-colorful.banned { background: #fee2e2; color: #b91c1c; }
+.status-pill-colorful.pending_seller { background: #fef3c7; color: #92400e; }
+
+/* 5. Table Typography & Stretching Sync */
+.user-primary-name { 
+    color: var(--text-dark) !important; 
+    font-size: 15px; 
+    font-weight: 700; 
+}
+
+.admin-data-table-supreme th {
+    background: #f1f5f9;
+    color: var(--text-muted); 
+    font-size: 11px;
+    font-weight: 800;
+    padding: 15px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.contact-cell span { font-size: 13px; color: var(--text-dark); }
+.sub-contact { font-size: 11px; color: var(--text-muted); opacity: 0.8; }
+.tiny-icon { font-size: 11px; margin-right: 6px; color: var(--text-muted); }
+
+.admin-data-table-supreme {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 10px;
+}
+.admin-data-table-supreme td {
+    padding: 15px 20px;
+    border-top: 1px solid #f1f5f9;
+    border-bottom: 1px solid #f1f5f9;
+}

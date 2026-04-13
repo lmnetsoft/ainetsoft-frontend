@@ -1,6 +1,8 @@
 package com.ainetsoft.repository;
 
 import com.ainetsoft.model.User;
+import org.springframework.data.domain.Page; // 🚀 NEW
+import org.springframework.data.domain.Pageable; // 🚀 NEW
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -14,14 +16,25 @@ import java.util.List;
 @Repository
 public interface UserRepository extends MongoRepository<User, String> {
     
+    // --- 🚀 PHASE 1: ADVANCED SEARCH & FILTERING ---
+    /**
+     * Finds users based on keyword (name/email), role, and status.
+     * Passing 'ALL' for role or status ignores that specific filter.
+     */
+    @Query("{ " +
+           "  $and: [ " +
+           "    { $or: [ { 'fullName': { $regex: ?0, $options: 'i' } }, { 'email': { $regex: ?0, $options: 'i' } } ] }, " +
+           "    { $or: [ { $expr: { $eq: ['?1', 'ALL'] } }, { 'roles': ?1 } ] }, " +
+           "    { $or: [ { $expr: { $eq: ['?2', 'ALL'] } }, { 'accountStatus': ?2 } ] } " +
+           "  ] " +
+           "}")
+    Page<User> findAllByFilters(String search, String role, String status, Pageable pageable);
+
     // --- BASIC AUTH CHECKS ---
     Boolean existsByEmail(String email);
     Boolean existsByPhone(String phone);
 
-    // --- 🚀 NEW: EMAIL VERIFICATION FLOW ---
-    /**
-     * Finds a user by the unique token sent to their email during registration.
-     */
+    // --- EMAIL VERIFICATION FLOW ---
     Optional<User> findByVerificationToken(String verificationToken);
 
     // --- SELLER SHOP PROFILE & SLUG CHECKS ---
@@ -30,8 +43,6 @@ public interface UserRepository extends MongoRepository<User, String> {
 
     // --- ADMIN DASHBOARD STATS ---
     long countByRolesContaining(String role);
-    
-    // 🚀 NEW: Find Admin users to send them notifications
     List<User> findByRolesContaining(String role);
 
     long countBySellerVerification(String status);

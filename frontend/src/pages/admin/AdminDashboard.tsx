@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'; // 🚀 Added useRef
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   FaUsers, FaBox, FaStore, FaClock, 
   FaChartBar, FaSync, FaHistory, FaShieldAlt,
@@ -19,7 +19,7 @@ import { toast } from 'react-hot-toast';
 import './AdminDashboard.css';
 
 const AdminDashboard = () => {
-  // 🚀 NEW: Anchor for smooth scrolling to prevent window "jumping"
+  // 🚀 Anchor for smooth scrolling to prevent window "jumping"
   const scrollAnchorRef = useRef<HTMLDivElement>(null);
 
   const [activeTab, setActiveTab] = useState('summary');
@@ -48,7 +48,11 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [tabLoading, setTabLoading] = useState(false);
 
+  // 🚀 PHASE 1: LIFTED FILTER STATES (For Auto-Show functionality)
   const [userSearchTerm, setUserSearchTerm] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState("ALL");
+  const [userStatusFilter, setUserStatusFilter] = useState("ALL");
+
   const [newReasonName, setNewReasonName] = useState("");
 
   // --- 1. DATA FETCHERS ---
@@ -77,18 +81,46 @@ const AdminDashboard = () => {
     }
   };
 
+  /**
+   * 🚀 PHASE 1 UPDATE: fetchUsers now handles the Page object.
+   * Default call for the "Users" tab.
+   */
   const fetchUsers = async () => {
     try {
       setTabLoading(true);
-      const data = await adminService.getAllUsers();
-      setUsers(data || []);
-    } catch (err) { console.error("Users Fetch Error:", err); } 
-    finally { setTabLoading(false); }
+      const response = await adminService.getAllUsers({ page: 0, size: 10 });
+      // Backend returns Page<User>, so we extract .content
+      setUsers(response.content || []);
+    } catch (err) { 
+      console.error("Users Fetch Error:", err); 
+      setUsers([]);
+    } finally { 
+      setTabLoading(false); 
+    }
   };
 
   /**
-   * 🚀 Handles Page object response
+   * 🚀 NEW PHASE 1 HELPER: Specifically for Filtering & Searching
    */
+  const fetchUsersFiltered = async (search: string, role: string, status: string) => {
+    try {
+      setTabLoading(true);
+      const params = {
+        search,
+        role: role === "ALL" ? "" : role,
+        status: status === "ALL" ? "" : status,
+        page: 0,
+        size: 10
+      };
+      const res = await adminService.getAllUsers(params);
+      setUsers(res.content || []);
+    } catch (err) {
+      toast.error("Lỗi khi tìm kiếm người dùng");
+    } finally {
+      setTabLoading(false);
+    }
+  };
+
   const fetchProducts = async () => {
     try {
       setTabLoading(true);
@@ -154,7 +186,8 @@ const AdminDashboard = () => {
 
   const handleManualRefresh = async () => {
     await fetchSummary(true);
-    if (activeTab === 'users') await fetchUsers();
+    // 🚀 Update: Manual refresh now respects existing filters
+    if (activeTab === 'users') await fetchUsersFiltered(userSearchTerm, userRoleFilter, userStatusFilter);
     if (activeTab === 'products') await fetchProducts();
     if (activeTab === 'reports') await fetchReports();
     if (activeTab === 'reviews') await fetchReviews();
@@ -169,11 +202,14 @@ const AdminDashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  /**
-   * 🚀 Re-fetches when tab OR page changes AND handles smooth scroll.
-   */
+  // 🚀 NEW: AUTO-SHOW BEHAVIOR (Triggers when dropdowns change)
   useEffect(() => {
-    if (activeTab === 'users') fetchUsers();
+    if (activeTab === 'users') {
+      fetchUsersFiltered(userSearchTerm, userRoleFilter, userStatusFilter);
+    }
+  }, [userRoleFilter, userStatusFilter, activeTab]);
+
+  useEffect(() => {
     if (activeTab === 'products') fetchProducts(); 
     if (activeTab === 'reports') fetchReports();
     if (activeTab === 'reviews') fetchReviews();
@@ -187,7 +223,7 @@ const AdminDashboard = () => {
   }, [activeTab, productPage]);
 
 
-  // --- 3. ACTIONS ---
+  // --- 3. ACTIONS (PRESERVED UNTOUCHED) ---
 
   const handleResolveReport = async (reportId: string, action: 'RESOLVED' | 'DISMISSED') => {
     try {
@@ -255,7 +291,21 @@ const AdminDashboard = () => {
 
     switch (activeTab) {
       case 'users': 
-        return <UserTable users={users} userSearchTerm={userSearchTerm} setUserSearchTerm={setUserSearchTerm} />;
+        return (
+          <UserTable 
+            users={users} 
+            userSearchTerm={userSearchTerm} 
+            setUserSearchTerm={setUserSearchTerm} 
+            // 🚀 Passing Filter States and Setters to enable "Auto-Show" behavior
+            roleFilter={userRoleFilter}
+            setRoleFilter={setUserRoleFilter}
+            statusFilter={userStatusFilter}
+            setStatusFilter={setUserStatusFilter}
+            onSearchTrigger={() => {
+                fetchUsersFiltered(userSearchTerm, userRoleFilter, userStatusFilter);
+            }}
+          />
+        );
 
       case 'sellers': return <SellerModeration />;
       

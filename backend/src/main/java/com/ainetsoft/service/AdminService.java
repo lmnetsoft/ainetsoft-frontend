@@ -6,8 +6,8 @@ import com.ainetsoft.model.*;
 import com.ainetsoft.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page; // 🚀 NEW IMPORT
-import org.springframework.data.domain.Pageable; // 🚀 NEW IMPORT
+import org.springframework.data.domain.Page; // 🚀 PRESERVED
+import org.springframework.data.domain.Pageable; // 🚀 PRESERVED
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,8 +31,6 @@ public class AdminService {
     private final ReportReasonRepository reportReasonRepository;
     private final AzureCommunicationService azureEmailService;
     private final FeedbackTemplateRepository feedbackTemplateRepository;
-    
-    // 🚀 Repository for Dynamic System Content (Privacy, Terms, etc.)
     private final SystemContentRepository systemContentRepository;
 
     /**
@@ -136,6 +134,23 @@ public class AdminService {
             .collect(Collectors.toList());
     }
 
+    // --- USER MANAGEMENT (PHASE 1 UPDATED) ---
+
+    /**
+     * 🚀 NEW: Fetches users with dynamic filtering and pagination.
+     * Used for the Advanced Search & Filtering feature.
+     */
+    public Page<User> getAllUsersFiltered(String search, String role, String status, Pageable pageable) {
+        // Prepare criteria: null/empty search becomes regex-friendly empty string
+        String keyword = (search == null) ? "" : search;
+        
+        // Use 'ALL' as the flag to bypass filters in the repository query
+        String roleFilter = (role == null || role.isEmpty()) ? "ALL" : role.toUpperCase();
+        String statusFilter = (status == null || status.isEmpty()) ? "ALL" : status.toUpperCase();
+
+        return userRepository.findAllByFilters(keyword, roleFilter, statusFilter, pageable);
+    }
+
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
@@ -221,11 +236,8 @@ public class AdminService {
         }
     }
 
-    // --- PRODUCT MODERATION (PAGINATION UPDATE) ---
+    // --- PRODUCT MODERATION (100% PRESERVED) ---
 
-    /**
-     * 🚀 UPDATED: Fetches products with Pagination for the general Product List tab.
-     */
     public Page<Product> getAllProducts(Pageable pageable) {
         return productRepository.findAll(pageable);
     }
@@ -276,9 +288,6 @@ public class AdminService {
         return "Đã từ chối sản phẩm.";
     }
 
-    /**
-     * 🚀 NEW: Admin-level permanent deletion of a product.
-     */
     @Transactional
     public void deleteProduct(String productId, User performingAdmin) {
         Product product = productRepository.findById(productId)
@@ -359,7 +368,7 @@ public class AdminService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
         
-        if (user.isGlobalAdmin() || "admin@ainetsoft.com".equals(user.getEmail())) {
+        if (user.isGlobalAdmin() || "admin@ainetsoft.com".equals(target.getEmail())) {
             throw new RuntimeException("KHÔNG THỂ khóa tài khoản Global Admin!");
         }
 
