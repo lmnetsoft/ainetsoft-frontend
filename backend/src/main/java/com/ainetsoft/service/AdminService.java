@@ -134,21 +134,26 @@ public class AdminService {
             .collect(Collectors.toList());
     }
 
-    // --- USER MANAGEMENT (PHASE 1 UPDATED) ---
+    // --- USER MANAGEMENT (PHASE 2 UPDATED) ---
 
     /**
-     * 🚀 NEW: Fetches users with dynamic filtering and pagination.
-     * Used for the Advanced Search & Filtering feature.
+     * 🚀 PHASE 1: Fetches users with dynamic filtering and pagination.
      */
     public Page<User> getAllUsersFiltered(String search, String role, String status, Pageable pageable) {
-        // Prepare criteria: null/empty search becomes regex-friendly empty string
         String keyword = (search == null) ? "" : search;
-        
-        // Use 'ALL' as the flag to bypass filters in the repository query
         String roleFilter = (role == null || role.isEmpty()) ? "ALL" : role.toUpperCase();
         String statusFilter = (status == null || status.isEmpty()) ? "ALL" : status.toUpperCase();
 
         return userRepository.findAllByFilters(keyword, roleFilter, statusFilter, pageable);
+    }
+
+    /**
+     * 🚀 NEW PHASE 2: Profile Inspection logic.
+     * Fetches the full user profile including identity and shop data.
+     */
+    public User getUserById(String userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
     }
 
     public List<User> getAllUsers() {
@@ -368,7 +373,7 @@ public class AdminService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
         
-        if (user.isGlobalAdmin() || "admin@ainetsoft.com".equals(target.getEmail())) {
+        if (user.isGlobalAdmin() || "admin@ainetsoft.com".equals(user.getEmail())) {
             throw new RuntimeException("KHÔNG THỂ khóa tài khoản Global Admin!");
         }
 

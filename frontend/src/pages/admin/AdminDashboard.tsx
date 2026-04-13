@@ -10,6 +10,7 @@ import ProductModeration from './ProductModeration';
 
 // Modular components
 import UserTable from './UserTable';
+import UserProfileModal from './UserProfileModal'; // 🚀 PHASE 2: Profile Detail Component
 import ReportTable from './ReportTable';
 import ReviewTable from './ReviewTable';
 import ReasonManagement from './ReasonManagement';
@@ -48,10 +49,14 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [tabLoading, setTabLoading] = useState(false);
 
-  // 🚀 PHASE 1: LIFTED FILTER STATES (For Auto-Show functionality)
+  // 🚀 PHASE 1: LIFTED FILTER STATES
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [userRoleFilter, setUserRoleFilter] = useState("ALL");
   const [userStatusFilter, setUserStatusFilter] = useState("ALL");
+
+  // 🚀 PHASE 2: PROFILE INSPECTION STATES
+  const [inspectingUser, setInspectingUser] = useState<any>(null);
+  const [showInspectModal, setShowInspectModal] = useState(false);
 
   const [newReasonName, setNewReasonName] = useState("");
 
@@ -83,13 +88,11 @@ const AdminDashboard = () => {
 
   /**
    * 🚀 PHASE 1 UPDATE: fetchUsers now handles the Page object.
-   * Default call for the "Users" tab.
    */
   const fetchUsers = async () => {
     try {
       setTabLoading(true);
       const response = await adminService.getAllUsers({ page: 0, size: 10 });
-      // Backend returns Page<User>, so we extract .content
       setUsers(response.content || []);
     } catch (err) { 
       console.error("Users Fetch Error:", err); 
@@ -116,6 +119,20 @@ const AdminDashboard = () => {
       setUsers(res.content || []);
     } catch (err) {
       toast.error("Lỗi khi tìm kiếm người dùng");
+    } finally {
+      setTabLoading(false);
+    }
+  };
+
+  /** 🚀 NEW PHASE 2 HANDLER: Open Deep-Dive Inspection Modal */
+  const handleInspectUser = async (userId: string) => {
+    try {
+      setTabLoading(true);
+      const fullUser = await adminService.getUserDetails(userId);
+      setInspectingUser(fullUser);
+      setShowInspectModal(true);
+    } catch (err) {
+      toast.error("Không thể tải thông tin chi tiết hồ sơ.");
     } finally {
       setTabLoading(false);
     }
@@ -186,7 +203,6 @@ const AdminDashboard = () => {
 
   const handleManualRefresh = async () => {
     await fetchSummary(true);
-    // 🚀 Update: Manual refresh now respects existing filters
     if (activeTab === 'users') await fetchUsersFiltered(userSearchTerm, userRoleFilter, userStatusFilter);
     if (activeTab === 'products') await fetchProducts();
     if (activeTab === 'reports') await fetchReports();
@@ -216,14 +232,13 @@ const AdminDashboard = () => {
     if (activeTab === 'reasons') fetchReasons();
     if (activeTab === 'logs') fetchLogs();
 
-    // 🚀 THE SMOOTH FIX: Scroll back to the top of the table area smoothly
     if (scrollAnchorRef.current) {
         scrollAnchorRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [activeTab, productPage]);
 
 
-  // --- 3. ACTIONS (PRESERVED UNTOUCHED) ---
+  // --- 3. ACTIONS ---
 
   const handleResolveReport = async (reportId: string, action: 'RESOLVED' | 'DISMISSED') => {
     try {
@@ -292,19 +307,29 @@ const AdminDashboard = () => {
     switch (activeTab) {
       case 'users': 
         return (
-          <UserTable 
-            users={users} 
-            userSearchTerm={userSearchTerm} 
-            setUserSearchTerm={setUserSearchTerm} 
-            // 🚀 Passing Filter States and Setters to enable "Auto-Show" behavior
-            roleFilter={userRoleFilter}
-            setRoleFilter={setUserRoleFilter}
-            statusFilter={userStatusFilter}
-            setStatusFilter={setUserStatusFilter}
-            onSearchTrigger={() => {
-                fetchUsersFiltered(userSearchTerm, userRoleFilter, userStatusFilter);
-            }}
-          />
+          <>
+            <UserTable 
+              users={users} 
+              userSearchTerm={userSearchTerm} 
+              setUserSearchTerm={setUserSearchTerm} 
+              roleFilter={userRoleFilter}
+              setRoleFilter={setUserRoleFilter}
+              statusFilter={userStatusFilter}
+              setStatusFilter={setUserStatusFilter}
+              onSearchTrigger={() => {
+                  fetchUsersFiltered(userSearchTerm, userRoleFilter, userStatusFilter);
+              }}
+              // 🚀 PHASE 2: Trigger for inspection
+              onView={handleInspectUser} 
+            />
+            {/* 🚀 PHASE 2: RENDER INSPECTION MODAL */}
+            {showInspectModal && inspectingUser && (
+              <UserProfileModal 
+                user={inspectingUser} 
+                onClose={() => setShowInspectModal(false)} 
+              />
+            )}
+          </>
         );
 
       case 'sellers': return <SellerModeration />;

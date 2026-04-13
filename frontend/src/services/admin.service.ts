@@ -81,13 +81,17 @@ export const adminService = {
   deleteReview: (reviewId: string) => 
     api.delete(`/admin/reviews/${reviewId}`).then(res => res.data),
 
-  // --- USER MANAGEMENT & DELEGATION (PHASE 1 UPDATED) ---
+  // --- USER MANAGEMENT & DELEGATION (PHASE 2 UPDATED) ---
   
   /**
    * 🚀 UPDATED: Supports advanced filtering params (search, role, status, page, size)
    */
   getAllUsers: (params: any = {}) => 
     api.get('/admin/users/all', { params }).then(res => res.data),
+
+  /** 🚀 NEW PHASE 2: Fetch full profile data for inspection */
+  getUserDetails: (userId: string) => 
+    api.get(`/admin/users/detail/${userId}`).then(res => res.data),
 
   promoteToAdmin: (userId: string, permissions: string[]) => 
     api.post(`/admin/users/promote/${userId}`, permissions).then(res => res.data),

@@ -1,16 +1,20 @@
 import React from 'react';
-import { FaSearch, FaFilter, FaCircle, FaEnvelope, FaPhoneAlt, FaCalendarAlt, FaTimesCircle } from 'react-icons/fa';
+import { 
+  FaSearch, FaFilter, FaCircle, FaEnvelope, FaPhoneAlt, 
+  FaCalendarAlt, FaTimesCircle, FaEye 
+} from 'react-icons/fa';
 
 interface UserTableProps {
   users: any; 
   userSearchTerm: string;
   setUserSearchTerm: (val: string) => void;
-  // 🚀 PHASE 1: Received from parent for Auto-Refresh synchronization
   roleFilter: string;
   setRoleFilter: (val: string) => void;
   statusFilter: string;
   setStatusFilter: (val: string) => void;
   onSearchTrigger: () => void;
+  // 🚀 PHASE 2: Trigger for Profile Inspection
+  onView: (userId: string) => void;
 }
 
 const UserTable: React.FC<UserTableProps> = ({ 
@@ -21,25 +25,20 @@ const UserTable: React.FC<UserTableProps> = ({
   setRoleFilter,
   statusFilter,
   setStatusFilter,
-  onSearchTrigger 
+  onSearchTrigger,
+  onView
 }) => {
 
-  /**
-   * 🚀 FIX: Extracts array from Spring Page object or handles raw array.
-   * Prevents the white screen crash.
-   */
   const userList = Array.isArray(users) ? users : (users?.content || []);
 
   const handleClearSearch = () => {
     setUserSearchTerm("");
-    // Delay slightly to ensure state is clear before re-fetching
     setTimeout(() => onSearchTrigger(), 0);
   };
 
   return (
     <div className="admin-table-container-supreme">
       
-      {/* 🚀 ELITE FILTER BAR: Stretched with Auto-Trigger logic */}
       <div className="table-controls-row-elite">
         <div className="admin-search-box-supreme">
           <FaSearch className="search-icon-inside" />
@@ -50,7 +49,6 @@ const UserTable: React.FC<UserTableProps> = ({
             onChange={(e) => setUserSearchTerm(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && onSearchTrigger()}
           />
-          {/* 🚀 NEW: Quick Clear Button */}
           {userSearchTerm && (
             <button className="clear-search-btn" onClick={handleClearSearch} title="Xóa tìm kiếm">
               <FaTimesCircle />
@@ -59,7 +57,6 @@ const UserTable: React.FC<UserTableProps> = ({
         </div>
 
         <div className="filter-group-colorful">
-          {/* 🚀 Role Dropdown: Updates parent state to trigger auto-fetch */}
           <div className={`select-wrapper-colorful role-${roleFilter.toLowerCase()}`}>
             <FaFilter className="icon-filter" />
             <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
@@ -70,7 +67,6 @@ const UserTable: React.FC<UserTableProps> = ({
             </select>
           </div>
 
-          {/* 🚀 Status Dropdown: Updates parent state to trigger auto-fetch */}
           <div className={`select-wrapper-colorful status-${statusFilter.toLowerCase()}`}>
             <FaCircle className="icon-dot" />
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
@@ -90,12 +86,13 @@ const UserTable: React.FC<UserTableProps> = ({
             <th>EMAIL / SĐT</th>
             <th>VAI TRÒ</th>
             <th>TRẠNG THÁI</th>
-            <th style={{ textAlign: 'right' }}>NGÀY THAM GIA</th>
+            <th>NGÀY THAM GIA</th>
+            <th style={{ textAlign: 'right' }}>THAO TÁC</th>
           </tr>
         </thead>
         <tbody>
           {userList.length === 0 ? (
-            <tr><td colSpan={5} className="empty-row-visual">Không tìm thấy kết quả phù hợp.</td></tr>
+            <tr><td colSpan={6} className="empty-row-visual">Không tìm thấy kết quả phù hợp.</td></tr>
           ) : (
             userList.map((u: any) => (
               <tr key={u.id}>
@@ -120,8 +117,18 @@ const UserTable: React.FC<UserTableProps> = ({
                     <FaCircle className="dot" /> {u.accountStatus || 'ACTIVE'}
                   </span>
                 </td>
-                <td style={{ textAlign: 'right' }} className="date-cell">
+                <td className="date-cell">
                   <FaCalendarAlt className="tiny-icon" /> {u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : '13/4/2026'}
+                </td>
+                {/* 🚀 PHASE 2: VIEW ACTION BUTTON */}
+                <td style={{ textAlign: 'right' }}>
+                  <button 
+                    className="btn-action-inspect" 
+                    onClick={() => onView(u.id)}
+                    title="Xem chi tiết hồ sơ"
+                  >
+                    <FaEye />
+                  </button>
                 </td>
               </tr>
             ))

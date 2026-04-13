@@ -45,11 +45,11 @@ public class AdminController {
         }
     }
 
-    // --- USER MANAGEMENT & DELEGATION (PHASE 1 UPDATED) ---
+    // --- USER MANAGEMENT & DELEGATION (PHASE 2 UPDATED) ---
 
     /**
      * 🚀 UPDATED PHASE 1: User Management with Advanced Filtering
-     * Accessible via: GET /api/admin/users/all?search=toni&role=SELLER&status=ACTIVE&page=0&size=10
+																									
      */
     @GetMapping("/users/all")
     public ResponseEntity<?> getAllUsers(
@@ -59,11 +59,20 @@ public class AdminController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         
-        // Define sorting: Newest users first by default
+														
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        
-        // Call the filtered service logic
+		
+										  
         return ResponseEntity.ok(adminService.getAllUsersFiltered(search, role, status, pageable));
+    }
+
+    /**
+     * 🚀 NEW PHASE 2: Profile Inspection (Deep-Dive)
+     * Returns the full User object including identity and shop details.
+     */
+    @GetMapping("/users/detail/{userId}")
+    public ResponseEntity<?> getUserDetails(@PathVariable String userId) {
+        return ResponseEntity.ok(adminService.getUserById(userId));
     }
 
     @PostMapping("/users/promote/{userId}")
