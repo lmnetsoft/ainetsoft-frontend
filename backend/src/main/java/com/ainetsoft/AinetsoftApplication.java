@@ -3,11 +3,15 @@ package com.ainetsoft;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.web.config.EnableSpringDataWebSupport; // 🚀 ADDED
+import org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerializationMode; // 🚀 ADDED
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import java.nio.file.Paths;
 
 @SpringBootApplication
+// 🚀 ADDED TO FIX THE PageImpl SERIALIZATION WARNING
+@EnableSpringDataWebSupport(pageSerializationMode = PageSerializationMode.VIA_DTO)
 public class AinetsoftApplication {
 
     public static void main(String[] args) {

@@ -6,7 +6,9 @@ import {
   FaSave, FaShieldAlt, FaFileContract, FaHistory, FaCheckCircle, 
   FaBuilding, FaYoutube, FaFacebook, FaToggleOn, FaToggleOff, 
   FaCertificate, FaGavel, FaBullhorn, FaExternalLinkAlt, FaImage,
-  FaPlus, FaEdit, FaMobileAlt, FaLink, FaTrash, FaFileAlt 
+  FaPlus, FaEdit, FaMobileAlt, FaLink, FaTrash, FaFileAlt,
+  FaEye, FaEyeSlash,
+  FaFolderOpen // 🚀 VERIFIED: Required to prevent the ReferenceError crash
 } from 'react-icons/fa';
 
 // React 19 Compatible Editor
@@ -41,11 +43,19 @@ const FIXED_SLUGS = [
 ];
 
 const SystemContentManagement = () => {
-  const { category } = useParams(); 
+  const { category: routeCategory } = useParams(); 
   const location = useLocation(); 
   
   const [selectedSlug, setSelectedSlug] = useState('');
-  const [content, setContent] = useState({ slug: '', title: '', htmlContent: '', lastUpdated: '' });
+  const [content, setContent] = useState({ 
+    slug: '', 
+    title: '', 
+    htmlContent: '', 
+    lastUpdated: '', 
+    category: 'GENERAL', 
+    isActive: true,
+    updatedBy: '' 
+  });
   const [customArticles, setCustomArticles] = useState<any[]>([]);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -76,7 +86,7 @@ const SystemContentManagement = () => {
   };
 
   const filteredFixedSlugs = FIXED_SLUGS.filter(item => {
-    if (category === 'legal') return item.cat === 'legal';
+    if (routeCategory === 'legal') return item.cat === 'legal';
     return item.cat === 'company' || item.cat === 'social';
   });
 
@@ -84,7 +94,7 @@ const SystemContentManagement = () => {
 
   const fetchCustomArticles = async () => {
     try {
-      const res = await api.get('/admin/system-contents');
+      const res = await api.get('/admin/system-contents/all');
       const all = res.data;
       const fixedKeys = FIXED_SLUGS.map(s => s.slug);
       setCustomArticles(all.filter((item: any) => !fixedKeys.includes(item.slug)));
@@ -99,7 +109,7 @@ const SystemContentManagement = () => {
         if (filteredFixedSlugs.length > 0) setSelectedSlug(filteredFixedSlugs[0].slug);
       }
     }
-  }, [category, isArticleMode, customArticles.length]);
+  }, [routeCategory, isArticleMode, customArticles.length]);
 
   useEffect(() => {
     if (!isCreatingNew && selectedSlug) {
@@ -112,7 +122,15 @@ const SystemContentManagement = () => {
     try {
       setIsLoading(true);
       const res = await api.get(`/admin/system-contents/${slug}`);
-      setContent(res.data || { slug: slug, title: '', htmlContent: '', lastUpdated: '' });
+      setContent(res.data || { 
+        slug: slug, 
+        title: '', 
+        htmlContent: '', 
+        lastUpdated: '', 
+        category: 'GENERAL', 
+        isActive: true,
+        updatedBy: ''
+      });
     } catch (e) {
       toast.error("Không thể tải nội dung: " + slug);
     } finally {
@@ -123,8 +141,15 @@ const SystemContentManagement = () => {
   const handleCreateNew = () => {
     setIsCreatingNew(true);
     setSelectedSlug('');
-    // 🚀 FIXED: Ensuring everything is strictly empty on start
-    setContent({ slug: '', title: '', htmlContent: '', lastUpdated: '' });
+    setContent({ 
+        slug: '', 
+        title: '', 
+        htmlContent: '', 
+        lastUpdated: '', 
+        category: 'GUIDE', 
+        isActive: true,
+        updatedBy: ''
+    });
   };
 
   const handleDeleteArticle = async (slug: string) => {
@@ -134,7 +159,15 @@ const SystemContentManagement = () => {
       toast.success("Đã xóa bài viết!");
       if (selectedSlug === slug) {
         setSelectedSlug('');
-        setContent({ slug: '', title: '', htmlContent: '', lastUpdated: '' });
+        setContent({ 
+            slug: '', 
+            title: '', 
+            htmlContent: '', 
+            lastUpdated: '', 
+            category: 'GENERAL', 
+            isActive: true, 
+            updatedBy: '' 
+        });
       }
       fetchCustomArticles();
     } catch (e) {
@@ -147,7 +180,8 @@ const SystemContentManagement = () => {
     const newVal = isCurrentlyDisabled 
       ? content.htmlContent.replace('DISABLED_', '') 
       : `DISABLED_${content.htmlContent}`;
-    setContent({ ...content, htmlContent: newVal });
+    
+    setContent({ ...content, htmlContent: newVal, isActive: isCurrentlyDisabled });
   };
 
   const handleSave = async () => {
@@ -163,6 +197,7 @@ const SystemContentManagement = () => {
       await api.post('/admin/system-contents', {
         ...content,
         slug: finalSlug,
+        category: isArticleMode ? (content.category || 'GUIDE') : (routeCategory?.toUpperCase() || 'GENERAL'),
         lastUpdated: new Date()
       });
       toast.success("Đã lưu thành công!");
@@ -189,7 +224,7 @@ const SystemContentManagement = () => {
             <><FaFileAlt style={{color: '#1890ff', marginRight: '12px'}} /> Quản lý Bài viết</>
           ) : isCreatingNew ? (
             <><FaPlus style={{color: '#52c41a', marginRight: '12px'}} /> Tạo bài viết mới</>
-          ) : category === 'legal' ? (
+          ) : routeCategory === 'legal' ? (
             <><FaShieldAlt style={{color: '#2f54eb', marginRight: '12px'}} /> Quản lý Chính sách Pháp lý</>
           ) : (
             <><FaBuilding style={{color: '#52c41a', marginRight: '12px'}} /> Thông tin Công ty</>
@@ -231,6 +266,7 @@ const SystemContentManagement = () => {
                   >
                     <FaEdit style={{color: '#faad14'}} />
                     <span className="btn-text">{art.title}</span>
+                    {!art.isActive && <FaEyeSlash style={{marginLeft: 'auto', color: '#8c8c8c'}} title="Đang ẩn" />}
                   </button>
                   <button 
                     className="delete-article-btn" 
@@ -252,17 +288,17 @@ const SystemContentManagement = () => {
         <div className="editor-card">
           {isLoading ? ( <div className="loading-state">Đang truy xuất dữ liệu...</div> ) : (
             <>
-              {isBadge && (
-                <div className="toggle-wrapper">
-                  <label className="toggle-label">Trạng thái hiển thị công khai:</label>
-                  <div className="toggle-control" onClick={handleToggleBadge}>
-                    {content.htmlContent.startsWith('DISABLED_') ? (
+              {(isArticleMode || isBadge) && (
+                <div className="toggle-wrapper" style={{marginBottom: '20px', padding: '15px', background: '#f9f9f9', borderRadius: '8px'}}>
+                  <label className="toggle-label" style={{fontWeight: 700}}>Trạng thái hiển thị công khai:</label>
+                  <div className="toggle-control" onClick={isBadge ? handleToggleBadge : () => setContent({...content, isActive: !content.isActive})}>
+                    { (isBadge ? content.htmlContent.startsWith('DISABLED_') : !content.isActive) ? (
                       <div className="badge-status-pill off">
-                        <FaToggleOff className="toggle-icon" /> <span>ĐANG ẨN</span>
+                        <FaToggleOff className="toggle-icon" /> <span>BẢN NHÁP / ĐANG ẨN</span>
                       </div>
                     ) : (
                       <div className="badge-status-pill on">
-                        <FaToggleOn className="toggle-icon" /> <span>ĐANG HIỆN</span>
+                        <FaToggleOn className="toggle-icon" /> <span>CÔNG KHAI / ĐANG HIỆN</span>
                       </div>
                     )}
                   </div>
@@ -271,7 +307,6 @@ const SystemContentManagement = () => {
 
               <div className="input-group">
                 <label>Tiêu đề bài viết hiển thị</label>
-                {/* 🚀 FIXED: Added autoFocus and Placeholder */}
                 <input 
                   type="text" 
                   autoFocus={isCreatingNew}
@@ -282,18 +317,29 @@ const SystemContentManagement = () => {
               </div>
 
               {(isCreatingNew || isCustomArticle) && !isBadge && (
-                <div className="input-group slug-input-group">
-                  <label><FaLink /> Mã định danh (Slug) - *Dùng để liên kết với Phân cấp Trợ giúp*</label>
-                  {/* 🚀 FIXED: Placeholder updated to match guide */}
-                  <input 
-                    type="text" 
-                    value={content.slug} 
-                    placeholder="vd: huong-dan-thanh-toan"
-                    onChange={(e) => setContent({...content, slug: e.target.value.toLowerCase().replace(/\s+/g, '-')})} 
-                  />
-                  <small style={{color: '#8c8c8c', marginTop: '4px', display: 'block'}}>
-                    Lưu ý: Slug này phải khớp 100% với slug bạn đã đặt trong trang "Phân cấp Trợ giúp".
-                  </small>
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px'}}>
+                    <div className="input-group slug-input-group">
+                        <label><FaLink /> Mã định danh (Slug)</label>
+                        <input 
+                            type="text" 
+                            value={content.slug} 
+                            placeholder="vd: huong-dan-thanh-toan"
+                            onChange={(e) => setContent({...content, slug: e.target.value.toLowerCase().replace(/\s+/g, '-')})} 
+                        />
+                    </div>
+                    <div className="input-group">
+                        <label><FaFolderOpen /> Danh mục</label>
+                        <select 
+                            style={{height: '44px', width: '100%', borderRadius: '8px', border: '1px solid #d9d9d9', padding: '0 12px'}}
+                            value={content.category}
+                            onChange={(e) => setContent({...content, category: e.target.value})}
+                        >
+                            <option value="GUIDE">Hướng dẫn sử dụng</option>
+                            <option value="FAQ">Câu hỏi thường gặp</option>
+                            <option value="POLICY">Chính sách & Pháp lý</option>
+                            <option value="ANNOUNCEMENT">Thông báo</option>
+                        </select>
+                    </div>
                 </div>
               )}
 
@@ -344,8 +390,9 @@ const SystemContentManagement = () => {
               )}
 
               <div className="editor-footer">
-                <div className="last-sync" style={{fontSize: '13px', color: '#8c8c8c'}}>
-                  <FaHistory /> Cập nhật cuối: {content.lastUpdated ? new Date(content.lastUpdated).toLocaleString('vi-VN') : 'Vừa xong'}
+                <div className="last-sync" style={{fontSize: '12px', color: '#8c8c8c'}}>
+                  <FaHistory /> Cập nhật bởi: <strong>{content.updatedBy || 'Hệ thống'}</strong> 
+                  <span style={{marginLeft: '10px'}}>({content.lastUpdated ? new Date(content.lastUpdated).toLocaleString('vi-VN') : 'Mới'})</span>
                 </div>
                 <button className="btn-save-content" onClick={handleSave} disabled={isSaving}>
                   {isSaving ? "Đang lưu..." : <><FaSave /> Lưu thay đổi</>}
@@ -360,8 +407,8 @@ const SystemContentManagement = () => {
         <h3><FaCheckCircle style={{color: '#52c41a'}} /> Xem trước thực tế</h3>
         <div className="preview-container">
           {isBadge ? (
-              <div className={`badge-preview ${content.htmlContent.startsWith('DISABLED_') ? 'preview-hidden' : ''}`}>
-                {content.htmlContent.startsWith('DISABLED_') && <div className="hidden-overlay">LOGO ĐANG TẮT</div>}
+              <div className={`badge-preview ${ (content.htmlContent.startsWith('DISABLED_') || !content.isActive) ? 'preview-hidden' : ''}`}>
+                {(content.htmlContent.startsWith('DISABLED_') || !content.isActive) && <div className="hidden-overlay">LOGO ĐANG TẮT</div>}
                 <a href={badgeData.link} target="_blank" rel="noreferrer">
                   <img src={badgeData.img} alt="Badge Preview" onError={(e) => e.currentTarget.src = "https://via.placeholder.com/150x50?text=Lỗi+Ảnh"} />
                 </a>

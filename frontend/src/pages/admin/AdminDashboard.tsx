@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'; // 🚀 Added useRef
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   FaUsers, FaBox, FaStore, FaClock, 
   FaChartBar, FaSync, FaHistory, FaShieldAlt,
-  FaExclamationTriangle, FaStar, FaTrash, FaCheck, FaTimes, FaListUl, FaTags, FaPlus, FaSearch
+  FaExclamationTriangle, FaStar, FaTrash, FaCheck, FaTimes, FaListUl, FaTags, FaPlus, FaSearch,
+  FaFileAlt 
 } from 'react-icons/fa';
 import adminService from '../../services/admin.service';
 import SellerModeration from './SellerModeration'; 
@@ -10,16 +11,17 @@ import ProductModeration from './ProductModeration';
 
 // Modular components
 import UserTable from './UserTable';
+import UserProfileModal from './UserProfileModal'; 
 import ReportTable from './ReportTable';
 import ReviewTable from './ReviewTable';
 import ReasonManagement from './ReasonManagement';
 import LogTable from './LogTable';
 import ProductTable from './ProductTable';
+import SystemContentManagement from './SystemContentManagement'; 
 import { toast } from 'react-hot-toast';
 import './AdminDashboard.css';
 
 const AdminDashboard = () => {
-  // 🚀 NEW: Anchor for smooth scrolling to prevent window "jumping"
   const scrollAnchorRef = useRef<HTMLDivElement>(null);
 
   const [activeTab, setActiveTab] = useState('summary');
@@ -40,8 +42,8 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState<any[]>([]); 
   const [logs, setLogs] = useState<any[]>([]); 
   const [allProducts, setAllProducts] = useState<any[]>([]); 
+  const [systemContents, setSystemContents] = useState<any[]>([]); 
   
-  // 🚀 Pagination states for products
   const [productPage, setProductPage] = useState(0);
   const [productTotalPages, setProductTotalPages] = useState(0);
 
@@ -49,6 +51,12 @@ const AdminDashboard = () => {
   const [tabLoading, setTabLoading] = useState(false);
 
   const [userSearchTerm, setUserSearchTerm] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState("ALL");
+  const [userStatusFilter, setUserStatusFilter] = useState("ALL");
+
+  const [inspectingUser, setInspectingUser] = useState<any>(null);
+  const [showInspectModal, setShowInspectModal] = useState(false);
+
   const [newReasonName, setNewReasonName] = useState("");
 
   // --- 1. DATA FETCHERS ---
@@ -77,30 +85,165 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchUsers = async () => {
+  const fetchUsersFiltered = async (search: string, role: string, status: string) => {
     try {
       setTabLoading(true);
-      const data = await adminService.getAllUsers();
-      setUsers(data || []);
-    } catch (err) { console.error("Users Fetch Error:", err); } 
-    finally { setTabLoading(false); }
+      const params = {
+        search,
+        role: role === "ALL" ? "" : role,
+        status: status === "ALL" ? "" : status,
+        page: 0,
+        size: 10
+      };
+      const res = await adminService.getAllUsers(params);
+      setUsers(res.content || []);
+    } catch (err) {
+      toast.error("Lỗi khi tìm kiếm người dùng");
+    } finally {
+      setTabLoading(false);
+    }
+  };
+
+  const handleInspectUser = async (userId: string) => {
+    try {
+      setTabLoading(true);
+      const fullUser = await adminService.getUserDetails(userId);
+      setInspectingUser(fullUser);
+      setShowInspectModal(true);
+    } catch (err) {
+      toast.error("Không thể tải thông tin chi tiết hồ sơ.");
+    } finally {
+      setTabLoading(false);
+    }
+  };
+
+  // --- 🚀 PHASE 3, 4, 5 HANDLERS ---
+
+  const handlePromoteToAdmin = async (userId: string, permissions: string[]) => {
+    try {
+      setTabLoading(true);
+      const msg = await adminService.promoteToAdmin(userId, permissions);
+      toast.success(msg);
+      await fetchUsersFiltered(userSearchTerm, userRoleFilter, userStatusFilter);
+    } catch (err: any) {
+      toast.error(err.message || "Lỗi nâng cấp quyền.");
+    } finally {
+      setTabLoading(false);
+    }
   };
 
   /**
-   * 🚀 Handles Page object response
+   * 🚀 NEW PHASE 5: Handle Downgrade (Demote Admin to User)
    */
+  const handleDemoteFromAdmin = async (userId: string) => {
+    try {
+      setTabLoading(true);
+      const msg = await adminService.demoteFromAdmin(userId);
+      toast.success(msg);
+      await fetchUsersFiltered(userSearchTerm, userRoleFilter, userStatusFilter);
+    } catch (err: any) {
+      toast.error(err.message || "Lỗi thu hồi quyền Quản trị.");
+    } finally {
+      setTabLoading(false);
+    }
+  };
+
+  const handleToggleUserStatus = async (userId: string) => {
+    try {
+      setTabLoading(true);
+      const msg = await adminService.toggleUserStatus(userId);
+      toast.success(msg);
+      await fetchUsersFiltered(userSearchTerm, userRoleFilter, userStatusFilter);
+      fetchSummary();
+    } catch (err: any) {
+      toast.error(err.message || "Lỗi thay đổi trạng thái.");
+    } finally {
+      setTabLoading(false);
+    }
+  };
+
+  const handleRevokeSeller = async (userId: string) => {
+    const reason = window.prompt("Nhập lý do thu hồi quyền Người bán:");
+    if (reason === null) return;
+    if (!reason.trim()) { toast.error("Vui lòng nhập lý do."); return; }
+    try {
+      setTabLoading(true);
+      const msg = await adminService.revokeSellerRights(userId, reason);
+      toast.success(msg);
+      await fetchUsersFiltered(userSearchTerm, userRoleFilter, userStatusFilter);
+      fetchSummary();
+    } catch (err: any) {
+      toast.error(err.message || "Lỗi thu hồi quyền.");
+    } finally {
+      setTabLoading(false);
+    }
+  };
+
+  const handleBatchResolveReports = async (ids: string[], action: string) => {
+    try {
+      setTabLoading(true);
+      const msg = await adminService.batchResolveReports(ids, action);
+      toast.success(msg);
+      await fetchReports();
+      fetchSummary();
+    } catch (err: any) {
+      toast.error(err.message || "Lỗi xử lý hàng loạt.");
+    } finally {
+      setTabLoading(false);
+    }
+  };
+
+  // --- 🚀 PHASE 5: SYSTEM CONTENT HANDLERS ---
+
+  const fetchSystemContents = async () => {
+    try {
+      setTabLoading(true);
+      const data = await adminService.getAllSystemContents();
+      setSystemContents(data || []);
+    } catch (err) {
+      console.error("System Content Fetch Error:", err);
+    } finally {
+      setTabLoading(false);
+    }
+  };
+
+  const handleSaveSystemContent = async (content: any) => {
+    try {
+      setTabLoading(true);
+      await adminService.saveSystemContent(content);
+      toast.success("Đã cập nhật nội dung hệ thống!");
+      fetchSystemContents();
+    } catch (err: any) {
+      toast.error(err.message || "Không thể lưu nội dung.");
+    } finally {
+      setTabLoading(false);
+    }
+  };
+
+  const handleDeleteSystemContent = async (id: string) => {
+    if (!window.confirm("Xóa vĩnh viễn trang nội dung này?")) return;
+    try {
+      setTabLoading(true);
+      await adminService.deleteSystemContent(id);
+      toast.success("Đã xóa nội dung.");
+      fetchSystemContents();
+    } catch (err) {
+      toast.error("Không thể xóa.");
+    } finally {
+      setTabLoading(false);
+    }
+  };
+
+  // --- FETCHERS CONTINUED ---
+
   const fetchProducts = async () => {
     try {
       setTabLoading(true);
       const data = await adminService.getAllProducts(productPage, 10); 
       setAllProducts(data.content || []);
       setProductTotalPages(data.totalPages || 0);
-    } catch (err) { 
-      console.error("Products Fetch Error:", err); 
-      setAllProducts([]);
-    } finally { 
-      setTabLoading(false); 
-    }
+    } catch (err) { setAllProducts([]); } 
+    finally { setTabLoading(false); }
   };
 
   const fetchLogs = async () => {
@@ -118,11 +261,7 @@ const AdminDashboard = () => {
       const response = await adminService.getAllReports();
       const data = Array.isArray(response) ? response : (response?.content || []);
       setReports(data);
-
-      const pendingCount = data.filter((r: any) => 
-        r.status !== 'RESOLVED' && r.status !== 'DISMISSED'
-      ).length;
-
+      const pendingCount = data.filter((r: any) => r.status !== 'RESOLVED' && r.status !== 'DISMISSED').length;
       setStats(prev => ({ ...prev, totalReports: pendingCount }));
     } catch (err) { console.error("Reports Fetch Error:", err); } 
     finally { setTabLoading(false); }
@@ -150,16 +289,17 @@ const AdminDashboard = () => {
     finally { setTabLoading(false); }
   };
 
-  // --- 2. THE REFRESH ENGINE ---
+  // --- REFRESH & EFFECTS ---
 
   const handleManualRefresh = async () => {
     await fetchSummary(true);
-    if (activeTab === 'users') await fetchUsers();
+    if (activeTab === 'users') await fetchUsersFiltered(userSearchTerm, userRoleFilter, userStatusFilter);
     if (activeTab === 'products') await fetchProducts();
     if (activeTab === 'reports') await fetchReports();
     if (activeTab === 'reviews') await fetchReviews();
     if (activeTab === 'reasons') await fetchReasons();
     if (activeTab === 'logs') await fetchLogs();
+    if (activeTab === 'system_content') await fetchSystemContents();
   };
 
   useEffect(() => {
@@ -169,93 +309,113 @@ const AdminDashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  /**
-   * 🚀 Re-fetches when tab OR page changes AND handles smooth scroll.
-   */
   useEffect(() => {
-    if (activeTab === 'users') fetchUsers();
+    if (activeTab === 'users') fetchUsersFiltered(userSearchTerm, userRoleFilter, userStatusFilter);
+  }, [userRoleFilter, userStatusFilter, activeTab]);
+
+  useEffect(() => {
     if (activeTab === 'products') fetchProducts(); 
     if (activeTab === 'reports') fetchReports();
     if (activeTab === 'reviews') fetchReviews();
     if (activeTab === 'reasons') fetchReasons();
     if (activeTab === 'logs') fetchLogs();
+    if (activeTab === 'system_content') fetchSystemContents(); 
 
-    // 🚀 THE SMOOTH FIX: Scroll back to the top of the table area smoothly
     if (scrollAnchorRef.current) {
         scrollAnchorRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [activeTab, productPage]);
 
-
-  // --- 3. ACTIONS ---
+  // --- ORIGINAL ACTIONS ---
 
   const handleResolveReport = async (reportId: string, action: 'RESOLVED' | 'DISMISSED') => {
     try {
       await adminService.resolveReport(reportId, action);
-      toast.success(action === 'RESOLVED' ? "Đã xác nhận vi phạm & Gỡ sản phẩm" : "Đã bác bỏ báo cáo");
+      toast.success(action === 'RESOLVED' ? "Đã xác nhận vi phạm" : "Đã bác bỏ");
       await fetchReports();
       fetchSummary();
     } catch (err) { toast.error("Thao tác thất bại."); }
   };
 
   const handleDeleteReport = async (reportId: string) => {
-    if (!window.confirm("Xóa vĩnh viễn bản ghi báo cáo này?")) return;
+    if (!window.confirm("Xóa vĩnh viễn báo cáo này?")) return;
     try {
       await adminService.deleteReport(reportId);
-      toast.success("Đã xóa báo cáo.");
+      toast.success("Đã xóa.");
       await fetchReports();
       fetchSummary();
-    } catch (err) { toast.error("Không thể xóa báo cáo."); }
+    } catch (err) { toast.error("Thất bại."); }
   };
 
   const handleDeleteReview = async (reviewId: string) => {
-    if (!window.confirm("Xác nhận xóa đánh giá này?")) return;
+    if (!window.confirm("Xác nhận xóa đánh giá?")) return;
     try {
       await adminService.deleteReview(reviewId);
-      toast.success("Đã xóa đánh giá.");
+      toast.success("Đã xóa.");
       fetchReviews();
-    } catch (err) { toast.error("Thao tác thất bại."); }
+    } catch (err) { toast.error("Thất bại."); }
   };
 
   const handleDeleteProduct = async (id: string) => {
-    if (!window.confirm("Xác nhận xóa vĩnh viễn sản phẩm này?")) return;
+    if (!window.confirm("Xóa vĩnh viễn sản phẩm?")) return;
     try {
       await adminService.deleteProduct(id);
-      toast.success("Đã xóa sản phẩm thành công.");
+      toast.success("Đã xóa.");
       fetchProducts();
       fetchSummary();
-    } catch (err) { toast.error("Lỗi khi xóa sản phẩm."); }
+    } catch (err) { toast.error("Lỗi xóa."); }
   };
 
   const handleAddReason = async () => {
-    if (!newReasonName.trim()) { toast.error("Vui lòng nhập tên lý do"); return; }
+    if (!newReasonName.trim()) { toast.error("Nhập tên lý do"); return; }
     try {
       setTabLoading(true);
       await adminService.saveViolationReason({ name: newReasonName.trim(), active: true });
       setNewReasonName("");
-      toast.success("Đã thêm danh mục vi phạm mới!");
+      toast.success("Đã thêm!");
       await fetchReasons(); 
-    } catch (err) { toast.error("Không thể thêm lý do."); } 
+    } catch (err) { toast.error("Lỗi thêm."); } 
     finally { setTabLoading(false); }
   };
 
   const handleDeleteReason = async (id: string) => {
-    if (!window.confirm("Xóa danh mục vi phạm này?")) return;
+    if (!window.confirm("Xóa danh mục?")) return;
     try {
       await adminService.deleteViolationReason(id);
       toast.success("Đã xóa");
       fetchReasons();
-    } catch (err) { toast.error("Không thể xóa"); }
+    } catch (err) { toast.error("Thất bại"); }
   };
 
-  // --- 4. RENDERER ---
+  // --- RENDERER ---
 
   const renderContent = () => {
     if (tabLoading) return <div className="tab-loading-spinner">Đang xử lý dữ liệu...</div>;
 
     switch (activeTab) {
       case 'users': 
-        return <UserTable users={users} userSearchTerm={userSearchTerm} setUserSearchTerm={setUserSearchTerm} />;
+        return (
+          <>
+            <UserTable 
+              users={users} 
+              userSearchTerm={userSearchTerm} 
+              setUserSearchTerm={setUserSearchTerm} 
+              roleFilter={userRoleFilter}
+              setRoleFilter={setUserRoleFilter}
+              statusFilter={userStatusFilter}
+              setStatusFilter={setUserStatusFilter}
+              onSearchTrigger={() => fetchUsersFiltered(userSearchTerm, userRoleFilter, userStatusFilter)}
+              onView={handleInspectUser}
+              onPromote={handlePromoteToAdmin}
+              onDemote={handleDemoteFromAdmin} // 🚀 INTEGRATED PHASE 5
+              onToggleStatus={handleToggleUserStatus}
+              onRevokeSeller={handleRevokeSeller}
+            />
+            {showInspectModal && inspectingUser && (
+              <UserProfileModal user={inspectingUser} onClose={() => setShowInspectModal(false)} />
+            )}
+          </>
+        );
 
       case 'sellers': return <SellerModeration />;
       
@@ -273,7 +433,14 @@ const AdminDashboard = () => {
       case 'products_mod': return <ProductModeration />; 
       
       case 'reports': 
-        return <ReportTable reports={reports} handleResolveReport={handleResolveReport} handleDeleteReport={handleDeleteReport} />;
+        return (
+          <ReportTable 
+            reports={reports} 
+            handleResolveReport={handleResolveReport} 
+            handleDeleteReport={handleDeleteReport}
+            onBatchResolve={handleBatchResolveReports}
+          />
+        );
 
       case 'reviews':
         return <ReviewTable allReviews={allReviews} handleDeleteReview={handleDeleteReview} />;
@@ -282,6 +449,15 @@ const AdminDashboard = () => {
         return <ReasonManagement reasons={reasons} newReasonName={newReasonName} setNewReasonName={setNewReasonName} handleAddReason={handleAddReason} handleDeleteReason={handleDeleteReason} />;
 
       case 'logs': return <LogTable logs={logs} />;
+
+      case 'system_content':
+        return (
+          <SystemContentManagement 
+            contents={systemContents}
+            onSave={handleSaveSystemContent}
+            onDelete={handleDeleteSystemContent}
+          />
+        );
 
       case 'summary': 
         return (
@@ -297,8 +473,8 @@ const AdminDashboard = () => {
               <div className="rev-visual"><FaChartBar className="rev-bg-icon" /></div>
             </div>
             <div className="quick-info-grid">
-               <div className="info-mini-card"><div className="mini-card-icon"><FaHistory /></div><div className="mini-card-text"><label>Đơn hàng thành công</label><strong>{stats.totalOrders}</strong></div></div>
-               <div className="info-mini-card"><div className="mini-card-icon"><FaShieldAlt /></div><div className="mini-card-text"><label>Tỷ lệ duyệt Người bán</label><strong>{stats.totalSellers > 0 ? ((stats.totalSellers / (stats.totalSellers + stats.pendingSellers)) * 100).toFixed(0) : 0}%</strong></div></div>
+                <div className="info-mini-card"><div className="mini-card-icon"><FaHistory /></div><div className="mini-card-text"><label>Đơn hàng thành công</label><strong>{stats.totalOrders}</strong></div></div>
+                <div className="info-mini-card"><div className="mini-card-icon"><FaShieldAlt /></div><div className="mini-card-text"><label>Tỷ lệ duyệt Người bán</label><strong>{stats.totalSellers > 0 ? ((stats.totalSellers / (stats.totalSellers + stats.pendingSellers)) * 100).toFixed(0) : 0}%</strong></div></div>
             </div>
           </div>
         );
@@ -324,7 +500,6 @@ const AdminDashboard = () => {
         <div className={`metric-card ${stats.pendingSellers > 0 || activeTab === 'sellers' ? 'urgent active' : ''}`} onClick={() => setActiveTab('sellers')}><div className="metric-icon sellers"><FaStore /></div><div className="metric-data"><span className="metric-label">Chờ Duyệt (Shop)</span><span className="metric-value">{stats.pendingSellers}</span></div></div>
       </section>
 
-      {/* 🚀 Anchor for smooth scroll - Attached to nav */}
       <nav className="content-tabs" ref={scrollAnchorRef}> 
         <button className={activeTab === 'summary' ? 'active' : ''} onClick={() => setActiveTab('summary')}>Tổng quan</button>
         <button className={activeTab === 'users' ? 'active' : ''} onClick={() => setActiveTab('users')}>Người dùng</button>
@@ -333,6 +508,7 @@ const AdminDashboard = () => {
         <button className={activeTab === 'sellers' ? 'active' : ''} onClick={() => setActiveTab('sellers')}>Duyệt Shop {stats.pendingSellers > 0 && <span className="notif-badge">{stats.pendingSellers}</span>}</button>
         <button className={activeTab === 'reports' ? 'active' : ''} onClick={() => setActiveTab('reports')}>Báo cáo vi phạm {stats.totalReports > 0 && <span className="notif-badge danger">{stats.totalReports}</span>}</button>
         <button className={activeTab === 'reviews' ? 'active' : ''} onClick={() => setActiveTab('reviews')}>Quản lý đánh giá</button>
+        <button className={activeTab === 'system_content' ? 'active' : ''} onClick={() => setActiveTab('system_content')}><FaFileAlt size={12}/> Quản lý nội dung</button>
         <button className={activeTab === 'reasons' ? 'active' : ''} onClick={() => setActiveTab('reasons')}><FaTags size={12}/> Danh mục báo cáo</button>
         <button className={activeTab === 'logs' ? 'active' : ''} onClick={() => setActiveTab('logs')}>Nhật ký hệ thống</button>
       </nav>

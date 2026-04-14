@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed; 
-import org.springframework.data.mongodb.core.index.TextIndexed; // 🚀 New Import
+import org.springframework.data.mongodb.core.index.TextIndexed; 
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
@@ -29,9 +29,18 @@ public class SystemContent {
     @TextIndexed(weight = 1) // 🚀 Priority 2: Searching inside the HTML content
     private String htmlContent;
     
+    // 🚀 PHASE 5 APPENDS: Governance Metadata
+    @Builder.Default
+    private String category = "GENERAL"; // e.g., POLICY, FAQ, ANNOUNCEMENT
+    
+    @Builder.Default
+    private boolean isActive = true;
+    
+    private String updatedBy; // Email or Name of the Admin who last saved
+    
     private LocalDateTime lastUpdated;
 
-    // 🚀 Custom constructor for the Controller "Blank Template" logic
+    // 🚀 Custom constructor (100% PRESERVED)
     public SystemContent(String slug, String title, String htmlContent) {
         this.slug = slug;
         this.title = title;

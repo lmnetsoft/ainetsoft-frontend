@@ -48,12 +48,10 @@ public class User {
     
     private String verificationToken;      
 
-    // 🚀 NEW: ADMIN CHAT SUPPORT FIELDS
     @Builder.Default
     private List<String> tags = new ArrayList<>();
     
     private String chatNote;
-    // ---------------------------------------
 
     public boolean isOldEnough() {
         if (this.birthDate == null) return false;
@@ -107,6 +105,25 @@ public class User {
     @Builder.Default
     private LocalDateTime updatedAt = LocalDateTime.now();
 
+    // --- 🚀 PHASE 5 SUPREME LOCKDOWN LOGIC ---
+
+    /**
+     * Checks if the account is effectively active.
+     * This bridges the gap between the 'accountStatus' string and security checks.
+     */
+    public boolean isAccountLocked() {
+        return "BANNED".equalsIgnoreCase(this.accountStatus);
+    }
+
+    /**
+     * Override or helper to ensure login fails if BANNED.
+     */
+    public boolean isLoginAllowed() {
+        return this.enabled && !isAccountLocked();
+    }
+
+    // --- 100% ORIGINAL INNER CLASSES PRESERVED BELOW ---
+
     public enum AuthProvider {
         LOCAL, GOOGLE, FACEBOOK
     }
@@ -117,30 +134,23 @@ public class User {
     @Builder
     public static class ShopProfile {
         private String shopName;
-
         @Indexed(unique = true, sparse = true)
         private String shopSlug;              
         private LocalDateTime lastShopNameChange; 
-        
         private String shopDescription;
         private String shopAddress; 
         private String shopLogoUrl;
         private String businessEmail; 
         private String businessPhone; 
-        
         private String businessType;      
         private String companyName;       
         private String registeredAddress; 
-        
         @Builder.Default
         private List<String> invoiceEmails = new ArrayList<>(); 
-        
         private String taxCode;           
         private String businessLicenseUrl; 
-        
         @Builder.Default
         private List<String> enabledShippingMethodIds = new ArrayList<>();
-
         @Builder.Default
         private int lowStockThreshold = 5;
         @Builder.Default
@@ -173,7 +183,6 @@ public class User {
         private boolean isDefault;
         private String latitude;  
         private String longitude; 
-
         public boolean isDefault() { return isDefault; }
     }
 }

@@ -1,30 +1,49 @@
 import React, { useEffect, useState } from 'react';
 import { 
   FaUserShield, FaUserSlash, FaSearch, FaShieldAlt, 
-  FaCircle, FaSync, FaUsers 
+  FaCircle, FaSync, FaUsers, FaFilter 
 } from 'react-icons/fa';
-import adminService from '../../services/admin.service'; // Ensure this matches your export type
+import adminService from '../../services/admin.service';
 import UserPromotionModal from './UserPromotionModal';
-import './AdminUsers.css'; // We will create a dedicated CSS for this page
+import './AdminUsers.css';
 
 const AdminUsers: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // 🚀 PHASE 1: FILTER STATES
   const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  
+  // Pagination State
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [showModal, setShowModal] = useState(false);
-  const [loading, setLoading] = useState(true);
 
+  // 🚀 Fetch users whenever filters or page changes
   useEffect(() => {
     loadUsers();
-  }, []);
+  }, [roleFilter, statusFilter, page]);
 
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const res = await adminService.getAllUsers();
-      // Adjust this based on your API response structure (res.data or res)
-      const data = res.data || res;
-      setUsers(Array.isArray(data) ? data : []);
+      const params = {
+        search: searchTerm,
+        role: roleFilter === "ALL" ? "" : roleFilter,
+        status: statusFilter === "ALL" ? "" : statusFilter,
+        page: page,
+        size: 10
+      };
+
+      const res = await adminService.getAllUsers(params);
+      
+      // Backend now returns Page<User>, so we access .content
+      setUsers(res.content || []);
+      setTotalPages(res.totalPages || 0);
     } catch (error) {
       console.error("Lỗi khi lấy danh sách người dùng:", error);
     } finally {
@@ -32,16 +51,17 @@ const AdminUsers: React.FC = () => {
     }
   };
 
-  const filteredUsers = users.filter(u => 
-    u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.fullName?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Handle Search Input (with Enter key support)
+  const handleSearchKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+        setPage(0);
+        loadUsers();
+    }
+  };
 
   return (
-    /* 🚀 MASTER WRAPPER: Ensures consistent white box and padding */
     <div className="admin-dashboard-wrapper">
       
-      {/* 🚀 SUPREME HEADER: Matches the Dashboard style */}
       <header className="admin-page-header">
         <div className="header-left">
           <h1><FaUsers style={{marginRight: '12px', fontSize: '22px'}} /> QUẢN LÝ NGƯỜI DÙNG</h1>
@@ -54,16 +74,40 @@ const AdminUsers: React.FC = () => {
       </header>
 
       <div className="admin-content-body">
-        {/* Search & Control Bar */}
-        <div className="table-controls-row">
-          <div className="admin-search-box-supreme">
+        
+        {/* 🚀 PHASE 1: ENHANCED FILTER BAR */}
+        <div className="table-controls-row" style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+          <div className="admin-search-box-supreme" style={{ flex: 2, minWidth: '300px' }}>
             <FaSearch className="search-icon" />
             <input 
               type="text" 
-              placeholder="Tìm kiếm theo email hoặc tên người dùng..." 
+              placeholder="Nhấn Enter để tìm theo email hoặc tên..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyPress={handleSearchKeyPress}
             />
+          </div>
+
+          <div className="filter-group-elite" style={{ display: 'flex', gap: '10px' }}>
+            <div className="select-wrapper-supreme">
+               <FaFilter className="select-icon" />
+               <select value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value); setPage(0); }}>
+                  <option value="ALL">Tất cả Vai trò</option>
+                  <option value="USER">Người dùng (USER)</option>
+                  <option value="SELLER">Người bán (SELLER)</option>
+                  <option value="ADMIN">Quản trị (ADMIN)</option>
+               </select>
+            </div>
+
+            <div className="select-wrapper-supreme">
+               <FaCircle className="select-icon" style={{ fontSize: '10px' }} />
+               <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}>
+                  <option value="ALL">Tất cả Trạng thái</option>
+                  <option value="ACTIVE">Hoạt động (ACTIVE)</option>
+                  <option value="BANNED">Đang bị khóa (BANNED)</option>
+                  <option value="PENDING_SELLER">Chờ duyệt Shop</option>
+               </select>
+            </div>
           </div>
         </div>
 
@@ -81,10 +125,10 @@ const AdminUsers: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.length === 0 ? (
-                  <tr><td colSpan={4} className="empty-row">Không tìm thấy người dùng nào.</td></tr>
+                {users.length === 0 ? (
+                  <tr><td colSpan={4} className="empty-row">Không tìm thấy người dùng nào khớp với bộ lọc.</td></tr>
                 ) : (
-                  filteredUsers.map(user => (
+                  users.map(user => (
                     <tr key={user.id} className={user.isGlobalAdmin ? 'row-global-admin' : ''}>
                       <td>
                         <div className="user-info-cell">
@@ -132,6 +176,15 @@ const AdminUsers: React.FC = () => {
                 )}
               </tbody>
             </table>
+
+            {/* Simple Pagination Controls */}
+            {totalPages > 1 && (
+                <div className="admin-pagination-footer" style={{ marginTop: '20px', display: 'flex', justifyContent: 'center', gap: '10px' }}>
+                    <button disabled={page === 0} onClick={() => setPage(page - 1)} className="btn-page-nav">Trước</button>
+                    <span style={{ alignSelf: 'center' }}>Trang {page + 1} / {totalPages}</span>
+                    <button disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)} className="btn-page-nav">Sau</button>
+                </div>
+            )}
           </div>
         )}
       </div>

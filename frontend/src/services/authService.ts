@@ -195,3 +195,134 @@ export const upgradeToSeller = async (formData: any): Promise<string> => {
     throw new Error(extractError(error, "Gửi hồ sơ Người bán thất bại."));
   }
 };
+
+// --- 🚀 ADMIN DASHBOARD ACTIONS (PHASES 3, 4, 5) ---
+
+/**
+ * PHASE 1 & 2: Main User Retrieval with filtering
+ */
+export const getAllUsers = async (params: any): Promise<any> => {
+  try {
+    const response = await api.get('/admin/users/all', { params });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(extractError(error, "Không thể tải danh sách người dùng."));
+  }
+};
+
+/**
+ * PHASE 2: Fetch full details for profile inspection
+ */
+export const getUserDetails = async (userId: string): Promise<any> => {
+  try {
+    const response = await api.get(`/admin/users/detail/${userId}`);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(extractError(error, "Không thể tải thông tin chi tiết."));
+  }
+};
+
+/**
+ * PHASE 3: Administrative Control (Promote)
+ */
+export const promoteToAdmin = async (userId: string, permissions: string[]): Promise<string> => {
+  try {
+    const response = await api.post(`/admin/users/promote/${userId}`, permissions);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(extractError(error, "Nâng cấp quyền Admin thất bại."));
+  }
+};
+
+/**
+ * PHASE 3: Administrative Control (Ban/Unban Toggle)
+ */
+export const toggleUserStatus = async (userId: string): Promise<string> => {
+  try {
+    const response = await api.post(`/admin/users/status-toggle/${userId}`);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(extractError(error, "Thay đổi trạng thái tài khoản thất bại."));
+  }
+};
+
+/**
+ * PHASE 4: Merchant Moderation (List Pending)
+ */
+export const getPendingSellers = async (): Promise<any> => {
+  try {
+    const response = await api.get('/admin/sellers/pending');
+    return response.data;
+  } catch (error: any) {
+    throw new Error(extractError(error, "Không thể tải danh sách Shop chờ duyệt."));
+  }
+};
+
+/**
+ * PHASE 4: Merchant Moderation (Process Upgrade Request)
+ */
+export const processSellerUpgrade = async (userId: string, request: any): Promise<string> => {
+  try {
+    const response = await api.post(`/admin/sellers/process/${userId}`, request);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(extractError(error, "Xử lý duyệt Shop thất bại."));
+  }
+};
+
+/**
+ * PHASE 4: Merchant Moderation (Revoke Rights)
+ */
+export const revokeSellerRights = async (userId: string, reason: string): Promise<string> => {
+  try {
+    const response = await api.post(`/admin/sellers/revoke/${userId}`, null, { params: { reason } });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(extractError(error, "Thu hồi quyền Người bán thất bại."));
+  }
+};
+
+/**
+ * PHASE 5: Batch Resolve Violation Reports
+ */
+export const batchResolveReports = async (ids: string[], action: string): Promise<string> => {
+  try {
+    const response = await api.post('/admin/reports/batch-resolve', ids, { params: { action } });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(extractError(error, "Xử lý báo cáo hàng loạt thất bại."));
+  }
+};
+
+/**
+ * PHASE 5: System Content Management
+ */
+export const getAllSystemContents = async (): Promise<any> => {
+  try {
+    const response = await api.get('/admin/system-content/all');
+    return response.data;
+  } catch (error: any) {
+    throw new Error(extractError(error, "Không thể tải nội dung hệ thống."));
+  }
+};
+
+export const saveSystemContent = async (content: any): Promise<any> => {
+  try {
+    const response = await api.post('/admin/system-content', content);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(extractError(error, "Cập nhật nội dung hệ thống thất bại."));
+  }
+};
+
+/**
+ * Utility: Fetch Admin Audit Logs
+ */
+export const getAuditLogs = async (): Promise<any> => {
+  try {
+    const response = await api.get('/admin/audit-logs');
+    return response.data;
+  } catch (error: any) {
+    throw new Error(extractError(error, "Không thể tải lịch sử hoạt động."));
+  }
+};

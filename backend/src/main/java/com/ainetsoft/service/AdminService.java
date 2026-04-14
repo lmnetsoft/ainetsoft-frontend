@@ -6,8 +6,8 @@ import com.ainetsoft.model.*;
 import com.ainetsoft.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page; // 🚀 NEW IMPORT
-import org.springframework.data.domain.Pageable; // 🚀 NEW IMPORT
+import org.springframework.data.domain.Page; 
+import org.springframework.data.domain.Pageable; 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,12 +31,10 @@ public class AdminService {
     private final ReportReasonRepository reportReasonRepository;
     private final AzureCommunicationService azureEmailService;
     private final FeedbackTemplateRepository feedbackTemplateRepository;
-    
-    // 🚀 Repository for Dynamic System Content (Privacy, Terms, etc.)
     private final SystemContentRepository systemContentRepository;
 
     /**
-     * INTERNAL HELPER: Records admin actions into the Audit Log. (100% PRESERVED)
+     * INTERNAL HELPER: Records admin actions into the Audit Log.
      */
     private void recordAudit(User admin, String type, String targetId, String targetName, String details) {
         if (admin == null) return;
@@ -75,6 +73,31 @@ public class AdminService {
                 "Cấp quyền Admin with: " + permissions.toString());
 
         return "Đã nâng cấp " + target.getEmail() + " thành Quản trị viên.";
+    }
+
+    /**
+     * 🚀 NEW PHASE 5: Demote Admin back to normal User
+     */
+    @Transactional
+    public String demoteFromAdmin(String targetUserId, User performingAdmin) {
+        User target = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
+
+        if (target.isGlobalAdmin() || "admin@ainetsoft.com".equals(target.getEmail())) {
+            throw new RuntimeException("KHÔNG THỂ thu hồi quyền của Global Admin!");
+        }
+
+        if (target.getRoles() != null && target.getRoles().contains("ADMIN")) {
+            target.getRoles().remove("ADMIN");
+            target.setPermissions(new HashSet<>()); // Clear admin-specific permissions
+            target.setUpdatedAt(LocalDateTime.now());
+            userRepository.save(target);
+
+            recordAudit(performingAdmin, "DEMOTE_USER", target.getId(), target.getEmail(), "Thu hồi quyền Quản trị");
+            return "Đã thu hồi quyền Quản trị của " + target.getEmail() + " thành công.";
+        } else {
+            throw new RuntimeException("Người dùng này không có quyền Quản trị viên!");
+        }
     }
 
     public AdminStatsSummary getGlobalStats() {
@@ -136,6 +159,19 @@ public class AdminService {
             .collect(Collectors.toList());
     }
 
+    public Page<User> getAllUsersFiltered(String search, String role, String status, Pageable pageable) {
+        String keyword = (search == null) ? "" : search;
+        String roleFilter = (role == null || role.isEmpty()) ? "ALL" : role.toUpperCase();
+        String statusFilter = (status == null || status.isEmpty()) ? "ALL" : status.toUpperCase();
+
+        return userRepository.findAllByFilters(keyword, roleFilter, statusFilter, pageable);
+    }
+
+    public User getUserById(String userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
+    }
+
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
@@ -145,8 +181,6 @@ public class AdminService {
                 .sorted(Comparator.comparing(AuditLog::getTimestamp).reversed())
                 .collect(Collectors.toList());
     }
-
-    // --- SELLER MODERATION (100% PRESERVED) ---
 
     public List<User> getPendingSellers() {
         List<User> pending = userRepository.findBySellerVerificationOrAccountStatus("PENDING", "PENDING_SELLER");
@@ -221,11 +255,6 @@ public class AdminService {
         }
     }
 
-    // --- PRODUCT MODERATION (PAGINATION UPDATE) ---
-
-    /**
-     * 🚀 UPDATED: Fetches products with Pagination for the general Product List tab.
-     */
     public Page<Product> getAllProducts(Pageable pageable) {
         return productRepository.findAll(pageable);
     }
@@ -276,9 +305,6 @@ public class AdminService {
         return "Đã từ chối sản phẩm.";
     }
 
-    /**
-     * 🚀 NEW: Admin-level permanent deletion of a product.
-     */
     @Transactional
     public void deleteProduct(String productId, User performingAdmin) {
         Product product = productRepository.findById(productId)
@@ -288,8 +314,6 @@ public class AdminService {
         
         recordAudit(performingAdmin, "DELETE_PRODUCT", product.getId(), product.getName(), "Admin xóa vĩnh viễn sản phẩm");
     }
-
-    // --- REPORT MANAGEMENT (100% PRESERVED) ---
 
     @Transactional
     public String resolveReport(String reportId, String action, User performingAdmin) {
@@ -313,12 +337,36 @@ public class AdminService {
     }
 
     @Transactional
+    public String batchResolveReports(List<String> reportIds, String action, User performingAdmin) {
+        if (reportIds == null || reportIds.isEmpty()) return "Không có báo cáo nào được chọn.";
+        
+        for (String id : reportIds) {
+            try {
+                resolveReport(id, action, performingAdmin);
+            } catch (Exception e) {
+                log.warn("Lỗi khi xử lý báo cáo {}: {}", id, e.getMessage());
+            }
+        }
+        
+        recordAudit(performingAdmin, "BATCH_RESOLVE_REPORTS", "MULTIPLE", "ProductReports", 
+                "Xử lý hàng loạt " + reportIds.size() + " báo cáo với hành động: " + action);
+                
+        return "Đã xử lý " + reportIds.size() + " báo cáo thành công.";
+    }
+
+    /**
+     * 🚀 PHASE 5 FIXED APPEND:
+     * Correctly utilizes the fixed repository method findByReasonInAndStatus.
+     */
+    public List<ProductReport> getReportsByReasons(Collection<String> reasons, String status) {
+        return productReportRepository.findByReasonInAndStatus(reasons, status);
+    }
+
+    @Transactional
     public void deleteReport(String reportId, User performingAdmin) {
         productReportRepository.deleteById(reportId);
         recordAudit(performingAdmin, "DELETE_REPORT", reportId, "Violation Record", "Xóa vĩnh viễn báo cáo");
     }
-
-    // --- REVIEW MODERATION (100% PRESERVED) ---
 
     public List<Review> getAllReviewsForModeration() {
         return reviewRepository.findAll().stream()
@@ -337,8 +385,6 @@ public class AdminService {
                 "Xóa đánh giá của " + review.getUserName() + " cho sản phẩm ID: " + review.getProductId());
     }
 
-    // --- VIOLATION CATEGORIES (100% PRESERVED) ---
-
     @Transactional
     public ReportReason saveViolationReason(ReportReason reason, User performingAdmin) {
         ReportReason saved = reportReasonRepository.save(reason);
@@ -352,8 +398,6 @@ public class AdminService {
         recordAudit(performingAdmin, "MANAGE_CATEGORIES", id, "Category", "Xóa danh mục vi phạm");
     }
 
-    // --- MASTER USER CONTROL ---
-    
     @Transactional
     public String banUser(String userId, User performingAdmin) {
         User user = userRepository.findById(userId)
@@ -364,6 +408,8 @@ public class AdminService {
         }
 
         user.setAccountStatus("BANNED");
+        // 🛡️ SYNC: Enforce technical lockout for Security filters
+        user.setEnabled(false); 
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
         
@@ -371,7 +417,62 @@ public class AdminService {
         return "Tài khoản " + user.getEmail() + " đã bị khóa.";
     }
 
-    // --- FEEDBACK TEMPLATE MANAGEMENT (100% PRESERVED) ---
+    @Transactional
+    public String toggleUserStatus(String userId, User performingAdmin) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
+
+        if (user.isGlobalAdmin() || "admin@ainetsoft.com".equals(user.getEmail())) {
+            throw new RuntimeException("KHÔNG THỂ thay đổi trạng thái của Global Admin!");
+        }
+
+        String currentStatus = user.getAccountStatus();
+        String newStatus = "BANNED".equals(currentStatus) ? "ACTIVE" : "BANNED";
+        String actionLabel = "BANNED".equals(newStatus) ? "KHÓA" : "MỞ KHÓA";
+
+        user.setAccountStatus(newStatus);
+        // 🛡️ SYNC: Enforce technical lockout based on status
+        user.setEnabled(!"BANNED".equals(newStatus)); 
+        user.setUpdatedAt(LocalDateTime.now());
+        userRepository.save(user);
+
+        recordAudit(performingAdmin, newStatus.equals("BANNED") ? "BAN_USER" : "UNBAN_USER", 
+                    user.getId(), user.getEmail(), actionLabel + " tài khoản người dùng");
+
+        return "Đã " + actionLabel + " tài khoản " + user.getEmail() + " thành công.";
+    }
+
+    @Transactional
+    public String revokeSellerStatus(String userId, String reason, User performingAdmin) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
+
+        Set<String> roles = user.getRoles();
+        if (roles != null && roles.contains("SELLER")) {
+            roles.remove("SELLER");
+            user.setRoles(roles);
+            user.setSellerVerification("NONE"); 
+            user.setUpdatedAt(LocalDateTime.now());
+            userRepository.save(user);
+
+            notificationService.createNotification(
+                    user.getId(), "Quyền Người bán đã bị thu hồi",
+                    "Lý do: " + reason, "SELLER_REVOKED", null
+            );
+
+            try {
+                azureEmailService.sendSellerStatusEmail(user.getEmail(), user.getFullName(), false, 
+                    "Quyền người bán của bạn đã bị thu hồi. Lý do: " + reason);
+            } catch (Exception e) {
+                log.warn("Revoke notification email failed for {}: {}", user.getEmail(), e.getMessage());
+            }
+
+            recordAudit(performingAdmin, "REVOKE_SELLER", user.getId(), user.getEmail(), "Thu hồi quyền Seller: " + reason);
+            return "Đã thu hồi quyền Người bán của " + user.getEmail();
+        } else {
+            throw new RuntimeException("Người dùng này không phải là Người bán!");
+        }
+    }
 
     public List<FeedbackTemplate> getTemplatesByType(String type) {
         return feedbackTemplateRepository.findByType(type);
@@ -391,8 +492,6 @@ public class AdminService {
         recordAudit(performingAdmin, "DELETE_TEMPLATE", id, "Template", "Remove quick response template");
     }
 
-    // --- DYNAMIC SYSTEM CONTENT MANAGEMENT ---
-
     public SystemContent getSystemContentBySlug(String slug) {
         return systemContentRepository.findBySlug(slug)
                 .orElseThrow(() -> new RuntimeException("Nội dung không tồn tại cho slug: " + slug));
@@ -402,13 +501,24 @@ public class AdminService {
         return systemContentRepository.findAll();
     }
 
+    public List<SystemContent> getSystemContentsByCategory(String category) {
+        return systemContentRepository.findByCategory(category);
+    }
+
+    public List<SystemContent> getPublicSystemContents() {
+        return systemContentRepository.findAllByIsActiveTrue();
+    }
+
     @Transactional
     public SystemContent saveSystemContent(SystemContent content, User performingAdmin) {
         content.setLastUpdated(LocalDateTime.now());
+        if (performingAdmin != null) {
+            content.setUpdatedBy(performingAdmin.getFullName());
+        }
         SystemContent saved = systemContentRepository.save(content);
         
         recordAudit(performingAdmin, "UPDATE_SYSTEM_CONTENT", saved.getId(), saved.getTitle(), 
-                "Cập nhật nội dung hệ thống: " + saved.getSlug());
+                "Cập nhật nội dung hệ thống: " + saved.getSlug() + " (Category: " + saved.getCategory() + ")");
         
         return saved;
     }

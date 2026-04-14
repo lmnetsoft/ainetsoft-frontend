@@ -7,32 +7,19 @@ import api from './api'; // BaseURL is http://localhost:8080/api
 export const adminService = {
   // --- STATS & OVERVIEW ---
   
-  /**
-   * Fetches summary data for dashboard cards.
-   */
   getDashboardSummary: () => api.get('/admin/stats/summary').then(res => res.data),
 
   // --- SELLER MODERATION ---
   
-  /**
-   * Fetches the list of users waiting for seller approval.
-   */
   getPendingSellers: async () => {
     const response = await api.get('/admin/sellers/pending');
     return response.data;
   },
 
-  /**
-   * Fetches FULL verification details for a specific user.
-   */
   getSellerDetails: (userId: string) => {
     return api.get(`/admin/sellers/review/${userId}`).then(res => res.data);
   },
   
-  /**
-   * Approves or Rejects a seller upgrade request.
-   * NOTE: Backend returns a string. If the email is invalid, the string contains a warning.
-   */
   approveSeller: (userId: string, approved: boolean, note: string = "") => {
     const payload = { 
       approved, 
@@ -43,122 +30,90 @@ export const adminService = {
 
   // --- PRODUCT MODERATION & MANAGEMENT (PAGINATION UPDATE) ---
   
-  /**
-   * 🚀 UPDATED: Fetches products with Pagination.
-   * Now accepts page and size to match backend: GET /api/admin/products/all?page=x&size=y
-   */
   getAllProducts: (page = 0, size = 10) => 
     api.get('/admin/products/all', { params: { page, size } }).then(res => res.data),
 
-  /**
-   * Fetches products waiting for approval.
-   */
   getPendingProducts: () => api.get('/admin/products/pending').then(res => res.data),
   
-  /**
-   * Approves a product to make it public.
-   */
   approveProduct: (productId: string) => 
     api.post(`/admin/products/approve/${productId}`).then(res => res.data),
 
-  /**
-   * Rejects a product with a reason.
-   */
   rejectProduct: (productId: string, reason: string) => 
     api.post(`/admin/products/reject/${productId}`, null, { params: { reason } }).then(res => res.data),
 
-  /**
-   * Permanently deletes a product from the system.
-   */
   deleteProduct: (productId: string) => 
     api.delete(`/admin/products/${productId}`).then(res => res.data),
 
-  // --- VIOLATION REPORT MANAGEMENT (BÁO VI PHẠM) ---
+  // --- VIOLATION REPORT MANAGEMENT ---
 
-  /**
-   * Fetches all product violation reports.
-   */
   getAllReports: () => api.get('/admin/reports').then(res => res.data),
 
-  /**
-   * Updates report status (e.g., RESOLVED, DISMISSED).
-   */
   resolveReport: (reportId: string, action: 'RESOLVED' | 'DISMISSED') => 
     api.post(`/admin/reports/${reportId}/process`, { action }).then(res => res.data),
 
-  /**
-   * Permanently removes a violation report record from the database.
-   */
+  /** 🚀 PHASE 5: Batch Operations API */
+  batchResolveReports: (ids: string[], action: string) => 
+    api.post('/admin/reports/batch-resolve', ids, { params: { action } }).then(res => res.data),
+
   deleteReport: (reportId: string) => 
     api.delete(`/admin/reports/${reportId}`).then(res => res.data),
 
-  // --- DYNAMIC VIOLATION CATEGORIES (DANH MỤC BÁO CÁO) ---
+  // --- DYNAMIC VIOLATION CATEGORIES ---
 
-  /**
-   * Fetches the list of reasons (Sản phẩm giả, Lừa đảo, v.v.) from DB.
-   */
   getViolationReasons: () => api.get('/report-reasons'),
 
-  /**
-   * Adds or updates a violation category.
-   */
   saveViolationReason: (data: { name: string }) => 
     api.post('/report-reasons/admin/save', data).then(res => res.data),
 
-  /**
-   * Deletes a violation category from the DB.
-   */
   deleteViolationReason: (id: string) => 
     api.delete(`/report-reasons/admin/${id}`).then(res => res.data),
 
-  // --- DYNAMIC SHIPPING CONFIGURATION (CẤU HÌNH VẬN CHUYỂN) ---
+  // --- DYNAMIC SHIPPING CONFIGURATION ---
 
-  /**
-   * Fetches all shipping methods (including inactive ones) for Admin.
-   */
   getAllShippingMethods: () => api.get('/shipping-methods').then(res => res.data),
 
-  /**
-   * Creates a new global shipping method.
-   */
   createShippingMethod: (data: any) => api.post('/shipping-methods', data).then(res => res.data),
 
-  /**
-   * Updates an existing shipping method.
-   */
   updateShippingMethod: (id: string, data: any) => api.put(`/shipping-methods/${id}`, data).then(res => res.data),
 
-  /**
-   * Deletes a shipping method permanently.
-   */
   deleteShippingMethod: (id: string) => api.delete(`/shipping-methods/${id}`).then(res => res.data),
 
-  // --- REVIEW MODERATION (QUẢN LÝ ĐÁNH GIÁ) ---
+  // --- REVIEW MODERATION ---
 
-  /**
-   * Fetches all reviews across the platform.
-   */
   getAllReviews: () => api.get('/admin/reviews/all').then(res => res.data),
 
-  /**
-   * Deletes an offensive or fake review.
-   */
   deleteReview: (reviewId: string) => 
     api.delete(`/admin/reviews/${reviewId}`).then(res => res.data),
 
   // --- USER MANAGEMENT & DELEGATION ---
   
-  getAllUsers: () => api.get('/admin/users/all').then(res => res.data),
+  getAllUsers: (params: any = {}) => 
+    api.get('/admin/users/all', { params }).then(res => res.data),
+
+  getUserDetails: (userId: string) => 
+    api.get(`/admin/users/detail/${userId}`).then(res => res.data),
 
   promoteToAdmin: (userId: string, permissions: string[]) => 
     api.post(`/admin/users/promote/${userId}`, permissions).then(res => res.data),
 
+  /** 🚀 NEW PHASE 5: Demote Admin to normal User */
+  demoteFromAdmin: (userId: string) => 
+    api.post(`/admin/users/demote/${userId}`).then(res => res.data),
+
   banUser: (userId: string) => 
     api.post(`/admin/users/ban/${userId}`).then(res => res.data),
+
+  /** 🚀 PHASE 3: Toggle Status */
+  toggleUserStatus: (userId: string) => 
+    api.post(`/admin/users/status-toggle/${userId}`).then(res => res.data),
+
+  /** 🚀 PHASE 4: Merchant Revocation */
+  revokeSellerRights: (userId: string, reason: string) => 
+    api.post(`/admin/sellers/revoke/${userId}`, null, { params: { reason } }).then(res => res.data),
     
   getAuditLogs: () => api.get('/admin/audit-logs').then(res => res.data),
 
-  // --- QUICK RESPONSE TEMPLATES (PHẢN HỒI NHANH) ---
+  // --- QUICK RESPONSE TEMPLATES ---
 
   getFeedbackTemplates: (type: string) => 
     api.get('/admin/feedback-templates', { params: { type } }).then(res => res.data),
@@ -167,7 +122,21 @@ export const adminService = {
     api.post('/admin/feedback-templates', data).then(res => res.data),
 
   deleteFeedbackTemplate: (id: string) => 
-    api.delete(`/admin/feedback-templates/${id}`).then(res => res.data),
+    api.delete(`/feedback-templates/${id}`).then(res => res.data),
+
+  // --- 🚀 PHASE 5: SYSTEM CONTENT / CMS MANAGEMENT ---
+
+  getAllSystemContents: () => 
+    api.get('/admin/system-content/all').then(res => res.data),
+
+  getSystemContentBySlug: (slug: string) => 
+    api.get(`/admin/system-content/${slug}`).then(res => res.data),
+
+  saveSystemContent: (content: any) => 
+    api.post('/admin/system-content', content).then(res => res.data),
+
+  deleteSystemContent: (id: string) => 
+    api.delete(`/admin/system-content/${id}`).then(res => res.data)
 };
 
 export default adminService;
