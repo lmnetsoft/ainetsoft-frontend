@@ -546,37 +546,42 @@
 .btn-action-inspect.ban-btn svg,
 .btn-action-inspect:last-child svg { color: #ea2027 !important; }
 
-
-/* 🚀 22. MODAL HEADER UTILITY REFINEMENT - RED HOVER UPDATE */
+/* 🚀 22. MODAL HEADER UTILITY REFINEMENT - FULL HOVER LOGIC */
 .modal-header .btn-utility,
 .modal-header .close-btn,
 .seller-review-modal .modal-header button,
 .profile-inspection-modal .close-btn {
     border: none !important;
     background: transparent !important;
-    width: 36px !important;
-    height: 36px !important;
+    width: 38px !important;
+    height: 38px !important;
     border-radius: 50% !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    transition: all 0.2s ease !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
     color: var(--text-dark) !important;
-    box-shadow: none !important;
+    cursor: pointer !important;
 }
 
-/* Target the hover state to show the vibrant red */
+/* ❌ CLOSE BUTTON: Vibrant Red Hover */
 .modal-header .close-btn:hover,
 .profile-inspection-modal .close-btn:hover { 
     background: #ff4d4f !important; 
     color: white !important; 
 }
 
-/* Ensure the icon (SVG/X) turns white when the background is red */
-.modal-header .close-btn:hover svg,
-.profile-inspection-modal .close-btn:hover svg {
-    color: white !important;
-    fill: white !important;
+.modal-header .close-btn:hover svg { 
+    color: white !important; 
+    fill: white !important; 
+}
+
+/* 📥 UTILITY BUTTONS (Download, etc.): Professional Modern Hover */
+.modal-header .btn-utility:hover {
+    background: #f1f5f9 !important; /* Light slate hover background */
+    color: #1e3799 !important;     /* Professional Indigo icon color */
+    transform: translateY(-1px);   /* Subtle lift effect */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05) !important;
 }
 
 /* 🚀 23. MODAL FOOTER REFINEMENT */
