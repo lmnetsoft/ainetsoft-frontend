@@ -15,9 +15,8 @@ interface UserTableProps {
   setStatusFilter: (val: string) => void;
   onSearchTrigger: () => void;
   onView: (userId: string) => void;
-  // 🚀 PHASE 3, 4 & 5 ACTIONS
   onPromote: (userId: string, permissions: string[]) => void;
-  onDemote: (userId: string) => void; // 🚀 NEW: Demote Action
+  onDemote: (userId: string) => void; 
   onToggleStatus: (userId: string) => void;
   onRevokeSeller: (userId: string) => void;
 }
@@ -32,9 +31,8 @@ const UserTable: React.FC<UserTableProps> = ({
   setStatusFilter,
   onSearchTrigger,
   onView,
-  // 🚀 ACTION PROPS
   onPromote,
-  onDemote, // 🚀 NEW
+  onDemote, 
   onToggleStatus,
   onRevokeSeller
 }) => {
@@ -49,6 +47,7 @@ const UserTable: React.FC<UserTableProps> = ({
   return (
     <div className="admin-table-container-supreme">
       
+      {/* Search and Filters Header */}
       <div className="table-controls-row-elite">
         <div className="admin-search-box-supreme">
           <FaSearch className="search-icon-inside" />
@@ -89,6 +88,7 @@ const UserTable: React.FC<UserTableProps> = ({
         </div>
       </div>
 
+      {/* Main Data Table */}
       <table className="admin-data-table-supreme">
         <thead>
           <tr>
@@ -106,13 +106,22 @@ const UserTable: React.FC<UserTableProps> = ({
           ) : (
             userList.map((u: any) => (
               <tr key={u.id}>
+                {/* Full Name */}
                 <td><strong className="user-primary-name">{u.fullName}</strong></td>
+                
+                {/* NEW: Updated Colorful Email / SĐT Badges */}
                 <td>
-                  <div className="contact-cell">
-                    <span><FaEnvelope className="tiny-icon" /> {u.email}</span>
-                    <span className="sub-contact"><FaPhoneAlt className="tiny-icon" /> {u.phone || 'N/A'}</span>
+                  <div className="contact-info-stack">
+                    <span className="contact-badge email-pill">
+                      <FaEnvelope className="contact-icon" /> {u.email}
+                    </span>
+                    <span className="contact-badge phone-pill">
+                      <FaPhoneAlt className="contact-icon" /> {u.phone || 'N/A'}
+                    </span>
                   </div>
                 </td>
+
+                {/* NEW: Updated Colorful Role Badges (No Bold) */}
                 <td>
                   <div className="role-badge-stack">
                     {u.roles?.map((r: string) => (
@@ -122,18 +131,24 @@ const UserTable: React.FC<UserTableProps> = ({
                     ))}
                   </div>
                 </td>
+
+                {/* Account Status Pill */}
                 <td>
                   <span className={`status-pill-colorful ${u.accountStatus?.toLowerCase()}`}>
                     <FaCircle className="dot" /> {u.accountStatus || 'ACTIVE'}
                   </span>
                 </td>
+
+                {/* Join Date Badge */}
                 <td className="date-cell">
-                  <FaCalendarAlt className="tiny-icon" /> {u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : '13/4/2026'}
+                   <span className="date-pill">
+                      <FaCalendarAlt className="tiny-icon" /> {u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : '14/4/2026'}
+                   </span>
                 </td>
                 
+                {/* Action Buttons */}
                 <td style={{ textAlign: 'right' }}>
                   <div className="action-button-group-supreme">
-                    {/* PHASE 2: VIEW */}
                     <button 
                       className="btn-action-inspect" 
                       onClick={() => onView(u.id)}
@@ -142,7 +157,6 @@ const UserTable: React.FC<UserTableProps> = ({
                       <FaEye />
                     </button>
 
-                    {/* 🚀 PHASE 3: PROMOTE (Only if not already Admin) */}
                     {!u.roles?.includes('ADMIN') && (
                       <button 
                         className="btn-action-inspect promote-btn" 
@@ -158,7 +172,6 @@ const UserTable: React.FC<UserTableProps> = ({
                       </button>
                     )}
 
-                    {/* 🚀 NEW PHASE 5: DEMOTE (Only if Admin, protect Super Admin) */}
                     {u.roles?.includes('ADMIN') && u.email !== 'admin@ainetsoft.com' && (
                       <button 
                         className="btn-action-inspect demote-btn" 
@@ -173,7 +186,6 @@ const UserTable: React.FC<UserTableProps> = ({
                       </button>
                     )}
 
-                    {/* 🚀 PHASE 4: REVOKE SELLER (Only if Seller) */}
                     {u.roles?.includes('SELLER') && (
                       <button 
                         className="btn-action-inspect revoke-btn" 
@@ -184,7 +196,6 @@ const UserTable: React.FC<UserTableProps> = ({
                       </button>
                     )}
 
-                    {/* 🚀 PHASE 3: BAN/UNBAN (Protect Super Admin) */}
                     {u.email !== 'admin@ainetsoft.com' && (
                       <button 
                         className={`btn-action-inspect ${u.accountStatus === 'BANNED' ? 'unban-btn' : 'ban-btn'}`}
