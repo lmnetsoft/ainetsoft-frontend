@@ -2,6 +2,8 @@
   width: 100%;
   display: flex;
   flex-direction: column;
+  /* 🚀 FIX: Ensure root allows the app to occupy full viewport height */
+  min-height: 100vh;
 }
 
 .app-wrapper {
@@ -10,12 +12,16 @@
   flex-direction: column;
   width: 100%;
   flex: 1;
+  /* 🚀 FIX: Ensure the background covers the entire page during scroll */
+  min-height: 100vh;
 }
 
 /* 🚀 THE DYNAMIC LOCK: This only activates in Admin/Seller/User areas */
 .app-wrapper.management-mode {
-  height: 100vh;
-  overflow: hidden;
+  /* 🚀 REFINED: Using min-height instead of fixed height prevents "Smashed" layouts */
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .container {
@@ -41,9 +47,12 @@ footer {
   flex-direction: column;
 }
 
-/* 🚀 LOCK CONTENT ONLY IN MANAGEMENT MODE */
+/* 🚀 REFINED CONTENT LOCK FOR MANAGEMENT MODE */
 .management-mode .content {
-  overflow: hidden;
+  /* 🚀 FIX: Removed 'overflow: hidden' which was cutting off the Dashboard tables */
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   min-height: 0;
 }
 
@@ -53,7 +62,11 @@ footer {
   flex-direction: column;
 }
 
+/* Ensure the wrapper inside Content also stretches */
 .management-mode .content > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   min-height: 0;
 }
 
@@ -61,4 +74,11 @@ ul {
   list-style: none;
   padding: 0;
   margin: 0;
+}
+
+/* 🚀 SUPREME ADDITION: GLOBAL SCROLLBAR FOR ADMIN TABLES */
+/* This ensures that even if management-mode is active, the content can scroll if it's too tall */
+.management-mode .admin-main-view {
+    overflow-y: auto;
+    height: 100%;
 }

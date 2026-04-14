@@ -3,12 +3,13 @@ package com.ainetsoft.controller;
 import com.ainetsoft.dto.SellerApprovalRequest;
 import com.ainetsoft.model.FeedbackTemplate;
 import com.ainetsoft.model.User;
+import com.ainetsoft.model.SystemContent; // 🚀 Explicit import for Phase 5
 import com.ainetsoft.repository.UserRepository;
 import com.ainetsoft.service.AdminService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest; // 🚀 PRESERVED
-import org.springframework.data.domain.Pageable;    // 🚀 PRESERVED
-import org.springframework.data.domain.Sort;        // 🚀 PRESERVED
+import org.springframework.data.domain.PageRequest; 
+import org.springframework.data.domain.Pageable;    
+import org.springframework.data.domain.Sort;        
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -19,7 +20,7 @@ import java.util.List;
 
 /**
  * AdminController - Main Administration Hub.
- * Handles Users, Sellers, Products, Reviews, and Feedback Templates.
+ * Handles Users, Sellers, Products, Reviews, Reports, and System Content.
  */
 @RestController
 @RequestMapping("/api/admin")
@@ -31,7 +32,7 @@ public class AdminController {
     private final UserRepository userRepository;
 
     /**
-     * Helper to get the Admin currently making the request. (100% PRESERVED)
+     * Helper to get the Admin currently making the request.
      */
     private User getCurrentAdmin() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -45,12 +46,8 @@ public class AdminController {
         }
     }
 
-    // --- USER MANAGEMENT & DELEGATION (PHASE 2 UPDATED) ---
+    // --- USER MANAGEMENT (PHASES 1, 2, & 3) ---
 
-    /**
-     * 🚀 UPDATED PHASE 1: User Management with Advanced Filtering
-																									
-     */
     @GetMapping("/users/all")
     public ResponseEntity<?> getAllUsers(
             @RequestParam(required = false) String search,
@@ -59,17 +56,10 @@ public class AdminController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         
-														
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-		
-										  
         return ResponseEntity.ok(adminService.getAllUsersFiltered(search, role, status, pageable));
     }
 
-    /**
-     * 🚀 NEW PHASE 2: Profile Inspection (Deep-Dive)
-     * Returns the full User object including identity and shop details.
-     */
     @GetMapping("/users/detail/{userId}")
     public ResponseEntity<?> getUserDetails(@PathVariable String userId) {
         return ResponseEntity.ok(adminService.getUserById(userId));
@@ -84,9 +74,29 @@ public class AdminController {
         return ResponseEntity.ok(adminService.promoteToAdmin(userId, permissions, currentAdmin));
     }
 
+    /**
+     * 🚀 NEW PHASE 5: Demote Admin back to standard User
+     * Revokes the ADMIN role and clears permissions.
+     */
+    @PostMapping("/users/demote/{userId}")
+    public ResponseEntity<?> demoteUser(@PathVariable String userId) {
+        User currentAdmin = getCurrentAdmin();
+        validateGlobalAdmin(currentAdmin); // Only Global Admin can demote another Admin
+        return ResponseEntity.ok(adminService.demoteFromAdmin(userId, currentAdmin));
+    }
+
     @PostMapping("/users/ban/{userId}")
     public ResponseEntity<?> banUser(@PathVariable String userId) {
         return ResponseEntity.ok(adminService.banUser(userId, getCurrentAdmin()));
+    }
+
+    /**
+     * 🚀 PHASE 3: Toggle Account Status (Ban/Unban)
+     */
+    @PostMapping("/users/status-toggle/{userId}")
+    public ResponseEntity<?> toggleUserStatus(@PathVariable String userId) {
+        User currentAdmin = getCurrentAdmin();
+        return ResponseEntity.ok(adminService.toggleUserStatus(userId, currentAdmin));
     }
 
     @GetMapping("/audit-logs")
@@ -94,7 +104,7 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getAuditLogs());
     }
 
-    // --- SELLER MODERATION (100% PRESERVED) ---
+    // --- MERCHANT MODERATION (PHASE 4) ---
 
     @GetMapping("/sellers/pending")
     public ResponseEntity<?> getPendingSellers() {
@@ -113,7 +123,18 @@ public class AdminController {
         return ResponseEntity.ok(adminService.processSellerApproval(userId, request, getCurrentAdmin()));
     }
 
-    // --- PRODUCT MODERATION (100% PRESERVED) ---
+    /**
+     * 🚀 PHASE 4: Revoke Merchant Rights
+     * Downgrades a SELLER back to a regular USER.
+     */
+    @PostMapping("/sellers/revoke/{userId}")
+    public ResponseEntity<?> revokeSellerRights(
+            @PathVariable String userId, 
+            @RequestParam String reason) {
+        return ResponseEntity.ok(adminService.revokeSellerStatus(userId, reason, getCurrentAdmin()));
+    }
+
+    // --- PRODUCT & REPORT MODERATION (PHASE 5) ---
 
     @GetMapping("/products/all")
     public ResponseEntity<?> getAllProducts(
@@ -147,7 +168,17 @@ public class AdminController {
         return ResponseEntity.ok().build();
     }
 
-    // --- REVIEW MODERATION (100% PRESERVED) ---
+    /**
+     * 🚀 PHASE 5: Batch Resolve Violation Reports
+     */
+    @PostMapping("/reports/batch-resolve")
+    public ResponseEntity<?> batchResolveReports(
+            @RequestBody List<String> ids, 
+            @RequestParam String action) {
+        return ResponseEntity.ok(adminService.batchResolveReports(ids, action, getCurrentAdmin()));
+    }
+
+    // --- REVIEW MODERATION ---
 
     @GetMapping("/reviews/all")
     public ResponseEntity<?> getAllReviews() {
@@ -160,7 +191,7 @@ public class AdminController {
         return ResponseEntity.ok().build();
     }
 
-    // --- QUICK RESPONSE TEMPLATES (100% PRESERVED) ---
+    // --- QUICK RESPONSE TEMPLATES ---
 
     @GetMapping("/feedback-templates")
     public ResponseEntity<List<FeedbackTemplate>> getFeedbackTemplates(@RequestParam String type) {
@@ -177,5 +208,33 @@ public class AdminController {
         adminService.deleteFeedbackTemplate(id, getCurrentAdmin());
         return ResponseEntity.ok().build();
     }
-}
 
+    // --- SYSTEM CONTENT MANAGEMENT (PHASE 5 REFINED) ---
+
+    @GetMapping("/system-content/all")
+    public ResponseEntity<?> getAllSystemContents() {
+        return ResponseEntity.ok(adminService.getAllSystemContents());
+    }
+
+    /**
+     * 🚀 PHASE 5: Fetch content by specific category (POLICY, FAQ, etc.)
+     */
+    @GetMapping("/system-content/category/{category}")
+    public ResponseEntity<?> getSystemContentsByCategory(@PathVariable String category) {
+        return ResponseEntity.ok(adminService.getSystemContentsByCategory(category));
+    }
+
+    @PostMapping("/system-content")
+    public ResponseEntity<?> saveSystemContent(@RequestBody SystemContent content) {
+        return ResponseEntity.ok(adminService.saveSystemContent(content, getCurrentAdmin()));
+    }
+
+    /**
+     * 🚀 PHASE 5: Admin removal of system pages
+     */
+    @DeleteMapping("/system-content/{id}")
+    public ResponseEntity<?> deleteSystemContent(@PathVariable String id) {
+        adminService.deleteSystemContent(id, getCurrentAdmin());
+        return ResponseEntity.ok().build();
+    }
+}

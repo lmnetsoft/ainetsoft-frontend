@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/Header/Header';
 import Footer from './components/Footer/Footer';
 import Home from './pages/Home/Home';
@@ -56,9 +56,9 @@ import ShippingManagement from './pages/Admin/ShippingManagement';
 import SystemContentManagement from './pages/Admin/SystemContentManagement';
 import FooterMenuManagement from './pages/Admin/FooterMenuManagement';
 import HelpHierarchyManagement from './pages/Admin/HelpHierarchyManagement';
-import AdminWithdrawals from './pages/Admin/AdminWithdrawals'; // 🚀 NEW: Import for Admin Management
+import AdminWithdrawals from './pages/Admin/AdminWithdrawals'; 
 
-// 🚀 MIGRATED ADMIN PAGES
+// 🚀 MIGRATED ADMIN PAGES (Used for fallback if needed)
 import AdminUsers from './pages/Admin/AdminUsers'; 
 import SellerModeration from './pages/Admin/SellerModeration'; 
 import ProductModeration from './pages/Admin/ProductModeration';
@@ -135,7 +135,7 @@ function App() {
                 {/* --- 2. PROTECTED ROUTES WITHOUT SIDEBAR --- */}
                 <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
 
-                {/* 🚀 3. THE PERSISTENT LAYOUT ZONE 🚀 */}
+                {/* 🚀 3. THE PERSISTENT LAYOUT ZONE (Admin/Seller/User) 🚀 */}
                 <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
 
                   {/* --- User Account Routes --- */}
@@ -158,24 +158,26 @@ function App() {
                   <Route path="/seller/settings" element={<ProtectedRoute allowedRoles={['SELLER']}><SellerSettings /></ProtectedRoute>} />
                   <Route path="/seller/withdrawal" element={<ProtectedRoute allowedRoles={['SELLER']}><Withdrawal /></ProtectedRoute>} />
 
-                  {/* --- Admin Routes --- */}
+                  {/* --- Admin Routes (Synchronized for Phases 1-5) --- */}
                   <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboard /></ProtectedRoute>} />
-                  <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminUsers /></ProtectedRoute>} />
-                  <Route path="/admin/seller-moderation" element={<ProtectedRoute allowedRoles={['ADMIN']}><SellerModeration /></ProtectedRoute>} />
-                  <Route path="/admin/product-moderation" element={<ProtectedRoute allowedRoles={['ADMIN']}><ProductModeration /></ProtectedRoute>} />
-                  <Route path="/admin/audit-logs" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminAuditLogs /></ProtectedRoute>} />
                   
-                  {/* 🚀 NEW: Admin Withdrawal Management Route */}
+                  {/* 🚀 REDIRECTS: Force sidebar links to use our Supreme tabbed logic */}
+                  <Route path="/admin/users" element={<Navigate to="/admin/dashboard" replace />} />
+                  <Route path="/admin/reports" element={<Navigate to="/admin/dashboard" replace />} />
+                  <Route path="/admin/reviews" element={<Navigate to="/admin/dashboard" replace />} />
+                  <Route path="/admin/seller-moderation" element={<Navigate to="/admin/dashboard" replace />} />
+                  <Route path="/admin/product-moderation" element={<Navigate to="/admin/dashboard" replace />} />
+
+                  {/* Specific Admin Standalone Pages */}
+                  <Route path="/admin/audit-logs" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminAuditLogs /></ProtectedRoute>} />
                   <Route path="/admin/withdrawals" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminWithdrawals /></ProtectedRoute>} />
-
-                  <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={['ADMIN']}><div className="admin-dashboard-wrapper"><h2>Trang Báo cáo vi phạm</h2></div></ProtectedRoute>} />
-                  <Route path="/admin/reviews" element={<ProtectedRoute allowedRoles={['ADMIN']}><div className="admin-dashboard-wrapper"><h2>Quản lý đánh giá</h2></div></ProtectedRoute>} />
-
                   <Route path="/admin/chat" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminChat /></ProtectedRoute>} />
                   <Route path="/admin/chat/:recipientId" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminChat /></ProtectedRoute>} />
                   <Route path="/admin/shipping" element={<ProtectedRoute allowedRoles={['ADMIN']}><ShippingManagement /></ProtectedRoute>} />
                   <Route path="/admin/footer-menus" element={<ProtectedRoute allowedRoles={['ADMIN']}><FooterMenuManagement /></ProtectedRoute>} />
                   <Route path="/admin/help-hierarchy" element={<ProtectedRoute allowedRoles={['ADMIN']}><HelpHierarchyManagement /></ProtectedRoute>} />
+                  
+                  {/* System Content / CMS Management */}
                   <Route path="/admin/articles" element={<ProtectedRoute allowedRoles={['ADMIN']}><SystemContentManagement /></ProtectedRoute>} />
                   <Route path="/admin/content/:category" element={<ProtectedRoute allowedRoles={['ADMIN']}><SystemContentManagement /></ProtectedRoute>} />
                   <Route path="/admin/content" element={<ProtectedRoute allowedRoles={['ADMIN']}><SystemContentManagement /></ProtectedRoute>} />

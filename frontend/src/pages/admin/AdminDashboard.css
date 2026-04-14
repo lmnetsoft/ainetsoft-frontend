@@ -16,7 +16,6 @@
   background-color: var(--chat-bg);
   width: 100%;
   font-family: var(--ui-font);
-  /* 🚀 THE FIX: Allows the layout to grow with the content */
   flex: 1;
 }
 
@@ -30,7 +29,6 @@
 
 .admin-main-view {
   flex: 1;
-  /* 🚀 THE FIX: Removed hard padding/overflow to prevent the "Trap" */
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -46,8 +44,6 @@
   border: 1px solid #eef2f6;
   box-shadow: 0 1px 3px rgba(0,0,0,0.04);
   padding: 40px; 
-  
-  /* 🚀 THE FIX: Forces the dashboard content to fill the full height of the sidebar */
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -98,7 +94,7 @@
 
 .master-badge {
   background: var(--orange);
-  color: white;      
+  color: white;       
   padding: 4px 10px;
   border-radius: 20px;
   font-size: 0.7rem;
@@ -365,7 +361,7 @@
 .tab-loading-spinner { padding: 100px; text-align: center; font-weight: 700; color: var(--orange); animation: fadeInOut 1.5s infinite; }
 @keyframes fadeInOut { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
 
-/* --- 🚀 16. NEW: ENHANCED SEARCH BAR STYLES (Fix for image_51ed03.png) --- */
+/* --- 🚀 16. NEW: ENHANCED SEARCH BAR STYLES (UNTOUCHED) --- */
 .table-filter-header {
   padding: 20px 25px;
   background: #fdfdfd;
@@ -377,31 +373,29 @@
 .search-box-wrapper {
   position: relative;
   width: 100%;
-  max-width: 450px; /* Makes it much larger and "nicer" as requested */
+  max-width: 450px; 
 }
 
 .search-box-wrapper input {
   width: 100%;
   height: 44px;
-  padding: 0 16px 0 45px; /* Creates room for the search icon */
+  padding: 0 16px 0 45px; 
   font-size: 0.95rem;
   font-weight: 500;
   color: var(--text-dark);
   background: var(--white);
   border: 1.5px solid var(--border-light);
-  border-radius: 12px; /* Modern rounded appearance */
+  border-radius: 12px; 
   outline: none;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.search-box-wrapper input::placeholder {
-  color: #a4b0be;
-}
+.search-box-wrapper input::placeholder { color: #a4b0be; }
 
 .search-box-wrapper input:focus {
   border-color: var(--orange);
   background: #fff;
-  box-shadow: 0 0 0 4px rgba(238, 77, 45, 0.08); /* Modern focus ring */
+  box-shadow: 0 0 0 4px rgba(238, 77, 45, 0.08); 
 }
 
 .search-icon {
@@ -411,343 +405,230 @@
   transform: translateY(-50%);
   color: #a4b0be;
   font-size: 1.1rem;
-  pointer-events: none; /* Prevents icon from blocking mouse clicks on input */
+  pointer-events: none; 
   transition: color 0.2s;
 }
 
-.search-box-wrapper input:focus + .search-icon {
-  color: var(--orange); /* Icon lights up when typing */
-}
+.search-box-wrapper input:focus + .search-icon { color: var(--orange); }
 
-/* --- FIX: Only target utility buttons, not the main Footer Action Buttons --- */
-.modal-header button,
-.seller-review-modal .close-btn,
-.seller-review-modal .mod-btn {
-    border: none !important;      
-    outline: none !important;     
-    background: transparent;
-    padding: 5px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-}
+/* ==========================================================================
+   🚀 PHASE 1-5 SUPREME APPENDED LOGIC (NEW ELEMENTS ONLY)
+   ========================================================================== */
 
-/* Ensure the Approve button keeps its orange background */
-.btn-approve-modal { 
-    background: var(--orange) !important; 
-    border: 1px solid var(--orange) !important; 
-    color: white !important;
-    opacity: 1;
-}
+/* 🚀 18. STATUS HIGHLIGHT LOGIC: ROW COLORS (UNTOUCHED) */
+.row-status-banned { background-color: rgba(234, 32, 39, 0.04) !important; }
+.row-status-banned:hover { background-color: rgba(234, 32, 39, 0.08) !important; }
 
-/* Ensure buttons appear clearly even if disabled by React logic */
-.button-group button:disabled {
-    cursor: not-allowed;
-    filter: grayscale(0.8);
-    opacity: 0.5;
-}
+.row-status-admin { background-color: rgba(30, 55, 153, 0.03) !important; }
+.row-status-admin:hover { background-color: rgba(30, 55, 153, 0.06) !important; }
 
-.modal-header button:hover {
-    background-color: rgba(0, 0, 0, 0.05);
-    border-radius: 50%;
-    color: var(--orange);
-}
+.row-status-seller { background-color: rgba(0, 148, 50, 0.03) !important; }
+.row-status-seller:hover { background-color: rgba(0, 148, 50, 0.06) !important; }
 
-/* --- 🚀 ENHANCED SEARCH BOX: CLEAR BUTTON STYLES --- */
-
-/* 1. Add extra padding to the right of the input so text doesn't hide behind the X */
-.search-box-wrapper input {
-  padding-right: 45px !important; 
-}
-
-/* 2. Style the X button */
-.clear-search-btn {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none !important;
-  border: none !important;
-  color: #a4b0be;
-  font-size: 1.2rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 5px;
-  transition: color 0.2s, transform 0.1s;
-  z-index: 5; /* Ensure it stays above the input */
-}
-
-.clear-search-btn:hover {
-  color: var(--orange);
-  transform: translateY(-50%) scale(1.1);
-}
-
-.clear-search-btn:active {
-  transform: translateY(-50%) scale(0.9);
-}
-
-/* --- TABLE PAGINATION STYLES --- */
-.table-pagination-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px 25px;
-  background: #fafbfc;
-  border-top: 1px solid var(--border-light);
-}
-
-.pagination-info {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
-.pagination-controls {
-  display: flex;
-  gap: 10px;
-}
-
-.page-nav-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  background: white;
-  border: 1px solid var(--border-light);
-  border-radius: 8px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text-dark);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.page-nav-btn:hover:not(:disabled) {
-  border-color: var(--orange);
-  color: var(--orange);
-  background: #fff8f6;
-}
-
-.page-nav-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  background: #f1f2f6;
-}
-
-/* --- ADMIN SHOP LINK STYLES --- */
-.admin-shop-nav-link {
-  color: var(--orange) !important;
-  text-decoration: none;
-  font-weight: 700;
-  transition: opacity 0.2s;
-  display: inline-flex;
-  align-items: center;
-}
-
-.admin-shop-nav-link:hover {
-  text-decoration: underline;
-  opacity: 0.8;
-}
-
-/* --- 🚀 PHASE 1 & 2 FINAL: ELITE SEARCH, CLEAN ICONS & SPACED COLUMNS --- */
-
-/* 1. Filter Bar Container - Forces stretching and professional spacing [UNTOUCHED] */
-.table-controls-row-elite {
-    display: flex;
-    justify-content: space-between; 
-    align-items: center;
-    gap: 25px;
-    margin-bottom: 30px;
-    background: #ffffff;
-    padding: 18px 20px;
-    border-radius: 12px;
-    border: 1px solid var(--border-light);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-    width: 100%;
-    box-sizing: border-box;
-}
-
-/* 2. Enhanced Search Box - Synchronized with Left Menu Font Colors [UNTOUCHED] */
+/* 🚀 19. SEARCH BOX ANCHOR FIX: Locked Inside Visual Border */
 .admin-search-box-supreme {
-    position: relative;
-    flex: 1; 
-    display: flex;
-    align-items: center;
+    position: relative !important; 
+    display: flex !important;
+    align-items: center !important;
+    flex: 1 !important;
+    max-width: 450px !important;
+    /* 🛡️ THE FIX: Border moves to wrapper to prevent "floating" outside */
+    background: #f8fafc !important;
+    border: 2px solid #edf2f7 !important;
+    border-radius: 10px !important;
+    transition: all 0.2s ease !important;
 }
 
 .admin-search-box-supreme input {
-    width: 100%;
-    height: 48px;
-    padding: 0 45px 0 48px !important; 
-    font-size: 0.95rem;
-    font-weight: 500;
-    color: var(--text-dark) !important;
-    border: 2px solid #e2e8f0;
-    border-radius: 12px;
-    outline: none;
-    background: #f8fafc;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.admin-search-box-supreme input:focus {
-    border-color: var(--orange);
-    background: white;
-    box-shadow: 0 0 0 4px rgba(238, 77, 45, 0.08);
+    width: 100% !important;
+    height: 44px !important;
+    border: none !important; /* Fixed: No internal border */
+    background: transparent !important;
+    padding: 0 15px 0 48px !important; /* Padding clears the icon */
+    font-family: var(--ui-font) !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    outline: none !important;
+    box-shadow: none !important;
 }
 
 .search-icon-inside {
-    position: absolute;
-    left: 18px;
-    color: var(--text-muted);
-    font-size: 1.1rem;
-    pointer-events: none;
-    z-index: 2;
+    position: absolute !important;
+    left: 15px !important; /* Locked inside wrapper border */
+    color: var(--orange) !important; 
+    font-size: 1.1rem !important;
+    z-index: 10 !important;
+    pointer-events: none !important;
 }
 
-/* 🚀 FIX: Clear Search Icon position */
-.clear-search-btn {
-    position: absolute;
-    right: 15px;
-    background: none !important;
-    border: none !important;
-    color: #cbd5e1;
-    cursor: pointer;
-    font-size: 18px;
-    z-index: 5;
+/* 🚀 20. FILTERS: SIDE-BY-SIDE ALIGNMENT & ANCHOR FIX */
+.table-controls-row-elite {
+    display: flex !important;
+    flex-direction: row !important; 
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+    background: #ffffff !important;
+    padding: 15px 20px !important;
+    border-radius: 14px !important;
+    border: 1px solid var(--border-light) !important;
+    margin-bottom: 30px !important;
+    box-sizing: border-box !important;
 }
 
-/* 3. Intelligent Filter Group styling [UNTOUCHED] */
-.filter-group-colorful { display: flex; gap: 12px; }
+.filter-group-colorful {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 12px !important;
+}
 
 .select-wrapper-colorful {
-    position: relative;
-    display: flex;
-    align-items: center;
-    background: #f8fafc;
-    border: 2px solid #e2e8f0;
-    border-radius: 10px;
-    min-width: 195px;
-    transition: all 0.2s ease;
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    height: 44px !important;
+    /* 🛡️ THE FIX: Same border logic as search box */
+    background: #f8fafc !important;
+    border: 2px solid #edf2f7 !important;
+    border-radius: 10px !important;
+    min-width: 185px !important;
 }
+
+.icon-filter { color: #1e3799 !important; position: absolute !important; left: 12px !important; z-index: 5; } 
+.icon-dot { color: #009432 !important; position: absolute !important; left: 12px !important; z-index: 5; }
 
 .select-wrapper-colorful select {
-    border: none;
-    background: transparent;
-    width: 100%;
-    padding: 12px 10px 12px 35px;
-    font-size: 13px;
-    font-weight: 700;
+    border: none !important;
+    background: transparent !important;
+    width: 100% !important;
+    padding-left: 38px !important; /* Pushes text past the icon */
+    font-family: var(--ui-font) !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
     color: var(--text-dark) !important;
-    cursor: pointer;
-    outline: none;
-    -webkit-appearance: none;
-}
-
-/* 4. Table Layout & Column Spacing REFINEMENT */
-.admin-data-table-supreme {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0 10px;
-    font-family: var(--ui-font) !important; /* 🚀 Force font sync */
-}
-
-/* 🚀 FIXED: Specific widths to prevent smashed columns */
-.admin-data-table-supreme th:nth-child(3) { width: 150px; } /* Vai trò */
-.admin-data-table-supreme th:nth-child(4) { width: 150px; } /* Trạng thái */
-.admin-data-table-supreme th:nth-child(5) { width: 140px; } /* Ngày tham gia */
-.admin-data-table-supreme th:nth-child(6) { width: 100px; text-align: right; } /* Thao tác */
-
-.admin-data-table-supreme td {
-    padding: 15px 20px;
-    border-top: 1px solid #f1f5f9;
-    border-bottom: 1px solid #f1f5f9;
-    background: white;
-}
-
-/* 5. CLEAN ACTION ICONS: Specifically targeting the Eye Icon */
-.btn-action-inspect {
-    border: none !important; 
+    cursor: pointer !important;
     outline: none !important;
-    background: #f0f7ff !important;
-    color: #007bff !important;
-    width: 36px;
-    height: 36px;
-    border-radius: 50% !important; /* 🚀 Circular icon to remove the rectangle box */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    margin-left: auto;
+    appearance: none;
 }
 
-.btn-action-inspect:hover {
-    background: #007bff !important;
-    color: #ffffff !important;
-    transform: scale(1.1);
-}
-
-/* 6. PROFILE MODAL: Scoped Close Button */
-.btn-inspect-close { 
-    background: var(--orange) !important; 
-    border: none !important;
-    color: white !important;
-    padding: 10px 25px !important;
-    height: 42px !important;
-    border-radius: 10px !important;
-    font-weight: 800 !important;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-family: var(--ui-font) !important;
-}
-
-.status-pill-colorful {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 16px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 800;
-}
-.status-pill-colorful.active { background: #dcfce7; color: #15803d; }
-.status-pill-colorful.pending_seller { background: #fef3c7; color: #92400e; }
-
-/* --- 🚀 FINAL ALIGNMENT FIX: FORCES BUTTON TO THE RIGHT --- */
-
-.profile-inspection-modal .modal-footer-actions {
+/* 🚀 21. VIBRANT ACTION ICONS (With Interactive Hover) */
+.action-button-group-supreme {
     display: flex !important;
-    justify-content: flex-end !important; /* 🚀 Moves button to the right */
-    padding: 20px 30px !important;
-    background: #fafbfc !important;
-    border-top: 1px solid #edf2f7 !important;
-    gap: 15px;
+    justify-content: flex-end !important;
+    gap: 10px !important;
+    min-width: 140px !important; 
 }
 
-/* Ensure the button itself has the professional Supreme shape */
-.btn-inspect-close {
-    background: var(--orange) !important;
-    color: white !important;
-    border: none !important;
-    padding: 0 30px !important;
-    height: 42px !important;
-    border-radius: 10px !important;
-    font-weight: 800 !important;
-    font-family: var(--ui-font) !important;
-    cursor: pointer;
+.btn-action-inspect {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 50% !important;
+    background: #f1f5f9 !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    transition: all 0.2s ease;
+    border: none !important;
+    cursor: pointer !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-.btn-inspect-close:hover {
-    background-color: #ff6b4a !important;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(238, 77, 45, 0.2);
+/* Interactive Feedback for Icons */
+.btn-action-inspect:hover {
+    transform: translateY(-2px) !important;
+    background-color: #ffffff !important;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1) !important;
+}
+
+.btn-action-inspect:nth-child(1) svg { color: #1e3799 !important; }
+.btn-action-inspect.promote-btn svg { color: #009432 !important; }
+.btn-action-inspect.demote-btn svg { color: #ff4d4f !important; }
+.btn-action-inspect.revoke-btn svg { color: #833471 !important; }
+.btn-action-inspect.ban-btn svg,
+.btn-action-inspect:last-child svg { color: #ea2027 !important; }
+
+/* 🚀 22. MODAL HEADER UTILITY REFINEMENT (UNTOUCHED) */
+.modal-header .btn-utility,
+.modal-header .close-btn,
+.seller-review-modal .modal-header button,
+.profile-inspection-modal .close-btn {
+    border: none !important;
+    background: transparent !important;
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.2s ease !important;
+    box-shadow: none !important;
+}
+
+.modal-header .btn-utility:hover,
+.modal-header .close-btn:hover { background: rgba(0, 0, 0, 0.05) !important; }
+
+/* 🚀 23. MODAL FOOTER REFINEMENT (UNTOUCHED) */
+.profile-inspection-modal .modal-footer-actions {
+    display: flex !important;
+    justify-content: flex-end !important;
+    padding: 20px 30px !important;
+    background: #fafbfc !important;
+}
+
+.btn-inspect-close {
+    background: #d63031 !important; 
+    color: white !important;
+    border: none !important;
+    padding: 0 35px !important;
+    height: 42px !important;
+    border-radius: 10px !important;
+    font-weight: 800 !important;
+    font-family: var(--ui-font) !important;
+    cursor: pointer;
+    transition: all 0.2s ease !important;
+}
+
+.btn-inspect-close svg { display: none !important; }
+
+/* 🚀 24. TABLE INTEGRITY & FONT SYNC (UNTOUCHED) */
+.admin-data-table-supreme {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    table-layout: auto !important; 
+}
+
+.admin-data-table-supreme th {
+    background: #fafbfc !important;
+    padding: 18px 20px !important;
+    font-family: var(--ui-font) !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    color: var(--text-muted) !important;
+    border-bottom: 2px solid #f1f5f9 !important;
+}
+
+.admin-data-table-supreme td {
+    padding: 16px 20px !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    font-family: var(--ui-font) !important;
+    font-size: 14px !important;
+    color: var(--text-dark) !important;
+}
+
+.user-primary-name { font-weight: 700 !important; color: var(--text-dark) !important; }
+.contact-cell span { color: var(--text-dark) !important; font-weight: 500 !important; }
+.date-cell { color: var(--text-dark) !important; }
+
+/* 🚀 25. STATUS PILL Polish (UNTOUCHED) */
+.status-pill-colorful {
+    padding: 5px 12px !important;
+    font-family: var(--ui-font) !important;
+    font-weight: 800 !important;
+    font-size: 11px !important;
+    border-radius: 20px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    text-transform: uppercase !important;
 }

@@ -1,7 +1,8 @@
 import React from 'react';
 import { 
   FaSearch, FaFilter, FaCircle, FaEnvelope, FaPhoneAlt, 
-  FaCalendarAlt, FaTimesCircle, FaEye 
+  FaCalendarAlt, FaTimesCircle, FaEye,
+  FaUserShield, FaBan, FaUnlock, FaStoreSlash 
 } from 'react-icons/fa';
 
 interface UserTableProps {
@@ -13,8 +14,12 @@ interface UserTableProps {
   statusFilter: string;
   setStatusFilter: (val: string) => void;
   onSearchTrigger: () => void;
-  // 🚀 PHASE 2: Trigger for Profile Inspection
   onView: (userId: string) => void;
+  // 🚀 PHASE 3, 4 & 5 ACTIONS
+  onPromote: (userId: string, permissions: string[]) => void;
+  onDemote: (userId: string) => void; // 🚀 NEW: Demote Action
+  onToggleStatus: (userId: string) => void;
+  onRevokeSeller: (userId: string) => void;
 }
 
 const UserTable: React.FC<UserTableProps> = ({ 
@@ -26,7 +31,12 @@ const UserTable: React.FC<UserTableProps> = ({
   statusFilter,
   setStatusFilter,
   onSearchTrigger,
-  onView
+  onView,
+  // 🚀 ACTION PROPS
+  onPromote,
+  onDemote, // 🚀 NEW
+  onToggleStatus,
+  onRevokeSeller
 }) => {
 
   const userList = Array.isArray(users) ? users : (users?.content || []);
@@ -120,15 +130,71 @@ const UserTable: React.FC<UserTableProps> = ({
                 <td className="date-cell">
                   <FaCalendarAlt className="tiny-icon" /> {u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : '13/4/2026'}
                 </td>
-                {/* 🚀 PHASE 2: VIEW ACTION BUTTON */}
+                
                 <td style={{ textAlign: 'right' }}>
-                  <button 
-                    className="btn-action-inspect" 
-                    onClick={() => onView(u.id)}
-                    title="Xem chi tiết hồ sơ"
-                  >
-                    <FaEye />
-                  </button>
+                  <div className="action-button-group-supreme">
+                    {/* PHASE 2: VIEW */}
+                    <button 
+                      className="btn-action-inspect" 
+                      onClick={() => onView(u.id)}
+                      title="Xem chi tiết hồ sơ"
+                    >
+                      <FaEye />
+                    </button>
+
+                    {/* 🚀 PHASE 3: PROMOTE (Only if not already Admin) */}
+                    {!u.roles?.includes('ADMIN') && (
+                      <button 
+                        className="btn-action-inspect promote-btn" 
+                        onClick={() => {
+                          const perms = ["MANAGE_USERS", "MANAGE_PRODUCTS", "MANAGE_REPORTS"];
+                          if(window.confirm(`Xác nhận cấp quyền Quản trị cho ${u.fullName}?`)) {
+                            onPromote(u.id, perms);
+                          }
+                        }}
+                        title="Nâng cấp lên Admin"
+                      >
+                        <FaUserShield />
+                      </button>
+                    )}
+
+                    {/* 🚀 NEW PHASE 5: DEMOTE (Only if Admin, protect Super Admin) */}
+                    {u.roles?.includes('ADMIN') && u.email !== 'admin@ainetsoft.com' && (
+                      <button 
+                        className="btn-action-inspect demote-btn" 
+                        onClick={() => {
+                          if(window.confirm(`Xác nhận thu hồi quyền Quản trị của ${u.fullName}?`)) {
+                            onDemote(u.id);
+                          }
+                        }}
+                        title="Hạ cấp xuống Người dùng"
+                      >
+                        <FaUserShield style={{ color: '#ff4d4f' }} />
+                      </button>
+                    )}
+
+                    {/* 🚀 PHASE 4: REVOKE SELLER (Only if Seller) */}
+                    {u.roles?.includes('SELLER') && (
+                      <button 
+                        className="btn-action-inspect revoke-btn" 
+                        onClick={() => onRevokeSeller(u.id)}
+                        title="Thu hồi quyền Người bán"
+                      >
+                        <FaStoreSlash />
+                      </button>
+                    )}
+
+                    {/* 🚀 PHASE 3: BAN/UNBAN (Protect Super Admin) */}
+                    {u.email !== 'admin@ainetsoft.com' && (
+                      <button 
+                        className={`btn-action-inspect ${u.accountStatus === 'BANNED' ? 'unban-btn' : 'ban-btn'}`}
+                        onClick={() => onToggleStatus(u.id)}
+                        title={u.accountStatus === 'BANNED' ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
+                      >
+                        {u.accountStatus === 'BANNED' ? <FaUnlock /> : <FaBan />}
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))

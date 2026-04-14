@@ -38,11 +38,10 @@ public class AuthService {
     private final FileStorageService fileStorageService;
     private final NotificationService notificationService;
     private final AzureOCRService ocrService;
-
     private final String UPLOAD_DIR = "uploads/cccd/";
     private final String LICENSE_DIR = "uploads/license/";
 
-    // --- SLUG GENERATOR UTILITY ---
+    // --- SLUG GENERATOR UTILITY (UNTOUCHED) ---
     private String generateSlug(String input) {
         if (input == null || input.isEmpty()) return "";
         String normalized = Normalizer.normalize(input, Normalizer.Form.NFD);
@@ -118,7 +117,7 @@ public class AuthService {
         }
 
         return UserResponse.builder()
-                .id(user.getId()) // 🚀 ADDED: Required for frontend bank-account fetching
+                .id(user.getId()) 
                 .email(user.getEmail())
                 .phone(user.getPhone())
                 .fullName(displayName)
@@ -132,7 +131,6 @@ public class AuthService {
                 .shopProfile(user.getShopProfile()) 
                 .identityInfo(user.getIdentityInfo()) 
                 .addresses(user.getAddresses() != null ? user.getAddresses() : new ArrayList<>())
-                // REMOVED: bankAccounts call
                 .cart(user.getCart() != null ? user.getCart() : new ArrayList<>())
                 .sellerVerification(user.getSellerVerification())
                 .rejectionReason(user.getRejectionReason())
@@ -180,7 +178,6 @@ public class AuthService {
         if (request.getAvatarUrl() != null) user.setAvatarUrl(request.getAvatarUrl());
         if (request.getShopProfile() != null) user.setShopProfile(request.getShopProfile());
         if (request.getAddresses() != null) user.setAddresses(request.getAddresses());
-        // REMOVED: bankAccounts update block
 
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
@@ -209,10 +206,21 @@ public class AuthService {
         return "Đăng ký thành công!";
     }
 
+    /**
+     * 🚀 UPDATED: LOCKDOWN ENFORCED LOGIN
+     */
     public LoginResponse login(LoginRequest request) {
         String identifier = normalizeIdentifier(request.getContactInfo());
         User user = userRepository.findByIdentifier(identifier)
                 .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
+
+        // 🛡️ SUPREME LOCKDOWN: Check account validity before issuing token
+        if (!user.isEnabled()) {
+            throw new RuntimeException("Tài khoản của bạn đã bị vô hiệu hóa.");
+        }
+        if ("BANNED".equalsIgnoreCase(user.getAccountStatus())) {
+            throw new RuntimeException("Tài khoản của bạn đã bị khóa bởi Quản trị viên.");
+        }
         
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new RuntimeException("Mật khẩu không chính xác!");
@@ -357,8 +365,6 @@ public class AuthService {
                     .businessLicenseUrl(licenseUrl)
                     .enabledShippingMethodIds(dto.getShippingMethods() != null ? enabledShippingIds : currentShop.getEnabledShippingMethodIds())
                     .build());
-
-            // REMOVED: bankAccounts setter block inside upgradeToSeller logic
 
             User.ShopProfile profile = user.getShopProfile();
             User.IdentityInfo identity = user.getIdentityInfo();
@@ -544,7 +550,7 @@ public class AuthService {
                 .orElseThrow(() -> new RuntimeException("Cửa hàng với link '" + slug + "' không tồn tại!"));
 
         return UserResponse.builder()
-                .id(user.getId()) // 🚀 ADDED: Required for frontend bank-account fetching
+                .id(user.getId()) 
                 .email(user.getEmail())
                 .phone(user.getPhone())
                 .fullName(user.getFullName())

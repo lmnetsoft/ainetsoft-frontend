@@ -51,6 +51,10 @@ export const adminService = {
   resolveReport: (reportId: string, action: 'RESOLVED' | 'DISMISSED') => 
     api.post(`/admin/reports/${reportId}/process`, { action }).then(res => res.data),
 
+  /** 🚀 PHASE 5: Batch Operations API */
+  batchResolveReports: (ids: string[], action: string) => 
+    api.post('/admin/reports/batch-resolve', ids, { params: { action } }).then(res => res.data),
+
   deleteReport: (reportId: string) => 
     api.delete(`/admin/reports/${reportId}`).then(res => res.data),
 
@@ -81,23 +85,31 @@ export const adminService = {
   deleteReview: (reviewId: string) => 
     api.delete(`/admin/reviews/${reviewId}`).then(res => res.data),
 
-  // --- USER MANAGEMENT & DELEGATION (PHASE 2 UPDATED) ---
+  // --- USER MANAGEMENT & DELEGATION ---
   
-  /**
-   * 🚀 UPDATED: Supports advanced filtering params (search, role, status, page, size)
-   */
   getAllUsers: (params: any = {}) => 
     api.get('/admin/users/all', { params }).then(res => res.data),
 
-  /** 🚀 NEW PHASE 2: Fetch full profile data for inspection */
   getUserDetails: (userId: string) => 
     api.get(`/admin/users/detail/${userId}`).then(res => res.data),
 
   promoteToAdmin: (userId: string, permissions: string[]) => 
     api.post(`/admin/users/promote/${userId}`, permissions).then(res => res.data),
 
+  /** 🚀 NEW PHASE 5: Demote Admin to normal User */
+  demoteFromAdmin: (userId: string) => 
+    api.post(`/admin/users/demote/${userId}`).then(res => res.data),
+
   banUser: (userId: string) => 
     api.post(`/admin/users/ban/${userId}`).then(res => res.data),
+
+  /** 🚀 PHASE 3: Toggle Status */
+  toggleUserStatus: (userId: string) => 
+    api.post(`/admin/users/status-toggle/${userId}`).then(res => res.data),
+
+  /** 🚀 PHASE 4: Merchant Revocation */
+  revokeSellerRights: (userId: string, reason: string) => 
+    api.post(`/admin/sellers/revoke/${userId}`, null, { params: { reason } }).then(res => res.data),
     
   getAuditLogs: () => api.get('/admin/audit-logs').then(res => res.data),
 
@@ -111,6 +123,20 @@ export const adminService = {
 
   deleteFeedbackTemplate: (id: string) => 
     api.delete(`/feedback-templates/${id}`).then(res => res.data),
+
+  // --- 🚀 PHASE 5: SYSTEM CONTENT / CMS MANAGEMENT ---
+
+  getAllSystemContents: () => 
+    api.get('/admin/system-content/all').then(res => res.data),
+
+  getSystemContentBySlug: (slug: string) => 
+    api.get(`/admin/system-content/${slug}`).then(res => res.data),
+
+  saveSystemContent: (content: any) => 
+    api.post('/admin/system-content', content).then(res => res.data),
+
+  deleteSystemContent: (id: string) => 
+    api.delete(`/admin/system-content/${id}`).then(res => res.data)
 };
 
 export default adminService;
