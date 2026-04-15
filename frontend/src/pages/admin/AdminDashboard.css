@@ -546,27 +546,45 @@
 .btn-action-inspect.ban-btn svg,
 .btn-action-inspect:last-child svg { color: #ea2027 !important; }
 
-/* 🚀 22. MODAL HEADER UTILITY REFINEMENT (UNTOUCHED) */
+/* 🚀 22. MODAL HEADER UTILITY REFINEMENT - FULL HOVER LOGIC */
 .modal-header .btn-utility,
 .modal-header .close-btn,
 .seller-review-modal .modal-header button,
 .profile-inspection-modal .close-btn {
     border: none !important;
     background: transparent !important;
-    width: 36px !important;
-    height: 36px !important;
+    width: 38px !important;
+    height: 38px !important;
     border-radius: 50% !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    transition: all 0.2s ease !important;
-    box-shadow: none !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    color: var(--text-dark) !important;
+    cursor: pointer !important;
 }
 
-.modal-header .btn-utility:hover,
-.modal-header .close-btn:hover { background: rgba(0, 0, 0, 0.05) !important; }
+/* ❌ CLOSE BUTTON: Vibrant Red Hover */
+.modal-header .close-btn:hover,
+.profile-inspection-modal .close-btn:hover { 
+    background: #ff4d4f !important; 
+    color: white !important; 
+}
 
-/* 🚀 23. MODAL FOOTER REFINEMENT (UNTOUCHED) */
+.modal-header .close-btn:hover svg { 
+    color: white !important; 
+    fill: white !important; 
+}
+
+/* 📥 UTILITY BUTTONS (Download, etc.): Professional Modern Hover */
+.modal-header .btn-utility:hover {
+    background: #f1f5f9 !important; /* Light slate hover background */
+    color: #1e3799 !important;     /* Professional Indigo icon color */
+    transform: translateY(-1px);   /* Subtle lift effect */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05) !important;
+}
+
+/* 🚀 23. MODAL FOOTER REFINEMENT */
 .profile-inspection-modal .modal-footer-actions {
     display: flex !important;
     justify-content: flex-end !important;
@@ -575,19 +593,25 @@
 }
 
 .btn-inspect-close {
-    background: #d63031 !important; 
+    /* Changed from #d63031 to a brighter, vibrant red */
+    background: #ff4d4f !important; 
     color: white !important;
     border: none !important;
     padding: 0 35px !important;
     height: 42px !important;
     border-radius: 10px !important;
-    font-weight: 800 !important;
+    font-weight: 700 !important; /* Adjusted weight for cleaner look */
     font-family: var(--ui-font) !important;
     cursor: pointer;
     transition: all 0.2s ease !important;
 }
 
-.btn-inspect-close svg { display: none !important; }
+/* Added hover effect to make it feel more interactive */
+.btn-inspect-close:hover {
+    background: #ff7875 !important;
+    box-shadow: 0 4px 12px rgba(255, 77, 79, 0.2);
+    transform: translateY(-1px);
+}
 
 /* 🚀 24. TABLE INTEGRITY & FONT SYNC (UNTOUCHED) */
 .admin-data-table-supreme {
@@ -619,16 +643,150 @@
 .user-primary-name { font-weight: 700 !important; color: var(--text-dark) !important; }
 .contact-cell span { color: var(--text-dark) !important; font-weight: 500 !important; }
 .date-cell { color: var(--text-dark) !important; }
+/* --- 25. REFINED STATUS PILLS (Colorful, Not Bold) --- */
 
-/* 🚀 25. STATUS PILL Polish (UNTOUCHED) */
 .status-pill-colorful {
-    padding: 5px 12px !important;
+    padding: 4px 12px !important;
     font-family: var(--ui-font) !important;
-    font-weight: 800 !important;
+    font-weight: 600 !important; /* Reduced from 800 for a cleaner look */
     font-size: 11px !important;
     border-radius: 20px !important;
     display: inline-flex !important;
     align-items: center !important;
     gap: 6px !important;
     text-transform: uppercase !important;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+}
+
+/* 🟢 ACTIVE: Healthy Green */
+.status-pill-colorful.active {
+    color: #008a00 !important;
+    background: #e6f4ea !important;
+    border-color: #ceead6 !important;
+}
+
+.status-pill-colorful.active .dot { color: #00a85a !important; }
+
+/* 🔴 BANNED: Urgent Red */
+.status-pill-colorful.banned {
+    color: #d93025 !important;
+    background: #fce8e6 !important;
+    border-color: #fad2cf !important;
+}
+
+.status-pill-colorful.banned .dot { color: #d93025 !important; }
+
+/* 🔵 PENDING_SELLER: Informative Blue */
+.status-pill-colorful.pending_seller {
+    color: #1a73e8 !important;
+    background: #e8f0fe !important;
+    border-color: #d2e3fc !important;
+}
+
+.status-pill-colorful.pending_seller .dot { color: #1a73e8 !important; }
+
+/* Hover effect for pills */
+.status-pill-colorful:hover {
+    filter: brightness(0.95);
+    transform: translateY(-1px);
+}
+/* --- 26. REFINED COLORFUL ROLE BADGES --- */
+
+.role-badge-stack {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  align-items: center !important;
+}
+
+.badge-role-tag-colorful {
+  font-family: var(--ui-font) !important;
+  font-size: 11px !important;
+  /* Reduced weight for a modern look */
+  font-weight: 600 !important; 
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  padding: 3px 10px !important;
+  border-radius: 6px !important;
+  transition: all 0.2s ease;
+  display: inline-flex !important;
+  align-items: center !important;
+  border: 1px solid transparent;
+}
+
+/* 🔵 ADMIN: Vibrant Indigo */
+.badge-role-tag-colorful.admin {
+  color: #3f51b5 !important;
+  background: #e8eaf6 !important;
+  border-color: #c5cae9 !important;
+}
+
+/* 🟢 SELLER: Emerald Green */
+.badge-role-tag-colorful.seller {
+  color: #2e7d32 !important;
+  background: #e8f5e9 !important;
+  border-color: #c8e6c9 !important;
+}
+
+/* 🟠 USER: Warm Amber/Orange */
+.badge-role-tag-colorful.user {
+  color: #ef6c00 !important;
+  background: #fff3e0 !important;
+  border-color: #ffe0b2 !important;
+}
+
+/* Hover Effect: Subtle lift */
+.badge-role-tag-colorful:hover {
+  transform: translateY(-1px);
+  filter: saturate(1.2);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+/* --- 27. COLORFUL CONTACT BADGES (Email & Phone) --- */
+
+.contact-info-stack {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  align-items: flex-start !important;
+}
+
+.contact-badge {
+  font-family: var(--ui-font) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important; /* Not bold, just semi-bold for clarity */
+  padding: 3px 10px !important;
+  border-radius: 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+/* Email Badge: Soft Indigo/Purple */
+.email-pill {
+  color: #4834d4 !important;
+  background: #f0eeff !important;
+  border-color: #dcd6ff !important;
+}
+
+/* Phone Badge: Soft Teal/Cyan */
+.phone-pill {
+  color: #088178 !important;
+  background: #e6f7f6 !important;
+  border-color: #c5ecea !important;
+}
+
+.contact-icon {
+  font-size: 10px !important;
+  opacity: 0.8;
+}
+
+/* Interactive Hover */
+.contact-badge:hover {
+  filter: brightness(0.95);
+  transform: translateX(2px);
+  cursor: pointer;
 }

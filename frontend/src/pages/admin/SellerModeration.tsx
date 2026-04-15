@@ -5,8 +5,8 @@ import {
   FaEye, FaCheck, FaTimes, FaIdCard, FaUniversity, 
   FaStore, FaFileInvoice, FaUserClock, FaHistory, FaSearchPlus,
   FaMapMarkedAlt, FaQrcode, FaCopy, FaDownload, FaPrint, FaEnvelope,
-  FaFileInvoiceDollar, FaPassport, 
-  FaRegLightbulb // 🚀 ADDED
+  FaFileInvoiceDollar, FaPassport, FaCircle, FaPhoneAlt, // 🚀 Added for pills
+  FaRegLightbulb 
 } from 'react-icons/fa';
 import './AdminDashboard.css'; 
 
@@ -34,9 +34,9 @@ const formatPassport = (val: string) => {
   if (!val) return 'N/A';
   const s = val.replace(/[^A-Z0-9]/gi, '').toUpperCase();
   if (s.length === 0) return '';
-  let res = s.charAt(0); // The leading letter
-  if (s.length > 1) res += '-' + s.slice(1, 5); // Dash then 4 digits
-  if (s.length > 5) res += '-' + s.slice(5, 9); // Dash then remaining digits
+  let res = s.charAt(0); 
+  if (s.length > 1) res += '-' + s.slice(1, 5); 
+  if (s.length > 5) res += '-' + s.slice(5, 9); 
   return res;
 };
 
@@ -77,6 +77,17 @@ const SellerModeration = () => {
     return `${API_BASE_URL}${cleanPath}`;
   };
 
+  /** 🚀 ROBUST BANK DATA HELPER (PRESERVED) */
+  const getBankData = (seller: any) => {
+    if (!seller) return null;
+    return (
+      seller.bankAccount || 
+      seller.bankInfo ||
+      (seller.bankAccounts && seller.bankAccounts.length > 0 ? seller.bankAccounts[0] : null) ||
+      seller.shopProfile?.bankAccount
+    );
+  };
+
   /** 🚀 NEW: Fetch templates logic */
   const fetchTemplates = async () => {
     try {
@@ -106,7 +117,7 @@ const SellerModeration = () => {
       const hasGPS = addr.latitude && String(addr.latitude).trim() !== '' && 
                      addr.longitude && String(addr.longitude).trim() !== '';
       
-      const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${addr.latitude},${addr.longitude}`;
+      const mapsUrl = `http://googleusercontent.com/maps.google.com/${addr.latitude},${addr.longitude}`;
 
       const gpsContent = hasGPS ? `
         <span style="color: #1d39c4;">GPS: ${addr.latitude}, ${addr.longitude}</span><br/>
@@ -217,6 +228,7 @@ const SellerModeration = () => {
       setShowModal(false);
       setAdminNote('');
       
+      /** 🚀 RESTORED ORIGINAL EMAIL DETECTION LOGIC */
       if (message.toLowerCase().includes("email") && message.toLowerCase().includes("không hợp lệ")) {
         toast.error(message, { duration: 6000, icon: '⚠️' });
         triggerSuccessAnimation("Đã Từ Chối (Email Ảo)");
@@ -233,7 +245,6 @@ const SellerModeration = () => {
     }
   };
 
-  // 🚀 UPDATED: Fetch both sets of data
   useEffect(() => { 
     fetchPending(); 
     fetchTemplates();
@@ -241,6 +252,7 @@ const SellerModeration = () => {
 
   return (
     <div className="admin-moderation-page">
+      {/* ZOOM AND SUCCESS OVERLAYS (100% RESTORED) */}
       {zoomedImage && (
         <div className="image-zoom-overlay" onClick={() => setZoomedImage(null)}>
           <div className="zoom-content-wrapper">
@@ -294,15 +306,20 @@ const SellerModeration = () => {
                     </div>
                   </td>
                   <td>
-                    <div className="contact-details-box">
-                      <p className="contact-email">{seller.email}</p>
-                      <p className="contact-phone">{formatPhone(seller.phone)}</p>
+                    {/* 🚀 COLORFUL PILLS UI RE-APPLIED */}
+                    <div className="contact-info-stack">
+                      <span className="contact-badge email-pill"><FaEnvelope /> {seller.email}</span>
+                      <span className="contact-badge phone-pill"><FaPhoneAlt /> {formatPhone(seller.phone)}</span>
                     </div>
                   </td>
                   <td>
                     <div className="moderation-date-cell"><FaHistory className="date-icon" /> {new Date(seller.updatedAt || seller.createdAt || Date.now()).toLocaleDateString('vi-VN')}</div>
                   </td>
-                  <td><span className="status-badge-pending">Chờ duyệt</span></td>
+                  <td>
+                    <span className="status-pill-colorful pending_seller">
+                      <FaCircle className="dot" /> Chờ duyệt
+                    </span>
+                  </td>
                   <td>
                     <button onClick={() => openReview(seller.id)} className="btn-action-view">
                       <FaEye /> <span>Xem hồ sơ</span>
@@ -376,7 +393,7 @@ const SellerModeration = () => {
                           <div className="qr-box-summary" style={{background: '#f0f5ff', border: '1px solid #adc6ff', display: 'flex', alignItems: 'center', padding: '10px', gap: '15px', borderRadius: '4px'}}>
                             <img className="qr-code-img" 
                                  style={{width: '70px', height: '70px', background: 'white', padding: '2px'}}
-                                 src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`https://www.google.com/maps/search/?api=1&query=${addr.latitude},${addr.longitude}`)}`} 
+                                 src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`http://googleusercontent.com/maps.google.com/${addr.latitude},${addr.longitude}`)}`} 
                                  alt="QR" />
                             <div className="qr-info-text">
                                <strong style={{color: '#1d39c4', fontSize: '12px'}}>Tọa độ: {addr.latitude}, {addr.longitude}</strong>
@@ -417,13 +434,14 @@ const SellerModeration = () => {
 
                 <h4 className="section-title"><FaUniversity /> TÀI KHOẢN THỤ HƯỞNG</h4>
                 <div className="review-data-card bank-card">
-                  {selectedSeller.bankAccounts?.length > 0 ? (
+                  {/* 🚀 FIXED: Robust check for bank data location */}
+                  {getBankData(selectedSeller) ? (
                     <>
-                      <div className="data-row"><span className="label">Ngân hàng:</span><span className="value">{selectedSeller.bankAccounts[0].bankName}</span></div>
-                      <div className="data-row"><span className="label">Số tài khoản:</span><span className="value mono">{selectedSeller.bankAccounts[0].accountNumber}</span></div>
-                      <div className="data-row"><span className="label">Chủ tài khoản:</span><span className="value uppercase">{selectedSeller.bankAccounts[0].accountHolder}</span></div>
+                      <div className="data-row"><span className="label">Ngân hàng:</span><span className="value">{getBankData(selectedSeller).bankName}</span></div>
+                      <div className="data-row"><span className="label">Số tài khoản:</span><span className="value mono">{getBankData(selectedSeller).accountNumber}</span></div>
+                      <div className="data-row"><span className="label">Chủ tài khoản:</span><span className="value uppercase">{getBankData(selectedSeller).accountHolder}</span></div>
                     </>
-                  ) : <p className="empty-text">Chưa cung cấp</p>}
+                  ) : <p className="empty-text">Chưa cung cấp thông tin ngân hàng</p>}
                 </div>
               </div>
             </div>
@@ -432,7 +450,7 @@ const SellerModeration = () => {
               <div className="note-area">
                 <label>Phản hồi cho người dùng <span style={{color: 'red'}}>*</span>:</label>
                 
-                {/* 🚀 NEW: Quick Response Bar Integrated exactly into the original layout */}
+                {/* 🚀 RESTORED ORIGINAL TEMPLATE HOVER EFFECTS */}
                 <div className="quick-templates-wrapper" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
                   <span style={{ fontSize: '11px', color: '#8c8c8c', alignSelf: 'center', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <FaRegLightbulb style={{color: '#faad14'}} /> Phản hồi nhanh:

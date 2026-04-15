@@ -22,7 +22,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
           <div className="header-title">
             <FaUserCircle className="title-icon" />
             <div>
-              <h3 className="modal-main-title">Hồ sơ Chi tiết Người dùng</h3>
+              <h3 className="modal-main-title">Hồ Sơ Chi Tiết Người Dùng</h3>
               <p className="user-uid-text">Mã định danh: {user.id}</p>
             </div>
           </div>
