@@ -32,6 +32,10 @@ public class AdminService {
     private final AzureCommunicationService azureEmailService;
     private final FeedbackTemplateRepository feedbackTemplateRepository;
     private final SystemContentRepository systemContentRepository;
+    
+    // 🚀 NEW: Fields added to handle bank data fetching and decryption
+    private final BankAccountRepository bankAccountRepository;
+    private final EncryptionService encryptionService;
 
     /**
      * INTERNAL HELPER: Records admin actions into the Audit Log.
@@ -89,7 +93,7 @@ public class AdminService {
 
         if (target.getRoles() != null && target.getRoles().contains("ADMIN")) {
             target.getRoles().remove("ADMIN");
-            target.setPermissions(new HashSet<>()); // Clear admin-specific permissions
+            target.setPermissions(new HashSet<>()); 
             target.setUpdatedAt(LocalDateTime.now());
             userRepository.save(target);
 
@@ -192,9 +196,37 @@ public class AdminService {
         return pending;
     }
 
-    public User getSellerVerificationDetails(String userId) {
-        return userRepository.findById(userId)
+    /**
+     * 🚀 UPDATED: Now fetches linked BankAccounts and Decrypts account numbers
+     */
+    public Map<String, Object> getSellerVerificationDetails(String userId) {
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy dữ liệu xác minh!"));
+
+        // Fetch bank accounts using the specialized repository method
+        List<BankAccount> bankAccounts = bankAccountRepository.findByUserId(userId);
+
+        // Decrypt account numbers using the encryption service
+        bankAccounts.forEach(account -> {
+            if (account.getAccountNumber() != null) {
+                account.setAccountNumber(encryptionService.decrypt(account.getAccountNumber()));
+            }
+        });
+
+        // Combine User document data and the linked Bank information into one response
+        Map<String, Object> details = new HashMap<>();
+        details.put("id", user.getId());
+        details.put("fullName", user.getFullName());
+        details.put("email", user.getEmail());
+        details.put("phone", user.getPhone());
+        details.put("identityInfo", user.getIdentityInfo());
+        details.put("shopProfile", user.getShopProfile());
+        details.put("addresses", user.getAddresses());
+        
+        // 🚀 THIS FIXES THE DISPLAY ISSUE BY SENDING DATA TO THE FRONTEND
+        details.put("bankAccounts", bankAccounts); 
+
+        return details;
     }
 
     @Transactional
@@ -354,10 +386,6 @@ public class AdminService {
         return "Đã xử lý " + reportIds.size() + " báo cáo thành công.";
     }
 
-    /**
-     * 🚀 PHASE 5 FIXED APPEND:
-     * Correctly utilizes the fixed repository method findByReasonInAndStatus.
-     */
     public List<ProductReport> getReportsByReasons(Collection<String> reasons, String status) {
         return productReportRepository.findByReasonInAndStatus(reasons, status);
     }
@@ -408,7 +436,6 @@ public class AdminService {
         }
 
         user.setAccountStatus("BANNED");
-        // 🛡️ SYNC: Enforce technical lockout for Security filters
         user.setEnabled(false); 
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
@@ -431,7 +458,6 @@ public class AdminService {
         String actionLabel = "BANNED".equals(newStatus) ? "KHÓA" : "MỞ KHÓA";
 
         user.setAccountStatus(newStatus);
-        // 🛡️ SYNC: Enforce technical lockout based on status
         user.setEnabled(!"BANNED".equals(newStatus)); 
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
