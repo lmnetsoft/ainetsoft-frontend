@@ -5,8 +5,8 @@ import {
   FaEye, FaCheck, FaTimes, FaIdCard, FaUniversity, 
   FaStore, FaFileInvoice, FaUserClock, FaHistory, FaSearchPlus,
   FaMapMarkedAlt, FaQrcode, FaCopy, FaDownload, FaPrint, FaEnvelope,
-  FaFileInvoiceDollar, FaPassport, FaCircle, FaPhoneAlt, // 🚀 Added for pills
-  FaRegLightbulb 
+  FaFileInvoiceDollar, FaPassport, FaCircle, FaPhoneAlt, 
+  FaRegLightbulb, FaExchangeAlt, FaInfoCircle
 } from 'react-icons/fa';
 import './AdminDashboard.css'; 
 
@@ -29,7 +29,6 @@ const formatCCCD = (val: string) => {
   return groups ? groups.join(' ') : s;
 };
 
-// --- NEW: PASSPORT FORMATTER (J-1111-1111) ---
 const formatPassport = (val: string) => {
   if (!val) return 'N/A';
   const s = val.replace(/[^A-Z0-9]/gi, '').toUpperCase();
@@ -64,8 +63,6 @@ const SellerModeration = () => {
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
-
-  // 🚀 NEW: State for Quick Response Templates
   const [templates, setTemplates] = useState<any[]>([]);
 
   const API_BASE_URL = "http://localhost:8080";
@@ -77,7 +74,6 @@ const SellerModeration = () => {
     return `${API_BASE_URL}${cleanPath}`;
   };
 
-  /** 🚀 ROBUST BANK DATA HELPER (PRESERVED) */
   const getBankData = (seller: any) => {
     if (!seller) return null;
     return (
@@ -88,7 +84,6 @@ const SellerModeration = () => {
     );
   };
 
-  /** 🚀 NEW: Fetch templates logic */
   const fetchTemplates = async () => {
     try {
       const data = await adminService.getFeedbackTemplates("SELLER_REJECTION");
@@ -98,9 +93,30 @@ const SellerModeration = () => {
     }
   };
 
-  /**
-   * PDF SUMMARY GENERATOR (100% PRESERVED ORIGINAL)
-   */
+  /** 🚀 RENDER DIFF HELPER */
+  const renderDiffField = (label: string, oldValue: any, newValue: any, formatter: any = null) => {
+    const isChanged = oldValue !== newValue;
+    const displayOld = formatter ? formatter(oldValue) : (oldValue || 'N/A');
+    const displayNew = formatter ? formatter(newValue) : (newValue || 'N/A');
+
+    return (
+      <div className={`data-row ${isChanged ? 'field-changed' : ''}`}>
+        <span className="label">{label}:</span>
+        <div className="value-stack">
+          {isChanged ? (
+            <>
+              <span className="old-val" title="Dữ liệu cũ">{displayOld}</span>
+              <FaExchangeAlt className="diff-arrow" />
+              <span className="new-val highlight" title="Dữ liệu mới">{displayNew}</span>
+            </>
+          ) : (
+            <span className="value">{displayOld}</span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const printApprovalSummary = (seller: any, note: string) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
@@ -113,7 +129,11 @@ const SellerModeration = () => {
       ? formatPassport(seller.identityInfo?.cccdNumber) 
       : formatCCCD(seller.identityInfo?.cccdNumber);
 
-    const addressesHtml = (seller.addresses || []).map((addr: any, i: number) => {
+    // If it's an update, use pending data for the summary
+    const activeProfile = seller.hasPendingUpdate ? seller.pendingShopProfile : seller.shopProfile;
+    const activeAddresses = seller.hasPendingUpdate ? seller.pendingAddresses : seller.addresses;
+
+    const addressesHtml = (activeAddresses || []).map((addr: any, i: number) => {
       const hasGPS = addr.latitude && String(addr.latitude).trim() !== '' && 
                      addr.longitude && String(addr.longitude).trim() !== '';
       
@@ -158,6 +178,7 @@ const SellerModeration = () => {
           <section>
             <p><strong>Ngày thực hiện:</strong> ${dateStr}</p>
             <p><strong>Mã định danh hệ thống:</strong> ${seller.id}</p>
+            <p><strong>Loại hình duyệt:</strong> ${seller.hasPendingUpdate ? 'Cập nhật hồ sơ' : 'Đăng ký mới'}</p>
           </section>
           <div class="grid">
             <section>
@@ -169,10 +190,10 @@ const SellerModeration = () => {
             </section>
             <section>
               <h2>Thông tin Kinh doanh</h2>
-              <p><strong>Tên Shop:</strong> ${seller.shopProfile?.shopName}</p>
-              <p><strong>Email nhận hóa đơn:</strong> ${seller.shopProfile?.invoiceEmails?.join(', ') || 'Chưa cung cấp'}</p>
-              <p><strong>Mã số thuế:</strong> ${formatMST(seller.shopProfile?.taxCode)}</p>
-              <p><strong>Loại hình:</strong> ${getBusinessLabel(seller.shopProfile?.businessType)}</p>
+              <p><strong>Tên Shop:</strong> ${activeProfile?.shopName}</p>
+              <p><strong>Email nhận hóa đơn:</strong> ${activeProfile?.invoiceEmails?.join(', ') || 'Chưa cung cấp'}</p>
+              <p><strong>Mã số thuế:</strong> ${formatMST(activeProfile?.taxCode)}</p>
+              <p><strong>Loại hình:</strong> ${getBusinessLabel(activeProfile?.businessType)}</p>
             </section>
           </div>
           <section>
@@ -228,13 +249,12 @@ const SellerModeration = () => {
       setShowModal(false);
       setAdminNote('');
       
-      /** 🚀 RESTORED ORIGINAL EMAIL DETECTION LOGIC */
       if (message.toLowerCase().includes("email") && message.toLowerCase().includes("không hợp lệ")) {
         toast.error(message, { duration: 6000, icon: '⚠️' });
         triggerSuccessAnimation("Đã Từ Chối (Email Ảo)");
       } else {
         toast.success(message);
-        triggerSuccessAnimation(approved ? "Đã phê duyệt người bán!" : "Đã từ chối hồ sơ");
+        triggerSuccessAnimation(approved ? "Đã phê duyệt hồ sơ!" : "Đã từ chối hồ sơ");
       }
       fetchPending(); 
     } catch (err: any) {
@@ -252,7 +272,6 @@ const SellerModeration = () => {
 
   return (
     <div className="admin-moderation-page">
-      {/* ZOOM AND SUCCESS OVERLAYS (100% RESTORED) */}
       {zoomedImage && (
         <div className="image-zoom-overlay" onClick={() => setZoomedImage(null)}>
           <div className="zoom-content-wrapper">
@@ -306,7 +325,6 @@ const SellerModeration = () => {
                     </div>
                   </td>
                   <td>
-                    {/* 🚀 COLORFUL PILLS UI RE-APPLIED */}
                     <div className="contact-info-stack">
                       <span className="contact-badge email-pill"><FaEnvelope /> {seller.email}</span>
                       <span className="contact-badge phone-pill"><FaPhoneAlt /> {formatPhone(seller.phone)}</span>
@@ -316,9 +334,15 @@ const SellerModeration = () => {
                     <div className="moderation-date-cell"><FaHistory className="date-icon" /> {new Date(seller.updatedAt || seller.createdAt || Date.now()).toLocaleDateString('vi-VN')}</div>
                   </td>
                   <td>
-                    <span className="status-pill-colorful pending_seller">
-                      <FaCircle className="dot" /> Chờ duyệt
-                    </span>
+                    {seller.hasPendingUpdate ? (
+                        <span className="status-pill-colorful update_request">
+                            <FaExchangeAlt className="dot" /> Cập nhật hồ sơ
+                        </span>
+                    ) : (
+                        <span className="status-pill-colorful pending_seller">
+                            <FaCircle className="dot" /> Đăng ký mới
+                        </span>
+                    )}
                   </td>
                   <td>
                     <button onClick={() => openReview(seller.id)} className="btn-action-view">
@@ -340,7 +364,7 @@ const SellerModeration = () => {
             <div className="modal-header">
               <div className="header-title">
                 <FaStore className="title-icon" />
-                <h3>Thẩm định hồ sơ: {selectedSeller.fullName}</h3>
+                <h3>{selectedSeller.hasPendingUpdate ? 'Phê duyệt cập nhật hồ sơ: ' : 'Thẩm định hồ sơ đăng ký: '} {selectedSeller.fullName}</h3>
               </div>
               <div style={{display:'flex', gap: '10px'}}>
                 <button className="btn-print-summary" title="Tải biên bản" onClick={() => printApprovalSummary(selectedSeller, adminNote)}>
@@ -352,6 +376,7 @@ const SellerModeration = () => {
 
             <div className="modal-body review-grid">
               <div className="review-section">
+                {/* IDENTITY INFO (ALWAYS LIVE) */}
                 <h4 className="section-title">
                    {selectedSeller.identityInfo?.identityType === 'PASSPORT' ? <FaPassport /> : <FaIdCard />}
                    {selectedSeller.identityInfo?.identityType === 'PASSPORT' ? ' Hồ sơ Hộ chiếu' : ' Hồ sơ CCCD'}
@@ -378,9 +403,13 @@ const SellerModeration = () => {
                   </div>
                 </div>
 
+                {/* WAREHOUSE DIFF VIEW */}
                 <h4 className="section-title" style={{marginTop: '25px'}}><FaMapMarkedAlt /> KHO LẤY HÀNG & TỌA ĐỘ GPS</h4>
+                {selectedSeller.hasPendingUpdate && (
+                    <div className="diff-notice"><FaInfoCircle /> Đang hiển thị danh sách kho hàng mới yêu cầu thay đổi.</div>
+                )}
                 <div className="address-review-list">
-                  {(selectedSeller.addresses || []).map((addr: any, idx: number) => {
+                  {( (selectedSeller.hasPendingUpdate ? selectedSeller.pendingAddresses : selectedSeller.addresses) || []).map((addr: any, idx: number) => {
                     const hasCoords = addr.latitude && String(addr.latitude).trim() !== '' && 
                                       addr.longitude && String(addr.longitude).trim() !== '';
 
@@ -397,7 +426,6 @@ const SellerModeration = () => {
                                  alt="QR" />
                             <div className="qr-info-text">
                                <strong style={{color: '#1d39c4', fontSize: '12px'}}>Tọa độ: {addr.latitude}, {addr.longitude}</strong>
-                               <p style={{fontSize: '10px', color: '#666', margin: '4px 0'}}>Quét QR để đối soát vị trí thực tế trên Google Maps.</p>
                                <span className="btn-copy-action" style={{fontSize: '11px', cursor: 'pointer', color: '#2f54eb', textDecoration: 'underline'}} onClick={() => { navigator.clipboard.writeText(`${addr.latitude}, ${addr.longitude}`); toast.success("Đã chép tọa độ!"); }}>[Chép tọa độ]</span>
                             </div>
                           </div>
@@ -413,28 +441,34 @@ const SellerModeration = () => {
               <div className="review-section">
                 <h4 className="section-title"><FaStore /> THÔNG TIN KINH DOANH</h4>
                 <div className="review-data-card mb-20">
-                  <div className="data-row"><span className="label">Tên Shop:</span><span className="value">{selectedSeller.shopProfile?.shopName}</span></div>
-                  <div className="data-row"><span className="label">Loại hình:</span><span className="value">{getBusinessLabel(selectedSeller.shopProfile?.businessType)}</span></div>
-                  <div className="data-row"><span className="label"><FaEnvelope /> Email liên hệ:</span><span className="value">{selectedSeller.shopProfile?.businessEmail || selectedSeller.email}</span></div>
-                  <div className="data-row">
-                    <span className="label"><FaFileInvoiceDollar /> Email nhận hóa đơn:</span>
-                    <span className="value" style={{fontSize: '12px', color: '#ee4d2d'}}>
-                      {selectedSeller.shopProfile?.invoiceEmails?.length > 0 ? selectedSeller.shopProfile.invoiceEmails.join(', ') : 'Chưa cung cấp'}
-                    </span>
-                  </div>
-                  <div className="data-row"><span className="label"><FaFileInvoice /> Mã số thuế:</span><span className="value highlight-green">{formatMST(selectedSeller.shopProfile?.taxCode)}</span></div>
+                  {selectedSeller.hasPendingUpdate ? (
+                    <>
+                      {renderDiffField("Tên Shop", selectedSeller.shopProfile?.shopName, selectedSeller.pendingShopProfile?.shopName)}
+                      {renderDiffField("Loại hình", selectedSeller.shopProfile?.businessType, selectedSeller.pendingShopProfile?.businessType, getBusinessLabel)}
+                      <div className="data-row"><span className="label"><FaEnvelope /> Email liên hệ:</span><span className="value">{selectedSeller.shopProfile?.businessEmail || selectedSeller.email}</span></div>
+                      {renderDiffField("Mã số thuế", selectedSeller.shopProfile?.taxCode, selectedSeller.pendingShopProfile?.taxCode, formatMST)}
+                    </>
+                  ) : (
+                    <>
+                      <div className="data-row"><span className="label">Tên Shop:</span><span className="value">{selectedSeller.shopProfile?.shopName}</span></div>
+                      <div className="data-row"><span className="label">Loại hình:</span><span className="value">{getBusinessLabel(selectedSeller.shopProfile?.businessType)}</span></div>
+                      <div className="data-row"><span className="label"><FaEnvelope /> Email liên hệ:</span><span className="value">{selectedSeller.shopProfile?.businessEmail || selectedSeller.email}</span></div>
+                      <div className="data-row"><span className="label"><FaFileInvoice /> Mã số thuế:</span><span className="value highlight-green">{formatMST(selectedSeller.shopProfile?.taxCode)}</span></div>
+                    </>
+                  )}
+
+                  {/* LICENSE DIFF */}
                   <div className="license-inspect-box" style={{marginTop: '15px'}}>
-                     <span className="img-label">Giấy phép kinh doanh:</span>
-                     <div className="img-wrapper zoomable" style={{height: '140px', border: '1px dashed #ddd', borderRadius: '4px', overflow: 'hidden'}} onClick={() => setZoomedImage(getFullImageUrl(selectedSeller.shopProfile?.businessLicenseUrl))}>
+                     <span className="img-label">Giấy phép kinh doanh: {selectedSeller.hasPendingUpdate && selectedSeller.shopProfile?.businessLicenseUrl !== selectedSeller.pendingShopProfile?.businessLicenseUrl && <span style={{color: '#ee4d2d', fontSize: '10px'}}>(ĐÃ THAY ĐỔI)</span>}</span>
+                     <div className="img-wrapper zoomable" style={{height: '140px', border: '1px dashed #ddd', borderRadius: '4px', overflow: 'hidden'}} onClick={() => setZoomedImage(getFullImageUrl(selectedSeller.hasPendingUpdate ? selectedSeller.pendingShopProfile?.businessLicenseUrl : selectedSeller.shopProfile?.businessLicenseUrl))}>
                         <div className="zoom-hint"><FaSearchPlus /></div>
-                        <img src={selectedSeller.shopProfile?.businessType === 'INDIVIDUAL' ? ainetsoftLogo : (selectedSeller.shopProfile?.businessLicenseUrl ? getFullImageUrl(selectedSeller.shopProfile.businessLicenseUrl) : ainetsoftLogo)} alt="License" style={{width: '100%', height: '100%', objectFit: 'contain'}} onError={(e) => { e.currentTarget.src = ainetsoftLogo; }} />
+                        <img src={getFullImageUrl(selectedSeller.hasPendingUpdate ? selectedSeller.pendingShopProfile?.businessLicenseUrl : selectedSeller.shopProfile?.businessLicenseUrl)} alt="License" style={{width: '100%', height: '100%', objectFit: 'contain'}} onError={(e) => { e.currentTarget.src = ainetsoftLogo; }} />
                      </div>
                   </div>
                 </div>
 
                 <h4 className="section-title"><FaUniversity /> TÀI KHOẢN THỤ HƯỞNG</h4>
                 <div className="review-data-card bank-card">
-                  {/* 🚀 FIXED: Robust check for bank data location */}
                   {getBankData(selectedSeller) ? (
                     <>
                       <div className="data-row"><span className="label">Ngân hàng:</span><span className="value">{getBankData(selectedSeller).bankName}</span></div>
@@ -449,8 +483,6 @@ const SellerModeration = () => {
             <div className="modal-footer-actions">
               <div className="note-area">
                 <label>Phản hồi cho người dùng <span style={{color: 'red'}}>*</span>:</label>
-                
-                {/* 🚀 RESTORED ORIGINAL TEMPLATE HOVER EFFECTS */}
                 <div className="quick-templates-wrapper" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
                   <span style={{ fontSize: '11px', color: '#8c8c8c', alignSelf: 'center', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <FaRegLightbulb style={{color: '#faad14'}} /> Phản hồi nhanh:
@@ -471,7 +503,6 @@ const SellerModeration = () => {
                   ))}
                   {templates.length === 0 && <span style={{fontSize: '11px', color: '#bfbfbf', fontStyle: 'italic'}}>(Chưa có mẫu sẵn)</span>}
                 </div>
-
                 <textarea placeholder="Ghi chú phản hồi (Bắt buộc)..." value={adminNote} onChange={(e) => setAdminNote(e.target.value)} />
               </div>
               <div className="button-group">

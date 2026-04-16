@@ -2,24 +2,36 @@ import api from './api'; // BaseURL is http://localhost:8080/api
 
 /**
  * adminService fully synchronized with Backend Controllers
- * Optimized for Violation Reports, Review Moderation, and Dynamic Categories
+ * Optimized for Shop Approval Workflows, Violation Reports, and CMS
  */
 export const adminService = {
   // --- STATS & OVERVIEW ---
   
   getDashboardSummary: () => api.get('/admin/stats/summary').then(res => res.data),
 
-  // --- SELLER MODERATION ---
+  // --- MERCHANT MODERATION (NEW APPROVAL FLOW) ---
   
+  /**
+   * Fetches all sellers needing review.
+   * Returns combined list of new registrations and existing profile updates.
+   */
   getPendingSellers: async () => {
     const response = await api.get('/admin/sellers/pending');
     return response.data;
   },
 
+  /**
+   * Fetches full verification details for a seller.
+   * Returns Map containing live info, pending draft info, and decrypted bank data.
+   */
   getSellerDetails: (userId: string) => {
     return api.get(`/admin/sellers/review/${userId}`).then(res => res.data);
   },
   
+  /**
+   * Processes both NEW registration and EXISTING profile updates.
+   * Payload: { approved: boolean, adminNote: string }
+   */
   approveSeller: (userId: string, approved: boolean, note: string = "") => {
     const payload = { 
       approved, 
@@ -28,7 +40,7 @@ export const adminService = {
     return api.post(`/admin/sellers/process/${userId}`, payload).then(res => res.data);
   },
 
-  // --- PRODUCT MODERATION & MANAGEMENT (PAGINATION UPDATE) ---
+  // --- PRODUCT MODERATION & MANAGEMENT ---
   
   getAllProducts: (page = 0, size = 10) => 
     api.get('/admin/products/all', { params: { page, size } }).then(res => res.data),
@@ -51,7 +63,6 @@ export const adminService = {
   resolveReport: (reportId: string, action: 'RESOLVED' | 'DISMISSED') => 
     api.post(`/admin/reports/${reportId}/process`, { action }).then(res => res.data),
 
-  /** 🚀 PHASE 5: Batch Operations API */
   batchResolveReports: (ids: string[], action: string) => 
     api.post('/admin/reports/batch-resolve', ids, { params: { action } }).then(res => res.data),
 
@@ -96,18 +107,15 @@ export const adminService = {
   promoteToAdmin: (userId: string, permissions: string[]) => 
     api.post(`/admin/users/promote/${userId}`, permissions).then(res => res.data),
 
-  /** 🚀 NEW PHASE 5: Demote Admin to normal User */
   demoteFromAdmin: (userId: string) => 
     api.post(`/admin/users/demote/${userId}`).then(res => res.data),
 
   banUser: (userId: string) => 
     api.post(`/admin/users/ban/${userId}`).then(res => res.data),
 
-  /** 🚀 PHASE 3: Toggle Status */
   toggleUserStatus: (userId: string) => 
     api.post(`/admin/users/status-toggle/${userId}`).then(res => res.data),
 
-  /** 🚀 PHASE 4: Merchant Revocation */
   revokeSellerRights: (userId: string, reason: string) => 
     api.post(`/admin/sellers/revoke/${userId}`, null, { params: { reason } }).then(res => res.data),
     
@@ -121,10 +129,11 @@ export const adminService = {
   saveFeedbackTemplate: (data: any) => 
     api.post('/admin/feedback-templates', data).then(res => res.data),
 
+  /** 🛡️ FIXED: Corrected path to include /admin prefix to match backend controller */
   deleteFeedbackTemplate: (id: string) => 
-    api.delete(`/feedback-templates/${id}`).then(res => res.data),
+    api.delete(`/admin/feedback-templates/${id}`).then(res => res.data),
 
-  // --- 🚀 PHASE 5: SYSTEM CONTENT / CMS MANAGEMENT ---
+  // --- SYSTEM CONTENT / CMS MANAGEMENT ---
 
   getAllSystemContents: () => 
     api.get('/admin/system-content/all').then(res => res.data),

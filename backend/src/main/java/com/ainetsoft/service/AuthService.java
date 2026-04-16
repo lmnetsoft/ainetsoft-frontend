@@ -41,7 +41,6 @@ public class AuthService {
     private final String UPLOAD_DIR = "uploads/cccd/";
     private final String LICENSE_DIR = "uploads/license/";
 
-    // --- SLUG GENERATOR UTILITY (UNTOUCHED) ---
     private String generateSlug(String input) {
         if (input == null || input.isEmpty()) return "";
         String normalized = Normalizer.normalize(input, Normalizer.Form.NFD);
@@ -134,6 +133,7 @@ public class AuthService {
                 .cart(user.getCart() != null ? user.getCart() : new ArrayList<>())
                 .sellerVerification(user.getSellerVerification())
                 .rejectionReason(user.getRejectionReason())
+                .hasPendingUpdate(user.isHasPendingUpdate())
                 .build();
     }
 
@@ -206,15 +206,11 @@ public class AuthService {
         return "Đăng ký thành công!";
     }
 
-    /**
-     * 🚀 UPDATED: LOCKDOWN ENFORCED LOGIN
-     */
     public LoginResponse login(LoginRequest request) {
         String identifier = normalizeIdentifier(request.getContactInfo());
         User user = userRepository.findByIdentifier(identifier)
                 .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
 
-        // 🛡️ SUPREME LOCKDOWN: Check account validity before issuing token
         if (!user.isEnabled()) {
             throw new RuntimeException("Tài khoản của bạn đã bị vô hiệu hóa.");
         }
@@ -412,53 +408,86 @@ public class AuthService {
         }
     }
 
+    /**
+     * 🚀 FIXED: Now uses 'contactInfo' + normalizeIdentifier to resolve "User not found" bug
+     */
     @Transactional
-    public User updateShopSettings(String userId, ShopSettingsUpdateRequest request, MultipartFile newLicense) throws IOException {
-        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
-        User.ShopProfile profile = user.getShopProfile();
-        if (profile == null) throw new RuntimeException("Tài khoản chưa có thông tin Shop.");
+    public User updateShopSettings(String contactInfo, ShopSettingsUpdateRequest request, MultipartFile newLicense) throws IOException {
+        String identifier = normalizeIdentifier(contactInfo);
+        User user = userRepository.findByIdentifier(identifier)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        User.ShopProfile currentProfile = user.getShopProfile();
+        if (currentProfile == null) throw new RuntimeException("Tài khoản chưa có thông tin Shop.");
 
-        if (request.getShopName() != null && !request.getShopName().equals(profile.getShopName())) {
-            LocalDateTime lastChange = profile.getLastShopNameChange();
+        // Approval Logic: Verified sellers must go through Approval
+        boolean divertToPending = "VERIFIED".equalsIgnoreCase(user.getSellerVerification());
+        
+        User.ShopProfile targetProfile;
+        if (divertToPending) {
+            targetProfile = new User.ShopProfile();
+            targetProfile.setShopSlug(currentProfile.getShopSlug()); 
+        } else {
+            targetProfile = currentProfile;
+        }
+
+        // 1. Shop Name logic
+        if (request.getShopName() != null && !request.getShopName().equals(currentProfile.getShopName())) {
+            LocalDateTime lastChange = currentProfile.getLastShopNameChange();
             if (lastChange != null && lastChange.plusMonths(1).isAfter(LocalDateTime.now())) {
                 long days = ChronoUnit.DAYS.between(LocalDateTime.now(), lastChange.plusMonths(1));
                 throw new RuntimeException("Đổi tên Shop tối đa 1 lần/tháng. Vui lòng chờ: " + days + " ngày.");
             }
             String newSlug = generateUniqueSlug(request.getShopName(), user.getId());
-            profile.setShopName(request.getShopName());
-            profile.setShopSlug(newSlug);
-            profile.setLastShopNameChange(LocalDateTime.now());
+            targetProfile.setShopName(request.getShopName());
+            targetProfile.setShopSlug(newSlug);
+            targetProfile.setLastShopNameChange(LocalDateTime.now());
+        } else {
+            targetProfile.setShopName(currentProfile.getShopName());
         }
 
-        boolean resetRequired = false;
-        if (request.getTaxCode() != null && !request.getTaxCode().equals(profile.getTaxCode())) {
-            profile.setTaxCode(request.getTaxCode());
-            resetRequired = true;
-        }
+        // 2. Sensitive fields
+        targetProfile.setTaxCode(request.getTaxCode() != null ? request.getTaxCode() : currentProfile.getTaxCode());
         if (newLicense != null && !newLicense.isEmpty()) {
-            profile.setBusinessLicenseUrl(saveFile(newLicense, user.getId(), "license"));
-            resetRequired = true;
+            targetProfile.setBusinessLicenseUrl(saveFile(newLicense, user.getId(), "license"));
+        } else {
+            targetProfile.setBusinessLicenseUrl(currentProfile.getBusinessLicenseUrl());
         }
-        if (resetRequired) user.setSellerVerification("PENDING");
 
-        profile.setShopDescription(request.getShopBio());
-        profile.setInvoiceEmails(request.getInvoiceEmails());
-        profile.setLowStockThreshold(request.getLowStockThreshold());
-        profile.setHolidayMode(request.isHolidayMode());
+        // 3. General Settings
+        targetProfile.setShopDescription(request.getShopBio());
+        targetProfile.setInvoiceEmails(request.getInvoiceEmails());
+        targetProfile.setLowStockThreshold(request.getLowStockThreshold());
+        targetProfile.setHolidayMode(request.isHolidayMode());
 
+        // 4. Warehouse Addresses
+        List<User.AddressInfo> targetAddrs = new ArrayList<>();
         if (request.getStockAddresses() != null) {
-            List<User.AddressInfo> newAddrs = new ArrayList<>();
             Set<String> phones = new HashSet<>();
             for (AddressDTO aDto : request.getStockAddresses()) {
                 String p = normalizePhone(aDto.getPhoneNumber());
-                if (!phones.add(p)) throw new RuntimeException("SĐT giữa các kho phải khác nhau.");
-                newAddrs.add(User.AddressInfo.builder()
+                if (!phones.add(p)) throw new RuntimeException("SĐT các kho phải khác nhau.");
+                targetAddrs.add(User.AddressInfo.builder()
                         .receiverName(aDto.getFullName()).phone(p).province(aDto.getProvince())
                         .ward(aDto.getWard()).hamlet(aDto.getHamlet()).detail(aDto.getDetailAddress())
                         .latitude(aDto.getLatitude()).longitude(aDto.getLongitude()).isDefault(aDto.isDefault())
                         .build());
             }
-            user.setAddresses(newAddrs);
+        } else {
+            targetAddrs = user.getAddresses();
+        }
+
+        // 5. Save Strategy
+        if (divertToPending) {
+            user.setPendingShopProfile(targetProfile);
+            user.setPendingAddresses(targetAddrs);
+            user.setHasPendingUpdate(true);
+            notificationService.createNotification("ADMIN", "Yêu cầu cập nhật Shop", 
+                "Cửa hàng [" + currentProfile.getShopName() + "] đã gửi yêu cầu thay đổi thông tin.", 
+                "SHOP_UPDATE_REQUEST", user.getId());
+        } else {
+            user.setShopProfile(targetProfile);
+            user.setAddresses(targetAddrs);
         }
 
         user.setUpdatedAt(LocalDateTime.now());
