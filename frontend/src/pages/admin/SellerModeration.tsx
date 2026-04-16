@@ -6,7 +6,8 @@ import {
   FaStore, FaFileInvoice, FaUserClock, FaHistory, FaSearchPlus,
   FaMapMarkedAlt, FaQrcode, FaCopy, FaDownload, FaPrint, FaEnvelope,
   FaFileInvoiceDollar, FaPassport, FaCircle, FaPhoneAlt, 
-  FaRegLightbulb, FaExchangeAlt, FaInfoCircle
+  FaRegLightbulb, FaExchangeAlt, FaInfoCircle,
+  FaUser, FaVenusMars, FaBirthdayCake, FaMapMarkerAlt 
 } from 'react-icons/fa';
 import './AdminDashboard.css'; 
 
@@ -101,7 +102,7 @@ const SellerModeration = () => {
 
     return (
       <div className={`data-row ${isChanged ? 'field-changed' : ''}`}>
-        <span className="label">{label}:</span>
+        <span className="label">{label ? `${label}:` : ''}</span>
         <div className="value-stack">
           {isChanged ? (
             <>
@@ -141,16 +142,16 @@ const SellerModeration = () => {
 
       const gpsContent = hasGPS ? `
         <span style="color: #1d39c4;">GPS: ${addr.latitude}, ${addr.longitude}</span><br/>
-        <div style="margin-top: 10px;">
-          <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(mapsUrl)}" 
-               style="width: 70px; height: 70px; border: 1px solid #ddd; padding: 2px;" />
+        <div style=\"margin-top: 10px;\">
+          <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(mapsUrl)}\" 
+               style=\"width: 70px; height: 70px; border: 1px solid #ddd; padding: 2px;\" />
         </div>
       ` : '';
 
       return `
-        <div style="border: 1px solid #eee; padding: 10px; margin-top: 10px;">
+        <div style=\"border: 1px solid #eee; padding: 10px; margin-top: 10px;\">
           <strong>Kho ${i + 1}:</strong> ${addr.receiverName} | ${formatPhone(addr.phone)}<br/>
-          ${addr.detail}, ${addr.ward}, ${addr.province}<br/>
+          ${addr.detail}<br/>
           ${gpsContent}
         </div>
       `;
@@ -171,16 +172,16 @@ const SellerModeration = () => {
           </style>
         </head>
         <body>
-          <div class="header">
-            <div><h1 style="margin:0; color:#ee4d2d;">AiNetsoft</h1><p style="margin:0;">Hệ thống Thương mại Điện tử</p></div>
-            <div class="status-stamp">Đã Phê Duyệt</div>
+          <div class=\"header\">
+            <div><h1 style=\"margin:0; color:#ee4d2d;\">AiNetsoft</h1><p style=\"margin:0;\">Hệ thống Thương mại Điện tử</p></div>
+            <div class=\"status-stamp\">Đã Phê Duyệt</div>
           </div>
           <section>
             <p><strong>Ngày thực hiện:</strong> ${dateStr}</p>
             <p><strong>Mã định danh hệ thống:</strong> ${seller.id}</p>
             <p><strong>Loại hình duyệt:</strong> ${seller.hasPendingUpdate ? 'Cập nhật hồ sơ' : 'Đăng ký mới'}</p>
           </section>
-          <div class="grid">
+          <div class=\"grid\">
             <section>
               <h2>Thông tin Người bán</h2>
               <p><strong>Họ tên:</strong> ${seller.fullName}</p>
@@ -200,11 +201,11 @@ const SellerModeration = () => {
             <h2>Vị trí Kho hàng & GPS</h2>
             ${addressesHtml}
           </section>
-          <section style="background: #f9f9f9; padding: 20px; border-radius: 4px; border-left: 4px solid #8c8c8c;">
+          <section style=\"background: #f9f9f9; padding: 20px; border-radius: 4px; border-left: 4px solid #8c8c8c;\">
             <h2>Ghi chú của Admin</h2>
             <p>${note}</p>
           </section>
-          <div class="footer">Tài liệu được tạo tự động bởi Hệ thống AiNetsoft.<br/>Người phê duyệt: Quản trị viên Toàn cầu</div>
+          <div class=\"footer\">Tài liệu được tạo tự động bởi Hệ thống AiNetsoft.<br/>Người phê duyệt: Quản trị viên Toàn cầu</div>
           <script>window.onload = function() { window.print(); setTimeout(function() { window.close(); }, 500); };</script>
         </body>
       </html>
@@ -376,7 +377,15 @@ const SellerModeration = () => {
 
             <div className="modal-body review-grid">
               <div className="review-section">
-                {/* IDENTITY INFO (ALWAYS LIVE) */}
+                <h4 className="section-title"><FaUser /> HỒ SƠ CÁ NHÂN</h4>
+                <div className="review-data-card mb-20">
+                  <div className="data-row"><span className="label">Họ và tên:</span><span className="value">{selectedSeller.fullName}</span></div>
+                  <div className="data-row"><span className="label"><FaEnvelope /> Email:</span><span className="value">{selectedSeller.email}</span></div>
+                  <div className="data-row"><span className="label"><FaPhoneAlt /> Số điện thoại:</span><span className="value">{formatPhone(selectedSeller.phone)}</span></div>
+                  <div className="data-row"><span className="label"><FaVenusMars /> Giới tính:</span><span className="value">{selectedSeller.gender || 'Chưa cập nhật'}</span></div>
+                  <div className="data-row"><span className="label"><FaBirthdayCake /> Ngày sinh:</span><span className="value">{selectedSeller.birthDate ? new Date(selectedSeller.birthDate).toLocaleDateString('vi-VN') : 'Chưa cập nhật'}</span></div>
+                </div>
+
                 <h4 className="section-title">
                    {selectedSeller.identityInfo?.identityType === 'PASSPORT' ? <FaPassport /> : <FaIdCard />}
                    {selectedSeller.identityInfo?.identityType === 'PASSPORT' ? ' Hồ sơ Hộ chiếu' : ' Hồ sơ CCCD'}
@@ -403,29 +412,37 @@ const SellerModeration = () => {
                   </div>
                 </div>
 
-                {/* WAREHOUSE DIFF VIEW */}
                 <h4 className="section-title" style={{marginTop: '25px'}}><FaMapMarkedAlt /> KHO LẤY HÀNG & TỌA ĐỘ GPS</h4>
                 {selectedSeller.hasPendingUpdate && (
-                    <div className="diff-notice"><FaInfoCircle /> Đang hiển thị danh sách kho hàng mới yêu cầu thay đổi.</div>
+                    <div className="diff-notice"><FaInfoCircle /> Đang so sánh thay đổi danh sách kho hàng.</div>
                 )}
                 <div className="address-review-list">
                   {( (selectedSeller.hasPendingUpdate ? selectedSeller.pendingAddresses : selectedSeller.addresses) || []).map((addr: any, idx: number) => {
+                    // Find corresponding old address for comparison
+                    const oldAddr = selectedSeller.hasPendingUpdate ? (selectedSeller.addresses?.[idx] || {}) : addr;
+                    
                     const hasCoords = addr.latitude && String(addr.latitude).trim() !== '' && 
                                       addr.longitude && String(addr.longitude).trim() !== '';
 
+                    // 🚀 FIXED: Rely strictly on 'detail' to prevent appending unrelated geographic info
+                    const fullNewAddr = addr.detail || addr.detailAddress || 'N/A';
+                    const fullOldAddr = oldAddr.detail || oldAddr.detailAddress || 'N/A';
+
                     return (
                       <div key={idx} className="review-data-card mb-10" style={{borderLeft: '4px solid #1d39c4'}}>
-                        <strong>Kho {idx + 1}: {addr.receiverName} | {formatPhone(addr.phone)}</strong>
-                        <p style={{fontSize: '12px', margin: '5px 0'}}>{[addr.detail, addr.ward, addr.province].filter(Boolean).join(', ')}</p>
+                        {renderDiffField(`Tên Kho ${idx + 1}`, oldAddr.receiverName, addr.receiverName)}
+                        {renderDiffField("SĐT Kho", oldAddr.phone, addr.phone, formatPhone)}
+                        {/* Comparison logic correctly focuses on the edited Detail textarea only */}
+                        {renderDiffField("Địa chỉ chi tiết", fullOldAddr, fullNewAddr)}
                         
                         {hasCoords ? (
-                          <div className="qr-box-summary" style={{background: '#f0f5ff', border: '1px solid #adc6ff', display: 'flex', alignItems: 'center', padding: '10px', gap: '15px', borderRadius: '4px'}}>
+                          <div className="qr-box-summary" style={{marginTop: '10px', background: '#f0f5ff', border: '1px solid #adc6ff', display: 'flex', alignItems: 'center', padding: '10px', gap: '15px', borderRadius: '4px'}}>
                             <img className="qr-code-img" 
                                  style={{width: '70px', height: '70px', background: 'white', padding: '2px'}}
                                  src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`http://googleusercontent.com/maps.google.com/${addr.latitude},${addr.longitude}`)}`} 
                                  alt="QR" />
                             <div className="qr-info-text">
-                               <strong style={{color: '#1d39c4', fontSize: '12px'}}>Tọa độ: {addr.latitude}, {addr.longitude}</strong>
+                               <strong style={{color: '#1d39c4', fontSize: '12px'}}>Tọa độ GPS: {addr.latitude}, {addr.longitude}</strong>
                                <span className="btn-copy-action" style={{fontSize: '11px', cursor: 'pointer', color: '#2f54eb', textDecoration: 'underline'}} onClick={() => { navigator.clipboard.writeText(`${addr.latitude}, ${addr.longitude}`); toast.success("Đã chép tọa độ!"); }}>[Chép tọa độ]</span>
                             </div>
                           </div>
@@ -445,6 +462,7 @@ const SellerModeration = () => {
                     <>
                       {renderDiffField("Tên Shop", selectedSeller.shopProfile?.shopName, selectedSeller.pendingShopProfile?.shopName)}
                       {renderDiffField("Loại hình", selectedSeller.shopProfile?.businessType, selectedSeller.pendingShopProfile?.businessType, getBusinessLabel)}
+                      {renderDiffField("Địa chỉ công ty", selectedSeller.shopProfile?.registeredAddress, selectedSeller.pendingShopProfile?.registeredAddress)}
                       <div className="data-row"><span className="label"><FaEnvelope /> Email liên hệ:</span><span className="value">{selectedSeller.shopProfile?.businessEmail || selectedSeller.email}</span></div>
                       {renderDiffField("Mã số thuế", selectedSeller.shopProfile?.taxCode, selectedSeller.pendingShopProfile?.taxCode, formatMST)}
                     </>
@@ -452,6 +470,7 @@ const SellerModeration = () => {
                     <>
                       <div className="data-row"><span className="label">Tên Shop:</span><span className="value">{selectedSeller.shopProfile?.shopName}</span></div>
                       <div className="data-row"><span className="label">Loại hình:</span><span className="value">{getBusinessLabel(selectedSeller.shopProfile?.businessType)}</span></div>
+                      <div className="data-row"><span className="label"><FaMapMarkerAlt /> Địa chỉ công ty:</span><span className="value">{selectedSeller.shopProfile?.registeredAddress || 'Chưa cung cấp'}</span></div>
                       <div className="data-row"><span className="label"><FaEnvelope /> Email liên hệ:</span><span className="value">{selectedSeller.shopProfile?.businessEmail || selectedSeller.email}</span></div>
                       <div className="data-row"><span className="label"><FaFileInvoice /> Mã số thuế:</span><span className="value highlight-green">{formatMST(selectedSeller.shopProfile?.taxCode)}</span></div>
                     </>
@@ -521,7 +540,7 @@ const getBusinessLabel = (type: string) => {
   if (type === 'INDIVIDUAL') return 'Cá nhân';
   if (type === 'HOUSEHOLD') return 'Hộ kinh doanh';
   if (type === 'ENTERPRISE') return 'Công ty';
-  return type;
+  return type || 'Chưa cung cấp';
 };
 
 export default SellerModeration;

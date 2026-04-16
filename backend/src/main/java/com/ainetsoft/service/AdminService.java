@@ -104,7 +104,6 @@ public class AdminService {
         long pCount = productRepository.count();
         long pendingPCount = productRepository.countByStatus("PENDING");
         
-        // 🚀 Count both registrations and updates
         long pendingSCount = userRepository.countBySellerVerificationOrAccountStatus("PENDING", "PENDING_SELLER") +
                              userRepository.countByHasPendingUpdateTrue();
         
@@ -170,6 +169,42 @@ public class AdminService {
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
     }
 
+    /**
+     * 🚀 NEW: Consolidated method to fetch full profile INCLUDING decrypted Bank Accounts.
+     * Use this for the general "Hồ Sơ Chi Tiết Người Dùng" modal.
+     */
+    public Map<String, Object> getUserFullProfile(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
+
+        // Fetch bank accounts manually since they are in a separate table
+        List<BankAccount> bankAccounts = bankAccountRepository.findByUserId(userId);
+        bankAccounts.forEach(account -> {
+            if (account.getAccountNumber() != null) {
+                account.setAccountNumber(encryptionService.decrypt(account.getAccountNumber()));
+            }
+        });
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("id", user.getId());
+        details.put("fullName", user.getFullName());
+        details.put("email", user.getEmail());
+        details.put("phone", user.getPhone());
+        details.put("gender", user.getGender());
+        details.put("birthDate", user.getBirthDate());
+        details.put("createdAt", user.getCreatedAt());
+        details.put("accountStatus", user.getAccountStatus());
+        
+        details.put("identityInfo", user.getIdentityInfo());
+        details.put("shopProfile", user.getShopProfile());
+        details.put("addresses", user.getAddresses());
+        
+        // 🚀 CRITICAL: Now including the decrypted bank data
+        details.put("bankAccounts", bankAccounts); 
+
+        return details;
+    }
+
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
@@ -181,7 +216,6 @@ public class AdminService {
     }
 
     public List<User> getPendingSellers() {
-        // 🚀 Fetch both registrations and updates
         List<User> pending = userRepository.findBySellerVerificationOrAccountStatus("PENDING", "PENDING_SELLER");
         List<User> updates = userRepository.findByHasPendingUpdateTrue();
         
@@ -213,12 +247,14 @@ public class AdminService {
         details.put("fullName", user.getFullName());
         details.put("email", user.getEmail());
         details.put("phone", user.getPhone());
+        details.put("gender", user.getGender());
+        details.put("birthDate", user.getBirthDate());
+
         details.put("identityInfo", user.getIdentityInfo());
         details.put("shopProfile", user.getShopProfile());
         details.put("addresses", user.getAddresses());
         details.put("bankAccounts", bankAccounts); 
 
-        // 🚀 NEW: Include pending data for Admin comparison
         details.put("pendingShopProfile", user.getPendingShopProfile());
         details.put("pendingAddresses", user.getPendingAddresses());
         details.put("hasPendingUpdate", user.isHasPendingUpdate());
@@ -235,12 +271,10 @@ public class AdminService {
             throw new RuntimeException("Không thể phê duyệt tài khoản đang bị khóa!");
         }
 
-        // 🛡️ BRANCH: If this is an update to an existing verified seller
         if (user.isHasPendingUpdate() && "VERIFIED".equalsIgnoreCase(user.getSellerVerification())) {
             return processShopUpdateApproval(user, request, performingAdmin);
         }
 
-        // Registration Flow
         if (request.isApproved()) {
             user.setSellerVerification("VERIFIED");
             user.setAccountStatus("ACTIVE"); 
@@ -289,9 +323,6 @@ public class AdminService {
         }
     }
 
-    /**
-     * 🚀 Process Profile Updates for Verified Sellers
-     */
     @Transactional
     private String processShopUpdateApproval(User user, SellerApprovalRequest request, User performingAdmin) {
         if (request.isApproved()) {

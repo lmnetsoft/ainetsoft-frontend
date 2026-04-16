@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { 
   FaTimes, FaUserCircle, FaIdCard, FaStore, 
   FaEnvelope, FaCheckCircle, FaTag, FaFileInvoice,
-  FaMapMarkedAlt, FaPhoneAlt, FaPassport, FaSearchPlus 
+  FaMapMarkedAlt, FaPhoneAlt, FaPassport, FaSearchPlus,
+  FaUniversity // 🚀 NEW: Icon for Bank section
 } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import './AdminDashboard.css';
@@ -13,7 +14,7 @@ interface UserProfileModalProps {
   onClose: () => void;
 }
 
-/** 🚀 CÁC HÀM TIỆN ÍCH ĐỊNH DẠNG */
+/** 🚀 CÁC HÀM TIỆN ÍCH ĐỊNH DẠNG (PRESERVED) */
 const formatPhone = (val: string) => {
   if (!val) return 'N/A';
   const s = val.replace(/\D/g, '');
@@ -39,7 +40,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const API_BASE_URL = "http://localhost:8080";
 
-  /** 🚀 GIẢI QUYẾT ĐƯỜNG DẪN ẢNH */
+  /** 🚀 GIẢI QUYẾT ĐƯỜNG DẪN ẢNH (PRESERVED) */
   const getFullImageUrl = (path: string | null | undefined) => {
     if (!path || path === "DEFAULT_LOGO" || path.trim() === "") return ainetsoftLogo; 
     if (path.startsWith('data:image') || path.startsWith('http')) return path;
@@ -47,12 +48,23 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
     return `${API_BASE_URL}${cleanPath}`;
   };
 
+  // 🚀 NEW: Helper to extract bank data from various potential properties
+  const getBankData = (userData: any) => {
+    if (!userData) return null;
+    return (
+      userData.bankAccount || 
+      userData.bankInfo ||
+      (userData.bankAccounts && userData.bankAccounts.length > 0 ? userData.bankAccounts[0] : null) ||
+      userData.shopProfile?.bankAccount
+    );
+  };
+
   if (!user) return null;
 
   return (
     <div className="admin-modal-overlay" onClick={onClose}>
       
-      {/* 🚀 POPUP PHÓNG TO ẢNH (Dùng chung cho CCCD và GPKD) */}
+      {/* 🚀 POPUP PHÓNG TO ẢNH */}
       {zoomedImage && (
         <div className="image-zoom-overlay" onClick={(e) => { e.stopPropagation(); setZoomedImage(null); }} style={{ zIndex: 2000 }}>
           <div className="zoom-content-wrapper">
@@ -117,7 +129,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
               </section>
             )}
 
-            {/* KHO HÀNG & GPS */}
+            {/* KHO HÀNG & TỌA ĐỘ GPS */}
             {user.addresses && user.addresses.length > 0 && (
               <section className="inspection-section" style={{ marginTop: '25px' }}>
                 <h4 className="section-title"><FaMapMarkedAlt /> KHO HÀNG & TỌA ĐỘ GPS</h4>
@@ -128,7 +140,8 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
                       <div key={idx} className="review-data-card mb-10" style={{ borderLeft: '4px solid #1d39c4' }}>
                         <strong>Kho {idx + 1}: {addr.receiverName}</strong>
                         <p style={{ fontSize: '11px', color: '#666' }}><FaPhoneAlt size={10} /> {formatPhone(addr.phone)}</p>
-                        <p style={{ fontSize: '12px' }}>{[addr.detail, addr.ward, addr.province].filter(Boolean).join(', ')}</p>
+                        {/* 🚀 FIXED: Rely strictly on 'detail' to prevent appending stale geographic metadata */}
+                        <p style={{ fontSize: '12px' }}>{addr.detail || addr.detailAddress || 'Chưa cung cấp'}</p>
                         {addr.latitude && (
                           <div className="qr-box-summary" style={{ background: '#f0f5ff', border: '1px solid #adc6ff', display: 'flex', alignItems: 'center', padding: '10px', gap: '15px', borderRadius: '4px', marginTop: '10px' }}>
                             <img style={{ width: '60px', height: '60px', background: 'white', padding: '2px' }} src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(mapsUrl)}`} alt="GPS QR" />
@@ -147,7 +160,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
           </div>
 
           <div className="inspection-column">
-            {/* HỒ SƠ KINH DOANH (PREVIEW GPKD MỚI) */}
+            {/* HỒ SƠ KINH DOANH */}
             <section className="inspection-section">
               <h4 className="section-title"><FaStore /> HỒ SƠ KINH DOANH</h4>
               {user.shopProfile ? (
@@ -156,7 +169,6 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
                   <div className="data-row"><span className="label">Mã số thuế:</span><span className="value highlight-green">{formatMST(user.shopProfile.taxCode)}</span></div>
                   <div className="data-row"><span className="label">Địa chỉ Shop:</span><span className="value">{user.shopProfile.shopAddress || 'Chưa cập nhật'}</span></div>
                   
-                  {/* 🚀 THAY ĐỔI: Thêm Preview ảnh cho Giấy phép KD thay vì link text */}
                   <div className="license-preview-box" style={{ marginTop: '15px' }}>
                     <span className="label" style={{ display: 'block', marginBottom: '8px' }}>Giấy phép KD:</span>
                     {user.shopProfile.businessLicenseUrl ? (
@@ -183,6 +195,22 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
                   <p>Người dùng này chưa có hồ sơ bán hàng.</p>
                 </div>
               )}
+            </section>
+
+            {/* 🚀 NEW: TÀI KHOẢN THỤ HƯỞNG */}
+            <section className="inspection-section" style={{ marginTop: '25px' }}>
+              <h4 className="section-title"><FaUniversity /> TÀI KHOẢN THỤ HƯỞNG</h4>
+              <div className="review-data-card bank-card">
+                {getBankData(user) ? (
+                  <>
+                    <div className="data-row"><span className="label">Ngân hàng:</span><span className="value">{getBankData(user).bankName}</span></div>
+                    <div className="data-row"><span className="label">Số tài khoản:</span><span className="value mono">{getBankData(user).accountNumber}</span></div>
+                    <div className="data-row"><span className="label">Chủ tài khoản:</span><span className="value uppercase">{getBankData(user).accountHolder}</span></div>
+                  </>
+                ) : (
+                  <p className="empty-text" style={{ fontSize: '12px', color: '#999', fontStyle: 'italic', textAlign: 'center', padding: '10px' }}>Chưa cung cấp thông tin ngân hàng</p>
+                )}
+              </div>
             </section>
 
             <section className="inspection-section" style={{ marginTop: '25px' }}>
