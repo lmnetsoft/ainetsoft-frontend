@@ -83,15 +83,29 @@ public class User {
     @Builder.Default
     private Set<String> permissions = new HashSet<>(); 
 
+    // --- LIVE DATA ---
     private ShopProfile shopProfile;
     
+    @Builder.Default
+    private List<AddressInfo> addresses = new ArrayList<>();
+
+    // --- 🛡️ PENDING UPDATE FIELDS ---
+    private ShopProfile pendingShopProfile;
+    
+    @Builder.Default
+    private List<AddressInfo> pendingAddresses = new ArrayList<>();
+
+    // 🚀 NEW: Field for bank account draft updates
+    private PendingBank pendingBankAccount;
+
+    @Builder.Default
+    private boolean hasPendingUpdate = false;
+    // -------------------------------------
+
     private IdentityInfo identityInfo; 
 
     @Builder.Default
     private List<CartItem> cart = new ArrayList<>();
-
-    @Builder.Default
-    private List<AddressInfo> addresses = new ArrayList<>();
 
     @Builder.Default
     private boolean enabled = true;
@@ -105,24 +119,13 @@ public class User {
     @Builder.Default
     private LocalDateTime updatedAt = LocalDateTime.now();
 
-    // --- 🚀 PHASE 5 SUPREME LOCKDOWN LOGIC ---
-
-    /**
-     * Checks if the account is effectively active.
-     * This bridges the gap between the 'accountStatus' string and security checks.
-     */
     public boolean isAccountLocked() {
         return "BANNED".equalsIgnoreCase(this.accountStatus);
     }
 
-    /**
-     * Override or helper to ensure login fails if BANNED.
-     */
     public boolean isLoginAllowed() {
         return this.enabled && !isAccountLocked();
     }
-
-    // --- 100% ORIGINAL INNER CLASSES PRESERVED BELOW ---
 
     public enum AuthProvider {
         LOCAL, GOOGLE, FACEBOOK
@@ -184,5 +187,16 @@ public class User {
         private String latitude;  
         private String longitude; 
         public boolean isDefault() { return isDefault; }
+    }
+
+    // 🚀 NEW: Static inner class for tracking bank updates
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class PendingBank {
+        private String bankName;
+        private String accountHolder;
+        private String accountNumber;
     }
 }

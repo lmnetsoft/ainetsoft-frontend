@@ -3,7 +3,7 @@ package com.ainetsoft.controller;
 import com.ainetsoft.dto.SellerApprovalRequest;
 import com.ainetsoft.model.FeedbackTemplate;
 import com.ainetsoft.model.User;
-import com.ainetsoft.model.SystemContent; // 🚀 Explicit import for Phase 5
+import com.ainetsoft.model.SystemContent; 
 import com.ainetsoft.repository.UserRepository;
 import com.ainetsoft.service.AdminService;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +20,6 @@ import java.util.List;
 
 /**
  * AdminController - Main Administration Hub.
- * Handles Users, Sellers, Products, Reviews, Reports, and System Content.
  */
 @RestController
 @RequestMapping("/api/admin")
@@ -31,9 +30,6 @@ public class AdminController {
     private final AdminService adminService;
     private final UserRepository userRepository;
 
-    /**
-     * Helper to get the Admin currently making the request.
-     */
     private User getCurrentAdmin() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByEmail(email)
@@ -46,7 +42,7 @@ public class AdminController {
         }
     }
 
-    // --- USER MANAGEMENT (PHASES 1, 2, & 3) ---
+    // --- USER MANAGEMENT ---
 
     @GetMapping("/users/all")
     public ResponseEntity<?> getAllUsers(
@@ -60,9 +56,13 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getAllUsersFiltered(search, role, status, pageable));
     }
 
+    /**
+     * 🚀 FIXED: Now calls getUserFullProfile instead of getUserById.
+     * This ensures the User Detail modal gets decrypted bank accounts and pending drafts.
+     */
     @GetMapping("/users/detail/{userId}")
     public ResponseEntity<?> getUserDetails(@PathVariable String userId) {
-        return ResponseEntity.ok(adminService.getUserById(userId));
+        return ResponseEntity.ok(adminService.getUserFullProfile(userId));
     }
 
     @PostMapping("/users/promote/{userId}")
@@ -74,14 +74,10 @@ public class AdminController {
         return ResponseEntity.ok(adminService.promoteToAdmin(userId, permissions, currentAdmin));
     }
 
-    /**
-     * 🚀 NEW PHASE 5: Demote Admin back to standard User
-     * Revokes the ADMIN role and clears permissions.
-     */
     @PostMapping("/users/demote/{userId}")
     public ResponseEntity<?> demoteUser(@PathVariable String userId) {
         User currentAdmin = getCurrentAdmin();
-        validateGlobalAdmin(currentAdmin); // Only Global Admin can demote another Admin
+        validateGlobalAdmin(currentAdmin); 
         return ResponseEntity.ok(adminService.demoteFromAdmin(userId, currentAdmin));
     }
 
@@ -90,9 +86,6 @@ public class AdminController {
         return ResponseEntity.ok(adminService.banUser(userId, getCurrentAdmin()));
     }
 
-    /**
-     * 🚀 PHASE 3: Toggle Account Status (Ban/Unban)
-     */
     @PostMapping("/users/status-toggle/{userId}")
     public ResponseEntity<?> toggleUserStatus(@PathVariable String userId) {
         User currentAdmin = getCurrentAdmin();
@@ -104,13 +97,16 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getAuditLogs());
     }
 
-    // --- MERCHANT MODERATION (PHASE 4) ---
+    // --- MERCHANT MODERATION ---
 
     @GetMapping("/sellers/pending")
     public ResponseEntity<?> getPendingSellers() {
         return ResponseEntity.ok(adminService.getPendingSellers());
     }
 
+    /**
+     * Fetches details for the Moderation/Approval screen.
+     */
     @GetMapping("/sellers/review/{userId}")
     public ResponseEntity<?> getSellerVerificationDetails(@PathVariable String userId) {
         return ResponseEntity.ok(adminService.getSellerVerificationDetails(userId));
@@ -123,10 +119,6 @@ public class AdminController {
         return ResponseEntity.ok(adminService.processSellerApproval(userId, request, getCurrentAdmin()));
     }
 
-    /**
-     * 🚀 PHASE 4: Revoke Merchant Rights
-     * Downgrades a SELLER back to a regular USER.
-     */
     @PostMapping("/sellers/revoke/{userId}")
     public ResponseEntity<?> revokeSellerRights(
             @PathVariable String userId, 
@@ -134,7 +126,7 @@ public class AdminController {
         return ResponseEntity.ok(adminService.revokeSellerStatus(userId, reason, getCurrentAdmin()));
     }
 
-    // --- PRODUCT & REPORT MODERATION (PHASE 5) ---
+    // --- PRODUCT & REPORT MODERATION ---
 
     @GetMapping("/products/all")
     public ResponseEntity<?> getAllProducts(
@@ -168,9 +160,6 @@ public class AdminController {
         return ResponseEntity.ok().build();
     }
 
-    /**
-     * 🚀 PHASE 5: Batch Resolve Violation Reports
-     */
     @PostMapping("/reports/batch-resolve")
     public ResponseEntity<?> batchResolveReports(
             @RequestBody List<String> ids, 
@@ -209,16 +198,13 @@ public class AdminController {
         return ResponseEntity.ok().build();
     }
 
-    // --- SYSTEM CONTENT MANAGEMENT (PHASE 5 REFINED) ---
+    // --- SYSTEM CONTENT MANAGEMENT ---
 
     @GetMapping("/system-content/all")
     public ResponseEntity<?> getAllSystemContents() {
         return ResponseEntity.ok(adminService.getAllSystemContents());
     }
 
-    /**
-     * 🚀 PHASE 5: Fetch content by specific category (POLICY, FAQ, etc.)
-     */
     @GetMapping("/system-content/category/{category}")
     public ResponseEntity<?> getSystemContentsByCategory(@PathVariable String category) {
         return ResponseEntity.ok(adminService.getSystemContentsByCategory(category));
@@ -229,9 +215,6 @@ public class AdminController {
         return ResponseEntity.ok(adminService.saveSystemContent(content, getCurrentAdmin()));
     }
 
-    /**
-     * 🚀 PHASE 5: Admin removal of system pages
-     */
     @DeleteMapping("/system-content/{id}")
     public ResponseEntity<?> deleteSystemContent(@PathVariable String id) {
         adminService.deleteSystemContent(id, getCurrentAdmin());

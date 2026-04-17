@@ -36,4 +36,10 @@ public class UserResponse {
     
     private List<User.AddressInfo> addresses;
     private List<com.ainetsoft.model.CartItem> cart;
+
+    // --- 🛡️ NEW: PENDING UPDATE FIELDS ---
+    // These allow the frontend to show a "Pending Review" status and compare changes
+    private boolean hasPendingUpdate;
+    private User.ShopProfile pendingShopProfile;
+    private List<User.AddressInfo> pendingAddresses;
 }

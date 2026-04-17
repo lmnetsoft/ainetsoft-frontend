@@ -32,14 +32,9 @@ public class AdminService {
     private final AzureCommunicationService azureEmailService;
     private final FeedbackTemplateRepository feedbackTemplateRepository;
     private final SystemContentRepository systemContentRepository;
-    
-    // 🚀 NEW: Fields added to handle bank data fetching and decryption
     private final BankAccountRepository bankAccountRepository;
     private final EncryptionService encryptionService;
 
-    /**
-     * INTERNAL HELPER: Records admin actions into the Audit Log.
-     */
     private void recordAudit(User admin, String type, String targetId, String targetName, String details) {
         if (admin == null) return;
         AuditLog logEntry = AuditLog.builder()
@@ -79,9 +74,6 @@ public class AdminService {
         return "Đã nâng cấp " + target.getEmail() + " thành Quản trị viên.";
     }
 
-    /**
-     * 🚀 NEW PHASE 5: Demote Admin back to normal User
-     */
     @Transactional
     public String demoteFromAdmin(String targetUserId, User performingAdmin) {
         User target = userRepository.findById(targetUserId)
@@ -112,7 +104,8 @@ public class AdminService {
         long pCount = productRepository.count();
         long pendingPCount = productRepository.countByStatus("PENDING");
         
-        long pendingSCount = userRepository.countBySellerVerificationOrAccountStatus("PENDING", "PENDING_SELLER");
+        long pendingSCount = userRepository.countBySellerVerificationOrAccountStatus("PENDING", "PENDING_SELLER") +
+                             userRepository.countByHasPendingUpdateTrue();
         
         long reportCount = productReportRepository.count();
 
@@ -176,6 +169,43 @@ public class AdminService {
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
     }
 
+    /**
+     * 🚀 UNIVERSAL FETCH: Now includes live decrypted bank accounts AND drafts.
+     */
+    public Map<String, Object> getUserFullProfile(String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
+
+        List<BankAccount> bankAccounts = bankAccountRepository.findByUserId(userId);
+        bankAccounts.forEach(account -> {
+            if (account.getAccountNumber() != null) {
+                account.setAccountNumber(encryptionService.decrypt(account.getAccountNumber()));
+            }
+        });
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("id", user.getId());
+        details.put("fullName", user.getFullName());
+        details.put("email", user.getEmail());
+        details.put("phone", user.getPhone());
+        details.put("gender", user.getGender());
+        details.put("birthDate", user.getBirthDate());
+        details.put("createdAt", user.getCreatedAt());
+        details.put("accountStatus", user.getAccountStatus());
+        
+        details.put("identityInfo", user.getIdentityInfo());
+        details.put("shopProfile", user.getShopProfile());
+        details.put("addresses", user.getAddresses());
+        details.put("bankAccounts", bankAccounts); 
+
+        // 🛡️ NEW: Include draft bank info if waiting for approval
+        if (user.getPendingBankAccount() != null) {
+            details.put("pendingBankAccount", user.getPendingBankAccount());
+        }
+
+        return details;
+    }
+
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
@@ -188,43 +218,54 @@ public class AdminService {
 
     public List<User> getPendingSellers() {
         List<User> pending = userRepository.findBySellerVerificationOrAccountStatus("PENDING", "PENDING_SELLER");
-        pending.forEach(user -> {
+        List<User> updates = userRepository.findByHasPendingUpdateTrue();
+        
+        Set<User> combined = new HashSet<>(pending);
+        combined.addAll(updates);
+        
+        List<User> result = new ArrayList<>(combined);
+        result.forEach(user -> {
             if (user.getAvatarUrl() == null || user.getAvatarUrl().isEmpty()) {
                 user.setAvatarUrl("DEFAULT_LOGO"); 
             }
         });
-        return pending;
+        return result;
     }
 
     /**
-     * 🚀 UPDATED: Now fetches linked BankAccounts and Decrypts account numbers
+     * 🚀 UPDATED: Includes pending bank draft for the moderation view.
      */
     public Map<String, Object> getSellerVerificationDetails(String userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy dữ liệu xác minh!"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy dữ liệu!"));
 
-        // Fetch bank accounts using the specialized repository method
         List<BankAccount> bankAccounts = bankAccountRepository.findByUserId(userId);
-
-        // Decrypt account numbers using the encryption service
         bankAccounts.forEach(account -> {
             if (account.getAccountNumber() != null) {
                 account.setAccountNumber(encryptionService.decrypt(account.getAccountNumber()));
             }
         });
 
-        // Combine User document data and the linked Bank information into one response
         Map<String, Object> details = new HashMap<>();
         details.put("id", user.getId());
         details.put("fullName", user.getFullName());
         details.put("email", user.getEmail());
         details.put("phone", user.getPhone());
+        details.put("gender", user.getGender());
+        details.put("birthDate", user.getBirthDate());
+
         details.put("identityInfo", user.getIdentityInfo());
         details.put("shopProfile", user.getShopProfile());
         details.put("addresses", user.getAddresses());
-        
-        // 🚀 THIS FIXES THE DISPLAY ISSUE BY SENDING DATA TO THE FRONTEND
         details.put("bankAccounts", bankAccounts); 
+
+        details.put("pendingShopProfile", user.getPendingShopProfile());
+        details.put("pendingAddresses", user.getPendingAddresses());
+        
+        // 🛡️ NEW: Pass the draft bank info for comparison
+        details.put("pendingBankAccount", user.getPendingBankAccount());
+        
+        details.put("hasPendingUpdate", user.isHasPendingUpdate());
 
         return details;
     }
@@ -236,6 +277,10 @@ public class AdminService {
 
         if ("BANNED".equals(user.getAccountStatus())) {
             throw new RuntimeException("Không thể phê duyệt tài khoản đang bị khóa!");
+        }
+
+        if (user.isHasPendingUpdate() && "VERIFIED".equalsIgnoreCase(user.getSellerVerification())) {
+            return processShopUpdateApproval(user, request, performingAdmin);
         }
 
         if (request.isApproved()) {
@@ -258,7 +303,7 @@ public class AdminService {
             try {
                 azureEmailService.sendSellerStatusEmail(user.getEmail(), user.getFullName(), true, null);
             } catch (Exception e) {
-                log.warn("Approval notification email failed for {}: {}", user.getEmail(), e.getMessage());
+                log.warn("Approval email failed for {}: {}", user.getEmail(), e.getMessage());
             }
 
             recordAudit(performingAdmin, "APPROVE_SELLER", user.getId(), user.getEmail(), "Phê duyệt Shop");
@@ -272,8 +317,7 @@ public class AdminService {
 
             notificationService.createNotification(
                 user.getId(), "Yêu cầu nâng cấp Shop bị từ chối",
-                "Lý do: " + request.getAdminNote(), 
-                "SELLER_REJECTION", null
+                "Lý do: " + request.getAdminNote(), "SELLER_REJECTION", null
             );
 
             recordAudit(performingAdmin, "REJECT_SELLER", user.getId(), user.getEmail(), "Từ chối Shop: " + request.getAdminNote());
@@ -281,9 +325,65 @@ public class AdminService {
             try {
                 azureEmailService.sendSellerStatusEmail(user.getEmail(), user.getFullName(), false, request.getAdminNote());
             } catch (Exception e) {
-                log.warn("Rejection notification email failed for {}: {}", user.getEmail(), e.getMessage());
+                log.warn("Rejection email failed for {}: {}", user.getEmail(), e.getMessage());
             }
             return "Đã từ chối yêu cầu thành công.";
+        }
+    }
+
+    /**
+     * 🚀 UPDATED: Logic to promote Draft Bank Info to Live upon approval.
+     */
+    @Transactional
+    private String processShopUpdateApproval(User user, SellerApprovalRequest request, User performingAdmin) {
+        if (request.isApproved()) {
+            // 1. Promote Profile & Addresses
+            if (user.getPendingShopProfile() != null) user.setShopProfile(user.getPendingShopProfile());
+            if (user.getPendingAddresses() != null && !user.getPendingAddresses().isEmpty()) {
+                user.setAddresses(new ArrayList<>(user.getPendingAddresses()));
+            }
+
+            // 🛡️ 2. Promote Bank Account changes
+            if (user.getPendingBankAccount() != null) {
+                List<BankAccount> existing = bankAccountRepository.findByUserId(user.getId());
+                BankAccount target = existing.isEmpty() ? new BankAccount() : existing.get(0);
+                
+                target.setUserId(user.getId());
+                target.setBankName(user.getPendingBankAccount().getBankName());
+                target.setAccountHolder(user.getPendingBankAccount().getAccountHolder());
+                // Encrypt for the live database table
+                target.setAccountNumber(encryptionService.encrypt(user.getPendingBankAccount().getAccountNumber()));
+                target.setUpdatedAt(LocalDateTime.now());
+                
+                bankAccountRepository.save(target);
+            }
+            
+            user.setPendingShopProfile(null);
+            user.setPendingAddresses(new ArrayList<>());
+            user.setPendingBankAccount(null); // Clear draft
+            user.setHasPendingUpdate(false);
+            user.setUpdatedAt(LocalDateTime.now());
+            userRepository.save(user);
+
+            notificationService.createNotification(user.getId(), "Cập nhật Shop thành công",
+                "Admin đã phê duyệt các thay đổi thông tin cửa hàng.", "SHOP_UPDATE_APPROVED", null);
+
+            recordAudit(performingAdmin, "APPROVE_SHOP_UPDATE", user.getId(), user.getEmail(), "Phê duyệt cập nhật Shop");
+            return "Đã phê duyệt cập nhật Shop thành công.";
+        } else {
+            // Rejection clears all drafts
+            user.setPendingShopProfile(null);
+            user.setPendingAddresses(new ArrayList<>());
+            user.setPendingBankAccount(null);
+            user.setHasPendingUpdate(false);
+            user.setUpdatedAt(LocalDateTime.now());
+            userRepository.save(user);
+
+            notificationService.createNotification(user.getId(), "Cập nhật Shop bị từ chối",
+                "Lý do: " + request.getAdminNote(), "SHOP_UPDATE_REJECTED", null);
+
+            recordAudit(performingAdmin, "REJECT_SHOP_UPDATE", user.getId(), user.getEmail(), "Từ chối cập nhật Shop: " + request.getAdminNote());
+            return "Đã từ chối yêu cầu cập nhật.";
         }
     }
 
@@ -344,7 +444,7 @@ public class AdminService {
         
         productRepository.delete(product);
         
-        recordAudit(performingAdmin, "DELETE_PRODUCT", product.getId(), product.getName(), "Admin xóa vĩnh viễn sản phẩm");
+        recordAudit(performingAdmin, "DELETE_PRODUCT", product.getId(), product.getName(), "Admin xóa sản phẩm");
     }
 
     @Transactional
@@ -357,11 +457,11 @@ public class AdminService {
             productRepository.findById(report.getProductId()).ifPresent(product -> {
                 product.setStatus("BANNED");
                 productRepository.save(product); 
-                recordAudit(performingAdmin, "CONFIRM_VIOLATION", product.getId(), product.getName(), "Xác nhận vi phạm & Khóa sản phẩm");
+                recordAudit(performingAdmin, "CONFIRM_VIOLATION", product.getId(), product.getName(), "Xác nhận vi phạm & Khóa SP");
             });
         } else {
             report.setStatus("DISMISSED");
-            recordAudit(performingAdmin, "DISMISS_REPORT", report.getId(), "Report Record", "Bác bỏ báo cáo vi phạm");
+            recordAudit(performingAdmin, "DISMISS_REPORT", report.getId(), "Report", "Bác bỏ báo cáo");
         }
         report.setUpdatedAt(LocalDateTime.now());
         productReportRepository.save(report);
@@ -371,18 +471,10 @@ public class AdminService {
     @Transactional
     public String batchResolveReports(List<String> reportIds, String action, User performingAdmin) {
         if (reportIds == null || reportIds.isEmpty()) return "Không có báo cáo nào được chọn.";
-        
         for (String id : reportIds) {
-            try {
-                resolveReport(id, action, performingAdmin);
-            } catch (Exception e) {
-                log.warn("Lỗi khi xử lý báo cáo {}: {}", id, e.getMessage());
-            }
+            try { resolveReport(id, action, performingAdmin); } catch (Exception e) { log.warn("Lỗi xử lý {}: {}", id, e.getMessage()); }
         }
-        
-        recordAudit(performingAdmin, "BATCH_RESOLVE_REPORTS", "MULTIPLE", "ProductReports", 
-                "Xử lý hàng loạt " + reportIds.size() + " báo cáo với hành động: " + action);
-                
+        recordAudit(performingAdmin, "BATCH_RESOLVE_REPORTS", "MULTIPLE", "ProductReports", "Xử lý hàng loạt báo cáo: " + action);
         return "Đã xử lý " + reportIds.size() + " báo cáo thành công.";
     }
 
@@ -393,7 +485,7 @@ public class AdminService {
     @Transactional
     public void deleteReport(String reportId, User performingAdmin) {
         productReportRepository.deleteById(reportId);
-        recordAudit(performingAdmin, "DELETE_REPORT", reportId, "Violation Record", "Xóa vĩnh viễn báo cáo");
+        recordAudit(performingAdmin, "DELETE_REPORT", reportId, "Violation Record", "Xóa báo cáo");
     }
 
     public List<Review> getAllReviewsForModeration() {
@@ -404,13 +496,9 @@ public class AdminService {
 
     @Transactional
     public void deleteReview(String reviewId, User performingAdmin) {
-        Review review = reviewRepository.findById(reviewId)
-                .orElseThrow(() -> new RuntimeException("Đánh giá không tồn tại!"));
-        
+        Review review = reviewRepository.findById(reviewId).orElseThrow(() -> new RuntimeException("Đánh giá không tồn tại!"));
         reviewRepository.delete(review);
-        
-        recordAudit(performingAdmin, "DELETE_REVIEW", review.getId(), review.getUserName(), 
-                "Xóa đánh giá của " + review.getUserName() + " cho sản phẩm ID: " + review.getProductId());
+        recordAudit(performingAdmin, "DELETE_REVIEW", review.getId(), review.getUserName(), "Xóa đánh giá: " + review.getProductId());
     }
 
     @Transactional
@@ -428,51 +516,33 @@ public class AdminService {
 
     @Transactional
     public String banUser(String userId, User performingAdmin) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
-        
-        if (user.isGlobalAdmin() || "admin@ainetsoft.com".equals(user.getEmail())) {
-            throw new RuntimeException("KHÔNG THỂ khóa tài khoản Global Admin!");
-        }
-
+        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
+        if (user.isGlobalAdmin() || "admin@ainetsoft.com".equals(user.getEmail())) throw new RuntimeException("KHÔNG THỂ khóa Global Admin!");
         user.setAccountStatus("BANNED");
         user.setEnabled(false); 
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
-        
         recordAudit(performingAdmin, "BAN_USER", user.getId(), user.getEmail(), "Khóa tài khoản");
         return "Tài khoản " + user.getEmail() + " đã bị khóa.";
     }
 
     @Transactional
     public String toggleUserStatus(String userId, User performingAdmin) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
-
-        if (user.isGlobalAdmin() || "admin@ainetsoft.com".equals(user.getEmail())) {
-            throw new RuntimeException("KHÔNG THỂ thay đổi trạng thái của Global Admin!");
-        }
-
+        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
+        if (user.isGlobalAdmin() || "admin@ainetsoft.com".equals(user.getEmail())) throw new RuntimeException("KHÔNG THỂ thay đổi Global Admin!");
         String currentStatus = user.getAccountStatus();
         String newStatus = "BANNED".equals(currentStatus) ? "ACTIVE" : "BANNED";
-        String actionLabel = "BANNED".equals(newStatus) ? "KHÓA" : "MỞ KHÓA";
-
         user.setAccountStatus(newStatus);
         user.setEnabled(!"BANNED".equals(newStatus)); 
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
-
-        recordAudit(performingAdmin, newStatus.equals("BANNED") ? "BAN_USER" : "UNBAN_USER", 
-                    user.getId(), user.getEmail(), actionLabel + " tài khoản người dùng");
-
-        return "Đã " + actionLabel + " tài khoản " + user.getEmail() + " thành công.";
+        recordAudit(performingAdmin, newStatus.equals("BANNED") ? "BAN_USER" : "UNBAN_USER", user.getId(), user.getEmail(), "Thay đổi trạng thái tài khoản");
+        return "Đã cập nhật trạng thái " + user.getEmail() + " thành công.";
     }
 
     @Transactional
     public String revokeSellerStatus(String userId, String reason, User performingAdmin) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
-
+        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
         Set<String> roles = user.getRoles();
         if (roles != null && roles.contains("SELLER")) {
             roles.remove("SELLER");
@@ -480,72 +550,39 @@ public class AdminService {
             user.setSellerVerification("NONE"); 
             user.setUpdatedAt(LocalDateTime.now());
             userRepository.save(user);
-
-            notificationService.createNotification(
-                    user.getId(), "Quyền Người bán đã bị thu hồi",
-                    "Lý do: " + reason, "SELLER_REVOKED", null
-            );
-
-            try {
-                azureEmailService.sendSellerStatusEmail(user.getEmail(), user.getFullName(), false, 
-                    "Quyền người bán của bạn đã bị thu hồi. Lý do: " + reason);
-            } catch (Exception e) {
-                log.warn("Revoke notification email failed for {}: {}", user.getEmail(), e.getMessage());
-            }
-
+            notificationService.createNotification(user.getId(), "Quyền Người bán đã bị thu hồi", "Lý do: " + reason, "SELLER_REVOKED", null);
+            try { azureEmailService.sendSellerStatusEmail(user.getEmail(), user.getFullName(), false, "Quyền người bán bị thu hồi. Lý do: " + reason); } catch (Exception e) { log.warn("Revoke email failed: {}", e.getMessage()); }
             recordAudit(performingAdmin, "REVOKE_SELLER", user.getId(), user.getEmail(), "Thu hồi quyền Seller: " + reason);
             return "Đã thu hồi quyền Người bán của " + user.getEmail();
-        } else {
-            throw new RuntimeException("Người dùng này không phải là Người bán!");
-        }
+        } else { throw new RuntimeException("Người dùng không phải là Người bán!"); }
     }
 
-    public List<FeedbackTemplate> getTemplatesByType(String type) {
-        return feedbackTemplateRepository.findByType(type);
-    }
+    public List<FeedbackTemplate> getTemplatesByType(String type) { return feedbackTemplateRepository.findByType(type); }
 
     @Transactional
     public FeedbackTemplate saveFeedbackTemplate(FeedbackTemplate template, User performingAdmin) {
         FeedbackTemplate saved = feedbackTemplateRepository.save(template);
-        recordAudit(performingAdmin, "MANAGE_TEMPLATES", saved.getId(), saved.getTitle(), 
-                "Add/Update response template for " + template.getType());
+        recordAudit(performingAdmin, "MANAGE_TEMPLATES", saved.getId(), saved.getTitle(), "Cập nhật mẫu phản hồi");
         return saved;
     }
 
     @Transactional
     public void deleteFeedbackTemplate(String id, User performingAdmin) {
         feedbackTemplateRepository.deleteById(id);
-        recordAudit(performingAdmin, "DELETE_TEMPLATE", id, "Template", "Remove quick response template");
+        recordAudit(performingAdmin, "DELETE_TEMPLATE", id, "Template", "Xóa mẫu phản hồi");
     }
 
-    public SystemContent getSystemContentBySlug(String slug) {
-        return systemContentRepository.findBySlug(slug)
-                .orElseThrow(() -> new RuntimeException("Nội dung không tồn tại cho slug: " + slug));
-    }
-
-    public List<SystemContent> getAllSystemContents() {
-        return systemContentRepository.findAll();
-    }
-
-    public List<SystemContent> getSystemContentsByCategory(String category) {
-        return systemContentRepository.findByCategory(category);
-    }
-
-    public List<SystemContent> getPublicSystemContents() {
-        return systemContentRepository.findAllByIsActiveTrue();
-    }
+    public SystemContent getSystemContentBySlug(String slug) { return systemContentRepository.findBySlug(slug).orElseThrow(() -> new RuntimeException("Nội dung không tồn tại: " + slug)); }
+    public List<SystemContent> getAllSystemContents() { return systemContentRepository.findAll(); }
+    public List<SystemContent> getSystemContentsByCategory(String category) { return systemContentRepository.findByCategory(category); }
+    public List<SystemContent> getPublicSystemContents() { return systemContentRepository.findAllByIsActiveTrue(); }
 
     @Transactional
     public SystemContent saveSystemContent(SystemContent content, User performingAdmin) {
         content.setLastUpdated(LocalDateTime.now());
-        if (performingAdmin != null) {
-            content.setUpdatedBy(performingAdmin.getFullName());
-        }
+        if (performingAdmin != null) content.setUpdatedBy(performingAdmin.getFullName());
         SystemContent saved = systemContentRepository.save(content);
-        
-        recordAudit(performingAdmin, "UPDATE_SYSTEM_CONTENT", saved.getId(), saved.getTitle(), 
-                "Cập nhật nội dung hệ thống: " + saved.getSlug() + " (Category: " + saved.getCategory() + ")");
-        
+        recordAudit(performingAdmin, "UPDATE_SYSTEM_CONTENT", saved.getId(), saved.getTitle(), "Cập nhật nội dung: " + saved.getSlug());
         return saved;
     }
 
@@ -553,8 +590,7 @@ public class AdminService {
     public void deleteSystemContent(String id, User performingAdmin) {
         systemContentRepository.findById(id).ifPresent(content -> {
             systemContentRepository.deleteById(id);
-            recordAudit(performingAdmin, "DELETE_SYSTEM_CONTENT", id, content.getTitle(), 
-                    "Xóa trang nội dung hệ thống: " + content.getSlug());
+            recordAudit(performingAdmin, "DELETE_SYSTEM_CONTENT", id, content.getTitle(), "Xóa trang hệ thống: " + content.getSlug());
         });
     }
 }

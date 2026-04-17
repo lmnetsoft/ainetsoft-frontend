@@ -3,7 +3,7 @@ import ToastNotification from '../../components/Toast/ToastNotification';
 import { getUserProfile, updateShopSettings } from '../../services/authService';
 import { 
     FaStore, FaMapMarkerAlt, FaShieldAlt, FaInfoCircle, 
-    FaExternalLinkAlt, FaPhoneAlt, FaUserEdit, FaMap 
+    FaExternalLinkAlt, FaPhoneAlt, FaUserEdit, FaMap, FaHourglassHalf 
 } from 'react-icons/fa';
 import './SellerSettings.css';
 
@@ -29,7 +29,8 @@ const formatMSTDisplay = (val: string) => {
 
 const SellerSettings = () => {
     const [shopData, setShopData] = useState<any>({
-        shopName: '', shopDescription: '', shopSlug: '', lastShopNameChange: null, lowStockThreshold: 5, holidayMode: false, taxCode: '', businessLicenseUrl: ''
+        shopName: '', shopDescription: '', shopSlug: '', lastShopNameChange: null, lowStockThreshold: 5, holidayMode: false, taxCode: '', businessLicenseUrl: '',
+        hasPendingUpdate: false 
     });
 
     const [addresses, setAddresses] = useState<any[]>([]);
@@ -40,13 +41,33 @@ const SellerSettings = () => {
     const [newLicenseFile, setNewLicenseFile] = useState<File | null>(null);
     const [daysUntilChange, setDaysUntilChange] = useState(0);
 
+    // 🛡️ VALIDATION: MST Format check
+    const isMSTInvalid = shopData.taxCode.length > 0 && 
+                        shopData.taxCode.length !== 10 && 
+                        shopData.taxCode.length !== 13;
+
+    // 🛡️ VALIDATION: Duplicate phone check
+    const hasDuplicatePhones = addresses.length > 1 && 
+                               addresses[0].phone && 
+                               addresses[1].phone && 
+                               addresses[0].phone.replace(/\s/g, '') === addresses[1].phone.replace(/\s/g, '');
+
+    // 🚀 NEW: Check if a specific phone number is the wrong length (VN standard is 10 digits)
+    const isPhoneLengthInvalid = (phone: string) => {
+        const digits = (phone || "").replace(/\s/g, '');
+        return digits.length > 0 && digits.length !== 10;
+    };
+
+    // 🚀 NEW: Overall phone validity check for the "Save" button
+    const hasInvalidPhones = addresses.some(addr => isPhoneLengthInvalid(addr.phone));
+
     useEffect(() => {
         const fetchShopInfo = async () => {
             try {
                 setLoading(true);
                 const data = await getUserProfile();
                 if (data.shopProfile) {
-                    setShopData({ ...data.shopProfile });
+                    setShopData({ ...data.shopProfile, hasPendingUpdate: data.hasPendingUpdate });
                     setAddresses(data.addresses || []);
                     if (data.shopProfile.lastShopNameChange) {
                         const lastDate = new Date(data.shopProfile.lastShopNameChange);
@@ -70,6 +91,12 @@ const SellerSettings = () => {
     };
 
     const handleSave = async () => {
+        if (isMSTInvalid || hasDuplicatePhones || hasInvalidPhones) {
+            setToastMessage("Vui lòng kiểm tra lại các thông tin lỗi.");
+            setShowToast(true);
+            return;
+        }
+
         try {
             setIsSaving(true);
             const formData = new FormData();
@@ -95,10 +122,12 @@ const SellerSettings = () => {
             if (newLicenseFile) formData.append('license', newLicenseFile);
 
             await updateShopSettings(formData);
-            setToastMessage("Cập nhật thành công!");
+            
+            setToastMessage(shopData.hasPendingUpdate ? "Yêu cầu thay đổi đã được gửi!" : "Cập nhật thành công!");
             setShowToast(true);
+
             const updatedProfile = await getUserProfile();
-            setShopData(updatedProfile.shopProfile);
+            setShopData({ ...updatedProfile.shopProfile, hasPendingUpdate: updatedProfile.hasPendingUpdate });
         } catch (error: any) {
             setToastMessage(error.response?.data || "Cập nhật thất bại.");
             setShowToast(true);
@@ -106,35 +135,46 @@ const SellerSettings = () => {
     };
 
     return (
-        /* 🚀 STABILITY FIX: Layout wrapper stays mounted */
         <main className="seller-settings-supreme-layout">
             <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
 
-            {/* 🚀 TYPOGRAPHY FIX: Header unified with MyProducts */}
-            <div className="supreme-content-header centered-header">
-                <h1><FaStore className="title-icon-gap" /> Thiết lập Shop</h1>
+            <div className="header-with-icon">
+                <FaStore className="header-icon" />
+                <h1>Thiết lập Shop</h1>
                 <p>Tùy chỉnh nhận diện và kho vận GPS</p>
             </div>
             
             <hr className="supreme-divider" />
 
+            {shopData.hasPendingUpdate && (
+                <div className="warning-text" style={{marginBottom: '25px'}}>
+                    <FaHourglassHalf />
+                    <span>Thông tin của bạn đang được kiểm duyệt. Các thay đổi mới nhất sẽ hiển thị sau khi Admin chấp nhận.</span>
+                </div>
+            )}
+
             {loading ? (
-                <div className="loading-placeholder-seller">Đang tải cấu hình shop...</div>
+                <div className="loading-spinner-container">Đang tải cấu hình shop...</div>
             ) : (
                 <div className="settings-scroll-view">
                     <section className="settings-section">
                         <h3 className="section-subtitle"><FaInfoCircle /> Nhận diện & URL</h3>
                         <div className="supreme-form-row vertical">
                             <label>Tên Shop <span className="req">*</span></label>
-                            <div className="input-group-container">
+                            <div className="input-group-container" style={{ display: 'flex', flexDirection: 'column' }}>
                                 <input 
                                     type="text" 
                                     className="supreme-input"
-                                    disabled={daysUntilChange > 0}
+                                    disabled={daysUntilChange > 0 || shopData.hasPendingUpdate}
                                     value={shopData.shopName} 
                                     onChange={(e) => setShopData({...shopData, shopName: e.target.value})} 
                                 />
-                                {daysUntilChange > 0 && <small className="input-hint red">Bạn có thể đổi tên lại sau {daysUntilChange} ngày nữa.</small>}
+                                <small className="input-hint" style={{ marginTop: '4px' }}>Tên Shop có thể thay đổi 30 ngày một lần.</small>
+                                {daysUntilChange > 0 && (
+                                    <small className="input-hint red" style={{ fontWeight: '700', marginTop: '2px' }}>
+                                        Bạn có thể đổi tên lại sau {daysUntilChange} ngày nữa.
+                                    </small>
+                                )}
                             </div>
                         </div>
 
@@ -155,37 +195,73 @@ const SellerSettings = () => {
                     <section className="settings-section mt-30">
                         <h3 className="section-subtitle"><FaMapMarkerAlt /> Kho hàng ({addresses.length}/2)</h3>
                         <div className="warehouse-edit-grid">
-                            {addresses.map((addr, idx) => (
-                                <div key={idx} className="pro-warehouse-card">
-                                    <div className="card-side-info">
-                                        <div className="input-group-mini">
-                                            <FaUserEdit className="mini-icon" />
-                                            <input value={addr.receiverName} onChange={(e) => handleAddressUpdate(idx, 'receiverName', e.target.value)} placeholder="Tên kho" />
+                            {addresses.map((addr, idx) => {
+                                // 🚀 NEW: Detect invalid length specifically for this card
+                                const invalidLength = isPhoneLengthInvalid(addr.phone);
+                                
+                                return (
+                                    <div key={idx} className="pro-warehouse-card">
+                                        <div className="card-side-info">
+                                            <div className="input-group-mini">
+                                                <FaUserEdit className="mini-icon" />
+                                                <input 
+                                                    value={addr.receiverName} 
+                                                    disabled={shopData.hasPendingUpdate}
+                                                    onChange={(e) => handleAddressUpdate(idx, 'receiverName', e.target.value)} 
+                                                    placeholder="Tên kho" 
+                                                />
+                                            </div>
+                                            
+                                            {/* 🚀 UPDATED: Logic to highlight border red if length is wrong OR duplicate */}
+                                            <div className="input-group-mini" style={{ borderColor: (invalidLength || hasDuplicatePhones) ? '#ef4444' : '' }}>
+                                                <FaPhoneAlt className="mini-icon red-icon" />
+                                                <input 
+                                                    value={formatPhoneDisplay(addr.phone)} 
+                                                    disabled={shopData.hasPendingUpdate}
+                                                    onChange={(e) => handleAddressUpdate(idx, 'phone', e.target.value)} 
+                                                    placeholder="Số điện thoại" 
+                                                />
+                                            </div>
+
+                                            {/* 🚀 NEW: Red error message for wrong format length */}
+                                            {invalidLength && (
+                                                <small className="input-hint red" style={{ fontWeight: '700', fontSize: '10px' }}>
+                                                    SĐT không hợp lệ. Vui lòng nhập đúng 10 chữ số.
+                                                </small>
+                                            )}
+
+                                            {hasDuplicatePhones && !invalidLength && (
+                                                <small className="input-hint red" style={{ fontWeight: '700', fontSize: '10px' }}>
+                                                    Số điện thoại các kho không được trùng nhau.
+                                                </small>
+                                            )}
+
+                                            <div className="input-group-mini textarea-group">
+                                                <FaMap className="mini-icon" />
+                                                <textarea 
+                                                    value={addr.detail} 
+                                                    disabled={shopData.hasPendingUpdate}
+                                                    onChange={(e) => handleAddressUpdate(idx, 'detail', e.target.value)} 
+                                                    placeholder="Địa chỉ chi tiết" 
+                                                />
+                                            </div>
+                                            <div className={`gps-pill ${(!addr.latitude || !addr.longitude) ? 'gps-missing' : ''}`}>
+                                                {addr.latitude && addr.longitude ? `GPS Verified: ${addr.latitude}, ${addr.longitude}` : "Chưa xác định tọa độ"}
+                                            </div>
                                         </div>
-                                        <div className="input-group-mini">
-                                            <FaPhoneAlt className="mini-icon red-icon" />
-                                            <input value={formatPhoneDisplay(addr.phone)} onChange={(e) => handleAddressUpdate(idx, 'phone', e.target.value)} placeholder="Số điện thoại" />
-                                        </div>
-                                        <div className="input-group-mini textarea-group">
-                                            <FaMap className="mini-icon" />
-                                            <textarea value={addr.detail} onChange={(e) => handleAddressUpdate(idx, 'detail', e.target.value)} placeholder="Địa chỉ chi tiết" />
-                                        </div>
-                                        <div className={`gps-pill ${(!addr.latitude || !addr.longitude) ? 'gps-missing' : ''}`}>
-                                            {addr.latitude && addr.longitude ? `GPS Verified: ${addr.latitude}, ${addr.longitude}` : "Chưa xác định tọa độ"}
+                                        <div className="card-side-qr">
+                                            {addr.latitude && addr.longitude ? (
+                                                <>
+                                                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=85x85&data=${encodeURIComponent(`http://googleusercontent.com/maps.google.com/search/${addr.latitude},${addr.longitude}`)}`} alt="QR" />
+                                                    <span className="qr-label">SCAN GPS</span>
+                                                </>
+                                            ) : (
+                                                <div className="no-gps-box"><FaMapMarkerAlt size={30} /><p>NO GPS</p></div>
+                                            )}
                                         </div>
                                     </div>
-                                    <div className="card-side-qr">
-                                        {addr.latitude && addr.longitude ? (
-                                            <>
-                                                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=85x85&data=${encodeURIComponent(`http://googleusercontent.com/maps.google.com/search/${addr.latitude},${addr.longitude}`)}`} alt="QR" />
-                                                <span className="qr-label">SCAN GPS</span>
-                                            </>
-                                        ) : (
-                                            <div className="no-gps-box"><FaMapMarkerAlt size={30} /><p>NO GPS</p></div>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </section>
 
@@ -194,26 +270,48 @@ const SellerSettings = () => {
                         <div className="legal-info-grid">
                             <div className="legal-item">
                                 <label>Mã số thuế</label>
-                                <input 
-                                    type="text" 
-                                    className="mst-input-clean"
-                                    value={formatMSTDisplay(shopData.taxCode)} 
-                                    onChange={(e) => setShopData({...shopData, taxCode: e.target.value.replace(/\s/g, '')})} 
-                                />
+                                <div className="input-group-container" style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <input 
+                                        type="text" 
+                                        className="mst-input-clean"
+                                        maxLength={17} 
+                                        disabled={shopData.hasPendingUpdate}
+                                        value={formatMSTDisplay(shopData.taxCode)} 
+                                        onChange={(e) => {
+                                            const cleanDigits = e.target.value.replace(/\D/g, '').slice(0, 13);
+                                            setShopData({...shopData, taxCode: cleanDigits});
+                                        }} 
+                                        style={{ borderColor: isMSTInvalid ? '#ef4444' : '' }}
+                                    />
+                                    <small className="input-hint" style={{ marginTop: '4px' }}>Định dạng: 10 chữ số (doanh nghiệp) hoặc 13 chữ số (chi nhánh).</small>
+                                    {isMSTInvalid && (
+                                        <small className="input-hint red" style={{ fontWeight: '700', marginTop: '2px' }}>
+                                            Mã số thuế không hợp lệ. Vui lòng nhập đúng 10 hoặc 13 chữ số.
+                                        </small>
+                                    )}
+                                </div>
                             </div>
                             <div className="legal-item">
                                 <label>Giấy phép kinh doanh</label>
                                 <div className="license-upload-clean">
                                     <img src={shopData.businessLicenseUrl ? `http://localhost:8080${shopData.businessLicenseUrl}` : 'https://placehold.co/120x80?text=GPKD'} alt="GPKD" />
-                                    <input type="file" onChange={(e) => setNewLicenseFile(e.target.files ? e.target.files[0] : null)} />
+                                    <input 
+                                        type="file" 
+                                        disabled={shopData.hasPendingUpdate}
+                                        onChange={(e) => setNewLicenseFile(e.target.files ? e.target.files[0] : null)} 
+                                    />
                                 </div>
                             </div>
                         </div>
                     </section>
 
                     <div className="form-actions-row">
-                        <button className="save-btn-supreme" onClick={handleSave} disabled={isSaving}>
-                            {isSaving ? "Đang xử lý..." : "Lưu thiết lập"}
+                        <button 
+                            className="save-btn-supreme" 
+                            onClick={handleSave} 
+                            disabled={isSaving || shopData.hasPendingUpdate || isMSTInvalid || hasDuplicatePhones || hasInvalidPhones}
+                        >
+                            {isSaving ? "Đang xử lý..." : shopData.hasPendingUpdate ? "ĐANG CHỜ DUYỆT" : "Lưu thiết lập"}
                         </button>
                     </div>
                 </div>

@@ -790,3 +790,58 @@
   transform: translateX(2px);
   cursor: pointer;
 }
+
+/* Status Pill for Profile Update Requests */
+.status-pill-colorful.update_request {
+    background: #fff7e6;
+    color: #d46b08;
+    border: 1px solid #ffd591;
+}
+
+.status-pill-colorful.update_request .dot {
+    color: #fa8c16;
+}
+
+/* Comparison View Styling for Modal */
+.field-changed {
+    background: #fffbe6;
+    padding: 8px;
+    border-radius: 6px;
+    border-left: 3px solid #faad14;
+}
+
+.value-stack {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.old-val {
+    color: #8c8c8c;
+    text-decoration: line-through;
+    font-size: 12px;
+}
+
+.diff-arrow {
+    color: #bfbfbf;
+    font-size: 10px;
+}
+
+.new-val.highlight {
+    color: #ee4d2d;
+    font-weight: 800;
+}
+
+.diff-notice {
+    background: #e6f7ff;
+    border: 1px solid #91d5ff;
+    padding: 8px 12px;
+    border-radius: 4px;
+    color: #0050b3;
+    font-size: 11px;
+    font-weight: 700;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}

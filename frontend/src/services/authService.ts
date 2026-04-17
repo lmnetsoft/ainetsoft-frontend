@@ -63,6 +63,24 @@ export const getUserProfile = async (): Promise<any> => {
 };
 
 /**
+ * NEW: Secure Bank Account Update
+ * Diverts to pending if user is a verified seller
+ */
+export const updateBankAccount = async (bankData: {
+  bankName: string;
+  accountNumber: string;
+  accountHolder: string;
+}): Promise<string> => {
+  try {
+    const response = await api.post('/auth/bank-account/update', bankData);
+    await getUserProfile(); // Refresh local storage to update hasPendingUpdate status
+    return response.data;
+  } catch (error: any) {
+    throw new Error(extractError(error, "Cập nhật tài khoản ngân hàng thất bại."));
+  }
+};
+
+/**
  * NEW: Public lookup for Nice URLs (localhost:5173/shop-name)
  */
 export const getUserProfileBySlug = async (slug: string): Promise<any> => {
@@ -196,11 +214,8 @@ export const upgradeToSeller = async (formData: any): Promise<string> => {
   }
 };
 
-// --- 🚀 ADMIN DASHBOARD ACTIONS (PHASES 3, 4, 5) ---
+// --- 🚀 ADMIN DASHBOARD ACTIONS ---
 
-/**
- * PHASE 1 & 2: Main User Retrieval with filtering
- */
 export const getAllUsers = async (params: any): Promise<any> => {
   try {
     const response = await api.get('/admin/users/all', { params });
@@ -210,9 +225,6 @@ export const getAllUsers = async (params: any): Promise<any> => {
   }
 };
 
-/**
- * PHASE 2: Fetch full details for profile inspection
- */
 export const getUserDetails = async (userId: string): Promise<any> => {
   try {
     const response = await api.get(`/admin/users/detail/${userId}`);
@@ -222,9 +234,6 @@ export const getUserDetails = async (userId: string): Promise<any> => {
   }
 };
 
-/**
- * PHASE 3: Administrative Control (Promote)
- */
 export const promoteToAdmin = async (userId: string, permissions: string[]): Promise<string> => {
   try {
     const response = await api.post(`/admin/users/promote/${userId}`, permissions);
@@ -234,9 +243,6 @@ export const promoteToAdmin = async (userId: string, permissions: string[]): Pro
   }
 };
 
-/**
- * PHASE 3: Administrative Control (Ban/Unban Toggle)
- */
 export const toggleUserStatus = async (userId: string): Promise<string> => {
   try {
     const response = await api.post(`/admin/users/status-toggle/${userId}`);
@@ -246,9 +252,6 @@ export const toggleUserStatus = async (userId: string): Promise<string> => {
   }
 };
 
-/**
- * PHASE 4: Merchant Moderation (List Pending)
- */
 export const getPendingSellers = async (): Promise<any> => {
   try {
     const response = await api.get('/admin/sellers/pending');
@@ -258,9 +261,6 @@ export const getPendingSellers = async (): Promise<any> => {
   }
 };
 
-/**
- * PHASE 4: Merchant Moderation (Process Upgrade Request)
- */
 export const processSellerUpgrade = async (userId: string, request: any): Promise<string> => {
   try {
     const response = await api.post(`/admin/sellers/process/${userId}`, request);
@@ -270,9 +270,6 @@ export const processSellerUpgrade = async (userId: string, request: any): Promis
   }
 };
 
-/**
- * PHASE 4: Merchant Moderation (Revoke Rights)
- */
 export const revokeSellerRights = async (userId: string, reason: string): Promise<string> => {
   try {
     const response = await api.post(`/admin/sellers/revoke/${userId}`, null, { params: { reason } });
@@ -282,9 +279,6 @@ export const revokeSellerRights = async (userId: string, reason: string): Promis
   }
 };
 
-/**
- * PHASE 5: Batch Resolve Violation Reports
- */
 export const batchResolveReports = async (ids: string[], action: string): Promise<string> => {
   try {
     const response = await api.post('/admin/reports/batch-resolve', ids, { params: { action } });
@@ -294,9 +288,6 @@ export const batchResolveReports = async (ids: string[], action: string): Promis
   }
 };
 
-/**
- * PHASE 5: System Content Management
- */
 export const getAllSystemContents = async (): Promise<any> => {
   try {
     const response = await api.get('/admin/system-content/all');
@@ -315,9 +306,6 @@ export const saveSystemContent = async (content: any): Promise<any> => {
   }
 };
 
-/**
- * Utility: Fetch Admin Audit Logs
- */
 export const getAuditLogs = async (): Promise<any> => {
   try {
     const response = await api.get('/admin/audit-logs');

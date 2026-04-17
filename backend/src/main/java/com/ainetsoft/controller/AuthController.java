@@ -54,7 +54,6 @@ public class AuthController {
     }
 
     /**
-     * NEW: PUT /api/auth/seller/settings
      * Professional Admin Board update for Sellers.
      * Supports Slug sync, 30-day name cooldown, and Legal Safety Lock.
      */
@@ -79,12 +78,21 @@ public class AuthController {
     }
 
     /**
-     * NEW: GET /api/auth/public/shop/{slug}
+     * 🚀 NEW: POST /api/auth/bank-account/update
+     * FIXED: Resolves 404 error by opening the endpoint for bank tracking.
+     */
+    @PostMapping("/bank-account/update")
+    public ResponseEntity<?> updateBankAccount(Principal principal, @RequestBody BankAccountDTO request) {
+        if (principal == null) throw new RuntimeException("Unauthorized");
+        return ResponseEntity.ok(authService.updateBankAccount(principal.getName(), request));
+    }
+
+    /**
+     * GET /api/auth/public/shop/{slug}
      * Public endpoint to find a shop by its Nice URL (Slug).
      */
     @GetMapping("/public/shop/{slug}")
     public ResponseEntity<?> getShopBySlug(@PathVariable String slug) {
-        // This leverages the new findByShopProfile_ShopSlug in Repository
         return ResponseEntity.ok(authService.getUserProfileBySlug(slug));
     }
 
@@ -99,7 +107,7 @@ public class AuthController {
 
     /**
      * POST /api/auth/upgrade-seller
-     * Handles Multi-part data for Step 3 (Tax/License) and Step 4 (Identity Images).
+     * Handles Multi-part data for registration and Identity Images.
      */
     @PostMapping(value = "/upgrade-seller", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<String> upgradeToSeller(
