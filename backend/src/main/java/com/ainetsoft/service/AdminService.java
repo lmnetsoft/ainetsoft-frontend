@@ -170,14 +170,12 @@ public class AdminService {
     }
 
     /**
-     * 🚀 NEW: Consolidated method to fetch full profile INCLUDING decrypted Bank Accounts.
-     * Use this for the general "Hồ Sơ Chi Tiết Người Dùng" modal.
+     * 🚀 UNIVERSAL FETCH: Now includes live decrypted bank accounts AND drafts.
      */
     public Map<String, Object> getUserFullProfile(String userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
 
-        // Fetch bank accounts manually since they are in a separate table
         List<BankAccount> bankAccounts = bankAccountRepository.findByUserId(userId);
         bankAccounts.forEach(account -> {
             if (account.getAccountNumber() != null) {
@@ -198,9 +196,12 @@ public class AdminService {
         details.put("identityInfo", user.getIdentityInfo());
         details.put("shopProfile", user.getShopProfile());
         details.put("addresses", user.getAddresses());
-        
-        // 🚀 CRITICAL: Now including the decrypted bank data
         details.put("bankAccounts", bankAccounts); 
+
+        // 🛡️ NEW: Include draft bank info if waiting for approval
+        if (user.getPendingBankAccount() != null) {
+            details.put("pendingBankAccount", user.getPendingBankAccount());
+        }
 
         return details;
     }
@@ -231,6 +232,9 @@ public class AdminService {
         return result;
     }
 
+    /**
+     * 🚀 UPDATED: Includes pending bank draft for the moderation view.
+     */
     public Map<String, Object> getSellerVerificationDetails(String userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy dữ liệu!"));
@@ -257,6 +261,10 @@ public class AdminService {
 
         details.put("pendingShopProfile", user.getPendingShopProfile());
         details.put("pendingAddresses", user.getPendingAddresses());
+        
+        // 🛡️ NEW: Pass the draft bank info for comparison
+        details.put("pendingBankAccount", user.getPendingBankAccount());
+        
         details.put("hasPendingUpdate", user.isHasPendingUpdate());
 
         return details;
@@ -323,16 +331,36 @@ public class AdminService {
         }
     }
 
+    /**
+     * 🚀 UPDATED: Logic to promote Draft Bank Info to Live upon approval.
+     */
     @Transactional
     private String processShopUpdateApproval(User user, SellerApprovalRequest request, User performingAdmin) {
         if (request.isApproved()) {
+            // 1. Promote Profile & Addresses
             if (user.getPendingShopProfile() != null) user.setShopProfile(user.getPendingShopProfile());
             if (user.getPendingAddresses() != null && !user.getPendingAddresses().isEmpty()) {
                 user.setAddresses(new ArrayList<>(user.getPendingAddresses()));
             }
+
+            // 🛡️ 2. Promote Bank Account changes
+            if (user.getPendingBankAccount() != null) {
+                List<BankAccount> existing = bankAccountRepository.findByUserId(user.getId());
+                BankAccount target = existing.isEmpty() ? new BankAccount() : existing.get(0);
+                
+                target.setUserId(user.getId());
+                target.setBankName(user.getPendingBankAccount().getBankName());
+                target.setAccountHolder(user.getPendingBankAccount().getAccountHolder());
+                // Encrypt for the live database table
+                target.setAccountNumber(encryptionService.encrypt(user.getPendingBankAccount().getAccountNumber()));
+                target.setUpdatedAt(LocalDateTime.now());
+                
+                bankAccountRepository.save(target);
+            }
             
             user.setPendingShopProfile(null);
             user.setPendingAddresses(new ArrayList<>());
+            user.setPendingBankAccount(null); // Clear draft
             user.setHasPendingUpdate(false);
             user.setUpdatedAt(LocalDateTime.now());
             userRepository.save(user);
@@ -341,10 +369,12 @@ public class AdminService {
                 "Admin đã phê duyệt các thay đổi thông tin cửa hàng.", "SHOP_UPDATE_APPROVED", null);
 
             recordAudit(performingAdmin, "APPROVE_SHOP_UPDATE", user.getId(), user.getEmail(), "Phê duyệt cập nhật Shop");
-            return "Đã phê duyệt cập nhật Shop: " + user.getShopProfile().getShopName();
+            return "Đã phê duyệt cập nhật Shop thành công.";
         } else {
+            // Rejection clears all drafts
             user.setPendingShopProfile(null);
             user.setPendingAddresses(new ArrayList<>());
+            user.setPendingBankAccount(null);
             user.setHasPendingUpdate(false);
             user.setUpdatedAt(LocalDateTime.now());
             userRepository.save(user);

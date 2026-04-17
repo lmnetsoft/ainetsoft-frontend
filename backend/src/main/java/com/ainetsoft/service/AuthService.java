@@ -5,9 +5,11 @@ import com.ainetsoft.config.VietnamProvinceConfig;
 import com.ainetsoft.dto.*;
 import com.ainetsoft.model.User;
 import com.ainetsoft.model.CartItem;
+import com.ainetsoft.model.BankAccount; // 🚀 Added for bank persistence
 import com.ainetsoft.model.PasswordResetToken;
 import com.ainetsoft.repository.UserRepository;
 import com.ainetsoft.repository.PasswordResetTokenRepository;
+import com.ainetsoft.repository.BankAccountRepository; // 🚀 Added for bank persistence
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -38,6 +40,8 @@ public class AuthService {
     private final FileStorageService fileStorageService;
     private final NotificationService notificationService;
     private final AzureOCRService ocrService;
+    private final BankAccountRepository bankAccountRepository; // 🚀 NEW
+    private final EncryptionService encryptionService; // 🚀 NEW
     private final String UPLOAD_DIR = "uploads/cccd/";
     private final String LICENSE_DIR = "uploads/license/";
 
@@ -105,6 +109,9 @@ public class AuthService {
         return normalizePhone(trimmed);
     }
 
+    /**
+     * 🚀 UPDATED: Now returns the draft bank info to resolve compilation error.
+     */
     public UserResponse getUserProfile(String contactInfo) {
         String identifier = normalizeIdentifier(contactInfo);
         User user = userRepository.findByIdentifier(identifier)
@@ -134,6 +141,7 @@ public class AuthService {
                 .sellerVerification(user.getSellerVerification())
                 .rejectionReason(user.getRejectionReason())
                 .hasPendingUpdate(user.isHasPendingUpdate()) 
+                .pendingBankAccount(user.getPendingBankAccount()) // 🚀 FIXED: Returns draft to frontend
                 .build();
     }
 
@@ -410,8 +418,7 @@ public class AuthService {
 
     /**
      * 🚀 UPDATED: FIXED ADDRESS SUFFIX BUG
-     * Force-clears province, ward, and hamlet during shop updates to ensure the 
-     * edited 'Detail' textarea string is the only address info stored and displayed.
+     * Force-clears province, ward, and hamlet during shop updates.
      */
     @Transactional
     public User updateShopSettings(String contactInfo, ShopSettingsUpdateRequest request, MultipartFile newLicense) throws IOException {
@@ -449,7 +456,6 @@ public class AuthService {
             targetProfile = currentProfile;
         }
 
-        // 1. Apply Shop Name changes
         if (request.getShopName() != null && !request.getShopName().equals(currentProfile.getShopName())) {
             LocalDateTime lastChange = currentProfile.getLastShopNameChange();
             if (lastChange != null && lastChange.plusMonths(1).isAfter(LocalDateTime.now())) {
@@ -461,19 +467,16 @@ public class AuthService {
             targetProfile.setLastShopNameChange(LocalDateTime.now());
         }
 
-        // 2. Sensitive fields
         if (request.getTaxCode() != null) targetProfile.setTaxCode(request.getTaxCode());
         if (newLicense != null && !newLicense.isEmpty()) {
             targetProfile.setBusinessLicenseUrl(saveFile(newLicense, user.getId(), "license"));
         }
 
-        // 3. General Settings
         if (request.getShopBio() != null) targetProfile.setShopDescription(request.getShopBio());
         if (request.getInvoiceEmails() != null) targetProfile.setInvoiceEmails(request.getInvoiceEmails());
         targetProfile.setLowStockThreshold(request.getLowStockThreshold());
         targetProfile.setHolidayMode(request.isHolidayMode());
 
-        // 4. Warehouse Addresses
         List<User.AddressInfo> targetAddrs = new ArrayList<>();
         if (request.getStockAddresses() != null) {
             Set<String> phones = new HashSet<>();
@@ -495,7 +498,6 @@ public class AuthService {
             targetAddrs = user.getAddresses();
         }
 
-        // 5. Save Strategy
         if (divertToPending) {
             user.setPendingShopProfile(targetProfile);
             user.setPendingAddresses(targetAddrs);
@@ -510,6 +512,55 @@ public class AuthService {
 
         user.setUpdatedAt(LocalDateTime.now());
         return userRepository.save(user);
+    }
+
+    /**
+     * 🚀 NEW: SECURE BANK UPDATE WORKFLOW WITH SAFETY LOCKDOWN
+     * Prevents multiple conflicting updates and diverts verified sellers to a draft state.
+     */
+    @Transactional
+    public String updateBankAccount(String contactInfo, BankAccountDTO request) {
+        String identifier = normalizeIdentifier(contactInfo);
+        User user = userRepository.findByIdentifier(identifier)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
+
+        // 🛡️ SAFETY LOCK: Block if an update is already in the queue
+        if (user.isHasPendingUpdate()) {
+            throw new RuntimeException("Bạn đang có một yêu cầu thay đổi thông tin chờ phê duyệt. Vui lòng đợi Admin xử lý.");
+        }
+
+        boolean isVerifiedSeller = "VERIFIED".equalsIgnoreCase(user.getSellerVerification());
+
+        if (isVerifiedSeller) {
+            // 🛡️ DIVERT TO PENDING: Save to draft field 'pendingBankAccount'
+            user.setPendingBankAccount(User.PendingBank.builder()
+                    .bankName(request.getBankName())
+                    .accountHolder(request.getAccountHolder())
+                    .accountNumber(request.getAccountNumber())
+                    .build());
+            user.setHasPendingUpdate(true); // LOCK THE UI
+            
+            notificationService.createNotification("ADMIN", "Yêu cầu thay đổi tài khoản ngân hàng", 
+                "Cửa hàng [" + (user.getShopProfile() != null ? user.getShopProfile().getShopName() : user.getFullName()) + "] yêu cầu đổi thông tin ngân hàng.", 
+                "BANK_UPDATE_REQUEST", user.getId());
+                
+            userRepository.save(user);
+            return "Yêu cầu thay đổi ngân hàng đã được gửi và đang chờ Admin phê duyệt.";
+        } else {
+            // 🚀 LIVE UPDATE for users in registration
+            List<BankAccount> existing = bankAccountRepository.findByUserId(user.getId());
+            BankAccount account = existing.isEmpty() ? new BankAccount() : existing.get(0);
+            
+            account.setUserId(user.getId());
+            account.setBankName(request.getBankName());
+            account.setAccountHolder(request.getAccountHolder());
+            // Encrypt before saving to live table
+            account.setAccountNumber(encryptionService.encrypt(request.getAccountNumber()));
+            account.setUpdatedAt(LocalDateTime.now());
+            
+            bankAccountRepository.save(account);
+            return "Cập nhật tài khoản ngân hàng thành công!";
+        }
     }
 
     public String changePassword(String contactInfo, ChangePasswordRequest request) {

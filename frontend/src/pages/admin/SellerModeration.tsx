@@ -75,6 +75,7 @@ const SellerModeration = () => {
     return `${API_BASE_URL}${cleanPath}`;
   };
 
+  /** Retrieves current live bank info */
   const getBankData = (seller: any) => {
     if (!seller) return null;
     return (
@@ -94,7 +95,7 @@ const SellerModeration = () => {
     }
   };
 
-  /** 🚀 RENDER DIFF HELPER */
+  /** RENDER DIFF HELPER */
   const renderDiffField = (label: string, oldValue: any, newValue: any, formatter: any = null) => {
     const isChanged = oldValue !== newValue;
     const displayOld = formatter ? formatter(oldValue) : (oldValue || 'N/A');
@@ -130,9 +131,8 @@ const SellerModeration = () => {
       ? formatPassport(seller.identityInfo?.cccdNumber) 
       : formatCCCD(seller.identityInfo?.cccdNumber);
 
-    // If it's an update, use pending data for the summary
-    const activeProfile = seller.hasPendingUpdate ? seller.pendingShopProfile : seller.shopProfile;
-    const activeAddresses = seller.hasPendingUpdate ? seller.pendingAddresses : seller.addresses;
+    const activeProfile = (seller.hasPendingUpdate && seller.pendingShopProfile) ? seller.pendingShopProfile : seller.shopProfile;
+    const activeAddresses = (seller.hasPendingUpdate && seller.pendingAddresses && seller.pendingAddresses.length > 0) ? seller.pendingAddresses : seller.addresses;
 
     const addressesHtml = (activeAddresses || []).map((addr: any, i: number) => {
       const hasGPS = addr.latitude && String(addr.latitude).trim() !== '' && 
@@ -413,27 +413,39 @@ const SellerModeration = () => {
                 </div>
 
                 <h4 className="section-title" style={{marginTop: '25px'}}><FaMapMarkedAlt /> KHO LẤY HÀNG & TỌA ĐỘ GPS</h4>
-                {selectedSeller.hasPendingUpdate && (
+                {/* 🚀 FIXED: Only show diff notice if pendingAddresses actually has data */}
+                {selectedSeller.hasPendingUpdate && selectedSeller.pendingAddresses && selectedSeller.pendingAddresses.length > 0 && (
                     <div className="diff-notice"><FaInfoCircle /> Đang so sánh thay đổi danh sách kho hàng.</div>
                 )}
                 <div className="address-review-list">
-                  {( (selectedSeller.hasPendingUpdate ? selectedSeller.pendingAddresses : selectedSeller.addresses) || []).map((addr: any, idx: number) => {
-                    // Find corresponding old address for comparison
-                    const oldAddr = selectedSeller.hasPendingUpdate ? (selectedSeller.addresses?.[idx] || {}) : addr;
+                  {((selectedSeller.hasPendingUpdate && selectedSeller.pendingAddresses && selectedSeller.pendingAddresses.length > 0 
+                      ? selectedSeller.pendingAddresses 
+                      : selectedSeller.addresses) || []).map((addr: any, idx: number) => {
                     
+                    // Only show diff if we are actually in a warehouse update flow
+                    const isWarehouseUpdate = selectedSeller.hasPendingUpdate && selectedSeller.pendingAddresses && selectedSeller.pendingAddresses.length > 0;
+                    const oldAddr = isWarehouseUpdate ? (selectedSeller.addresses?.[idx] || {}) : addr;
                     const hasCoords = addr.latitude && String(addr.latitude).trim() !== '' && 
                                       addr.longitude && String(addr.longitude).trim() !== '';
 
-                    // 🚀 FIXED: Rely strictly on 'detail' to prevent appending unrelated geographic info
                     const fullNewAddr = addr.detail || addr.detailAddress || 'N/A';
                     const fullOldAddr = oldAddr.detail || oldAddr.detailAddress || 'N/A';
 
                     return (
                       <div key={idx} className="review-data-card mb-10" style={{borderLeft: '4px solid #1d39c4'}}>
-                        {renderDiffField(`Tên Kho ${idx + 1}`, oldAddr.receiverName, addr.receiverName)}
-                        {renderDiffField("SĐT Kho", oldAddr.phone, addr.phone, formatPhone)}
-                        {/* Comparison logic correctly focuses on the edited Detail textarea only */}
-                        {renderDiffField("Địa chỉ chi tiết", fullOldAddr, fullNewAddr)}
+                        {isWarehouseUpdate ? (
+                          <>
+                            {renderDiffField(`Tên Kho ${idx + 1}`, oldAddr.receiverName, addr.receiverName)}
+                            {renderDiffField("SĐT Kho", oldAddr.phone, addr.phone, formatPhone)}
+                            {renderDiffField("Địa chỉ chi tiết", fullOldAddr, fullNewAddr)}
+                          </>
+                        ) : (
+                          <>
+                            <div className="data-row"><span className="label">Tên Kho {idx + 1}:</span><span className="value">{addr.receiverName}</span></div>
+                            <div className="data-row"><span className="label">SĐT Kho:</span><span className="value">{formatPhone(addr.phone)}</span></div>
+                            <div className="data-row"><span className="label">Địa chỉ:</span><span className="value">{addr.detail || addr.detailAddress}</span></div>
+                          </>
+                        )}
                         
                         {hasCoords ? (
                           <div className="qr-box-summary" style={{marginTop: '10px', background: '#f0f5ff', border: '1px solid #adc6ff', display: 'flex', alignItems: 'center', padding: '10px', gap: '15px', borderRadius: '4px'}}>
@@ -458,7 +470,8 @@ const SellerModeration = () => {
               <div className="review-section">
                 <h4 className="section-title"><FaStore /> THÔNG TIN KINH DOANH</h4>
                 <div className="review-data-card mb-20">
-                  {selectedSeller.hasPendingUpdate ? (
+                  {/* 🚀 FIXED: Only show diff if pendingShopProfile actually exists */}
+                  {selectedSeller.hasPendingUpdate && selectedSeller.pendingShopProfile ? (
                     <>
                       {renderDiffField("Tên Shop", selectedSeller.shopProfile?.shopName, selectedSeller.pendingShopProfile?.shopName)}
                       {renderDiffField("Loại hình", selectedSeller.shopProfile?.businessType, selectedSeller.pendingShopProfile?.businessType, getBusinessLabel)}
@@ -476,19 +489,25 @@ const SellerModeration = () => {
                     </>
                   )}
 
-                  {/* LICENSE DIFF */}
                   <div className="license-inspect-box" style={{marginTop: '15px'}}>
-                     <span className="img-label">Giấy phép kinh doanh: {selectedSeller.hasPendingUpdate && selectedSeller.shopProfile?.businessLicenseUrl !== selectedSeller.pendingShopProfile?.businessLicenseUrl && <span style={{color: '#ee4d2d', fontSize: '10px'}}>(ĐÃ THAY ĐỔI)</span>}</span>
-                     <div className="img-wrapper zoomable" style={{height: '140px', border: '1px dashed #ddd', borderRadius: '4px', overflow: 'hidden'}} onClick={() => setZoomedImage(getFullImageUrl(selectedSeller.hasPendingUpdate ? selectedSeller.pendingShopProfile?.businessLicenseUrl : selectedSeller.shopProfile?.businessLicenseUrl))}>
+                     <span className="img-label">Giấy phép kinh doanh: {(selectedSeller.hasPendingUpdate && selectedSeller.pendingShopProfile) && selectedSeller.shopProfile?.businessLicenseUrl !== selectedSeller.pendingShopProfile?.businessLicenseUrl && <span style={{color: '#ee4d2d', fontSize: '10px'}}>(ĐÃ THAY ĐỔI)</span>}</span>
+                     <div className="img-wrapper zoomable" style={{height: '140px', border: '1px dashed #ddd', borderRadius: '4px', overflow: 'hidden'}} onClick={() => setZoomedImage(getFullImageUrl((selectedSeller.hasPendingUpdate && selectedSeller.pendingShopProfile) ? selectedSeller.pendingShopProfile?.businessLicenseUrl : selectedSeller.shopProfile?.businessLicenseUrl))}>
                         <div className="zoom-hint"><FaSearchPlus /></div>
-                        <img src={getFullImageUrl(selectedSeller.hasPendingUpdate ? selectedSeller.pendingShopProfile?.businessLicenseUrl : selectedSeller.shopProfile?.businessLicenseUrl)} alt="License" style={{width: '100%', height: '100%', objectFit: 'contain'}} onError={(e) => { e.currentTarget.src = ainetsoftLogo; }} />
+                        <img src={getFullImageUrl((selectedSeller.hasPendingUpdate && selectedSeller.pendingShopProfile) ? selectedSeller.pendingShopProfile?.businessLicenseUrl : selectedSeller.shopProfile?.businessLicenseUrl)} alt="License" style={{width: '100%', height: '100%', objectFit: 'contain'}} onError={(e) => { e.currentTarget.src = ainetsoftLogo; }} />
                      </div>
                   </div>
                 </div>
 
                 <h4 className="section-title"><FaUniversity /> TÀI KHOẢN THỤ HƯỞNG</h4>
                 <div className="review-data-card bank-card">
-                  {getBankData(selectedSeller) ? (
+                  {/* Bank account side-by-side comparison for updates */}
+                  {selectedSeller.hasPendingUpdate && selectedSeller.pendingBankAccount ? (
+                    <>
+                      {renderDiffField("Ngân hàng", getBankData(selectedSeller)?.bankName, selectedSeller.pendingBankAccount.bankName)}
+                      {renderDiffField("Số tài khoản", getBankData(selectedSeller)?.accountNumber, selectedSeller.pendingBankAccount.accountNumber)}
+                      {renderDiffField("Chủ tài khoản", getBankData(selectedSeller)?.accountHolder, selectedSeller.pendingBankAccount.accountHolder)}
+                    </>
+                  ) : getBankData(selectedSeller) ? (
                     <>
                       <div className="data-row"><span className="label">Ngân hàng:</span><span className="value">{getBankData(selectedSeller).bankName}</span></div>
                       <div className="data-row"><span className="label">Số tài khoản:</span><span className="value mono">{getBankData(selectedSeller).accountNumber}</span></div>

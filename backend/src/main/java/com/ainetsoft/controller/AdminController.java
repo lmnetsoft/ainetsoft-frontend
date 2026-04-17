@@ -57,8 +57,8 @@ public class AdminController {
     }
 
     /**
-     * 🚀 FIXED: Now calls getUserFullProfile instead of getUserById
-     * This ensures the User Detail modal gets decrypted bank accounts.
+     * 🚀 FIXED: Now calls getUserFullProfile instead of getUserById.
+     * This ensures the User Detail modal gets decrypted bank accounts and pending drafts.
      */
     @GetMapping("/users/detail/{userId}")
     public ResponseEntity<?> getUserDetails(@PathVariable String userId) {
@@ -104,6 +104,9 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getPendingSellers());
     }
 
+    /**
+     * Fetches details for the Moderation/Approval screen.
+     */
     @GetMapping("/sellers/review/{userId}")
     public ResponseEntity<?> getSellerVerificationDetails(@PathVariable String userId) {
         return ResponseEntity.ok(adminService.getSellerVerificationDetails(userId));

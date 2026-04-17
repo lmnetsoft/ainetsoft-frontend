@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom'; // 🚀 Added for redirection
+import { useLocation, useNavigate } from 'react-router-dom'; 
 import ToastNotification from '../../components/Toast/ToastNotification';
-import { getUserProfile } from '../../services/authService';
+import { getUserProfile, updateBankAccount } from '../../services/authService'; // 🚀 Ensure this is imported
 import api from '../../services/api'; 
-import { FaSearch, FaChevronDown } from 'react-icons/fa'; 
+import { FaSearch, FaChevronDown, FaHourglassHalf } from 'react-icons/fa'; 
 import './Profile.css'; 
 
 const Bank = () => {
-  // 🚀 REDIRECTION LOGIC: Read ?redirect=seller-register from URL
   const location = useLocation();
   const navigate = useNavigate();
   const queryParams = new URLSearchParams(location.search);
@@ -21,6 +20,7 @@ const Bank = () => {
     userId: '' 
   });
 
+  const [hasPendingUpdate, setHasPendingUpdate] = useState(false); // 🚀 SAFETY LOCK STATE
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [showToast, setShowToast] = useState(false);
@@ -49,18 +49,33 @@ const Bank = () => {
     const fetchBankInfo = async () => {
       try {
         setLoading(true);
+        // 1. Get full user profile to check for pending updates
         const user = await getUserProfile();
         
         if (user && user.id) {
-          const response = await api.get(`/bank-accounts/user/${user.id}`);
-          
-          if (response.data && response.data.length > 0) {
-            setBankData({
-              ...response.data[0],
-              userId: user.id
-            });
+          // 🚀 LOCK DETECTED: Set state from backend flag
+          setHasPendingUpdate(user.hasPendingUpdate); 
+
+          // 2. PRIORITY: If there is a pending bank draft, show it so the user sees their request
+          if (user.pendingBankAccount) {
+             setBankData({
+               id: 'pending',
+               bankName: user.pendingBankAccount.bankName,
+               accountNumber: user.pendingBankAccount.accountNumber,
+               accountHolder: user.pendingBankAccount.accountHolder,
+               userId: user.id
+             });
           } else {
-            setBankData(prev => ({ ...prev, userId: user.id }));
+            // 3. FALLBACK: Fetch live bank info if no update is pending
+            const response = await api.get(`/bank-accounts/user/${user.id}`);
+            if (response.data && response.data.length > 0) {
+              setBankData({
+                ...response.data[0],
+                userId: user.id
+              });
+            } else {
+              setBankData(prev => ({ ...prev, userId: user.id }));
+            }
           }
         }
       } catch (error: any) {
@@ -83,6 +98,7 @@ const Bank = () => {
   }, []);
 
   const handleSelectBank = (bank: string) => {
+    if (hasPendingUpdate) return; // 🚀 BLOCK changes if locked
     setBankData({ ...bankData, bankName: bank });
     setSearchTerm('');
     setIsDropdownOpen(false);
@@ -118,28 +134,26 @@ const Bank = () => {
       setIsSaving(true);
       
       const payload = {
-        id: bankData.id || undefined,
-        userId: bankData.userId,
         bankName: bankData.bankName,
         accountNumber: bankData.accountNumber.replace(/\s/g, ''),
         accountHolder: bankData.accountHolder.trim().toUpperCase(),
-        isDefault: true
       };
 
-      const response = await api.post('/bank-accounts', payload);
-      setBankData(prev => ({ ...prev, id: response.data.id }));
+      // 🚀 Use the new secure update function
+      const message = await updateBankAccount(payload); 
 
-      setToastMessage("Lưu tài khoản ngân hàng thành công!");
+      setToastMessage(message);
       setShowToast(true);
 
-      // 🚀 REDIRECT BACK: If the user was sent here for registration, send them back after 1.5s
+      // Force refresh state from backend to activate the lockdown
+      const updatedUser = await getUserProfile();
+      setHasPendingUpdate(updatedUser.hasPendingUpdate);
+
       if (redirectTarget === 'seller-register') {
-          setTimeout(() => {
-              navigate('/seller/register');
-          }, 1500);
+          setTimeout(() => navigate('/seller/register'), 1500);
       }
     } catch (error: any) {
-      setToastMessage(error.response?.data?.message || "Lỗi khi lưu thông tin.");
+      setToastMessage(error.message || "Lỗi khi lưu thông tin.");
       setShowToast(true);
     } finally {
       setIsSaving(false);
@@ -161,21 +175,30 @@ const Bank = () => {
           
           <hr className="supreme-divider" />
 
+          {/* 🚀 SAFETY LOCK BANNER: Informed user of pending state */}
+          {hasPendingUpdate && (
+             <div className="warning-text" style={{ marginBottom: '20px', justifyContent: 'center', color: '#faad14' }}>
+                <FaHourglassHalf />
+                <span style={{ marginLeft: '10px' }}>Yêu cầu thay đổi tài khoản ngân hàng đang được xét duyệt. Bạn không thể chỉnh sửa lúc này.</span>
+             </div>
+          )}
+
           <div className="profile-main-grid">
-            <form className="profile-data-form" onSubmit={(e) => e.preventDefault()}>
+            {/* Added view-only-mode class for CSS targeting */}
+            <form className={`profile-data-form ${hasPendingUpdate ? 'view-only-mode' : ''}`} onSubmit={(e) => e.preventDefault()}>
               
               <div className="supreme-form-row">
                 <label>Tên Ngân hàng <span className="req">*</span></label>
-                <div className="input-group-container" ref={dropdownRef} style={{ position: 'relative' }}>
+                <div className="input-group-container" ref={dropdownRef}>
                   <div 
-                    className={`searchable-select-box ${isDropdownOpen ? 'active' : ''}`}
-                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    className={`searchable-select-box ${isDropdownOpen ? 'active' : ''} ${hasPendingUpdate ? 'disabled' : ''}`}
+                    onClick={() => !hasPendingUpdate && setIsDropdownOpen(!isDropdownOpen)}
                   >
                     <span>{bankData.bankName || "-- Chọn Ngân hàng --"}</span>
-                    <FaChevronDown className={`chevron-icon ${isDropdownOpen ? 'rotate' : ''}`} />
+                    {!hasPendingUpdate && <FaChevronDown className={`chevron-icon ${isDropdownOpen ? 'rotate' : ''}`} />}
                   </div>
 
-                  {isDropdownOpen && (
+                  {isDropdownOpen && !hasPendingUpdate && (
                     <div className="bank-dropdown-menu">
                       <div className="search-input-wrapper">
                         <FaSearch className="search-icon" />
@@ -189,15 +212,9 @@ const Bank = () => {
                         />
                       </div>
                       <ul className="bank-list-results">
-                        {filteredBanks.length > 0 ? (
-                          filteredBanks.map(bank => (
-                            <li key={bank} onClick={() => handleSelectBank(bank)}>
-                              {bank}
-                            </li>
-                          ))
-                        ) : (
-                          <li className="no-results">Không tìm thấy ngân hàng</li>
-                        )}
+                        {filteredBanks.map(bank => (
+                          <li key={bank} onClick={() => handleSelectBank(bank)}>{bank}</li>
+                        ))}
                       </ul>
                     </div>
                   )}
@@ -209,6 +226,7 @@ const Bank = () => {
                 <div className="input-group-container">
                   <input 
                     type="text" 
+                    disabled={hasPendingUpdate} // 🚀 FIELD GREYED OUT
                     value={bankData.accountNumber} 
                     onChange={(e) => setBankData({...bankData, accountNumber: e.target.value.replace(/\D/g, '')})}
                     placeholder="Nhập số tài khoản (8-15 chữ số)"
@@ -221,6 +239,7 @@ const Bank = () => {
                 <div className="input-group-container">
                   <input 
                     type="text" 
+                    disabled={hasPendingUpdate} // 🚀 FIELD GREYED OUT
                     value={bankData.accountHolder} 
                     onChange={(e) => setBankData({...bankData, accountHolder: e.target.value.toUpperCase()})}
                     placeholder="NGUYEN VAN A (Không dấu hoặc có dấu)"
@@ -229,8 +248,13 @@ const Bank = () => {
               </div>
 
               <div className="form-actions">
-                <button type="button" className="save-btn-supreme" onClick={handleSave} disabled={isSaving}>
-                  {isSaving ? "Đang lưu..." : "Lưu tài khoản"}
+                <button 
+                  type="button" 
+                  className="save-btn-supreme" 
+                  onClick={handleSave} 
+                  disabled={isSaving || hasPendingUpdate} // 🚀 BUTTON GREYED OUT
+                >
+                  {isSaving ? "Đang lưu..." : hasPendingUpdate ? "ĐANG CHỜ DUYỆT" : "Lưu tài khoản"}
                 </button>
               </div>
             </form>

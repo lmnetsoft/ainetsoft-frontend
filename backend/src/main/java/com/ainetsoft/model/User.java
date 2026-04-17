@@ -89,11 +89,14 @@ public class User {
     @Builder.Default
     private List<AddressInfo> addresses = new ArrayList<>();
 
-    // --- 🛡️ NEW: PENDING UPDATE FIELDS ---
+    // --- 🛡️ PENDING UPDATE FIELDS ---
     private ShopProfile pendingShopProfile;
     
     @Builder.Default
     private List<AddressInfo> pendingAddresses = new ArrayList<>();
+
+    // 🚀 NEW: Field for bank account draft updates
+    private PendingBank pendingBankAccount;
 
     @Builder.Default
     private boolean hasPendingUpdate = false;
@@ -184,5 +187,16 @@ public class User {
         private String latitude;  
         private String longitude; 
         public boolean isDefault() { return isDefault; }
+    }
+
+    // 🚀 NEW: Static inner class for tracking bank updates
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class PendingBank {
+        private String bankName;
+        private String accountHolder;
+        private String accountNumber;
     }
 }
