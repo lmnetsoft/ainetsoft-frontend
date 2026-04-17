@@ -44,6 +44,16 @@ public class AuthController {
     }
 
     /**
+     * 🛡️ NEW: GET /api/auth/verify-email
+     * Public endpoint called when the user clicks the link in their mailbox.
+     * Activates the account by validating the unique token.
+     */
+    @GetMapping("/verify-email")
+    public ResponseEntity<String> confirmEmail(@RequestParam("token") String token) {
+        return ResponseEntity.ok(authService.confirmEmail(token));
+    }
+
+    /**
      * PUT /api/auth/profile
      * Updates user details like name, email, phone, and addresses.
      */
@@ -78,7 +88,7 @@ public class AuthController {
     }
 
     /**
-     * 🚀 NEW: POST /api/auth/bank-account/update
+     * POST /api/auth/bank-account/update
      * FIXED: Resolves 404 error by opening the endpoint for bank tracking.
      */
     @PostMapping("/bank-account/update")

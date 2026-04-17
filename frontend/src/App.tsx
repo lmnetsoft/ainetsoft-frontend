@@ -6,6 +6,7 @@ import Home from './pages/Home/Home';
 import Register from './pages/Register/Register';
 import ForgotPassword from './pages/Auth/ForgotPassword';
 import Login from './pages/Auth/Login';
+import VerifyEmail from './pages/Auth/VerifyEmail'; // 🚀 NEW: Added for Email Verification
 import OAuth2RedirectHandler from './pages/Auth/OAuth2RedirectHandler';
 import NotFound from './pages/NotFound/NotFound'; 
 import ChatBubble from './components/ChatBubble/ChatBubble';
@@ -58,7 +59,7 @@ import FooterMenuManagement from './pages/Admin/FooterMenuManagement';
 import HelpHierarchyManagement from './pages/Admin/HelpHierarchyManagement';
 import AdminWithdrawals from './pages/Admin/AdminWithdrawals'; 
 
-// 🚀 MIGRATED ADMIN PAGES (Used for fallback if needed)
+// MIGRATED ADMIN PAGES
 import AdminUsers from './pages/Admin/AdminUsers'; 
 import SellerModeration from './pages/Admin/SellerModeration'; 
 import ProductModeration from './pages/Admin/ProductModeration';
@@ -119,6 +120,10 @@ function App() {
                 <Route path="/" element={<Home />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/login" element={<Login />} />
+                
+                {/* 🛡️ NEW: Route to handle the Email Verification Link */}
+                <Route path="/verify-email" element={<VerifyEmail />} />
+                
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
                 <Route path="/cart" element={<Cart />} />
@@ -158,10 +163,10 @@ function App() {
                   <Route path="/seller/settings" element={<ProtectedRoute allowedRoles={['SELLER']}><SellerSettings /></ProtectedRoute>} />
                   <Route path="/seller/withdrawal" element={<ProtectedRoute allowedRoles={['SELLER']}><Withdrawal /></ProtectedRoute>} />
 
-                  {/* --- Admin Routes (Synchronized for Phases 1-5) --- */}
+                  {/* --- Admin Routes --- */}
                   <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboard /></ProtectedRoute>} />
                   
-                  {/* 🚀 REDIRECTS: Force sidebar links to use our Supreme tabbed logic */}
+                  {/* REDIRECTS: Force sidebar links to use tabbed logic */}
                   <Route path="/admin/users" element={<Navigate to="/admin/dashboard" replace />} />
                   <Route path="/admin/reports" element={<Navigate to="/admin/dashboard" replace />} />
                   <Route path="/admin/reviews" element={<Navigate to="/admin/dashboard" replace />} />

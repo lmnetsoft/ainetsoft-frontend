@@ -43,9 +43,14 @@ public class User {
 
     private String avatarUrl; 
 
+    /**
+     * 🛡️ EMAIL VERIFICATION FIELDS
+     * Used to verify real email owners and prevent bot registrations.
+     */
     @Builder.Default
     private boolean emailVerified = false; 
     
+    @Indexed(unique = true, sparse = true)
     private String verificationToken;      
 
     @Builder.Default
@@ -83,32 +88,32 @@ public class User {
     @Builder.Default
     private Set<String> permissions = new HashSet<>(); 
 
-    // --- LIVE DATA ---
     private ShopProfile shopProfile;
     
     @Builder.Default
     private List<AddressInfo> addresses = new ArrayList<>();
 
-    // --- 🛡️ PENDING UPDATE FIELDS ---
     private ShopProfile pendingShopProfile;
     
     @Builder.Default
     private List<AddressInfo> pendingAddresses = new ArrayList<>();
 
-    // 🚀 NEW: Field for bank account draft updates
     private PendingBank pendingBankAccount;
 
     @Builder.Default
     private boolean hasPendingUpdate = false;
-    // -------------------------------------
 
     private IdentityInfo identityInfo; 
 
     @Builder.Default
     private List<CartItem> cart = new ArrayList<>();
 
+    /**
+     * 🛡️ SECURITY LOCKDOWN
+     * Set to 'false' by default. Account only activates after email verification.
+     */
     @Builder.Default
-    private boolean enabled = true;
+    private boolean enabled = false;
 
     @Builder.Default
     private Set<String> roles = new HashSet<>();
@@ -189,7 +194,6 @@ public class User {
         public boolean isDefault() { return isDefault; }
     }
 
-    // 🚀 NEW: Static inner class for tracking bank updates
     @Data
     @NoArgsConstructor
     @AllArgsConstructor

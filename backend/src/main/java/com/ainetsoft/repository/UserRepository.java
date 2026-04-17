@@ -29,6 +29,10 @@ public interface UserRepository extends MongoRepository<User, String> {
     Boolean existsByEmail(String email);
     Boolean existsByPhone(String phone);
 
+    /**
+     * 🛡️ NEW: Find a user by their unique email verification token.
+     * This is critical for activating accounts after the user clicks the verification link.
+     */
     Optional<User> findByVerificationToken(String verificationToken);
 
     Boolean existsByShopProfile_ShopSlug(String shopSlug);

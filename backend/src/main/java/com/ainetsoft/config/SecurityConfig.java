@@ -64,12 +64,12 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/api/auth/login", 
                     "/api/auth/register", 
+                    "/api/auth/verify-email", // 🚀 FIXED: Make verification link public to solve 401/403 errors
                     "/api/auth/forgot-password", 
                     "/api/auth/reset-password",
                     "/oauth2/**",
                     "/login/oauth2/**",
                     "/error",
-                    "/api/uploads/**",
                     "/api/uploads/**",
                     "/api/chat/download/**",
                     "/ws/**",
@@ -94,7 +94,6 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.DELETE, "/api/footer-menus/**", "/api/help/nodes/**", "/api/footer-icons/**").hasRole("ADMIN")
 
                 // --- 3. AUTHENTICATED USER ENDPOINTS ---
-                // 🚀 ELITE FIX: Order matters. Admin rule must come before general Seller rule.
                 .requestMatchers("/api/withdrawals/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/withdrawals/**").hasRole("SELLER")
 

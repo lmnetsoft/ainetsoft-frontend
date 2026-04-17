@@ -26,6 +26,12 @@ public class UserResponse {
     private Set<String> permissions;
     private String provider;
     
+    /**
+     * 🛡️ NEW: Track if the user has verified their email.
+     * This allows the frontend to show verification prompts or restrict features.
+     */
+    private boolean emailVerified; 
+
     // Seller specific
     private String sellerVerification;
     private String rejectionReason;
