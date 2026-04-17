@@ -20,7 +20,32 @@ public class AzureCommunicationService {
     private String fromAddress;
 
     /**
-     * Preserved OTP logic for password recovery.
+     * 1. Account Verification Email
+     * Sends a secure link to activate new accounts.
+     */
+    public void sendVerificationEmail(String targetEmail, String fullName, String verificationLink) {
+        String subject = "[AiNetSoft] Xác thực tài khoản của bạn";
+        String body = "<html><body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>" +
+                      "<div style='max-width: 600px; margin: auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;'>" +
+                      "<h2 style='color: #1890ff; text-align: center;'>Chào mừng bạn đến với AiNetSoft!</h2>" +
+                      "<p>Xin chào <strong>" + (fullName != null ? fullName : "Thành viên") + "</strong>,</p>" +
+                      "<p>Cảm ơn bạn đã đăng ký tài khoản. Để bắt đầu, vui lòng nhấn nút bên dưới để xác thực email của bạn:</p>" +
+                      "<div style='text-align: center; margin: 30px 0;'>" +
+                      "<a href='" + verificationLink + "' style='background-color: #1890ff; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;'>" +
+                      "KÍCH HOẠT TÀI KHOẢN" +
+                      "</a>" +
+                      "</div>" +
+                      "<p style='font-size: 11px; color: #888;'>Liên kết này sẽ hết hạn sau 24 giờ. Nếu bạn không đăng ký, vui lòng bỏ qua email này.</p>" +
+                      "<hr style='border: 0; border-top: 1px solid #eee; margin: 20px 0;'>" +
+                      "<p style='font-size: 12px; color: #aaa; text-align: center;'>© 2026 AiNetSoft. Tất cả quyền được bảo lưu.</p>" +
+                      "</div>" +
+                      "</body></html>";
+
+        sendEmail(targetEmail, subject, body);
+    }
+
+    /**
+     * 2. OTP Logic for Password Recovery
      */
     public void sendResetEmail(String targetEmail, String otpCode) {
         String subject = "[AiNetSoft] Mã khôi phục mật khẩu của bạn";
@@ -28,38 +53,29 @@ public class AzureCommunicationService {
                       "<h3>Chào bạn,</h3>" +
                       "<p>Chúng tôi nhận được yêu cầu khôi phục mật khẩu cho tài khoản của bạn.</p>" +
                       "<p>Mã OTP xác thực là: <span style='font-size: 20px; font-weight: bold; color: #ee4d2d;'>" + otpCode + "</span></p>" +
-                      "<p>Mã này có hiệu lực trong 10 phút. Nếu bạn không yêu cầu, vui lòng bỏ qua email này.</p>" +
+                      "<p>Mã này có hiệu lực trong 10 phút.</p>" +
                       "<br><p>Trân trọng,<br>Đội ngũ AiNetsoft</p>" +
                       "</body></html>";
         sendEmail(targetEmail, subject, body);
     }
 
     /**
-     * ✅ NEW: Phase 1 - Professional Submission Confirmation Email.
-     * Sent immediately after the user submits the Seller registration form.
+     * 3. Seller Submission Confirmation
      */
     public void sendSellerSubmissionReceivedEmail(String targetEmail, String fullName) {
         String subject = "[AiNetSoft] Xác nhận đã nhận hồ sơ đăng ký Người bán";
         String body = "<html><body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>" +
                       "<h2 style='color: #2980b9;'>XÁC NHẬN TIẾP NHẬN HỒ SƠ</h2>" +
                       "<p>Xin chào <strong>" + fullName + "</strong>,</p>" +
-                      "<p>Cảm ơn bạn đã quan tâm và gửi hồ sơ đăng ký kinh doanh trên hệ thống <b>AiNetSoft</b>.</p>" +
-                      "<p>Chúng tôi xác nhận đã nhận được yêu cầu của bạn. Đội ngũ kiểm soát hiện đang tiến hành thẩm định thông tin và hồ sơ theo quy trình.</p>" +
-                      "<p style='background-color: #f8f9fa; padding: 15px; border-left: 4px solid #2980b9;'>" +
-                      "<strong>Thông tin quan trọng:</strong> Hệ thống đang trong quá trình xác thực thông tin. " +
-                      "Kết quả thẩm định chính thức sẽ được phản hồi tới bạn trong vòng <b>24 giờ làm việc</b>." +
-                      "</p>" +
-                      "<p>Bạn có thể theo dõi trạng thái phê duyệt trực tiếp trong phần 'Hồ sơ người bán' trên ứng dụng của chúng tôi.</p>" +
-                      "<hr style='border: 0; border-top: 1px solid #eee; margin: 20px 0;'>" +
-                      "<p style='font-size: 13px; color: #888;'>Đây là email tự động từ hệ thống AiNetSoft. Vui lòng không phản hồi email này.</p>" +
+                      "<p>Chúng tôi xác nhận đã nhận được yêu cầu đăng ký kinh doanh của bạn. Đội ngũ kiểm soát đang tiến hành thẩm định hồ sơ.</p>" +
+                      "<p>Kết quả chính thức sẽ được phản hồi trong vòng <b>24 giờ làm việc</b>.</p>" +
                       "</body></html>";
 
         sendEmail(targetEmail, subject, body);
     }
 
     /**
-     * ✅ Phase 2 - Final Decision Email (Approve/Reject).
-     * Used ONLY when the Admin clicks Approve or Reject.
+     * 4. Seller Final Decision (Approve/Reject)
      */
     public void sendSellerStatusEmail(String targetEmail, String fullName, boolean approved, String reason) {
         String subject = approved 
@@ -74,21 +90,15 @@ public class AzureCommunicationService {
                       statusHeader +
                       "<p>Xin chào <strong>" + fullName + "</strong>,</p>" +
                       (approved ? 
-                        "<p>Chúng tôi rất vui mừng thông báo rằng yêu cầu đăng ký Người bán của bạn tại <b>AiNetSoft</b> đã được chấp thuận.</p>" +
-                        "<p>Bây giờ bạn có thể truy cập Kênh Người Bán để đăng tải sản phẩm và bắt đầu kinh doanh ngay lập tức.</p>" : 
-                        "<p>Cảm ơn bạn đã quan tâm đến việc kinh doanh trên hệ thống AiNetSoft.</p>" +
-                        "<p>Sau khi xem xét kỹ lưỡng hồ sơ của bạn, rất tiếc chúng tôi chưa thể phê duyệt yêu cầu này vào lúc này.</p>" +
-                        "<p><strong>Lý do từ chối:</strong> <span style='color: #d63031;'>" + reason + "</span></p>" +
-                        "<p>Vui lòng điều chỉnh thông tin theo yêu cầu và gửi lại hồ sơ để chúng tôi thẩm định lại.</p>") +
-                      "<hr style='border: 0; border-top: 1px solid #eee; margin: 20px 0;'>" +
-                      "<p style='font-size: 13px; color: #888;'>Đây là email tự động từ hệ thống AiNetSoft. Vui lòng không phản hồi email này.</p>" +
+                        "<p>Hồ sơ của bạn đã được chấp thuận. Bạn có thể bắt đầu kinh doanh ngay bây giờ.</p>" : 
+                        "<p>Rất tiếc hồ sơ của bạn chưa được phê duyệt. Lý do: <span style='color: #d63031;'>" + reason + "</span></p>") +
                       "</body></html>";
 
         sendEmail(targetEmail, subject, body);
     }
 
     /**
-     * Professional Product Approval with dynamic subjects.
+     * 5. Product Approval Notification
      */
     public void sendProductStatusEmail(String targetEmail, String fullName, String productName, boolean approved, String reason) {
         String subject = approved
@@ -97,14 +107,9 @@ public class AzureCommunicationService {
 
         String body = "<html><body style='font-family: Arial, sans-serif; line-height: 1.6;'>" +
                       "<h3>Xin chào " + fullName + ",</h3>" +
-                      "<p>Thông báo về trạng thái sản phẩm: <strong>" + productName + "</strong></p>" +
-                      (approved ? 
-                        "<p style='color: #2ecc71; font-weight: bold;'>Sản phẩm đã được duyệt thành công!</p>" +
-                        "<p>Nội dung của bạn hiện đã hiển thị công khai và sẵn sàng để khách hàng đặt mua.</p>" : 
-                        "<p style='color: #e74c3c; font-weight: bold;'>Yêu cầu niêm yết sản phẩm bị từ chối.</p>" +
-                        "<p><strong>Lý do:</strong> <i>" + reason + "</i></p>" +
-                        "<p>Vui lòng chỉnh sửa nội dung sản phẩm tuân thủ quy định của sàn và gửi duyệt lại.</p>") +
-                      "<br><p>Trân trọng,<br>Ban quản trị AiNetsoft</p>" +
+                      "<p>Thông báo về sản phẩm: <strong>" + productName + "</strong></p>" +
+                      (approved ? "<p style='color: #2ecc71;'>Sản phẩm đã được duyệt thành công!</p>" : 
+                                 "<p style='color: #e74c3c;'>Bị từ chối. Lý do: " + reason + "</p>") +
                       "</body></html>";
 
         sendEmail(targetEmail, subject, body);

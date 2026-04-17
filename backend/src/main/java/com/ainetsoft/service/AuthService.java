@@ -5,13 +5,14 @@ import com.ainetsoft.config.VietnamProvinceConfig;
 import com.ainetsoft.dto.*;
 import com.ainetsoft.model.User;
 import com.ainetsoft.model.CartItem;
-import com.ainetsoft.model.BankAccount; // 🚀 Added for bank persistence
+import com.ainetsoft.model.BankAccount;
 import com.ainetsoft.model.PasswordResetToken;
 import com.ainetsoft.repository.UserRepository;
 import com.ainetsoft.repository.PasswordResetTokenRepository;
-import com.ainetsoft.repository.BankAccountRepository; // 🚀 Added for bank persistence
+import com.ainetsoft.repository.BankAccountRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value; // 🚀 Added for @Value
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,10 +41,17 @@ public class AuthService {
     private final FileStorageService fileStorageService;
     private final NotificationService notificationService;
     private final AzureOCRService ocrService;
-    private final BankAccountRepository bankAccountRepository; // 🚀 NEW
-    private final EncryptionService encryptionService; // 🚀 NEW
+    private final BankAccountRepository bankAccountRepository;
+    private final EncryptionService encryptionService;
     private final String UPLOAD_DIR = "uploads/cccd/";
     private final String LICENSE_DIR = "uploads/license/";
+
+    /**
+     * 🚀 NEW: Environment-aware Frontend URL.
+     * This avoids hardcoding localhost and allows Azure overrides.
+     */
+    @Value("${app.frontend.url}")
+    private String frontendUrl;
 
     private String generateSlug(String input) {
         if (input == null || input.isEmpty()) return "";
@@ -109,9 +117,6 @@ public class AuthService {
         return normalizePhone(trimmed);
     }
 
-    /**
-     * 🚀 UPDATED: Now returns the draft bank info to resolve compilation error.
-     */
     public UserResponse getUserProfile(String contactInfo) {
         String identifier = normalizeIdentifier(contactInfo);
         User user = userRepository.findByIdentifier(identifier)
@@ -141,7 +146,8 @@ public class AuthService {
                 .sellerVerification(user.getSellerVerification())
                 .rejectionReason(user.getRejectionReason())
                 .hasPendingUpdate(user.isHasPendingUpdate()) 
-                .pendingBankAccount(user.getPendingBankAccount()) // 🚀 FIXED: Returns draft to frontend
+                .pendingBankAccount(user.getPendingBankAccount())
+                .emailVerified(user.isEmailVerified()) 
                 .build();
     }
 
@@ -192,12 +198,20 @@ public class AuthService {
         return "Cập nhật hồ sơ thành công!";
     }
 
+    /**
+     * 🛡️ UPDATED: Secure registration with Dynamic Verification Link.
+     * Uses injected frontendUrl instead of hardcoded localhost.
+     */
+    @Transactional
     public String register(RegisterRequest request) {
         validatePasswordStrength(request.getPassword());
         String email = (request.getEmail() == null || request.getEmail().isBlank()) ? null : request.getEmail().trim().toLowerCase();
         String phone = normalizePhone(request.getPhone());
+        
         if (email != null && userRepository.existsByEmail(email)) throw new RuntimeException("Email đã tồn tại!");
         if (phone != null && userRepository.existsByPhone(phone)) throw new RuntimeException("SĐT đã tồn tại!");
+
+        String verificationToken = (email != null) ? UUID.randomUUID().toString() : null;
 
         User user = User.builder()
                 .email(email)
@@ -205,13 +219,42 @@ public class AuthService {
                 .fullName(request.getFullName())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .roles(new HashSet<>(Collections.singleton("USER")))
-                .enabled(true)
+                .provider(User.AuthProvider.LOCAL)
+                .enabled(email == null) 
+                .emailVerified(false)
+                .verificationToken(verificationToken)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
 
         userRepository.save(user);
+
+        if (email != null) {
+            // 🚀 FIXED: Dynamic link construction
+            String verificationLink = frontendUrl + "/verify-email?token=" + verificationToken;
+            try {
+                azureService.sendVerificationEmail(email, user.getFullName(), verificationLink);
+                return "Đăng ký thành công! Vui lòng kiểm tra email để kích hoạt tài khoản.";
+            } catch (Exception e) {
+                log.error("Failed to send verification email: {}", e.getMessage());
+                return "Đăng ký thành công! Tuy nhiên, có lỗi khi gửi email xác thực. Vui lòng liên hệ hỗ trợ.";
+            }
+        }
+
         return "Đăng ký thành công!";
+    }
+
+    @Transactional
+    public String confirmEmail(String token) {
+        User user = userRepository.findByVerificationToken(token)
+                .orElseThrow(() -> new RuntimeException("Liên kết xác thực không hợp lệ hoặc đã hết hạn."));
+
+        user.setEnabled(true);
+        user.setEmailVerified(true);
+        user.setVerificationToken(null); 
+        userRepository.save(user);
+
+        return "Chúc mừng! Tài khoản của bạn đã được kích hoạt thành công. Bạn có thể đăng nhập ngay bây giờ.";
     }
 
     public LoginResponse login(LoginRequest request) {
@@ -220,7 +263,7 @@ public class AuthService {
                 .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
 
         if (!user.isEnabled()) {
-            throw new RuntimeException("Tài khoản của bạn đã bị vô hiệu hóa.");
+            throw new RuntimeException("Tài khoản của bạn chưa được kích hoạt. Vui lòng kiểm tra email để xác thực.");
         }
         if ("BANNED".equalsIgnoreCase(user.getAccountStatus())) {
             throw new RuntimeException("Tài khoản của bạn đã bị khóa bởi Quản trị viên.");
@@ -333,7 +376,7 @@ public class AuthService {
                     addressInfos.add(User.AddressInfo.builder()
                             .receiverName(addrDto.getFullName())
                             .phone(normalizePhone(addrDto.getPhoneNumber()))
-                            .province(null) // FIXED: Clear separate geo fields
+                            .province(null)
                             .ward(null)
                             .hamlet(null)
                             .detail(addrDto.getDetailAddress())
@@ -416,10 +459,6 @@ public class AuthService {
         }
     }
 
-    /**
-     * 🚀 UPDATED: FIXED ADDRESS SUFFIX BUG
-     * Force-clears province, ward, and hamlet during shop updates.
-     */
     @Transactional
     public User updateShopSettings(String contactInfo, ShopSettingsUpdateRequest request, MultipartFile newLicense) throws IOException {
         String identifier = normalizeIdentifier(contactInfo);
@@ -486,7 +525,6 @@ public class AuthService {
                 
                 targetAddrs.add(User.AddressInfo.builder()
                         .receiverName(aDto.getFullName()).phone(p)
-                        // 🚀 CRITICAL FIX: Set geographic components to null
                         .province(null)
                         .ward(null)
                         .hamlet(null)
@@ -514,17 +552,12 @@ public class AuthService {
         return userRepository.save(user);
     }
 
-    /**
-     * 🚀 NEW: SECURE BANK UPDATE WORKFLOW WITH SAFETY LOCKDOWN
-     * Prevents multiple conflicting updates and diverts verified sellers to a draft state.
-     */
     @Transactional
     public String updateBankAccount(String contactInfo, BankAccountDTO request) {
         String identifier = normalizeIdentifier(contactInfo);
         User user = userRepository.findByIdentifier(identifier)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
 
-        // 🛡️ SAFETY LOCK: Block if an update is already in the queue
         if (user.isHasPendingUpdate()) {
             throw new RuntimeException("Bạn đang có một yêu cầu thay đổi thông tin chờ phê duyệt. Vui lòng đợi Admin xử lý.");
         }
@@ -532,13 +565,12 @@ public class AuthService {
         boolean isVerifiedSeller = "VERIFIED".equalsIgnoreCase(user.getSellerVerification());
 
         if (isVerifiedSeller) {
-            // 🛡️ DIVERT TO PENDING: Save to draft field 'pendingBankAccount'
             user.setPendingBankAccount(User.PendingBank.builder()
                     .bankName(request.getBankName())
                     .accountHolder(request.getAccountHolder())
                     .accountNumber(request.getAccountNumber())
                     .build());
-            user.setHasPendingUpdate(true); // LOCK THE UI
+            user.setHasPendingUpdate(true); 
             
             notificationService.createNotification("ADMIN", "Yêu cầu thay đổi tài khoản ngân hàng", 
                 "Cửa hàng [" + (user.getShopProfile() != null ? user.getShopProfile().getShopName() : user.getFullName()) + "] yêu cầu đổi thông tin ngân hàng.", 
@@ -547,14 +579,12 @@ public class AuthService {
             userRepository.save(user);
             return "Yêu cầu thay đổi ngân hàng đã được gửi và đang chờ Admin phê duyệt.";
         } else {
-            // 🚀 LIVE UPDATE for users in registration
             List<BankAccount> existing = bankAccountRepository.findByUserId(user.getId());
             BankAccount account = existing.isEmpty() ? new BankAccount() : existing.get(0);
             
             account.setUserId(user.getId());
             account.setBankName(request.getBankName());
             account.setAccountHolder(request.getAccountHolder());
-            // Encrypt before saving to live table
             account.setAccountNumber(encryptionService.encrypt(request.getAccountNumber()));
             account.setUpdatedAt(LocalDateTime.now());
             
@@ -658,6 +688,7 @@ public class AuthService {
                 .identityInfo(user.getIdentityInfo()) 
                 .addresses(user.getAddresses())
                 .sellerVerification(user.getSellerVerification())
+                .emailVerified(user.isEmailVerified())
                 .build();
     }    
 }

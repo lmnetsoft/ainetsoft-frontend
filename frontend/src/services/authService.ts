@@ -63,8 +63,20 @@ export const getUserProfile = async (): Promise<any> => {
 };
 
 /**
+ * 🛡️ NEW: Confirm Email Verification Token
+ * This calls the backend GET endpoint to activate the user's account.
+ */
+export const confirmEmailToken = async (token: string): Promise<string> => {
+  try {
+    const response = await api.get(`/auth/verify-email?token=${token}`);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(extractError(error, "Xác thực link kích hoạt thất bại."));
+  }
+};
+
+/**
  * NEW: Secure Bank Account Update
- * Diverts to pending if user is a verified seller
  */
 export const updateBankAccount = async (bankData: {
   bankName: string;
@@ -73,7 +85,7 @@ export const updateBankAccount = async (bankData: {
 }): Promise<string> => {
   try {
     const response = await api.post('/auth/bank-account/update', bankData);
-    await getUserProfile(); // Refresh local storage to update hasPendingUpdate status
+    await getUserProfile(); 
     return response.data;
   } catch (error: any) {
     throw new Error(extractError(error, "Cập nhật tài khoản ngân hàng thất bại."));
@@ -81,7 +93,7 @@ export const updateBankAccount = async (bankData: {
 };
 
 /**
- * NEW: Public lookup for Nice URLs (localhost:5173/shop-name)
+ * NEW: Public lookup for Nice URLs
  */
 export const getUserProfileBySlug = async (slug: string): Promise<any> => {
   try {
@@ -115,12 +127,11 @@ export const updateProfile = async (profileData: any): Promise<string> => {
 
 /**
  * NEW: Specifically for the 'Thiết lập Shop' Admin Board.
- * Handles text updates + Business License file upload.
  */
 export const updateShopSettings = async (formData: FormData): Promise<any> => {
   try {
     const response = await api.put('/auth/seller/settings', formData);
-    await getUserProfile(); // Refresh storage
+    await getUserProfile(); 
     return response.data;
   } catch (error: any) {
     throw new Error(extractError(error, "Cập nhật thiết lập Shop thất bại."));

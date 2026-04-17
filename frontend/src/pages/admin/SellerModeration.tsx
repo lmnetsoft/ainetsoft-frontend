@@ -131,8 +131,12 @@ const SellerModeration = () => {
       ? formatPassport(seller.identityInfo?.cccdNumber) 
       : formatCCCD(seller.identityInfo?.cccdNumber);
 
-    const activeProfile = (seller.hasPendingUpdate && seller.pendingShopProfile) ? seller.pendingShopProfile : seller.shopProfile;
-    const activeAddresses = (seller.hasPendingUpdate && seller.pendingAddresses && seller.pendingAddresses.length > 0) ? seller.pendingAddresses : seller.addresses;
+    // 🚀 FIXED: Check for real pending content before deciding which profile to print
+    const hasShopUpdate = !!(seller.hasPendingUpdate && seller.pendingShopProfile && seller.pendingShopProfile.shopName);
+    const hasAddressUpdate = !!(seller.hasPendingUpdate && seller.pendingAddresses && seller.pendingAddresses.length > 0);
+
+    const activeProfile = hasShopUpdate ? seller.pendingShopProfile : seller.shopProfile;
+    const activeAddresses = hasAddressUpdate ? seller.pendingAddresses : seller.addresses;
 
     const addressesHtml = (activeAddresses || []).map((addr: any, i: number) => {
       const hasGPS = addr.latitude && String(addr.latitude).trim() !== '' && 
@@ -470,8 +474,8 @@ const SellerModeration = () => {
               <div className="review-section">
                 <h4 className="section-title"><FaStore /> THÔNG TIN KINH DOANH</h4>
                 <div className="review-data-card mb-20">
-                  {/* 🚀 FIXED: Only show diff if pendingShopProfile actually exists */}
-                  {selectedSeller.hasPendingUpdate && selectedSeller.pendingShopProfile ? (
+                  {/* 🚀 FIXED: Stricter check for pendingShopProfile content */}
+                  {selectedSeller.hasPendingUpdate && selectedSeller.pendingShopProfile && selectedSeller.pendingShopProfile.shopName ? (
                     <>
                       {renderDiffField("Tên Shop", selectedSeller.shopProfile?.shopName, selectedSeller.pendingShopProfile?.shopName)}
                       {renderDiffField("Loại hình", selectedSeller.shopProfile?.businessType, selectedSeller.pendingShopProfile?.businessType, getBusinessLabel)}
@@ -490,10 +494,11 @@ const SellerModeration = () => {
                   )}
 
                   <div className="license-inspect-box" style={{marginTop: '15px'}}>
-                     <span className="img-label">Giấy phép kinh doanh: {(selectedSeller.hasPendingUpdate && selectedSeller.pendingShopProfile) && selectedSeller.shopProfile?.businessLicenseUrl !== selectedSeller.pendingShopProfile?.businessLicenseUrl && <span style={{color: '#ee4d2d', fontSize: '10px'}}>(ĐÃ THAY ĐỔI)</span>}</span>
-                     <div className="img-wrapper zoomable" style={{height: '140px', border: '1px dashed #ddd', borderRadius: '4px', overflow: 'hidden'}} onClick={() => setZoomedImage(getFullImageUrl((selectedSeller.hasPendingUpdate && selectedSeller.pendingShopProfile) ? selectedSeller.pendingShopProfile?.businessLicenseUrl : selectedSeller.shopProfile?.businessLicenseUrl))}>
+                     {/* 🚀 FIXED: Ensure label only shows "ĐÃ THAY ĐỔI" if there is an actual pending shop update */}
+                     <span className="img-label">Giấy phép kinh doanh: {(selectedSeller.hasPendingUpdate && selectedSeller.pendingShopProfile && selectedSeller.pendingShopProfile.shopName) && selectedSeller.shopProfile?.businessLicenseUrl !== selectedSeller.pendingShopProfile?.businessLicenseUrl && <span style={{color: '#ee4d2d', fontSize: '10px'}}>(ĐÃ THAY ĐỔI)</span>}</span>
+                     <div className="img-wrapper zoomable" style={{height: '140px', border: '1px dashed #ddd', borderRadius: '4px', overflow: 'hidden'}} onClick={() => setZoomedImage(getFullImageUrl((selectedSeller.hasPendingUpdate && selectedSeller.pendingShopProfile && selectedSeller.pendingShopProfile.shopName) ? selectedSeller.pendingShopProfile?.businessLicenseUrl : selectedSeller.shopProfile?.businessLicenseUrl))}>
                         <div className="zoom-hint"><FaSearchPlus /></div>
-                        <img src={getFullImageUrl((selectedSeller.hasPendingUpdate && selectedSeller.pendingShopProfile) ? selectedSeller.pendingShopProfile?.businessLicenseUrl : selectedSeller.shopProfile?.businessLicenseUrl)} alt="License" style={{width: '100%', height: '100%', objectFit: 'contain'}} onError={(e) => { e.currentTarget.src = ainetsoftLogo; }} />
+                        <img src={getFullImageUrl((selectedSeller.hasPendingUpdate && selectedSeller.pendingShopProfile && selectedSeller.pendingShopProfile.shopName) ? selectedSeller.pendingShopProfile?.businessLicenseUrl : selectedSeller.shopProfile?.businessLicenseUrl)} alt="License" style={{width: '100%', height: '100%', objectFit: 'contain'}} onError={(e) => { e.currentTarget.src = ainetsoftLogo; }} />
                      </div>
                   </div>
                 </div>

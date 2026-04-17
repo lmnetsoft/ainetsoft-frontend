@@ -1,9 +1,12 @@
 import axios from 'axios';
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+/**
+ * 🚀 PRODUCTION READY: Syncing with your .env file.
+ */
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 const api = axios.create({
-  baseURL: BASE_URL,
+  baseURL: `${BASE_URL}/api`,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -52,21 +55,29 @@ api.interceptors.response.use(
   (error) => {
     const originalRequest = error.config;
 
-    // 🛠️ FIX: Only logout if it's a 401 AND we actually had a token (meaning the token expired)
-    // Also ignore 401s for the login attempt itself to prevent loops
+    /**
+     * 🛠️ ENHANCED FIX: Prevent aggressive redirects on public pages.
+     * We only want to force a logout/error screen if the user WAS logged in and their token expired.
+     */
     if (error.response && error.response.status === 401 && !originalRequest._retry) {
       const hasToken = !!localStorage.getItem('jwt_token');
       const currentPath = window.location.pathname;
 
-      if (hasToken && !currentPath.includes('/login')) {
-        console.warn("Session expired or invalid. Clearing session...");
+      // 🚀 List of public paths where we should NOT trigger the "Unauthorized" error screen.
+      const publicPaths = ['/login', '/verify-email', '/register', '/forgot-password', '/reset-password'];
+      const isPublicPath = publicPaths.some(path => currentPath.includes(path));
+
+      if (hasToken && !isPublicPath) {
+        console.warn("Session expired. Clearing data and redirecting...");
         clearAuthData();
         window.dispatchEvent(new Event('profileUpdate'));
         
-        // Use window.location.replace to prevent the user from "going back" to a dead session
         window.location.href = `/login?message=session_expired&redirect=${encodeURIComponent(currentPath)}`;
-      }
+      } 
+      // If no token exists or we are on a public path, we just let the error pass 
+      // so the specific component (like VerifyEmail) can handle it silently.
     }
+    
     return Promise.reject(error);
   }
 );
