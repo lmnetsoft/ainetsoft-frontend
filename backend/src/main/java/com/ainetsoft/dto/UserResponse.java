@@ -14,7 +14,7 @@ import java.util.Set;
 @AllArgsConstructor
 @Builder
 public class UserResponse {
-    private String id; // 🚀 The "Glue": Necessary to link dedicated collections like bank accounts
+    private String id; 
     private String email;
     private String phone;
     private String fullName;
@@ -37,9 +37,14 @@ public class UserResponse {
     private List<User.AddressInfo> addresses;
     private List<com.ainetsoft.model.CartItem> cart;
 
-    // --- 🛡️ NEW: PENDING UPDATE FIELDS ---
-    // These allow the frontend to show a "Pending Review" status and compare changes
+    // --- 🛡️ PENDING UPDATE FIELDS ---
     private boolean hasPendingUpdate;
     private User.ShopProfile pendingShopProfile;
     private List<User.AddressInfo> pendingAddresses;
+
+    /**
+     * 🚀 FIXED: Added missing field to resolve "cannot find symbol" error.
+     * This allows the AuthService builder to set the draft bank info.
+     */
+    private User.PendingBank pendingBankAccount; 
 }
