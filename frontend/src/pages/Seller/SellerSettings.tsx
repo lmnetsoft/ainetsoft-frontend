@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import ToastNotification from '../../components/Toast/ToastNotification';
 import { getUserProfile, updateShopSettings } from '../../services/authService';
 import { 
@@ -8,15 +8,12 @@ import {
 } from 'react-icons/fa';
 import './SellerSettings.css';
 
-// 🚀 IMPORT LOGIC
 import ainetsoftLogo from '../../assets/images/logo.png';
 
-// HELPER: Real-time Slug Preview
 const slugify = (text: string) => {
     return text.toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim();
 };
 
-// HELPERS: Input Display Formatters
 const formatPhoneDisplay = (val: string) => {
     if (!val) return ""; 
     const s = val.replace(/\D/g, '');
@@ -46,13 +43,15 @@ const SellerSettings = () => {
         hasPendingUpdate: false 
     });
 
+    const [initialData, setInitialData] = useState<any>(null);
+    const [initialAddresses, setInitialAddresses] = useState<string>("");
+
     const [addresses, setAddresses] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [showToast, setShowToast] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
     
-    // States for Logo and License Management
     const [newLogoFile, setNewLogoFile] = useState<File | null>(null);
     const [logoPreview, setLogoPreview] = useState<string>('');
     const [newLicenseFile, setNewLicenseFile] = useState<File | null>(null);
@@ -60,22 +59,37 @@ const SellerSettings = () => {
 
     const API_BASE_URL = "http://localhost:8080";
 
-    // 🛡️ VALIDATION LOGIC
-    const isMSTInvalid = shopData.taxCode.length > 0 && 
-                        shopData.taxCode.length !== 10 && 
-                        shopData.taxCode.length !== 13;
+    const isMSTInvalid = useMemo(() => {
+        const digits = (shopData.taxCode || "").replace(/\D/g, '');
+        return digits.length > 0 && digits.length !== 10 && digits.length !== 13;
+    }, [shopData.taxCode]);
 
     const hasDuplicatePhones = addresses.length > 1 && 
                                addresses[0].phone && 
                                addresses[1].phone && 
                                addresses[0].phone.replace(/\s/g, '') === addresses[1].phone.replace(/\s/g, '');
 
-    const isPhoneLengthInvalid = (phone: string) => {
-        const digits = (phone || "").replace(/\s/g, '');
+    const hasInvalidPhones = addresses.some(addr => {
+        const digits = (addr.phone || "").replace(/\s/g, '');
         return digits.length > 0 && digits.length !== 10;
-    };
+    });
 
-    const hasInvalidPhones = addresses.some(addr => isPhoneLengthInvalid(addr.phone));
+    const hasActualChanges = useMemo(() => {
+        if (newLogoFile || newLicenseFile) return true;
+        if (!initialData) return false;
+
+        const currentAddrStr = JSON.stringify(addresses);
+        if (currentAddrStr !== initialAddresses) return true;
+
+        return (
+            shopData.shopName !== initialData.shopName ||
+            shopData.shopDescription !== initialData.shopDescription ||
+            shopData.taxCode !== initialData.taxCode ||
+            shopData.businessType !== initialData.businessType ||
+            shopData.lowStockThreshold !== initialData.lowStockThreshold ||
+            shopData.holidayMode !== initialData.holidayMode
+        );
+    }, [shopData, addresses, newLogoFile, newLicenseFile, initialData, initialAddresses]);
 
     useEffect(() => {
         const fetchShopInfo = async () => {
@@ -83,11 +97,13 @@ const SellerSettings = () => {
                 setLoading(true);
                 const data = await getUserProfile();
                 if (data.shopProfile) {
-                    setShopData({ 
+                    const profile = { 
                         ...data.shopProfile, 
                         hasPendingUpdate: data.hasPendingUpdate,
                         businessType: data.shopProfile.businessType || 'INDIVIDUAL'
-                    });
+                    };
+                    setShopData(profile);
+                    setInitialData(profile); 
                     
                     if (data.shopProfile.shopLogoUrl) {
                         setLogoPreview(`${API_BASE_URL}${data.shopProfile.shopLogoUrl}`);
@@ -95,7 +111,10 @@ const SellerSettings = () => {
                         setLogoPreview(ainetsoftLogo);
                     }
 
-                    setAddresses(data.addresses || []);
+                    const addrList = data.addresses || [];
+                    setAddresses(addrList);
+                    setInitialAddresses(JSON.stringify(addrList));
+
                     if (data.shopProfile.lastShopNameChange) {
                         const lastDate = new Date(data.shopProfile.lastShopNameChange);
                         const nextDate = new Date(lastDate);
@@ -119,7 +138,7 @@ const SellerSettings = () => {
 
     const handleSave = async () => {
         if (isMSTInvalid || hasDuplicatePhones || hasInvalidPhones) {
-            setToastMessage("Vui lòng kiểm tra lại các thông tin lỗi.");
+            setToastMessage("Vui lòng kiểm tra lại các thông tin lỗi (Mã số thuế phải 10 hoặc 13 số).");
             setShowToast(true);
             return;
         }
@@ -143,7 +162,7 @@ const SellerSettings = () => {
                     detailAddress: addr.detail,
                     latitude: addr.latitude,
                     longitude: addr.longitude,
-                    isDefault: addr.isDefault
+                    isDefault: addr.isDefault 
                 }))
             };
             
@@ -154,20 +173,26 @@ const SellerSettings = () => {
 
             await updateShopSettings(formData);
             
-            setToastMessage(shopData.hasPendingUpdate ? "Yêu cầu thay đổi đã được gửi!" : "Cập nhật thành công!");
+            setToastMessage("Cập nhật thành công!");
             setShowToast(true);
 
             const updatedProfile = await getUserProfile();
-            setShopData({ 
+            const newProf = { 
                 ...updatedProfile.shopProfile, 
                 hasPendingUpdate: updatedProfile.hasPendingUpdate,
                 businessType: updatedProfile.shopProfile.businessType || 'INDIVIDUAL' 
-            });
+            };
+            setShopData(newProf);
+            setInitialData(newProf);
+            setInitialAddresses(JSON.stringify(updatedProfile.addresses));
+            setNewLogoFile(null);
+            setNewLicenseFile(null);
+
             if (updatedProfile.shopProfile.shopLogoUrl) {
                 setLogoPreview(`${API_BASE_URL}${updatedProfile.shopProfile.shopLogoUrl}`);
             }
         } catch (error: any) {
-            setToastMessage("Cập nhật thất bại. Vui lòng thử lại.");
+            setToastMessage(error.response?.data || "Cập nhật thất bại.");
             setShowToast(true);
         } finally { setIsSaving(false); }
     };
@@ -187,7 +212,7 @@ const SellerSettings = () => {
             {shopData.hasPendingUpdate && (
                 <div className="warning-text" style={{marginBottom: '25px'}}>
                     <FaHourglassHalf />
-                    <span>Thông tin của bạn đang được kiểm duyệt. Các thay đổi mới nhất sẽ hiển thị sau khi Admin chấp nhận.</span>
+                    <span>Thông tin của bạn đang được kiểm duyệt. Các thay đổi về logo/mô tả sẽ hiển thị ngay.</span>
                 </div>
             )}
 
@@ -196,7 +221,6 @@ const SellerSettings = () => {
             ) : (
                 <div className="settings-scroll-view">
                     
-                    {/* 🚀 CIRCULAR LOGO: Nicer Brand Identity */}
                     <section className="settings-section">
                         <h3 className="section-subtitle"><FaImage /> Nhận diện thương hiệu</h3>
                         <div className="logo-upload-circle-row">
@@ -250,6 +274,17 @@ const SellerSettings = () => {
                                 </button>
                             </div>
                         </div>
+
+                        <div className="supreme-form-row vertical" style={{marginTop: '20px'}}>
+                            <label>Mô tả Shop</label>
+                            <textarea 
+                                className="supreme-textarea"
+                                disabled={shopData.hasPendingUpdate}
+                                placeholder="Giới thiệu về shop của bạn..."
+                                value={shopData.shopDescription || ''}
+                                onChange={(e) => setShopData({...shopData, shopDescription: e.target.value})}
+                            />
+                        </div>
                     </section>
 
                     <section className="settings-section mt-30">
@@ -300,11 +335,12 @@ const SellerSettings = () => {
                                 <label>Mã số thuế</label>
                                 <input 
                                     type="text" 
-                                    className="mst-input-clean"
+                                    className={`mst-input-clean ${isMSTInvalid ? 'error-border' : ''}`}
                                     disabled={shopData.hasPendingUpdate}
                                     value={formatMSTDisplay(shopData.taxCode)} 
                                     onChange={(e) => setShopData({...shopData, taxCode: e.target.value.replace(/\D/g, '').slice(0, 13)})} 
                                 />
+                                {isMSTInvalid && <small className="error-text">MST phải gồm 10 hoặc 13 chữ số.</small>}
                             </div>
 
                             <div className="legal-item">
@@ -333,7 +369,7 @@ const SellerSettings = () => {
                         <button 
                             className="save-btn-supreme" 
                             onClick={handleSave} 
-                            disabled={isSaving || shopData.hasPendingUpdate || isMSTInvalid || hasDuplicatePhones || hasInvalidPhones}
+                            disabled={isSaving || shopData.hasPendingUpdate || !hasActualChanges || (hasActualChanges && (isMSTInvalid || hasDuplicatePhones || hasInvalidPhones))}
                         >
                             {isSaving ? "Đang xử lý..." : shopData.hasPendingUpdate ? "ĐANG CHỜ DUYỆT" : "Lưu thiết lập"}
                         </button>

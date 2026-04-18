@@ -12,7 +12,7 @@ import com.ainetsoft.repository.PasswordResetTokenRepository;
 import com.ainetsoft.repository.BankAccountRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value; // 🚀 Added for @Value
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,15 +43,20 @@ public class AuthService {
     private final AzureOCRService ocrService;
     private final BankAccountRepository bankAccountRepository;
     private final EncryptionService encryptionService;
+    
     private final String UPLOAD_DIR = "uploads/cccd/";
     private final String LICENSE_DIR = "uploads/license/";
+    private final String LOGO_DIR = "uploads/logo/"; 
 
-    /**
-     * 🚀 NEW: Environment-aware Frontend URL.
-     * This avoids hardcoding localhost and allows Azure overrides.
-     */
     @Value("${app.frontend.url}")
     private String frontendUrl;
+
+    public AzureOCRService.IdAnalysisResult verifyOCR(MultipartFile image) {
+        if (image == null || image.isEmpty()) {
+            throw new RuntimeException("Vui lòng cung cấp ảnh định danh.");
+        }
+        return ocrService.analyzeIdDocument(image);
+    }
 
     private String generateSlug(String input) {
         if (input == null || input.isEmpty()) return "";
@@ -82,7 +87,12 @@ public class AuthService {
 
     private String saveFile(MultipartFile file, String userId, String type) throws IOException {
         if (file == null || file.isEmpty()) return null;
-        String targetDir = type.equals("license") ? LICENSE_DIR : UPLOAD_DIR;
+        
+        String targetDir;
+        if ("license".equals(type)) targetDir = LICENSE_DIR;
+        else if ("logo".equals(type)) targetDir = LOGO_DIR; 
+        else targetDir = UPLOAD_DIR;
+
         Path uploadPath = Paths.get(targetDir);
         if (!Files.exists(uploadPath)) {
             Files.createDirectories(uploadPath);
@@ -198,10 +208,6 @@ public class AuthService {
         return "Cập nhật hồ sơ thành công!";
     }
 
-    /**
-     * 🛡️ UPDATED: Secure registration with Dynamic Verification Link.
-     * Uses injected frontendUrl instead of hardcoded localhost.
-     */
     @Transactional
     public String register(RegisterRequest request) {
         validatePasswordStrength(request.getPassword());
@@ -230,7 +236,6 @@ public class AuthService {
         userRepository.save(user);
 
         if (email != null) {
-            // 🚀 FIXED: Dynamic link construction
             String verificationLink = frontendUrl + "/verify-email?token=" + verificationToken;
             try {
                 azureService.sendVerificationEmail(email, user.getFullName(), verificationLink);
@@ -339,7 +344,7 @@ public class AuthService {
 
                     if (!normalizedInput.equals(normalizedExtracted)) {
                         log.warn("AI MISMATCH: Typed [{}] vs Extracted [{}]", normalizedInput, normalizedExtracted);
-                        throw new RuntimeException("Số định danh trên ảnh không khớp với thông tin bạn nhập. Vui lòng kiểm tra lại.");
+                        throw new RuntimeException("Số định danh trên ảnh không khớp with thông tin bạn nhập. Vui lòng kiểm tra lại.");
                     }
                 }
             }
@@ -459,8 +464,9 @@ public class AuthService {
         }
     }
 
+    /** 🚀 FIXED: Robust field detection and restored data integrity for Admin highlights */
     @Transactional
-    public User updateShopSettings(String contactInfo, ShopSettingsUpdateRequest request, MultipartFile newLicense) throws IOException {
+    public User updateShopSettings(String contactInfo, ShopSettingsUpdateRequest request, MultipartFile newLicense, MultipartFile newLogo) throws IOException {
         String identifier = normalizeIdentifier(contactInfo);
         User user = userRepository.findByIdentifier(identifier)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -468,84 +474,112 @@ public class AuthService {
         User.ShopProfile currentProfile = user.getShopProfile();
         if (currentProfile == null) throw new RuntimeException("Tài khoản chưa có thông tin Shop.");
 
-        boolean divertToPending = "VERIFIED".equalsIgnoreCase(user.getSellerVerification());
+        // 🛡️ 1. IMMEDIATE UPDATES: Logo and Bio applied live instantly
+        if (newLogo != null && !newLogo.isEmpty()) {
+            currentProfile.setShopLogoUrl(saveFile(newLogo, user.getId(), "logo"));
+        }
+        if (request.getShopBio() != null) currentProfile.setShopDescription(request.getShopBio());
+        if (request.getInvoiceEmails() != null) currentProfile.setInvoiceEmails(new ArrayList<>(request.getInvoiceEmails()));
+        currentProfile.setLowStockThreshold(request.getLowStockThreshold());
+        currentProfile.setHolidayMode(request.isHolidayMode());
+
+        // 🛡️ 2. MODERATED DETECTION: Accurate check for all sensitive fields
+        boolean nameChanged = request.getShopName() != null && !request.getShopName().trim().equals(currentProfile.getShopName());
+        boolean typeChanged = request.getBusinessType() != null && !request.getBusinessType().equals(currentProfile.getBusinessType());
+        boolean taxChanged = request.getTaxCode() != null && !request.getTaxCode().trim().equals(currentProfile.getTaxCode());
+        boolean licenseChanged = newLicense != null && !newLicense.isEmpty(); 
         
-        User.ShopProfile targetProfile;
-        if (divertToPending) {
-            targetProfile = User.ShopProfile.builder()
-                .shopName(currentProfile.getShopName())
-                .shopSlug(currentProfile.getShopSlug())
-                .shopDescription(currentProfile.getShopDescription())
-                .shopAddress(currentProfile.getShopAddress())
+        boolean addressChanged = false;
+        if (request.getStockAddresses() != null) {
+            if (user.getAddresses().size() != request.getStockAddresses().size()) {
+                addressChanged = true;
+            } else {
+                for (int i = 0; i < user.getAddresses().size(); i++) {
+                    AddressDTO dto = request.getStockAddresses().get(i);
+                    User.AddressInfo live = user.getAddresses().get(i);
+                    // Check Receiver Name, Phone, and Detail to ensure highlights work
+                    if (!dto.getFullName().equals(live.getReceiverName()) || 
+                        !normalizePhone(dto.getPhoneNumber()).equals(normalizePhone(live.getPhone())) ||
+                        !dto.getDetailAddress().trim().equals(live.getDetail().trim())) {
+                        addressChanged = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        boolean isAlreadyVerified = "VERIFIED".equalsIgnoreCase(user.getSellerVerification());
+
+        if (isAlreadyVerified && (nameChanged || typeChanged || taxChanged || licenseChanged || addressChanged)) {
+            if (nameChanged && currentProfile.getLastShopNameChange() != null) {
+                LocalDateTime lastChange = currentProfile.getLastShopNameChange();
+                if (lastChange.plusMonths(1).isAfter(LocalDateTime.now())) {
+                    long days = ChronoUnit.DAYS.between(LocalDateTime.now(), lastChange.plusMonths(1));
+                    throw new RuntimeException("Đổi tên Shop tối đa 1 lần/tháng. Vui lòng chờ: " + days + " ngày.");
+                }
+            }
+
+            // 🚀 RESTORED: Full Snapshot with all fields for accurate Admin Highlights
+            User.ShopProfile pendingSnapshot = User.ShopProfile.builder()
+                .shopName(nameChanged ? request.getShopName() : currentProfile.getShopName())
+                .shopSlug(nameChanged ? generateUniqueSlug(request.getShopName(), user.getId()) : currentProfile.getShopSlug())
+                .businessType(typeChanged ? request.getBusinessType() : currentProfile.getBusinessType())
+                .taxCode(taxChanged ? request.getTaxCode() : currentProfile.getTaxCode())
+                .businessLicenseUrl(licenseChanged ? saveFile(newLicense, user.getId(), "license") : currentProfile.getBusinessLicenseUrl())
+                // Ensure all secondary fields are preserved from live profile
                 .shopLogoUrl(currentProfile.getShopLogoUrl())
+                .shopDescription(currentProfile.getShopDescription())
                 .businessEmail(currentProfile.getBusinessEmail())
                 .businessPhone(currentProfile.getBusinessPhone())
-                .businessType(currentProfile.getBusinessType())
                 .companyName(currentProfile.getCompanyName())
                 .registeredAddress(currentProfile.getRegisteredAddress())
-                .invoiceEmails(currentProfile.getInvoiceEmails() != null ? new ArrayList<>(currentProfile.getInvoiceEmails()) : new ArrayList<>())
-                .taxCode(currentProfile.getTaxCode())
-                .businessLicenseUrl(currentProfile.getBusinessLicenseUrl())
-                .enabledShippingMethodIds(currentProfile.getEnabledShippingMethodIds() != null ? new ArrayList<>(currentProfile.getEnabledShippingMethodIds()) : new ArrayList<>())
+                .invoiceEmails(new ArrayList<>(currentProfile.getInvoiceEmails()))
+                .enabledShippingMethodIds(new ArrayList<>(currentProfile.getEnabledShippingMethodIds()))
                 .lowStockThreshold(currentProfile.getLowStockThreshold())
                 .holidayMode(currentProfile.isHolidayMode())
-                .lastShopNameChange(currentProfile.getLastShopNameChange())
+                .lastShopNameChange(nameChanged ? LocalDateTime.now() : currentProfile.getLastShopNameChange())
                 .build();
-        } else {
-            targetProfile = currentProfile;
-        }
 
-        if (request.getShopName() != null && !request.getShopName().equals(currentProfile.getShopName())) {
-            LocalDateTime lastChange = currentProfile.getLastShopNameChange();
-            if (lastChange != null && lastChange.plusMonths(1).isAfter(LocalDateTime.now())) {
-                long days = ChronoUnit.DAYS.between(LocalDateTime.now(), lastChange.plusMonths(1));
-                throw new RuntimeException("Đổi tên Shop tối đa 1 lần/tháng. Vui lòng chờ: " + days + " ngày.");
+            user.setPendingShopProfile(pendingSnapshot);
+
+            if (addressChanged) {
+                List<User.AddressInfo> pendingAddrs = new ArrayList<>();
+                for (AddressDTO aDto : request.getStockAddresses()) {
+                    pendingAddrs.add(User.AddressInfo.builder()
+                            .receiverName(aDto.getFullName()).phone(normalizePhone(aDto.getPhoneNumber()))
+                            .detail(aDto.getDetailAddress())
+                            .latitude(aDto.getLatitude()).longitude(aDto.getLongitude()).isDefault(aDto.isDefault())
+                            .build());
+                }
+                user.setPendingAddresses(pendingAddrs);
             }
-            targetProfile.setShopName(request.getShopName());
-            targetProfile.setShopSlug(generateUniqueSlug(request.getShopName(), user.getId()));
-            targetProfile.setLastShopNameChange(LocalDateTime.now());
-        }
 
-        if (request.getTaxCode() != null) targetProfile.setTaxCode(request.getTaxCode());
-        if (newLicense != null && !newLicense.isEmpty()) {
-            targetProfile.setBusinessLicenseUrl(saveFile(newLicense, user.getId(), "license"));
-        }
-
-        if (request.getShopBio() != null) targetProfile.setShopDescription(request.getShopBio());
-        if (request.getInvoiceEmails() != null) targetProfile.setInvoiceEmails(request.getInvoiceEmails());
-        targetProfile.setLowStockThreshold(request.getLowStockThreshold());
-        targetProfile.setHolidayMode(request.isHolidayMode());
-
-        List<User.AddressInfo> targetAddrs = new ArrayList<>();
-        if (request.getStockAddresses() != null) {
-            Set<String> phones = new HashSet<>();
-            for (AddressDTO aDto : request.getStockAddresses()) {
-                String p = normalizePhone(aDto.getPhoneNumber());
-                if (!phones.add(p)) throw new RuntimeException("SĐT các kho phải khác nhau.");
-                
-                targetAddrs.add(User.AddressInfo.builder()
-                        .receiverName(aDto.getFullName()).phone(p)
-                        .province(null)
-                        .ward(null)
-                        .hamlet(null)
-                        .detail(aDto.getDetailAddress())
-                        .latitude(aDto.getLatitude()).longitude(aDto.getLongitude()).isDefault(aDto.isDefault())
-                        .build());
-            }
-        } else {
-            targetAddrs = user.getAddresses();
-        }
-
-        if (divertToPending) {
-            user.setPendingShopProfile(targetProfile);
-            user.setPendingAddresses(targetAddrs);
             user.setHasPendingUpdate(true);
             notificationService.createNotification("ADMIN", "Yêu cầu cập nhật Shop", 
-                "Cửa hàng [" + currentProfile.getShopName() + "] yêu cầu thay đổi thông tin.", 
+                "Cửa hàng [" + currentProfile.getShopName() + "] yêu cầu thay đổi thông tin pháp lý.", 
                 "SHOP_UPDATE_REQUEST", user.getId());
-        } else {
-            user.setShopProfile(targetProfile);
-            user.setAddresses(targetAddrs);
+        } else if (!isAlreadyVerified) {
+            // Apply directly if not verified
+            if (nameChanged) {
+                currentProfile.setShopName(request.getShopName());
+                currentProfile.setShopSlug(generateUniqueSlug(request.getShopName(), user.getId()));
+                currentProfile.setLastShopNameChange(LocalDateTime.now());
+            }
+            if (typeChanged) currentProfile.setBusinessType(request.getBusinessType());
+            if (taxChanged) currentProfile.setTaxCode(request.getTaxCode());
+            if (licenseChanged) currentProfile.setBusinessLicenseUrl(saveFile(newLicense, user.getId(), "license"));
+            
+            if (addressChanged) {
+                List<User.AddressInfo> liveAddrs = new ArrayList<>();
+                for (AddressDTO aDto : request.getStockAddresses()) {
+                    liveAddrs.add(User.AddressInfo.builder()
+                            .receiverName(aDto.getFullName()).phone(normalizePhone(aDto.getPhoneNumber()))
+                            .detail(aDto.getDetailAddress())
+                            .latitude(aDto.getLatitude()).longitude(aDto.getLongitude()).isDefault(aDto.isDefault())
+                            .build());
+                }
+                user.setAddresses(liveAddrs);
+            }
         }
 
         user.setUpdatedAt(LocalDateTime.now());

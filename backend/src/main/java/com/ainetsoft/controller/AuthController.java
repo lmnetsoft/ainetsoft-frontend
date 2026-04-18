@@ -44,8 +44,7 @@ public class AuthController {
     }
 
     /**
-     * 🛡️ FIXED: POST /api/auth/verify-ocr
-     * Standalone OCR verification endpoint for Identity Cards.
+     * 🛡️ OCR Verification endpoint for Identity Cards.
      */
     @PostMapping(value = "/verify-ocr", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> verifyOCR(
@@ -57,7 +56,6 @@ public class AuthController {
         log.info("OCR Verification requested by user: {}", principal.getName());
         
         try {
-            // This calls the verifyOCR method we will need to add to your AuthService
             return ResponseEntity.ok(authService.verifyOCR(image));
         } catch (Exception e) {
             log.error("OCR Error for {}: {}", principal.getName(), e.getMessage());
@@ -83,18 +81,21 @@ public class AuthController {
     }
 
     /**
-     * PUT /api/auth/seller/settings
+     * 🛡️ UPDATED: PUT /api/auth/seller/settings
+     * Now accepts both 'license' and 'logo' files from the frontend.
      */
     @PutMapping(value = "/seller/settings", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> updateShopSettings(
             Principal principal,
             @RequestPart("data") ShopSettingsUpdateRequest request,
-            @RequestPart(value = "license", required = false) MultipartFile license) {
+            @RequestPart(value = "license", required = false) MultipartFile license,
+            @RequestPart(value = "logo", required = false) MultipartFile logo) { // 🚀 NEW: Added logo parameter
         
         if (principal == null) throw new RuntimeException("Unauthorized");
         
         try {
-            User updatedUser = authService.updateShopSettings(principal.getName(), request, license);
+            // Forward both files and the request data to the AuthService
+            User updatedUser = authService.updateShopSettings(principal.getName(), request, license, logo);
             return ResponseEntity.ok(Map.of(
                 "message", "Cập nhật thiết lập Shop thành công!",
                 "user", updatedUser
