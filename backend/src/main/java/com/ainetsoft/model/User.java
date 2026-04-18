@@ -45,13 +45,18 @@ public class User {
 
     /**
      * 🛡️ EMAIL VERIFICATION FIELDS
-     * Used to verify real email owners and prevent bot registrations.
      */
     @Builder.Default
     private boolean emailVerified = false; 
     
     @Indexed(unique = true, sparse = true)
     private String verificationToken;      
+
+    /**
+     * 🛡️ ADDED: To fix the compilation error in CustomOAuth2UserService
+     * Used to track when a verification link should expire.
+     */
+    private LocalDateTime verificationTokenExpiry;
 
     @Builder.Default
     private List<String> tags = new ArrayList<>();
@@ -105,12 +110,12 @@ public class User {
 
     private IdentityInfo identityInfo; 
 
+    // Assuming CartItem is defined elsewhere in your package
     @Builder.Default
     private List<CartItem> cart = new ArrayList<>();
 
     /**
      * 🛡️ SECURITY LOCKDOWN
-     * Set to 'false' by default. Account only activates after email verification.
      */
     @Builder.Default
     private boolean enabled = false;

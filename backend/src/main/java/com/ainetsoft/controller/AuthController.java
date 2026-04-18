@@ -44,9 +44,29 @@ public class AuthController {
     }
 
     /**
-     * 🛡️ NEW: GET /api/auth/verify-email
-     * Public endpoint called when the user clicks the link in their mailbox.
-     * Activates the account by validating the unique token.
+     * 🛡️ FIXED: POST /api/auth/verify-ocr
+     * Standalone OCR verification endpoint for Identity Cards.
+     */
+    @PostMapping(value = "/verify-ocr", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> verifyOCR(
+            Principal principal, 
+            @RequestPart("image") MultipartFile image) {
+        
+        if (principal == null) throw new RuntimeException("Unauthorized");
+        
+        log.info("OCR Verification requested by user: {}", principal.getName());
+        
+        try {
+            // This calls the verifyOCR method we will need to add to your AuthService
+            return ResponseEntity.ok(authService.verifyOCR(image));
+        } catch (Exception e) {
+            log.error("OCR Error for {}: {}", principal.getName(), e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    /**
+     * GET /api/auth/verify-email
      */
     @GetMapping("/verify-email")
     public ResponseEntity<String> confirmEmail(@RequestParam("token") String token) {
@@ -55,7 +75,6 @@ public class AuthController {
 
     /**
      * PUT /api/auth/profile
-     * Updates user details like name, email, phone, and addresses.
      */
     @PutMapping("/profile")
     public ResponseEntity<String> updateProfile(@Valid @RequestBody UpdateProfileRequest request, Principal principal) {
@@ -64,8 +83,7 @@ public class AuthController {
     }
 
     /**
-     * Professional Admin Board update for Sellers.
-     * Supports Slug sync, 30-day name cooldown, and Legal Safety Lock.
+     * PUT /api/auth/seller/settings
      */
     @PutMapping(value = "/seller/settings", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> updateShopSettings(
@@ -89,7 +107,6 @@ public class AuthController {
 
     /**
      * POST /api/auth/bank-account/update
-     * FIXED: Resolves 404 error by opening the endpoint for bank tracking.
      */
     @PostMapping("/bank-account/update")
     public ResponseEntity<?> updateBankAccount(Principal principal, @RequestBody BankAccountDTO request) {
@@ -99,7 +116,6 @@ public class AuthController {
 
     /**
      * GET /api/auth/public/shop/{slug}
-     * Public endpoint to find a shop by its Nice URL (Slug).
      */
     @GetMapping("/public/shop/{slug}")
     public ResponseEntity<?> getShopBySlug(@PathVariable String slug) {
@@ -117,7 +133,6 @@ public class AuthController {
 
     /**
      * POST /api/auth/upgrade-seller
-     * Handles Multi-part data for registration and Identity Images.
      */
     @PostMapping(value = "/upgrade-seller", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<String> upgradeToSeller(
@@ -194,6 +209,9 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("message", "Đăng xuất thành công!"));
     }
 
+    /**
+     * POST /api/auth/favorite/{productId}
+     */
     @PostMapping("/favorite/{productId}")
     public ResponseEntity<?> toggleFavorite(@PathVariable String productId, Principal principal) {
         if (principal == null) return ResponseEntity.status(401).body("Vui lòng đăng nhập để yêu thích sản phẩm.");

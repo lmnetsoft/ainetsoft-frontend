@@ -116,6 +116,30 @@ public class AzureCommunicationService {
     }
 
     /**
+     * 6. 🛡️ Security Alert Email (NEW)
+     * Alerts user about account linking or security changes.
+     */
+    public void sendSecurityAlertEmail(String targetEmail, String alertType, String alertDetails) {
+        String subject = "[AiNetSoft] Cảnh báo bảo mật: " + alertType;
+        String body = "<html><body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>" +
+                      "<div style='max-width: 600px; margin: auto; border: 1px solid #fadb14; padding: 20px; border-radius: 10px; background-color: #fffbe6;'>" +
+                      "<h2 style='color: #d48806; text-align: center;'>Thông báo bảo mật</h2>" +
+                      "<p>Xin chào,</p>" +
+                      "<p>Chúng tôi nhận thấy có sự thay đổi quan trọng đối với tài khoản của bạn:</p>" +
+                      "<blockquote style='background: #fff; padding: 15px; border-left: 5px solid #d48806;'>" +
+                      "<strong>Loại thông báo:</strong> " + alertType + "<br>" +
+                      "<strong>Chi tiết:</strong> " + alertDetails +
+                      "</blockquote>" +
+                      "<p>Nếu <b>không phải bạn</b> thực hiện thay đổi này, vui lòng truy cập hệ thống để đổi mật khẩu ngay lập tức hoặc liên hệ đội ngũ hỗ trợ.</p>" +
+                      "<hr style='border: 0; border-top: 1px solid #ffe58f; margin: 20px 0;'>" +
+                      "<p style='font-size: 12px; color: #888; text-align: center;'>Đây là email tự động. © 2026 AiNetSoft.</p>" +
+                      "</div>" +
+                      "</body></html>";
+
+        sendEmail(targetEmail, subject, body);
+    }
+
+    /**
      * --- PRIVATE CORE ENGINE ---
      */
     private void sendEmail(String targetEmail, String subject, String htmlContent) {

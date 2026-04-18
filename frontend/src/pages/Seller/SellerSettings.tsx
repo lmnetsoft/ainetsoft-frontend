@@ -3,16 +3,20 @@ import ToastNotification from '../../components/Toast/ToastNotification';
 import { getUserProfile, updateShopSettings } from '../../services/authService';
 import { 
     FaStore, FaMapMarkerAlt, FaShieldAlt, FaInfoCircle, 
-    FaExternalLinkAlt, FaPhoneAlt, FaUserEdit, FaMap, FaHourglassHalf 
+    FaExternalLinkAlt, FaPhoneAlt, FaUserEdit, FaMap, FaHourglassHalf,
+    FaBriefcase, FaImage 
 } from 'react-icons/fa';
 import './SellerSettings.css';
 
-// HELPER: Real-time Slug Preview (ORIGINAL LOGIC PRESERVED)
+// 🚀 IMPORT LOGIC
+import ainetsoftLogo from '../../assets/images/logo.png';
+
+// HELPER: Real-time Slug Preview
 const slugify = (text: string) => {
     return text.toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim();
 };
 
-// HELPERS: Input Display Formatters (ORIGINAL LOGIC PRESERVED)
+// HELPERS: Input Display Formatters
 const formatPhoneDisplay = (val: string) => {
     if (!val) return ""; 
     const s = val.replace(/\D/g, '');
@@ -29,7 +33,16 @@ const formatMSTDisplay = (val: string) => {
 
 const SellerSettings = () => {
     const [shopData, setShopData] = useState<any>({
-        shopName: '', shopDescription: '', shopSlug: '', lastShopNameChange: null, lowStockThreshold: 5, holidayMode: false, taxCode: '', businessLicenseUrl: '',
+        shopName: '', 
+        shopDescription: '', 
+        shopSlug: '', 
+        lastShopNameChange: null, 
+        lowStockThreshold: 5, 
+        holidayMode: false, 
+        taxCode: '', 
+        businessLicenseUrl: '',
+        shopLogoUrl: '',
+        businessType: 'INDIVIDUAL', 
         hasPendingUpdate: false 
     });
 
@@ -38,27 +51,30 @@ const SellerSettings = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [showToast, setShowToast] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
+    
+    // States for Logo and License Management
+    const [newLogoFile, setNewLogoFile] = useState<File | null>(null);
+    const [logoPreview, setLogoPreview] = useState<string>('');
     const [newLicenseFile, setNewLicenseFile] = useState<File | null>(null);
     const [daysUntilChange, setDaysUntilChange] = useState(0);
 
-    // 🛡️ VALIDATION: MST Format check
+    const API_BASE_URL = "http://localhost:8080";
+
+    // 🛡️ VALIDATION LOGIC
     const isMSTInvalid = shopData.taxCode.length > 0 && 
                         shopData.taxCode.length !== 10 && 
                         shopData.taxCode.length !== 13;
 
-    // 🛡️ VALIDATION: Duplicate phone check
     const hasDuplicatePhones = addresses.length > 1 && 
                                addresses[0].phone && 
                                addresses[1].phone && 
                                addresses[0].phone.replace(/\s/g, '') === addresses[1].phone.replace(/\s/g, '');
 
-    // 🚀 NEW: Check if a specific phone number is the wrong length (VN standard is 10 digits)
     const isPhoneLengthInvalid = (phone: string) => {
         const digits = (phone || "").replace(/\s/g, '');
         return digits.length > 0 && digits.length !== 10;
     };
 
-    // 🚀 NEW: Overall phone validity check for the "Save" button
     const hasInvalidPhones = addresses.some(addr => isPhoneLengthInvalid(addr.phone));
 
     useEffect(() => {
@@ -67,7 +83,18 @@ const SellerSettings = () => {
                 setLoading(true);
                 const data = await getUserProfile();
                 if (data.shopProfile) {
-                    setShopData({ ...data.shopProfile, hasPendingUpdate: data.hasPendingUpdate });
+                    setShopData({ 
+                        ...data.shopProfile, 
+                        hasPendingUpdate: data.hasPendingUpdate,
+                        businessType: data.shopProfile.businessType || 'INDIVIDUAL'
+                    });
+                    
+                    if (data.shopProfile.shopLogoUrl) {
+                        setLogoPreview(`${API_BASE_URL}${data.shopProfile.shopLogoUrl}`);
+                    } else {
+                        setLogoPreview(ainetsoftLogo);
+                    }
+
                     setAddresses(data.addresses || []);
                     if (data.shopProfile.lastShopNameChange) {
                         const lastDate = new Date(data.shopProfile.lastShopNameChange);
@@ -104,6 +131,7 @@ const SellerSettings = () => {
                 shopName: shopData.shopName,
                 shopBio: shopData.shopDescription,
                 taxCode: shopData.taxCode,
+                businessType: shopData.businessType,
                 lowStockThreshold: shopData.lowStockThreshold,
                 holidayMode: shopData.holidayMode,
                 stockAddresses: addresses.map(addr => ({
@@ -118,8 +146,11 @@ const SellerSettings = () => {
                     isDefault: addr.isDefault
                 }))
             };
+            
             formData.append('data', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+            
             if (newLicenseFile) formData.append('license', newLicenseFile);
+            if (newLogoFile) formData.append('logo', newLogoFile); 
 
             await updateShopSettings(formData);
             
@@ -127,9 +158,16 @@ const SellerSettings = () => {
             setShowToast(true);
 
             const updatedProfile = await getUserProfile();
-            setShopData({ ...updatedProfile.shopProfile, hasPendingUpdate: updatedProfile.hasPendingUpdate });
+            setShopData({ 
+                ...updatedProfile.shopProfile, 
+                hasPendingUpdate: updatedProfile.hasPendingUpdate,
+                businessType: updatedProfile.shopProfile.businessType || 'INDIVIDUAL' 
+            });
+            if (updatedProfile.shopProfile.shopLogoUrl) {
+                setLogoPreview(`${API_BASE_URL}${updatedProfile.shopProfile.shopLogoUrl}`);
+            }
         } catch (error: any) {
-            setToastMessage(error.response?.data || "Cập nhật thất bại.");
+            setToastMessage("Cập nhật thất bại. Vui lòng thử lại.");
             setShowToast(true);
         } finally { setIsSaving(false); }
     };
@@ -157,28 +195,50 @@ const SellerSettings = () => {
                 <div className="loading-spinner-container">Đang tải cấu hình shop...</div>
             ) : (
                 <div className="settings-scroll-view">
+                    
+                    {/* 🚀 CIRCULAR LOGO: Nicer Brand Identity */}
                     <section className="settings-section">
+                        <h3 className="section-subtitle"><FaImage /> Nhận diện thương hiệu</h3>
+                        <div className="logo-upload-circle-row">
+                            <div className="logo-preview-circle">
+                                <img 
+                                    src={logoPreview} 
+                                    alt="Logo Preview" 
+                                    onError={(e) => { e.currentTarget.src = ainetsoftLogo; }}
+                                />
+                            </div>
+                            <div className="logo-input-group">
+                                <input 
+                                    type="file" 
+                                    accept="image/*"
+                                    disabled={shopData.hasPendingUpdate}
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                            setNewLogoFile(file);
+                                            setLogoPreview(URL.createObjectURL(file));
+                                        }
+                                    }}
+                                />
+                                <p className="upload-hint">Khuyến nghị: Hình vuông, tối thiểu 512x512px.</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section className="settings-section mt-30">
                         <h3 className="section-subtitle"><FaInfoCircle /> Nhận diện & URL</h3>
                         <div className="supreme-form-row vertical">
                             <label>Tên Shop <span className="req">*</span></label>
-                            <div className="input-group-container" style={{ display: 'flex', flexDirection: 'column' }}>
-                                <input 
-                                    type="text" 
-                                    className="supreme-input"
-                                    disabled={daysUntilChange > 0 || shopData.hasPendingUpdate}
-                                    value={shopData.shopName} 
-                                    onChange={(e) => setShopData({...shopData, shopName: e.target.value})} 
-                                />
-                                <small className="input-hint" style={{ marginTop: '4px' }}>Tên Shop có thể thay đổi 30 ngày một lần.</small>
-                                {daysUntilChange > 0 && (
-                                    <small className="input-hint red" style={{ fontWeight: '700', marginTop: '2px' }}>
-                                        Bạn có thể đổi tên lại sau {daysUntilChange} ngày nữa.
-                                    </small>
-                                )}
-                            </div>
+                            <input 
+                                type="text" 
+                                className="supreme-input"
+                                disabled={daysUntilChange > 0 || shopData.hasPendingUpdate}
+                                value={shopData.shopName} 
+                                onChange={(e) => setShopData({...shopData, shopName: e.target.value})} 
+                            />
                         </div>
 
-                        <div className="supreme-form-row vertical">
+                        <div className="supreme-form-row vertical" style={{marginTop: '20px'}}>
                             <label>Nice URL (Slug)</label>
                             <div className="slug-input-group">
                                 <div className="slug-display">
@@ -195,73 +255,27 @@ const SellerSettings = () => {
                     <section className="settings-section mt-30">
                         <h3 className="section-subtitle"><FaMapMarkerAlt /> Kho hàng ({addresses.length}/2)</h3>
                         <div className="warehouse-edit-grid">
-                            {addresses.map((addr, idx) => {
-                                // 🚀 NEW: Detect invalid length specifically for this card
-                                const invalidLength = isPhoneLengthInvalid(addr.phone);
-                                
-                                return (
-                                    <div key={idx} className="pro-warehouse-card">
-                                        <div className="card-side-info">
-                                            <div className="input-group-mini">
-                                                <FaUserEdit className="mini-icon" />
-                                                <input 
-                                                    value={addr.receiverName} 
-                                                    disabled={shopData.hasPendingUpdate}
-                                                    onChange={(e) => handleAddressUpdate(idx, 'receiverName', e.target.value)} 
-                                                    placeholder="Tên kho" 
-                                                />
-                                            </div>
-                                            
-                                            {/* 🚀 UPDATED: Logic to highlight border red if length is wrong OR duplicate */}
-                                            <div className="input-group-mini" style={{ borderColor: (invalidLength || hasDuplicatePhones) ? '#ef4444' : '' }}>
-                                                <FaPhoneAlt className="mini-icon red-icon" />
-                                                <input 
-                                                    value={formatPhoneDisplay(addr.phone)} 
-                                                    disabled={shopData.hasPendingUpdate}
-                                                    onChange={(e) => handleAddressUpdate(idx, 'phone', e.target.value)} 
-                                                    placeholder="Số điện thoại" 
-                                                />
-                                            </div>
-
-                                            {/* 🚀 NEW: Red error message for wrong format length */}
-                                            {invalidLength && (
-                                                <small className="input-hint red" style={{ fontWeight: '700', fontSize: '10px' }}>
-                                                    SĐT không hợp lệ. Vui lòng nhập đúng 10 chữ số.
-                                                </small>
-                                            )}
-
-                                            {hasDuplicatePhones && !invalidLength && (
-                                                <small className="input-hint red" style={{ fontWeight: '700', fontSize: '10px' }}>
-                                                    Số điện thoại các kho không được trùng nhau.
-                                                </small>
-                                            )}
-
-                                            <div className="input-group-mini textarea-group">
-                                                <FaMap className="mini-icon" />
-                                                <textarea 
-                                                    value={addr.detail} 
-                                                    disabled={shopData.hasPendingUpdate}
-                                                    onChange={(e) => handleAddressUpdate(idx, 'detail', e.target.value)} 
-                                                    placeholder="Địa chỉ chi tiết" 
-                                                />
-                                            </div>
-                                            <div className={`gps-pill ${(!addr.latitude || !addr.longitude) ? 'gps-missing' : ''}`}>
-                                                {addr.latitude && addr.longitude ? `GPS Verified: ${addr.latitude}, ${addr.longitude}` : "Chưa xác định tọa độ"}
-                                            </div>
+                            {addresses.map((addr, idx) => (
+                                <div key={idx} className="pro-warehouse-card">
+                                    <div className="card-side-info">
+                                        <div className="input-group-mini">
+                                            <FaUserEdit className="mini-icon" />
+                                            <input value={addr.receiverName} disabled={shopData.hasPendingUpdate} onChange={(e) => handleAddressUpdate(idx, 'receiverName', e.target.value)} placeholder="Tên kho" />
                                         </div>
-                                        <div className="card-side-qr">
-                                            {addr.latitude && addr.longitude ? (
-                                                <>
-                                                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=85x85&data=${encodeURIComponent(`http://googleusercontent.com/maps.google.com/search/${addr.latitude},${addr.longitude}`)}`} alt="QR" />
-                                                    <span className="qr-label">SCAN GPS</span>
-                                                </>
-                                            ) : (
-                                                <div className="no-gps-box"><FaMapMarkerAlt size={30} /><p>NO GPS</p></div>
-                                            )}
+                                        <div className="input-group-mini">
+                                            <FaPhoneAlt className="mini-icon" />
+                                            <input value={formatPhoneDisplay(addr.phone)} disabled={shopData.hasPendingUpdate} onChange={(e) => handleAddressUpdate(idx, 'phone', e.target.value)} placeholder="Số điện thoại" />
+                                        </div>
+                                        <div className="input-group-mini textarea-group">
+                                            <FaMap className="mini-icon" />
+                                            <textarea value={addr.detail} disabled={shopData.hasPendingUpdate} onChange={(e) => handleAddressUpdate(idx, 'detail', e.target.value)} placeholder="Địa chỉ chi tiết" />
                                         </div>
                                     </div>
-                                );
-                            })}
+                                    <div className="card-side-qr">
+                                        {addr.latitude && <img src={`https://api.qrserver.com/v1/create-qr-code/?size=85x85&data=${encodeURIComponent(`http://googleusercontent.com/maps.google.com/search/${addr.latitude},${addr.longitude}`)}`} alt="QR" />}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </section>
 
@@ -269,37 +283,47 @@ const SellerSettings = () => {
                         <h3 className="section-subtitle"><FaShieldAlt /> Thông tin Pháp lý</h3>
                         <div className="legal-info-grid">
                             <div className="legal-item">
-                                <label>Mã số thuế</label>
-                                <div className="input-group-container" style={{ display: 'flex', flexDirection: 'column' }}>
-                                    <input 
-                                        type="text" 
-                                        className="mst-input-clean"
-                                        maxLength={17} 
-                                        disabled={shopData.hasPendingUpdate}
-                                        value={formatMSTDisplay(shopData.taxCode)} 
-                                        onChange={(e) => {
-                                            const cleanDigits = e.target.value.replace(/\D/g, '').slice(0, 13);
-                                            setShopData({...shopData, taxCode: cleanDigits});
-                                        }} 
-                                        style={{ borderColor: isMSTInvalid ? '#ef4444' : '' }}
-                                    />
-                                    <small className="input-hint" style={{ marginTop: '4px' }}>Định dạng: 10 chữ số (doanh nghiệp) hoặc 13 chữ số (chi nhánh).</small>
-                                    {isMSTInvalid && (
-                                        <small className="input-hint red" style={{ fontWeight: '700', marginTop: '2px' }}>
-                                            Mã số thuế không hợp lệ. Vui lòng nhập đúng 10 hoặc 13 chữ số.
-                                        </small>
-                                    )}
-                                </div>
+                                <label><FaBriefcase /> Loại hình kinh doanh</label>
+                                <select 
+                                    className="supreme-input"
+                                    disabled={shopData.hasPendingUpdate}
+                                    value={shopData.businessType}
+                                    onChange={(e) => setShopData({...shopData, businessType: e.target.value})}
+                                >
+                                    <option value="INDIVIDUAL">Cá nhân</option>
+                                    <option value="HOUSEHOLD">Hộ kinh doanh</option>
+                                    <option value="ENTERPRISE">Công ty</option>
+                                </select>
                             </div>
+
+                            <div className="legal-item">
+                                <label>Mã số thuế</label>
+                                <input 
+                                    type="text" 
+                                    className="mst-input-clean"
+                                    disabled={shopData.hasPendingUpdate}
+                                    value={formatMSTDisplay(shopData.taxCode)} 
+                                    onChange={(e) => setShopData({...shopData, taxCode: e.target.value.replace(/\D/g, '').slice(0, 13)})} 
+                                />
+                            </div>
+
                             <div className="legal-item">
                                 <label>Giấy phép kinh doanh</label>
-                                <div className="license-upload-clean">
-                                    <img src={shopData.businessLicenseUrl ? `http://localhost:8080${shopData.businessLicenseUrl}` : 'https://placehold.co/120x80?text=GPKD'} alt="GPKD" />
+                                <div className={`license-upload-clean ${shopData.businessType === 'INDIVIDUAL' ? 'disabled-view' : ''}`} style={{ position: 'relative' }}>
+                                    <img 
+                                        src={shopData.businessType === 'INDIVIDUAL' 
+                                            ? ainetsoftLogo 
+                                            : (shopData.businessLicenseUrl ? `${API_BASE_URL}${shopData.businessLicenseUrl}` : 'https://placehold.co/120x80?text=GPKD')} 
+                                        alt="GPKD" 
+                                    />
                                     <input 
                                         type="file" 
-                                        disabled={shopData.hasPendingUpdate}
+                                        disabled={shopData.hasPendingUpdate || shopData.businessType === 'INDIVIDUAL'}
                                         onChange={(e) => setNewLicenseFile(e.target.files ? e.target.files[0] : null)} 
                                     />
+                                    {shopData.businessType === 'INDIVIDUAL' && (
+                                        <div className="individual-hint">Cá nhân không cần giấy phép.</div>
+                                    )}
                                 </div>
                             </div>
                         </div>
