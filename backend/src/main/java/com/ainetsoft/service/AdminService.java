@@ -169,9 +169,6 @@ public class AdminService {
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
     }
 
-    /**
-     * 🚀 UNIVERSAL FETCH: Now includes live decrypted bank accounts AND drafts.
-     */
     public Map<String, Object> getUserFullProfile(String userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
@@ -198,7 +195,6 @@ public class AdminService {
         details.put("addresses", user.getAddresses());
         details.put("bankAccounts", bankAccounts); 
 
-        // 🛡️ NEW: Include draft bank info if waiting for approval
         if (user.getPendingBankAccount() != null) {
             details.put("pendingBankAccount", user.getPendingBankAccount());
         }
@@ -232,9 +228,6 @@ public class AdminService {
         return result;
     }
 
-    /**
-     * 🚀 UPDATED: Includes pending bank draft for the moderation view.
-     */
     public Map<String, Object> getSellerVerificationDetails(String userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy dữ liệu!"));
@@ -261,10 +254,7 @@ public class AdminService {
 
         details.put("pendingShopProfile", user.getPendingShopProfile());
         details.put("pendingAddresses", user.getPendingAddresses());
-        
-        // 🛡️ NEW: Pass the draft bank info for comparison
         details.put("pendingBankAccount", user.getPendingBankAccount());
-        
         details.put("hasPendingUpdate", user.isHasPendingUpdate());
 
         return details;
@@ -332,18 +322,23 @@ public class AdminService {
     }
 
     /**
-     * 🚀 UPDATED: Logic to promote Draft Bank Info to Live upon approval.
+     * 🚀 UPDATED: Robust Promotion logic for Shop Updates
+     * Correctly handles shopLogoUrl and businessType migration from draft to live.
      */
     @Transactional
     private String processShopUpdateApproval(User user, SellerApprovalRequest request, User performingAdmin) {
         if (request.isApproved()) {
-            // 1. Promote Profile & Addresses
-            if (user.getPendingShopProfile() != null) user.setShopProfile(user.getPendingShopProfile());
+            // 1. Promote Profile (Includes Name, Logo, Type, Tax Code)
+            if (user.getPendingShopProfile() != null) {
+                user.setShopProfile(user.getPendingShopProfile());
+            }
+            
+            // 2. Promote Addresses
             if (user.getPendingAddresses() != null && !user.getPendingAddresses().isEmpty()) {
                 user.setAddresses(new ArrayList<>(user.getPendingAddresses()));
             }
 
-            // 🛡️ 2. Promote Bank Account changes
+            // 3. Promote Bank Account changes
             if (user.getPendingBankAccount() != null) {
                 List<BankAccount> existing = bankAccountRepository.findByUserId(user.getId());
                 BankAccount target = existing.isEmpty() ? new BankAccount() : existing.get(0);
@@ -351,16 +346,16 @@ public class AdminService {
                 target.setUserId(user.getId());
                 target.setBankName(user.getPendingBankAccount().getBankName());
                 target.setAccountHolder(user.getPendingBankAccount().getAccountHolder());
-                // Encrypt for the live database table
                 target.setAccountNumber(encryptionService.encrypt(user.getPendingBankAccount().getAccountNumber()));
                 target.setUpdatedAt(LocalDateTime.now());
                 
                 bankAccountRepository.save(target);
             }
             
+            // Clear all drafts upon success
             user.setPendingShopProfile(null);
             user.setPendingAddresses(new ArrayList<>());
-            user.setPendingBankAccount(null); // Clear draft
+            user.setPendingBankAccount(null); 
             user.setHasPendingUpdate(false);
             user.setUpdatedAt(LocalDateTime.now());
             userRepository.save(user);
@@ -582,7 +577,7 @@ public class AdminService {
         content.setLastUpdated(LocalDateTime.now());
         if (performingAdmin != null) content.setUpdatedBy(performingAdmin.getFullName());
         SystemContent saved = systemContentRepository.save(content);
-        recordAudit(performingAdmin, "UPDATE_SYSTEM_CONTENT", saved.getId(), saved.getTitle(), "Cập nhật nội dung: " + saved.getSlug());
+        recordAudit(performingAdmin, "UPDATE_SYSTEM_CONTENT", saved.getId(), saved.getTitle(), "Cập nội dung: " + saved.getSlug());
         return saved;
     }
 

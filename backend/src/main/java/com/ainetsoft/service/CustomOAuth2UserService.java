@@ -23,6 +23,7 @@ import java.util.Set;
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private final UserRepository userRepository;
+    private final AzureCommunicationService azureService;
 
     @Override
     public OAuth2User loadUser(OAuth2UserRequest oAuth2UserRequest) throws OAuth2AuthenticationException {
@@ -43,7 +44,6 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             );
         } catch (Exception ex) {
             log.error("OAuth2 Authentication Error: {}", ex.getMessage());
-            // Throwing a proper OAuth2 error prevents a 500 Internal Server Error
             throw new OAuth2AuthenticationException(new OAuth2Error("server_error"), ex.getMessage());
         }
     }
@@ -51,7 +51,6 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     private void processOAuth2User(String registrationId, String providerId, OAuth2User oAuth2User) {
         String email = oAuth2User.getAttribute("email");
         
-        // CRITICAL FIX: If email is null, we cannot find or create a user.
         if (!StringUtils.hasText(email)) {
             log.error("Email not found from {} provider", registrationId);
             throw new RuntimeException("Email không được cung cấp từ phía " + registrationId);
@@ -59,21 +58,16 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
         String nameFromSocial = oAuth2User.getAttribute("name");
         
-        // SAFE EXTRACTION: picture handling preserved and hardened
+        // --- Picture Extraction Logic ---
         Object pictureAttr = oAuth2User.getAttribute("picture");
         String pictureFromSocial = null;
 
-        if (registrationId.equalsIgnoreCase("facebook")) {
-            if (pictureAttr instanceof Map) {
-                try {
-                    Map<String, Object> pictureObj = (Map<String, Object>) pictureAttr;
-                    Map<String, Object> data = (Map<String, Object>) pictureObj.get("data");
-                    if (data != null) {
-                        pictureFromSocial = (String) data.get("url");
-                    }
-                } catch (Exception e) {
-                    log.warn("Failed to parse Facebook profile picture");
-                }
+        if (registrationId.equalsIgnoreCase("facebook") && pictureAttr instanceof Map) {
+            try {
+                Map<String, Object> data = (Map<String, Object>) ((Map<String, Object>) pictureAttr).get("data");
+                if (data != null) pictureFromSocial = (String) data.get("url");
+            } catch (Exception e) {
+                log.warn("Failed to parse Facebook profile picture");
             }
         } else {
             pictureFromSocial = (pictureAttr instanceof String) ? (String) pictureAttr : null;
@@ -81,38 +75,53 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
         final String finalSocialPicture = pictureFromSocial;
         
+        // --- 🚀 OPTION 2: ACCOUNT LINKING ---
         userRepository.findByEmail(email).ifPresentOrElse(
             existingUser -> {
-                // Update display info if current is blank
-                if (!StringUtils.hasText(existingUser.getFullName())) {
-                    existingUser.setFullName(nameFromSocial);
-                }
-                
-                if (!StringUtils.hasText(existingUser.getAvatarUrl())) {
-                    existingUser.setAvatarUrl(finalSocialPicture);
-                }
+                log.info("Merging existing user {} with social provider {}", email, registrationId);
 
-                // Force update provider to the one currently being used
+                // Use latest profile info from social media
+                existingUser.setFullName(nameFromSocial);
+                existingUser.setAvatarUrl(finalSocialPicture);
+
+                // 🛡️ Auto-verify and clean tokens
+                existingUser.setEnabled(true);
+                existingUser.setEmailVerified(true);
+                existingUser.setVerificationToken(null);
+                existingUser.setVerificationTokenExpiry(null); // Now compiles!
+
                 try {
                     existingUser.setProvider(User.AuthProvider.valueOf(registrationId.toUpperCase()));
                 } catch (Exception e) {
-                    existingUser.setProvider(User.AuthProvider.GOOGLE); // Default fallback
+                    existingUser.setProvider(User.AuthProvider.GOOGLE); 
                 }
                 
                 existingUser.setProviderId(providerId);
                 existingUser.setUpdatedAt(LocalDateTime.now());
                 userRepository.save(existingUser);
+
+                // Send security notification alert
+                try {
+                    azureService.sendSecurityAlertEmail(
+                        email, 
+                        "Liên kết tài khoản mạng xã hội", 
+                        "Tài khoản của bạn vừa được liên kết thành công với " + registrationId.toUpperCase() + "."
+                    );
+                } catch (Exception e) {
+                    log.error("Security notification failed: {}", e.getMessage());
+                }
             },
             () -> {
-                // New user creation logic preserved
+                // Logic for brand new Social User
                 User newUser = User.builder()
                         .email(email)
                         .fullName(nameFromSocial)
                         .avatarUrl(finalSocialPicture)
                         .provider(User.AuthProvider.valueOf(registrationId.toUpperCase()))
                         .providerId(providerId)
-                        .roles(new java.util.HashSet<>(Set.of("ROLE_USER", "USER"))) // Added both formats for stability
+                        .roles(new java.util.HashSet<>(Set.of("USER"))) 
                         .enabled(true)
+                        .emailVerified(true) 
                         .cart(new java.util.ArrayList<>())
                         .createdAt(LocalDateTime.now())
                         .updatedAt(LocalDateTime.now())

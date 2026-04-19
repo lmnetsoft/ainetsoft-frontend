@@ -4,8 +4,10 @@ import { FaStore, FaStar, FaBox, FaMapMarkerAlt, FaCommentDots } from 'react-ico
 import api from '../../services/api';
 import './PublicShop.css';
 
+// 🚀 FIXED: Import the assets correctly so Vite can bundle them
+import logoWithoutText from '../../assets/images/logo_without_text.png';
+
 const PublicShop = () => {
-  // identifier comes from /shop/:identifier, shopSlug comes from /:shopSlug
   const { identifier, shopSlug } = useParams(); 
   const navigate = useNavigate();
   
@@ -13,6 +15,17 @@ const PublicShop = () => {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // 🚀 FIXED: Define the Backend URL for fetching uploaded files
+  const API_BASE_URL = "http://localhost:8080";
+
+  // 🚀 FIXED: Helper logic to resolve image paths correctly
+  const getFullImageUrl = (path: string | null | undefined) => {
+    if (!path || path === "DEFAULT_LOGO" || path.trim() === "") return logoWithoutText; 
+    if (path.startsWith('data:image') || path.startsWith('http')) return path;
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    return `${API_BASE_URL}${cleanPath}`;
+  };
 
   useEffect(() => {
     const fetchShopData = async () => {
@@ -23,15 +36,9 @@ const PublicShop = () => {
         const target = identifier || shopSlug;
         if (!target) throw new Error("Không xác định được cửa hàng.");
 
-        /**
-         * 🚀 FIXED: Call the unified Public Gateway we created in Backend.
-         * This returns { seller: {...}, products: [...] } in one go.
-         */
         const res = await api.get(`/products/public/shop/${target}`);
         const { seller, products } = res.data;
 
-        // 1. Map Seller/Shop Info
-        // We look for nested shopProfile, fallback to seller object itself
         const info = seller.shopProfile ? { 
             ...seller.shopProfile, 
             id: seller.id, 
@@ -42,16 +49,11 @@ const PublicShop = () => {
         };
 
         setShopInfo(info);
-
-        // 2. Set Products
         setProducts(products || []);
-
-        // 3. Update Page Title
         document.title = `${info.shopName || info.fullName || 'Cửa hàng'} | AiNetsoft`;
 
       } catch (err: any) {
         console.error("Lỗi khi tải dữ liệu cửa hàng:", err);
-        // Handle 404 vs other errors
         if (err.response?.status === 404) {
             setError("Cửa hàng không tồn tại hoặc đã đổi địa chỉ truy cập.");
         } else {
@@ -82,16 +84,16 @@ const PublicShop = () => {
 
   return (
     <div className="public-shop-wrapper">
-      {/* 1. SHOP BRANDING BANNER */}
       <div className="shop-header-banner">
         <div className="container shop-header-container">
           <div className="shop-profile-card">
             <div className="shop-logo-wrapper">
+              {/* 🚀 FIXED: Using getFullImageUrl for the Shop Logo */}
               <img 
-                src={shopInfo?.shopLogoUrl || "/logo_without_text.png"} 
+                src={getFullImageUrl(shopInfo?.shopLogoUrl)} 
                 alt="Shop Logo" 
                 className="shop-logo-img"
-                onError={(e) => { e.currentTarget.src = "/logo_without_text.png"; }}
+                onError={(e) => { e.currentTarget.src = logoWithoutText; }}
               />
             </div>
             <div className="shop-details-main">
@@ -120,7 +122,6 @@ const PublicShop = () => {
         </div>
       </div>
 
-      {/* 2. PRODUCT GRID SECTION */}
       <div className="container shop-content-section">
         <div className="section-title-row">
           <h3><FaStore /> TẤT CẢ SẢN PHẨM</h3>
@@ -137,11 +138,11 @@ const PublicShop = () => {
             {products.map(product => (
               <div key={product.id} className="shop-product-card" onClick={() => navigate(`/product/${product.id}`)}>
                 <div className="prod-img-box">
-                  {/* 🛠️ FIXED: Using imageUrls array from backend Product model */}
+                  {/* 🚀 FIXED: Applying getFullImageUrl to Product Thumbnails as well */}
                   <img 
-                    src={product.imageUrls && product.imageUrls[0] ? product.imageUrls[0] : "/logo_without_text.png"} 
+                    src={getFullImageUrl(product.imageUrls && product.imageUrls[0] ? product.imageUrls[0] : null)} 
                     alt={product.name} 
-                    onError={(e) => { e.currentTarget.src = "/logo_without_text.png"; }}
+                    onError={(e) => { e.currentTarget.src = logoWithoutText; }}
                   />
                 </div>
                 <div className="prod-info-box">

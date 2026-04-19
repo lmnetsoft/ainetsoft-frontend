@@ -3,7 +3,7 @@ import {
   FaTimes, FaUserCircle, FaIdCard, FaStore, 
   FaEnvelope, FaCheckCircle, FaTag, FaFileInvoice,
   FaMapMarkedAlt, FaPhoneAlt, FaPassport, FaSearchPlus,
-  FaUniversity // 🚀 NEW: Icon for Bank section
+  FaUniversity 
 } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import './AdminDashboard.css';
@@ -36,11 +36,17 @@ const formatMST = (val: string) => {
   return `${s.slice(0, 10).match(/.{1,3}/g)?.join(' ')}-${s.slice(10, 13)}`;
 };
 
+const getBusinessLabel = (type: string) => {
+  if (type === 'INDIVIDUAL') return 'Cá nhân';
+  if (type === 'HOUSEHOLD') return 'Hộ kinh doanh';
+  if (type === 'ENTERPRISE') return 'Công ty';
+  return type || 'Chưa cung cấp';
+};
+
 const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) => {
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const API_BASE_URL = "http://localhost:8080";
 
-  /** 🚀 GIẢI QUYẾT ĐƯỜNG DẪN ẢNH (PRESERVED) */
   const getFullImageUrl = (path: string | null | undefined) => {
     if (!path || path === "DEFAULT_LOGO" || path.trim() === "") return ainetsoftLogo; 
     if (path.startsWith('data:image') || path.startsWith('http')) return path;
@@ -48,7 +54,6 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
     return `${API_BASE_URL}${cleanPath}`;
   };
 
-  // 🚀 NEW: Helper to extract bank data from various potential properties
   const getBankData = (userData: any) => {
     if (!userData) return null;
     return (
@@ -64,7 +69,6 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
   return (
     <div className="admin-modal-overlay" onClick={onClose}>
       
-      {/* 🚀 POPUP PHÓNG TO ẢNH */}
       {zoomedImage && (
         <div className="image-zoom-overlay" onClick={(e) => { e.stopPropagation(); setZoomedImage(null); }} style={{ zIndex: 2000 }}>
           <div className="zoom-content-wrapper">
@@ -88,7 +92,6 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
         </div>
 
         <div className="review-grid">
-          
           <div className="inspection-column">
             {/* THÔNG TIN CƠ BẢN */}
             <section className="inspection-section">
@@ -102,7 +105,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
               </div>
             </section>
 
-            {/* XÁC MINH DANH TÍNH (PREVIEW CCCD) */}
+            {/* XÁC MINH DANH TÍNH */}
             {user.identityInfo && (
               <section className="inspection-section" style={{ marginTop: '25px' }}>
                 <h4 className="section-title">
@@ -140,7 +143,6 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
                       <div key={idx} className="review-data-card mb-10" style={{ borderLeft: '4px solid #1d39c4' }}>
                         <strong>Kho {idx + 1}: {addr.receiverName}</strong>
                         <p style={{ fontSize: '11px', color: '#666' }}><FaPhoneAlt size={10} /> {formatPhone(addr.phone)}</p>
-                        {/* 🚀 FIXED: Rely strictly on 'detail' to prevent appending stale geographic metadata */}
                         <p style={{ fontSize: '12px' }}>{addr.detail || addr.detailAddress || 'Chưa cung cấp'}</p>
                         {addr.latitude && (
                           <div className="qr-box-summary" style={{ background: '#f0f5ff', border: '1px solid #adc6ff', display: 'flex', alignItems: 'center', padding: '10px', gap: '15px', borderRadius: '4px', marginTop: '10px' }}>
@@ -166,11 +168,13 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
               {user.shopProfile ? (
                 <div className="review-data-card">
                   <div className="data-row"><span className="label">Tên Shop:</span><span className="value shop-highlight">{user.shopProfile.shopName}</span></div>
+                  <div className="data-row"><span className="label">Loại hình:</span><span className="value">{getBusinessLabel(user.shopProfile.businessType)}</span></div>
                   <div className="data-row"><span className="label">Mã số thuế:</span><span className="value highlight-green">{formatMST(user.shopProfile.taxCode)}</span></div>
                   <div className="data-row"><span className="label">Địa chỉ Shop:</span><span className="value">{user.shopProfile.shopAddress || 'Chưa cập nhật'}</span></div>
                   
                   <div className="license-preview-box" style={{ marginTop: '15px' }}>
                     <span className="label" style={{ display: 'block', marginBottom: '8px' }}>Giấy phép KD:</span>
+                    
                     {user.shopProfile.businessLicenseUrl ? (
                       <div className="img-wrapper zoomable" 
                            style={{ height: '160px', width: '100%', border: '1px dashed #ddd', borderRadius: '4px', overflow: 'hidden', background: '#f9f9f9' }}
@@ -180,6 +184,18 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
                              alt="Business License" 
                              style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                         <span className="img-label-overlay">Nhấn để phóng to</span>
+                      </div>
+                    ) : user.shopProfile.businessType === 'INDIVIDUAL' ? (
+                      /* 🚀 UPDATED: Larger, more visible logo for individual sellers */
+                      <div className="individual-license-fallback" style={{ height: '160px', width: '100%', border: '1px solid #eee', borderRadius: '4px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>
+                         <img 
+                            src={ainetsoftLogo} 
+                            alt="AiNetSoft Logo" 
+                            style={{ width: '180px', opacity: 0.8, marginBottom: '12px', objectFit: 'contain' }} 
+                         />
+                         <p style={{ fontSize: '13px', color: '#999', fontWeight: 500, margin: 0 }}>
+                            Đối tượng Cá nhân không bắt buộc Giấy phép
+                         </p>
                       </div>
                     ) : (
                       <div className="empty-license-placeholder" style={{ padding: '20px', textAlign: 'center', background: '#fafafa', border: '1px solid #eee', borderRadius: '4px' }}>
@@ -197,7 +213,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
               )}
             </section>
 
-            {/* 🚀 NEW: TÀI KHOẢN THỤ HƯỞNG */}
+            {/* TÀI KHOẢN THỤ HƯỞNG */}
             <section className="inspection-section" style={{ marginTop: '25px' }}>
               <h4 className="section-title"><FaUniversity /> TÀI KHOẢN THỤ HƯỞNG</h4>
               <div className="review-data-card bank-card">
