@@ -4,16 +4,18 @@ import { getUserProfile, updateShopSettings } from '../../services/authService';
 import { 
     FaStore, FaMapMarkerAlt, FaShieldAlt, FaInfoCircle, 
     FaExternalLinkAlt, FaPhoneAlt, FaUserEdit, FaMap, FaHourglassHalf,
-    FaBriefcase, FaImage 
+    FaBriefcase, FaImage, FaHistory, FaCloudUploadAlt 
 } from 'react-icons/fa';
 import './SellerSettings.css';
 
 import ainetsoftLogo from '../../assets/images/logo.png';
 
+// HELPER: Real-time Slug Preview
 const slugify = (text: string) => {
     return text.toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim();
 };
 
+// HELPERS: Input Display Formatters
 const formatPhoneDisplay = (val: string) => {
     if (!val) return ""; 
     const s = val.replace(/\D/g, '');
@@ -210,9 +212,9 @@ const SellerSettings = () => {
             <hr className="supreme-divider" />
 
             {shopData.hasPendingUpdate && (
-                <div className="warning-text" style={{marginBottom: '25px'}}>
-                    <FaHourglassHalf />
-                    <span>Thông tin của bạn đang được kiểm duyệt. Các thay đổi về logo/mô tả sẽ hiển thị ngay.</span>
+                <div className="vibrant-pending-banner">
+                    <FaHourglassHalf className="spin-icon" />
+                    <span>Hồ sơ của bạn <strong>đang chờ Admin phê duyệt</strong>. Các thay đổi về Logo/Mô tả sẽ hiển thị ngay khi bạn lưu.</span>
                 </div>
             )}
 
@@ -225,25 +227,16 @@ const SellerSettings = () => {
                         <h3 className="section-subtitle"><FaImage /> Nhận diện thương hiệu</h3>
                         <div className="logo-upload-circle-row">
                             <div className="logo-preview-circle">
-                                <img 
-                                    src={logoPreview} 
-                                    alt="Logo Preview" 
-                                    onError={(e) => { e.currentTarget.src = ainetsoftLogo; }}
-                                />
+                                <img src={logoPreview} alt="Logo" onError={(e) => { e.currentTarget.src = ainetsoftLogo; }} />
                             </div>
                             <div className="logo-input-group">
-                                <input 
-                                    type="file" 
-                                    accept="image/*"
-                                    disabled={shopData.hasPendingUpdate}
-                                    onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file) {
-                                            setNewLogoFile(file);
-                                            setLogoPreview(URL.createObjectURL(file));
-                                        }
-                                    }}
-                                />
+                                <input type="file" id="shop-logo-upload" accept="image/*" disabled={shopData.hasPendingUpdate} hidden onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) { setNewLogoFile(file); setLogoPreview(URL.createObjectURL(file)); }
+                                }} />
+                                <label htmlFor="shop-logo-upload" className={`vibrant-upload-btn ${shopData.hasPendingUpdate ? 'disabled' : ''}`}>
+                                    <FaCloudUploadAlt /> Tải ảnh Logo
+                                </label>
                                 <p className="upload-hint">Khuyến nghị: Hình vuông, tối thiểu 512x512px.</p>
                             </div>
                         </div>
@@ -251,34 +244,43 @@ const SellerSettings = () => {
 
                     <section className="settings-section mt-30">
                         <h3 className="section-subtitle"><FaInfoCircle /> Nhận diện & URL</h3>
-                        <div className="supreme-form-row vertical">
-                            <label>Tên Shop <span className="req">*</span></label>
-                            <input 
-                                type="text" 
-                                className="supreme-input"
-                                disabled={daysUntilChange > 0 || shopData.hasPendingUpdate}
-                                value={shopData.shopName} 
-                                onChange={(e) => setShopData({...shopData, shopName: e.target.value})} 
-                            />
+                        
+                        <div className="supreme-form-row-left">
+                            <label className="field-label-left">Tên Shop <span className="req">*</span></label>
+                            <div className="input-with-cooldown-group">
+                                <input 
+                                    type="text" 
+                                    className="supreme-input shop-name-input-restricted"
+                                    disabled={daysUntilChange > 0 || shopData.hasPendingUpdate}
+                                    value={shopData.shopName} 
+                                    onChange={(e) => setShopData({...shopData, shopName: e.target.value})} 
+                                />
+                                {daysUntilChange > 0 && (
+                                    <div className="vibrant-horizontal-cooldown">
+                                        <FaHistory />
+                                        <span>Theo quy định, bạn chỉ có thể đổi tên Shop 30 ngày một lần. Hiện tại, bạn còn <strong>{daysUntilChange} ngày</strong> để thực hiện lượt đổi tiếp theo.</span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
-                        <div className="supreme-form-row vertical" style={{marginTop: '20px'}}>
-                            <label>Nice URL (Slug)</label>
-                            <div className="slug-input-group">
-                                <div className="slug-display">
+                        <div className="supreme-form-row-left mt-25">
+                            <label className="field-label-left">Nice URL (Slug)</label>
+                            <div className="slug-input-group-fixed">
+                                <div className="slug-display-fixed">
                                     <span>localhost:5173/</span>
-                                    <strong>{daysUntilChange > 0 ? shopData.shopSlug : (slugify(shopData.shopName) || 'dang-cap-nhat')}</strong>
+                                    <strong className="slug-vibrant-red">{daysUntilChange > 0 ? shopData.shopSlug : (slugify(shopData.shopName) || 'dang-cap-nhat')}</strong>
                                 </div>
-                                <button className="slug-visit-btn" onClick={() => window.open(`/${shopData.shopSlug}`, '_blank')}>
+                                <button className="slug-visit-btn-fixed" onClick={() => window.open(`/${shopData.shopSlug}`, '_blank')}>
                                     <FaExternalLinkAlt />
                                 </button>
                             </div>
                         </div>
 
-                        <div className="supreme-form-row vertical" style={{marginTop: '20px'}}>
-                            <label>Mô tả Shop</label>
+                        <div className="supreme-form-row-left mt-25">
+                            <label className="field-label-left">Mô tả Shop</label>
                             <textarea 
-                                className="supreme-textarea"
+                                className="supreme-textarea-full"
                                 disabled={shopData.hasPendingUpdate}
                                 placeholder="Giới thiệu về shop của bạn..."
                                 value={shopData.shopDescription || ''}
@@ -289,7 +291,7 @@ const SellerSettings = () => {
 
                     <section className="settings-section mt-30">
                         <h3 className="section-subtitle"><FaMapMarkerAlt /> Kho hàng ({addresses.length}/2)</h3>
-                        <div className="warehouse-edit-grid">
+                        <div className="warehouse-grid-layout">
                             {addresses.map((addr, idx) => (
                                 <div key={idx} className="pro-warehouse-card">
                                     <div className="card-side-info">
@@ -301,7 +303,7 @@ const SellerSettings = () => {
                                             <FaPhoneAlt className="mini-icon" />
                                             <input value={formatPhoneDisplay(addr.phone)} disabled={shopData.hasPendingUpdate} onChange={(e) => handleAddressUpdate(idx, 'phone', e.target.value)} placeholder="Số điện thoại" />
                                         </div>
-                                        <div className="input-group-mini textarea-group">
+                                        <div className="input-group-mini area-group">
                                             <FaMap className="mini-icon" />
                                             <textarea value={addr.detail} disabled={shopData.hasPendingUpdate} onChange={(e) => handleAddressUpdate(idx, 'detail', e.target.value)} placeholder="Địa chỉ chi tiết" />
                                         </div>
@@ -316,11 +318,11 @@ const SellerSettings = () => {
 
                     <section className="settings-section mt-30 compliance-box">
                         <h3 className="section-subtitle"><FaShieldAlt /> Thông tin Pháp lý</h3>
-                        <div className="legal-info-grid">
-                            <div className="legal-item">
-                                <label><FaBriefcase /> Loại hình kinh doanh</label>
+                        <div className="legal-horizontal-layout">
+                            <div className="legal-field-item">
+                                <label className="field-label-left"><FaBriefcase /> Loại hình kinh doanh</label>
                                 <select 
-                                    className="supreme-input"
+                                    className="supreme-input-full"
                                     disabled={shopData.hasPendingUpdate}
                                     value={shopData.businessType}
                                     onChange={(e) => setShopData({...shopData, businessType: e.target.value})}
@@ -331,47 +333,60 @@ const SellerSettings = () => {
                                 </select>
                             </div>
 
-                            <div className="legal-item">
-                                <label>Mã số thuế</label>
+                            <div className="legal-field-item">
+                                <label className="field-label-left">Mã số thuế</label>
                                 <input 
                                     type="text" 
-                                    className={`mst-input-clean ${isMSTInvalid ? 'error-border' : ''}`}
+                                    className={`mst-input-fixed ${isMSTInvalid ? 'error-border' : ''}`}
                                     disabled={shopData.hasPendingUpdate}
                                     value={formatMSTDisplay(shopData.taxCode)} 
                                     onChange={(e) => setShopData({...shopData, taxCode: e.target.value.replace(/\D/g, '').slice(0, 13)})} 
                                 />
-                                {isMSTInvalid && <small className="error-text">MST phải gồm 10 hoặc 13 chữ số.</small>}
+                                {isMSTInvalid && <small className="error-text-vibrant">Phải gồm 10 hoặc 13 số.</small>}
                             </div>
+                        </div>
 
-                            <div className="legal-item">
-                                <label>Giấy phép kinh doanh</label>
-                                <div className={`license-upload-clean ${shopData.businessType === 'INDIVIDUAL' ? 'disabled-view' : ''}`} style={{ position: 'relative' }}>
-                                    <img 
-                                        src={shopData.businessType === 'INDIVIDUAL' 
-                                            ? ainetsoftLogo 
-                                            : (shopData.businessLicenseUrl ? `${API_BASE_URL}${shopData.businessLicenseUrl}` : 'https://placehold.co/120x80?text=GPKD')} 
-                                        alt="GPKD" 
-                                    />
-                                    <input 
-                                        type="file" 
-                                        disabled={shopData.hasPendingUpdate || shopData.businessType === 'INDIVIDUAL'}
-                                        onChange={(e) => setNewLicenseFile(e.target.files ? e.target.files[0] : null)} 
-                                    />
-                                    {shopData.businessType === 'INDIVIDUAL' && (
-                                        <div className="individual-hint">Cá nhân không cần giấy phép.</div>
+                        <div className="legal-row-full mt-25">
+                            <label className="field-label-left">Giấy phép kinh doanh</label>
+                            <div className="license-upload-container-fixed">
+                                {/* 🛡️ FIXED: Hide preview entirely if Individual */}
+                                {shopData.businessType !== 'INDIVIDUAL' && (
+                                    <div className="license-preview-fixed">
+                                        <img 
+                                            src={shopData.businessLicenseUrl ? `${API_BASE_URL}${shopData.businessLicenseUrl}` : 'https://placehold.co/120x80?text=GPKD'} 
+                                            alt="GPKD" 
+                                        />
+                                        {shopData.hasPendingUpdate && <div className="pending-lock-overlay"><FaHourglassHalf /> Chờ duyệt</div>}
+                                    </div>
+                                )}
+                                
+                                <div className="license-actions-fixed">
+                                    {/* 🛡️ FIXED: Switch between upload UI and info box based on type */}
+                                    {shopData.businessType !== 'INDIVIDUAL' ? (
+                                        <>
+                                            <input type="file" id="license-upload-btn" disabled={shopData.hasPendingUpdate} hidden onChange={(e) => setNewLicenseFile(e.target.files ? e.target.files[0] : null)} />
+                                            <label htmlFor="license-upload-btn" className={`vibrant-upload-btn ${shopData.hasPendingUpdate ? 'disabled' : ''}`}>
+                                                <FaCloudUploadAlt /> Tải lên Giấy phép
+                                            </label>
+                                        </>
+                                    ) : (
+                                        <div className="horizontal-vibrant-info">
+                                            <FaInfoCircle className="info-icon" />
+                                            <span>Đối với mô hình <strong>Kinh doanh cá nhân</strong>, bạn không cần phải tải lên Giấy phép kinh doanh.</span>
+                                        </div>
                                     )}
                                 </div>
                             </div>
                         </div>
                     </section>
 
-                    <div className="form-actions-row">
+                    <div className="supreme-form-actions-right">
                         <button 
-                            className="save-btn-supreme" 
+                            className="save-btn-supreme-right" 
                             onClick={handleSave} 
                             disabled={isSaving || shopData.hasPendingUpdate || !hasActualChanges || (hasActualChanges && (isMSTInvalid || hasDuplicatePhones || hasInvalidPhones))}
                         >
-                            {isSaving ? "Đang xử lý..." : shopData.hasPendingUpdate ? "ĐANG CHỜ DUYỆT" : "Lưu thiết lập"}
+                            {isSaving ? "Đang xử lý..." : shopData.hasPendingUpdate ? "HỒ SƠ ĐANG CHỜ DUYỆT" : "Lưu thiết lập"}
                         </button>
                     </div>
                 </div>
