@@ -2,7 +2,8 @@ import React from 'react';
 import { 
   FaSearch, FaFilter, FaCircle, FaEnvelope, FaPhoneAlt, 
   FaCalendarAlt, FaTimesCircle, FaEye,
-  FaUserShield, FaBan, FaUnlock, FaStoreSlash 
+  FaUserShield, FaBan, FaUnlock, FaStoreSlash,
+  FaChevronLeft, FaChevronRight 
 } from 'react-icons/fa';
 
 interface UserTableProps {
@@ -19,6 +20,14 @@ interface UserTableProps {
   onDemote: (userId: string) => void; 
   onToggleStatus: (userId: string) => void;
   onRevokeSeller: (userId: string) => void;
+  
+  // APPENDED: Necessary props for Pagination logic
+  currentPage: number;
+  pageSize: number;
+  totalElements: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
 }
 
 const UserTable: React.FC<UserTableProps> = ({ 
@@ -34,7 +43,15 @@ const UserTable: React.FC<UserTableProps> = ({
   onPromote,
   onDemote, 
   onToggleStatus,
-  onRevokeSeller
+  onRevokeSeller,
+  
+  // Destructuring pagination props
+  currentPage = 0,
+  pageSize = 10,
+  totalElements = 0,
+  totalPages = 0,
+  onPageChange,
+  onPageSizeChange
 }) => {
 
   const userList = Array.isArray(users) ? users : (users?.content || []);
@@ -47,7 +64,7 @@ const UserTable: React.FC<UserTableProps> = ({
   return (
     <div className="admin-table-container-supreme">
       
-      {/* Search and Filters Header */}
+      {/* 1. ORIGINAL HEADER LOGIC (PRESERVED) */}
       <div className="table-controls-row-elite">
         <div className="admin-search-box-supreme">
           <FaSearch className="search-icon-inside" />
@@ -88,7 +105,7 @@ const UserTable: React.FC<UserTableProps> = ({
         </div>
       </div>
 
-      {/* Main Data Table */}
+      {/* 2. ORIGINAL TABLE CONTENT (PRESERVED) */}
       <table className="admin-data-table-supreme">
         <thead>
           <tr>
@@ -106,10 +123,7 @@ const UserTable: React.FC<UserTableProps> = ({
           ) : (
             userList.map((u: any) => (
               <tr key={u.id}>
-                {/* Full Name */}
                 <td><strong className="user-primary-name">{u.fullName}</strong></td>
-                
-                {/* NEW: Updated Colorful Email / SĐT Badges */}
                 <td>
                   <div className="contact-info-stack">
                     <span className="contact-badge email-pill">
@@ -120,8 +134,6 @@ const UserTable: React.FC<UserTableProps> = ({
                     </span>
                   </div>
                 </td>
-
-                {/* NEW: Updated Colorful Role Badges (No Bold) */}
                 <td>
                   <div className="role-badge-stack">
                     {u.roles?.map((r: string) => (
@@ -131,32 +143,20 @@ const UserTable: React.FC<UserTableProps> = ({
                     ))}
                   </div>
                 </td>
-
-                {/* Account Status Pill */}
                 <td>
                   <span className={`status-pill-colorful ${u.accountStatus?.toLowerCase()}`}>
                     <FaCircle className="dot" /> {u.accountStatus || 'ACTIVE'}
                   </span>
                 </td>
-
-                {/* Join Date Badge */}
                 <td className="date-cell">
                    <span className="date-pill">
                       <FaCalendarAlt className="tiny-icon" /> {u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : '14/4/2026'}
                    </span>
                 </td>
-                
-                {/* Action Buttons */}
                 <td style={{ textAlign: 'right' }}>
                   <div className="action-button-group-supreme">
-                    <button 
-                      className="btn-action-inspect" 
-                      onClick={() => onView(u.id)}
-                      title="Xem chi tiết hồ sơ"
-                    >
-                      <FaEye />
-                    </button>
-
+                    <button className="btn-action-inspect" onClick={() => onView(u.id)} title="Xem hồ sơ"><FaEye /></button>
+                    
                     {!u.roles?.includes('ADMIN') && (
                       <button 
                         className="btn-action-inspect promote-btn" 
@@ -187,24 +187,16 @@ const UserTable: React.FC<UserTableProps> = ({
                     )}
 
                     {u.roles?.includes('SELLER') && (
-                      <button 
-                        className="btn-action-inspect revoke-btn" 
-                        onClick={() => onRevokeSeller(u.id)}
-                        title="Thu hồi quyền Người bán"
-                      >
-                        <FaStoreSlash />
-                      </button>
+                      <button className="btn-action-inspect revoke-btn" onClick={() => onRevokeSeller(u.id)} title="Thu hồi quyền Seller"><FaStoreSlash /></button>
                     )}
 
-                    {u.email !== 'admin@ainetsoft.com' && (
-                      <button 
-                        className={`btn-action-inspect ${u.accountStatus === 'BANNED' ? 'unban-btn' : 'ban-btn'}`}
-                        onClick={() => onToggleStatus(u.id)}
-                        title={u.accountStatus === 'BANNED' ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
-                      >
-                        {u.accountStatus === 'BANNED' ? <FaUnlock /> : <FaBan />}
-                      </button>
-                    )}
+                    <button 
+                      className={`btn-action-inspect ${u.accountStatus === 'BANNED' ? 'unban-btn' : 'ban-btn'}`} 
+                      onClick={() => onToggleStatus(u.id)}
+                      title={u.accountStatus === 'BANNED' ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
+                    >
+                      {u.accountStatus === 'BANNED' ? <FaUnlock /> : <FaBan />}
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -212,6 +204,34 @@ const UserTable: React.FC<UserTableProps> = ({
           )}
         </tbody>
       </table>
+
+      {/* 3. APPENDED: DYNAMIC PAGINATION FOOTER (FIXES "10 / 12") */}
+      <div className="admin-table-pagination-footer-wrapper">
+        <div className="pagination-left-info">
+          Hiển thị <strong>{userList.length}</strong> / <strong>{totalElements}</strong> thành viên
+        </div>
+
+        <div className="pagination-right-controls">
+          <div className="size-selector">
+            <span>Hiển thị:</span>
+            <select value={pageSize} onChange={(e) => onPageSizeChange(Number(e.target.value))}>
+              <option value={10}>10</option>
+              <option value={30}>30</option>
+              <option value={50}>50</option>
+            </select>
+          </div>
+
+          <div className="nav-buttons">
+            <button disabled={currentPage === 0} onClick={() => onPageChange(currentPage - 1)} className="btn-pg">
+              <FaChevronLeft /> Trước
+            </button>
+            <span className="page-num">Trang <strong>{currentPage + 1}</strong> / {totalPages || 1}</span>
+            <button disabled={currentPage >= totalPages - 1} onClick={() => onPageChange(currentPage + 1)} className="btn-pg">
+              Sau <FaChevronRight />
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

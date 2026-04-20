@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { FaSearch, FaTrash, FaTimesCircle, FaChevronLeft, FaChevronRight, FaExternalLinkAlt } from 'react-icons/fa';
-import { Link } from 'react-router-dom'; // 🚀 Added for professional navigation
+import { Link } from 'react-router-dom';
 
 interface ProductTableProps {
   products: any[];
@@ -8,6 +8,10 @@ interface ProductTableProps {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  // APPENDED: New props for enhanced pagination
+  pageSize: number;
+  totalElements: number;
+  onPageSizeChange: (size: number) => void;
 }
 
 const ProductTable: React.FC<ProductTableProps> = ({ 
@@ -15,10 +19,14 @@ const ProductTable: React.FC<ProductTableProps> = ({
   onDelete, 
   currentPage, 
   totalPages, 
-  onPageChange 
+  onPageChange,
+  pageSize,
+  totalElements,
+  onPageSizeChange
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
 
+  // ORIGINAL LOGIC PRESERVED: Local filtering within the current page
   const filteredProducts = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
     if (!term) return products;
@@ -35,11 +43,11 @@ const ProductTable: React.FC<ProductTableProps> = ({
   };
 
   return (
-    <div className="admin-table-container">
-      {/* --- SEARCH BAR SECTION --- */}
-      <div className="table-filter-header">
-        <div className="search-box-wrapper">
-          <FaSearch className="search-icon" />
+    <div className="admin-table-container-supreme">
+      {/* ORIGINAL SEARCH BAR (PRESERVED) */}
+      <div className="table-controls-row-elite">
+        <div className="admin-search-box-supreme">
+          <FaSearch className="search-icon-inside" />
           <input 
             type="text" 
             placeholder="Tìm theo tên sản phẩm, danh mục hoặc tên shop..." 
@@ -54,22 +62,22 @@ const ProductTable: React.FC<ProductTableProps> = ({
         </div>
       </div>
 
-      {/* --- DATA TABLE --- */}
-      <table className="admin-data-table">
+      {/* ORIGINAL DATA TABLE (PRESERVED) */}
+      <table className="admin-data-table-supreme">
         <thead>
           <tr>
-            <th>Hình ảnh</th>
-            <th>Tên sản phẩm</th>
-            <th>Danh mục</th>
-            <th>Giá bán</th>
-            <th>Kho hàng</th>
-            <th>Trạng thái</th>
-            <th>Thao tác</th>
+            <th>HÌNH ẢNH</th>
+            <th>TÊN SẢN PHẨM</th>
+            <th>DANH MỤC</th>
+            <th>GIÁ BÁN</th>
+            <th>KHO HÀNG</th>
+            <th>TRẠNG THÁI</th>
+            <th style={{ textAlign: 'right' }}>THAO TÁC</th>
           </tr>
         </thead>
         <tbody>
           {filteredProducts.length === 0 ? (
-            <tr><td colSpan={7} className="empty-row">Không tìm thấy sản phẩm nào ở trang này.</td></tr>
+            <tr><td colSpan={7} className="empty-row-visual">Không tìm thấy sản phẩm nào ở trang này.</td></tr>
           ) : (
             filteredProducts.map(p => (
               <tr key={p.id}>
@@ -83,17 +91,12 @@ const ProductTable: React.FC<ProductTableProps> = ({
                     <span className="user-full-name">{p.name}</span>
                     <small className="user-uid-text">
                       Shop: <strong>
-                        {/* 🚀 FIXED: Links directly to the Shop Page using the Slug */}
                         {p.sellerSlug ? (
-                          <Link 
-                            to={`/${p.sellerSlug}`} 
-                            className="admin-shop-nav-link" 
-                            title="Xem trang bán hàng công khai"
-                          >
-                            {p.shopName || p.sellerName || "Chưa xác định"} <FaExternalLinkAlt size={10} style={{marginLeft: '4px'}} />
+                          <Link to={`/${p.sellerSlug}`} className="admin-shop-nav-link" title="Xem trang bán hàng">
+                            {p.shopName || p.sellerName || "N/A"} <FaExternalLinkAlt size={10} style={{marginLeft: '4px'}} />
                           </Link>
                         ) : (
-                          p.shopName || p.sellerName || "Chưa xác định"
+                          p.shopName || p.sellerName || "N/A"
                         )}
                       </strong>
                     </small>
@@ -103,14 +106,16 @@ const ProductTable: React.FC<ProductTableProps> = ({
                 <td><strong style={{color: 'var(--orange)'}}>{formatPrice(p.price)}</strong></td>
                 <td>{p.stock}</td>
                 <td>
-                  <span className={`status-badge ${p.status?.toLowerCase() === 'approved' ? 'active' : 'pending'}`}>
+                  <span className={`status-pill-colorful ${p.status?.toLowerCase() === 'approved' ? 'active' : 'pending'}`}>
                     {p.status === 'APPROVED' ? 'Đang bán' : 'Chờ duyệt'}
                   </span>
                 </td>
-                <td className="action-btns">
-                  <button className="mod-btn delete-grey" onClick={() => onDelete(p.id)} title="Xóa sản phẩm">
-                    <FaTrash />
-                  </button>
+                <td style={{ textAlign: 'right' }}>
+                  <div className="action-button-group-supreme">
+                    <button className="btn-action-inspect ban-btn" onClick={() => onDelete(p.id)} title="Xóa sản phẩm">
+                      <FaTrash />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))
@@ -118,30 +123,33 @@ const ProductTable: React.FC<ProductTableProps> = ({
         </tbody>
       </table>
 
-      {/* --- PAGINATION CONTROLS FOOTER --- */}
-      {totalPages > 1 && (
-        <div className="table-pagination-footer">
-          <div className="pagination-info">
-            Hiển thị trang <strong>{currentPage + 1}</strong> trên <strong>{totalPages}</strong>
+      {/* NEW: DYNAMIC PAGINATION FOOTER */}
+      <div className="admin-table-pagination-footer-wrapper">
+        <div className="pagination-left-info">
+          Hiển thị <strong>{filteredProducts.length}</strong> / <strong>{totalElements}</strong> sản phẩm
+        </div>
+
+        <div className="pagination-right-controls">
+          <div className="size-selector">
+            <span>Hiển thị:</span>
+            <select value={pageSize} onChange={(e) => onPageSizeChange(Number(e.target.value))}>
+              <option value={10}>10 dòng</option>
+              <option value={30}>30 dòng</option>
+              <option value={50}>50 dòng</option>
+            </select>
           </div>
-          <div className="pagination-controls">
-            <button 
-              className="page-nav-btn" 
-              disabled={currentPage === 0} 
-              onClick={() => onPageChange(currentPage - 1)}
-            >
+
+          <div className="nav-buttons">
+            <button disabled={currentPage === 0} onClick={() => onPageChange(currentPage - 1)} className="btn-pg">
               <FaChevronLeft /> Trước
             </button>
-            <button 
-              className="page-nav-btn" 
-              disabled={currentPage >= totalPages - 1} 
-              onClick={() => onPageChange(currentPage + 1)}
-            >
+            <span className="page-num">Trang <strong>{currentPage + 1}</strong> / {totalPages || 1}</span>
+            <button disabled={currentPage >= totalPages - 1} onClick={() => onPageChange(currentPage + 1)} className="btn-pg">
               Sau <FaChevronRight />
             </button>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };

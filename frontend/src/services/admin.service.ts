@@ -119,7 +119,10 @@ export const adminService = {
   revokeSellerRights: (userId: string, reason: string) => 
     api.post(`/admin/sellers/revoke/${userId}`, null, { params: { reason } }).then(res => res.data),
     
-  getAuditLogs: () => api.get('/admin/audit-logs').then(res => res.data),
+  /** * 🚀 UPDATED: Added params to support dynamic pagination (page/size) for logs
+   */
+  getAuditLogs: (params: any = {}) => 
+    api.get('/admin/audit-logs', { params }).then(res => res.data),
 
   // --- QUICK RESPONSE TEMPLATES ---
 
