@@ -185,3 +185,65 @@
     color: #dc2626; 
     border-color: #dc2626; 
 }
+
+/* APPENDED: Pagination Footer Styles */
+.admin-table-pagination-footer-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 25px;
+  background: #fff;
+  border-top: 1px solid #f0f0f0;
+  border-radius: 0 0 8px 8px;
+}
+
+.pagination-right-controls {
+  display: flex;
+  gap: 35px;
+  align-items: center;
+}
+
+.size-selector select {
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-left: 10px;
+  cursor: pointer;
+  background: #fff;
+}
+
+.nav-buttons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn-pg {
+  background: #fff;
+  border: 1px solid #dbdbdb;
+  padding: 6px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: #555;
+  transition: all 0.2s;
+}
+
+.btn-pg:disabled {
+  background: #f5f5f5;
+  color: #ccc;
+  cursor: not-allowed;
+}
+
+.btn-pg:not(:disabled):hover {
+  border-color: #ee4d2d;
+  color: #ee4d2d;
+}
+
+.page-num {
+  font-size: 14px;
+  margin: 0 10px;
+}

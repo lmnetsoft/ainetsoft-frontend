@@ -845,3 +845,161 @@
     align-items: center;
     gap: 8px;
 }
+
+/* --- 🚀 28. SUPREME PAGINATION FOOTER (FIX FOR LIST OVERFLOW) --- */
+.admin-table-pagination-footer-wrapper {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 20px 30px !important;
+    background: #ffffff !important;
+    border-top: 1px solid #f1f5f9 !important;
+    margin-top: auto !important; /* Forces footer to stay at bottom */
+}
+
+.pagination-left-info {
+    font-size: 13px !important;
+    color: var(--text-muted) !important;
+    font-weight: 500 !important;
+}
+
+.pagination-right-controls {
+    display: flex !important;
+    align-items: center !important;
+    gap: 25px !important;
+}
+
+.size-selector {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    font-size: 13px !important;
+    color: var(--text-muted) !important;
+}
+
+.size-selector select {
+    padding: 6px 12px !important;
+    border-radius: 8px !important;
+    border: 1.5px solid #edf2f7 !important;
+    font-family: var(--ui-font) !important;
+    font-weight: 700 !important;
+    color: var(--text-dark) !important;
+    cursor: pointer !important;
+    outline: none !important;
+}
+
+.nav-buttons {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+}
+
+.btn-pg {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 8px 16px !important;
+    border-radius: 8px !important;
+    border: 1.5px solid #edf2f7 !important;
+    background: #ffffff !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    color: var(--text-dark) !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+}
+
+.btn-pg:hover:not(:disabled) {
+    border-color: var(--orange) !important;
+    color: var(--orange) !important;
+}
+
+.btn-pg:disabled {
+    opacity: 0.4 !important;
+    cursor: not-allowed !important;
+    background: #f8fafc !important;
+}
+
+.page-num {
+    font-size: 13px !important;
+    color: var(--text-muted) !important;
+}
+
+/* --- 🚀 29. BATCH ACTION BAR (FOR REPORTS) --- */
+.batch-action-bar-supreme {
+    position: absolute !important;
+    top: 15px !important;
+    left: 20px !important;
+    right: 20px !important;
+    background: #1e3799 !important; /* Indigo primary for actions */
+    padding: 12px 25px !important;
+    border-radius: 12px !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    z-index: 100 !important;
+    box-shadow: 0 8px 20px rgba(30, 55, 153, 0.2) !important;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+.batch-info {
+    color: white !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+}
+
+.batch-btns {
+    display: flex !important;
+    gap: 10px !important;
+}
+
+.batch-btn {
+    padding: 8px 16px !important;
+    border-radius: 8px !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+    border: none !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    transition: all 0.2s !important;
+}
+
+.batch-btn.confirm { background: #009432 !important; color: white !important; }
+.batch-btn.dismiss { background: #ffffff !important; color: #d93025 !important; }
+.batch-btn.cancel { background: transparent !important; color: #a4b0be !important; }
+
+/* --- 🚀 30. UTILITY ELEMENTS --- */
+.clear-search-btn {
+    position: absolute !important;
+    right: 12px !important;
+    background: transparent !important;
+    border: none !important;
+    color: #a4b0be !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    padding: 4px !important;
+}
+
+.clear-search-btn:hover { color: var(--orange) !important; }
+
+.empty-row-visual {
+    padding: 100px 0 !important;
+    text-align: center !important;
+    color: var(--text-muted) !important;
+    font-weight: 600 !important;
+    font-size: 15px !important;
+}
+
+.status-pill-colorful.neutral {
+    color: #5f6368 !important;
+    background: #f1f3f4 !important;
+    border-color: #dadce0 !important;
+}

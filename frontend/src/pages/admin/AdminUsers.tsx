@@ -18,15 +18,17 @@ const AdminUsers: React.FC = () => {
   
   // Pagination State
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10); // NEW: Dynamic page size
   const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0); // NEW: Total records count
 
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [showModal, setShowModal] = useState(false);
 
-  // 🚀 Fetch users whenever filters or page changes
+  // 🚀 Fetch users whenever filters, page, or pageSize changes
   useEffect(() => {
     loadUsers();
-  }, [roleFilter, statusFilter, page]);
+  }, [roleFilter, statusFilter, page, pageSize]); // NEW: pageSize added to dependencies
 
   const loadUsers = async () => {
     try {
@@ -36,14 +38,15 @@ const AdminUsers: React.FC = () => {
         role: roleFilter === "ALL" ? "" : roleFilter,
         status: statusFilter === "ALL" ? "" : statusFilter,
         page: page,
-        size: 10
+        size: pageSize // UPDATED: Using dynamic pageSize state
       };
 
       const res = await adminService.getAllUsers(params);
       
-      // Backend now returns Page<User>, so we access .content
+      // Backend returns Page<User>, accessing .content
       setUsers(res.content || []);
       setTotalPages(res.totalPages || 0);
+      setTotalElements(res.totalElements || 0); // NEW: Set total elements for UI display
     } catch (error) {
       console.error("Lỗi khi lấy danh sách người dùng:", error);
     } finally {
@@ -75,8 +78,8 @@ const AdminUsers: React.FC = () => {
 
       <div className="admin-content-body">
         
-        {/* 🚀 PHASE 1: ENHANCED FILTER BAR */}
-        <div className="table-controls-row" style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+        {/* 🚀 FILTER BAR */}
+        <div className="table-controls-row" style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', marginBottom: '20px' }}>
           <div className="admin-search-box-supreme" style={{ flex: 2, minWidth: '300px' }}>
             <FaSearch className="search-icon" />
             <input 
@@ -177,14 +180,59 @@ const AdminUsers: React.FC = () => {
               </tbody>
             </table>
 
-            {/* Simple Pagination Controls */}
-            {totalPages > 1 && (
-                <div className="admin-pagination-footer" style={{ marginTop: '20px', display: 'flex', justifyContent: 'center', gap: '10px' }}>
-                    <button disabled={page === 0} onClick={() => setPage(page - 1)} className="btn-page-nav">Trước</button>
-                    <span style={{ alignSelf: 'center' }}>Trang {page + 1} / {totalPages}</span>
-                    <button disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)} className="btn-page-nav">Sau</button>
+            {/* ENHANCED Pagination Controls */}
+            <div className="admin-pagination-footer" style={{ 
+                marginTop: '20px', 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                padding: '10px 20px',
+                background: '#f8f9fa',
+                borderRadius: '8px'
+            }}>
+                <div className="pagination-info">
+                    Hiển thị <strong>{users.length}</strong> trên tổng số <strong>{totalElements}</strong> thành viên
                 </div>
-            )}
+
+                <div className="pagination-controls" style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                    {/* NEW: Records per page selector */}
+                    <div className="page-size-selector">
+                        <span style={{ marginRight: '8px', fontSize: '14px' }}>Số dòng:</span>
+                        <select 
+                            value={pageSize} 
+                            onChange={(e) => { 
+                                setPageSize(Number(e.target.value)); 
+                                setPage(0); // Reset to first page when changing size
+                            }}
+                            style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #ddd', cursor: 'pointer' }}
+                        >
+                            <option value={10}>10</option>
+                            <option value={30}>30</option>
+                            <option value={50}>50</option>
+                        </select>
+                    </div>
+
+                    <div className="page-nav-buttons" style={{ display: 'flex', gap: '8px' }}>
+                        <button 
+                            disabled={page === 0} 
+                            onClick={() => setPage(page - 1)} 
+                            className="btn-page-nav"
+                        >
+                            Trước
+                        </button>
+                        <span style={{ alignSelf: 'center', fontSize: '14px' }}>
+                            Trang {page + 1} / {totalPages || 1}
+                        </span>
+                        <button 
+                            disabled={page >= totalPages - 1} 
+                            onClick={() => setPage(page + 1)} 
+                            className="btn-page-nav"
+                        >
+                            Sau
+                        </button>
+                    </div>
+                </div>
+            </div>
           </div>
         )}
       </div>

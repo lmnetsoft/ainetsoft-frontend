@@ -44,8 +44,30 @@ const AdminDashboard = () => {
   const [allProducts, setAllProducts] = useState<any[]>([]); 
   const [systemContents, setSystemContents] = useState<any[]>([]); 
   
+  // Product Pagination States
   const [productPage, setProductPage] = useState(0);
+  const [productPageSize, setProductPageSize] = useState(10);
   const [productTotalPages, setProductTotalPages] = useState(0);
+  const [productTotalElements, setProductTotalElements] = useState(0);
+
+  // User Pagination States
+  const [userPage, setUserPage] = useState(0);
+  const [userPageSize, setUserPageSize] = useState(10);
+  const [userTotalPages, setUserTotalPages] = useState(0);
+  const [userTotalElements, setUserTotalElements] = useState(0);
+
+  // Log Pagination States
+  const [logPage, setLogPage] = useState(0);
+  const [logPageSize, setLogPageSize] = useState(10);
+  const [logTotalPages, setLogTotalPages] = useState(0);
+  const [logTotalElements, setLogTotalElements] = useState(0);
+
+  // 🚀 NEW: Added Independent States for Reports and Reviews Pagination
+  const [reportPage, setReportPage] = useState(0);
+  const [reportPageSize, setReportPageSize] = useState(10);
+
+  const [reviewPage, setReviewPage] = useState(0);
+  const [reviewPageSize, setReviewPageSize] = useState(10);
 
   const [loading, setLoading] = useState(true);
   const [tabLoading, setTabLoading] = useState(false);
@@ -92,11 +114,19 @@ const AdminDashboard = () => {
         search,
         role: role === "ALL" ? "" : role,
         status: status === "ALL" ? "" : status,
-        page: 0,
-        size: 10
+        page: userPage,
+        size: userPageSize
       };
       const res = await adminService.getAllUsers(params);
-      setUsers(res.content || []);
+      
+      const content = res.content || (Array.isArray(res) ? res : []);
+      setUsers(content);
+      
+      const totalElements = res.totalElements || stats.totalUsers || content.length;
+      const totalPages = res.totalPages || Math.ceil(totalElements / userPageSize);
+      
+      setUserTotalElements(totalElements);
+      setUserTotalPages(totalPages);
     } catch (err) {
       toast.error("Lỗi khi tìm kiếm người dùng");
     } finally {
@@ -117,7 +147,7 @@ const AdminDashboard = () => {
     }
   };
 
-  // --- 🚀 PHASE 3, 4, 5 HANDLERS ---
+  // --- USER HANDLERS ---
 
   const handlePromoteToAdmin = async (userId: string, permissions: string[]) => {
     try {
@@ -132,9 +162,6 @@ const AdminDashboard = () => {
     }
   };
 
-  /**
-   * 🚀 NEW PHASE 5: Handle Downgrade (Demote Admin to User)
-   */
   const handleDemoteFromAdmin = async (userId: string) => {
     try {
       setTabLoading(true);
@@ -193,7 +220,7 @@ const AdminDashboard = () => {
     }
   };
 
-  // --- 🚀 PHASE 5: SYSTEM CONTENT HANDLERS ---
+  // --- SYSTEM CONTENT HANDLERS ---
 
   const fetchSystemContents = async () => {
     try {
@@ -234,25 +261,40 @@ const AdminDashboard = () => {
     }
   };
 
-  // --- FETCHERS CONTINUED ---
+  // --- FETCHERS ---
 
   const fetchProducts = async () => {
     try {
       setTabLoading(true);
-      const data = await adminService.getAllProducts(productPage, 10); 
-      setAllProducts(data.content || []);
-      setProductTotalPages(data.totalPages || 0);
-    } catch (err) { setAllProducts([]); } 
-    finally { setTabLoading(false); }
+      const data = await adminService.getAllProducts(productPage, productPageSize); 
+      const content = data.content || (Array.isArray(data) ? data : []);
+      setAllProducts(content);
+      const totalElements = data.totalElements || stats.totalProducts || content.length;
+      const totalPages = data.totalPages || Math.ceil(totalElements / productPageSize);
+      setProductTotalElements(totalElements);
+      setProductTotalPages(totalPages);
+    } catch (err) { 
+      setAllProducts([]); 
+    } finally { 
+      setTabLoading(false); 
+    }
   };
 
   const fetchLogs = async () => {
     try {
       setTabLoading(true);
-      const data = await adminService.getAuditLogs();
-      setLogs(data || []);
-    } catch (err) { console.error("Logs Fetch Error:", err); } 
-    finally { setTabLoading(false); }
+      const res = await adminService.getAuditLogs({ page: logPage, size: logPageSize });
+      const content = res.content || (Array.isArray(res) ? res : []);
+      setLogs(content);
+      const totalElements = res.totalElements || content.length;
+      const totalPages = res.totalPages || Math.ceil(totalElements / logPageSize);
+      setLogTotalElements(totalElements);
+      setLogTotalPages(totalPages);
+    } catch (err) { 
+      console.error("Logs Fetch Error:", err); 
+    } finally { 
+      setTabLoading(false); 
+    }
   };
 
   const fetchReports = async () => {
@@ -311,22 +353,28 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     if (activeTab === 'users') fetchUsersFiltered(userSearchTerm, userRoleFilter, userStatusFilter);
-  }, [userRoleFilter, userStatusFilter, activeTab]);
+  }, [userRoleFilter, userStatusFilter, activeTab, userPage, userPageSize, stats.totalUsers]);
 
   useEffect(() => {
     if (activeTab === 'products') fetchProducts(); 
+  }, [activeTab, productPage, productPageSize, stats.totalProducts]);
+
+  useEffect(() => {
+    if (activeTab === 'logs') fetchLogs();
+  }, [activeTab, logPage, logPageSize]);
+
+  useEffect(() => {
     if (activeTab === 'reports') fetchReports();
     if (activeTab === 'reviews') fetchReviews();
     if (activeTab === 'reasons') fetchReasons();
-    if (activeTab === 'logs') fetchLogs();
     if (activeTab === 'system_content') fetchSystemContents(); 
 
     if (scrollAnchorRef.current) {
         scrollAnchorRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-  }, [activeTab, productPage]);
+  }, [activeTab]);
 
-  // --- ORIGINAL ACTIONS ---
+  // --- ORIGINAL ACTIONS (RESTORED) ---
 
   const handleResolveReport = async (reportId: string, action: 'RESOLVED' | 'DISMISSED') => {
     try {
@@ -404,12 +452,18 @@ const AdminDashboard = () => {
               setRoleFilter={setUserRoleFilter}
               statusFilter={userStatusFilter}
               setStatusFilter={setUserStatusFilter}
-              onSearchTrigger={() => fetchUsersFiltered(userSearchTerm, userRoleFilter, userStatusFilter)}
+              onSearchTrigger={() => { setUserPage(0); fetchUsersFiltered(userSearchTerm, userRoleFilter, userStatusFilter); }}
               onView={handleInspectUser}
               onPromote={handlePromoteToAdmin}
-              onDemote={handleDemoteFromAdmin} // 🚀 INTEGRATED PHASE 5
+              onDemote={handleDemoteFromAdmin} 
               onToggleStatus={handleToggleUserStatus}
               onRevokeSeller={handleRevokeSeller}
+              currentPage={userPage}
+              pageSize={userPageSize}
+              totalElements={userTotalElements}
+              totalPages={userTotalPages}
+              onPageChange={setUserPage}
+              onPageSizeChange={(newSize) => { setUserPageSize(newSize); setUserPage(0); }}
             />
             {showInspectModal && inspectingUser && (
               <UserProfileModal user={inspectingUser} onClose={() => setShowInspectModal(false)} />
@@ -425,8 +479,11 @@ const AdminDashboard = () => {
             products={allProducts} 
             onDelete={handleDeleteProduct} 
             currentPage={productPage}
+            pageSize={productPageSize}
+            totalElements={productTotalElements}
             totalPages={productTotalPages}
             onPageChange={setProductPage}
+            onPageSizeChange={(newSize) => { setProductPageSize(newSize); setProductPage(0); }}
           />
         );
 
@@ -439,16 +496,42 @@ const AdminDashboard = () => {
             handleResolveReport={handleResolveReport} 
             handleDeleteReport={handleDeleteReport}
             onBatchResolve={handleBatchResolveReports}
+            // 🚀 ADDED PROPS TO ENABLE SLICING LOGIC
+            currentPage={reportPage}
+            pageSize={reportPageSize}
+            onPageChange={setReportPage}
+            onPageSizeChange={(newSize) => { setReportPageSize(newSize); setReportPage(0); }}
           />
         );
 
       case 'reviews':
-        return <ReviewTable allReviews={allReviews} handleDeleteReview={handleDeleteReview} />;
+        return (
+          <ReviewTable 
+            allReviews={allReviews} 
+            handleDeleteReview={handleDeleteReview} 
+            // 🚀 ADDED PROPS TO ENABLE SLICING LOGIC
+            currentPage={reviewPage}
+            pageSize={reviewPageSize}
+            onPageChange={setReviewPage}
+            onPageSizeChange={(newSize) => { setReviewPageSize(newSize); setReviewPage(0); }}
+          />
+        );
 
       case 'reasons': 
         return <ReasonManagement reasons={reasons} newReasonName={newReasonName} setNewReasonName={setNewReasonName} handleAddReason={handleAddReason} handleDeleteReason={handleDeleteReason} />;
 
-      case 'logs': return <LogTable logs={logs} />;
+      case 'logs': 
+        return (
+          <LogTable 
+            logs={logs} 
+            currentPage={logPage}
+            pageSize={logPageSize}
+            totalElements={logTotalElements}
+            totalPages={logTotalPages}
+            onPageChange={setLogPage}
+            onPageSizeChange={(newSize) => { setLogPageSize(newSize); setLogPage(0); }}
+          />
+        );
 
       case 'system_content':
         return (
