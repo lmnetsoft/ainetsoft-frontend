@@ -1,5 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import goongjs from '@goongmaps/goong-js';
+// 🚀 ADDED: Critical for marker visibility
+import '@goongmaps/goong-js/dist/goong-js.css'; 
 import { 
   FaStore, FaHourglassHalf, FaMapMarkerAlt, FaUniversity, FaArrowRight, 
   FaArrowLeft, FaCloudUploadAlt, FaEye, FaTimes, FaCrosshairs, 
@@ -7,9 +10,8 @@ import {
   FaChevronDown, FaChevronUp, FaIdCard, FaFileInvoiceDollar, FaCheckCircle,
   FaInfoCircle, FaShieldAlt, FaUpload, FaCamera, FaRegLightbulb, FaEdit, FaPrint,
   FaSearchPlus, FaMapMarkedAlt, FaQrcode, FaCopy, FaClock, FaPassport, FaTimesCircle,
-  FaExclamationTriangle 
+  FaExclamationTriangle, FaSearch 
 } from 'react-icons/fa';
-// 🚀 REMOVED redundant Sidebar import to fix double sidebar issue
 import LegalModal from '../../components/LegalModal/LegalModal'; 
 import { getUserProfile } from '../../services/authService';
 import { toast } from 'react-hot-toast';
@@ -19,11 +21,12 @@ import api from '../../services/api';
 import './Profile.css';
 import './SellerRegister.css';
 
-// IMPORT LOGO
 import ainetsoftLogo from '../../assets/images/logo.png'; 
 
-/** CONFIGURATION: Backend Port */
+/** CONFIGURATION: Backend Port & Goong Keys */
 const BACKEND_BASE = "http://localhost:8080"; 
+const GOONG_API_KEY = import.meta.env.VITE_GOONG_API_KEY; 
+const GOONG_MAPTILES_KEY = import.meta.env.VITE_GOONG_MAPTILES_KEY;
 
 /** * NUMBER FORMATTING UTILITIES (100% PRESERVED) */
 const formatPhone = (val: string) => {
@@ -167,7 +170,6 @@ const inlineStyles = `
   
   .btn-add-ainetsoft:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
 
-  /* 🚀 NEW: Added hint style for AI check */
   .ocr-processing-hint {
     display: flex;
     align-items: center;
@@ -177,6 +179,34 @@ const inlineStyles = `
     margin-top: 5px;
     font-weight: 600;
   }
+
+  .map-modal-overlay { 
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+    background: rgba(0,0,0,0.7); display: flex; align-items: center; 
+    justify-content: center; z-index: 20000 !important; 
+  }
+  .map-modal-card { 
+    background: white; width: 90%; max-width: 800px; border-radius: 8px; 
+    overflow: hidden; display: flex; flex-direction: column; height: 85vh; 
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  }
+  .map-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid #eee; }
+  .map-search-container { padding: 15px; background: #f8f9fa; border-bottom: 1px solid #eee; position: relative; }
+  .map-search-input-group { display: flex; gap: 10px; }
+  .map-search-input-group input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+  .map-canvas-area { flex: 1; background: #eee; position: relative; min-height: 300px; }
+  #goong-map-canvas { width: 100%; height: 100%; }
+  .map-modal-footer { padding: 15px 20px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 15px; }
+  .btn-confirm-map { background: #ee4d2d; color: white; border: none; padding: 10px 30px; border-radius: 4px; font-weight: 600; cursor: pointer; }
+  .btn-cancel-map { background: #f0f0f0; color: #555; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+  
+  .map-suggestions { 
+    position: absolute; top: 100%; left: 15px; right: 15px; background: white; 
+    border: 1px solid #ddd; z-index: 21000; max-height: 200px; overflow-y: auto; 
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15); list-style: none; padding: 0; margin: 0; 
+  }
+  .map-suggestions li { padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #f5f5f5; font-size: 14px; }
+  .map-suggestions li:hover { background: #fdf2f0; color: #ee4d2d; }
 `;
 
 const PROVINCES_2026 = [
@@ -198,7 +228,6 @@ const SellerRegister = () => {
   const [isLocating, setIsLocating] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false); 
 
-  // 🚀 NEW: Added OCR specific states to track real-time results
   const [isOcrLoading, setIsOcrLoading] = useState(false);
   const [detectedIdNumber, setDetectedIdNumber] = useState<string | null>(null);
 
@@ -216,6 +245,13 @@ const SellerRegister = () => {
   const [expandedMethods, setExpandedMethods] = useState<Record<string, boolean>>({});
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [addressErrors, setAddressErrors] = useState<Record<string, string>>({});
+
+  // 🚀 MAP PICKER STATES
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [mapSearch, setMapSearch] = useState("");
+  const [mapSuggestions, setMapSuggestions] = useState<any[]>([]);
+  const mapInstance = useRef<any>(null);
+  const markerInstance = useRef<any>(null);
 
   const [formData, setFormData] = useState({
     phone: '', email: '', shopName: '', stockAddresses: [] as any[],
@@ -239,17 +275,15 @@ const SellerRegister = () => {
         setIsPageLoading(true);
         setIsShippingLoading(true);
         
-        // 🚀 NEW: Check for Bank Account in parallel with other data
         const [rawProfile, shippingRes, bankRes] = await Promise.all([
           getUserProfile(),
           api.get('/shipping-methods/active'),
-          api.get('/bank-accounts/my') // Gatekeeper endpoint
+          api.get('/bank-accounts/my') 
         ]);
 
         const profileData = rawProfile?.data || rawProfile;
         const bankAccounts = bankRes.data || [];
 
-        // 🚀 NEW: GATEKEEPER LOGIC
         if (!Array.isArray(bankAccounts) || bankAccounts.length === 0) {
             toast.error("Vui lòng thiết lập tài khoản ngân hàng trước khi đăng ký Người bán!", { duration: 5000 });
             navigate('/user/bank?redirect=seller-register');
@@ -295,7 +329,6 @@ const SellerRegister = () => {
           ...prev,
           phone: normalizedAddresses[0]?.phoneNumber || profileData.shopProfile?.businessPhone || profileData.phone || '',
           email: profileData.shopProfile?.businessEmail || profileData.email || '',
-          
           shopName: shouldClear ? '' : (profileData.shopProfile?.shopName || ''),
           stockAddresses: shouldClear ? [] : normalizedAddresses,
           businessType: shouldClear ? 'INDIVIDUAL' : (profileData.shopProfile?.businessType || 'INDIVIDUAL'),
@@ -326,11 +359,94 @@ const SellerRegister = () => {
     fetchData();
   }, [navigate]);
 
+  // 🚀 UPDATED: ELITE MAP CONTROLS AND CLEANUP
+  useEffect(() => {
+    if (showMapModal && !mapInstance.current) {
+        goongjs.accessToken = GOONG_MAPTILES_KEY;
+        const map = new goongjs.Map({
+            container: 'goong-map-canvas',
+            style: 'https://tiles.goong.io/assets/navigation_day.json',
+            center: [106.660172, 10.762622], 
+            zoom: 14
+        });
+
+        // 🚀 ADDED: Zoom buttons
+        map.addControl(new goongjs.NavigationControl(), 'top-right');
+
+        const marker = new goongjs.Marker({ color: '#ee4d2d' }).setLngLat([106.660172, 10.762622]).addTo(map);
+        mapInstance.current = map;
+        markerInstance.current = marker;
+
+        map.on('click', (e: any) => {
+            const { lng, lat } = e.lngLat;
+            marker.setLngLat([lng, lat]);
+            setAddressForm(prev => ({ ...prev, latitude: lat.toFixed(6), longitude: lng.toFixed(6) }));
+        });
+    }
+
+    // 🚀 ADDED: Proper destruction of the map instance
+    return () => { 
+        if (mapInstance.current) {
+            mapInstance.current.remove();
+            mapInstance.current = null;
+            markerInstance.current = null;
+        }
+    };
+  }, [showMapModal]);
+
+  const handleMapSearch = async (val: string) => {
+    setMapSearch(val);
+    if (val.length < 3) { setMapSuggestions([]); return; }
+    try {
+      const res = await fetch(`https://rsapi.goong.io/Place/AutoComplete?api_key=${GOONG_API_KEY}&input=${encodeURIComponent(val)}`);
+      const data = await res.json();
+      if (data.predictions) setMapSuggestions(data.predictions);
+    } catch (e) {}
+  };
+
+  // 🚀 ADDED: Connection for the orange search button
+  const handleDirectSearch = async () => {
+    if (mapSearch.length < 3) return;
+    try {
+      const res = await fetch(`https://rsapi.goong.io/geocode?address=${encodeURIComponent(mapSearch)}&api_key=${GOONG_API_KEY}`);
+      const data = await res.json();
+      if (data.results && data.results.length > 0) {
+        const { lat, lng } = data.results[0].geometry.location;
+        mapInstance.current?.flyTo({ center: [lng, lat], zoom: 16 });
+        markerInstance.current?.setLngLat([lng, lat]);
+        setAddressForm(prev => ({ ...prev, latitude: lat.toFixed(6), longitude: lng.toFixed(6), detailAddress: mapSearch }));
+      }
+    } catch (e) {
+      toast.error("Không tìm thấy địa chỉ này.");
+    }
+  };
+
+  const selectMapSuggestion = async (p: any) => {
+    setMapSearch(p.description);
+    setMapSuggestions([]);
+    try {
+      const res = await fetch(`https://rsapi.goong.io/Place/Detail?api_key=${GOONG_API_KEY}&place_id=${p.place_id}`);
+      const data = await res.json();
+      if (data.result && mapInstance.current) {
+        const { lat, lng } = data.result.geometry.location;
+        const comps = data.result.address_components || [];
+        mapInstance.current.flyTo({ center: [lng, lat], zoom: 16 });
+        markerInstance.current.setLngLat([lng, lat]);
+        const findC = (t: string) => comps.find((c: any) => c.types && c.types.includes(t))?.long_name || '';
+        setAddressForm(prev => ({
+            ...prev, latitude: lat.toFixed(6), longitude: lng.toFixed(6), detailAddress: p.description,
+            province: findC('administrative_area_level_1') || prev.province,
+            ward: findC('sublocality_level_1') || findC('sublocality') || prev.ward
+        }));
+      }
+    } catch (e) {}
+  };
+
   const handleStartFromScratch = () => {
     setIsRejected(false);
     setRejectionReason('');
     setCurrentStep(1);
-    toast.info("Vui lòng cập nhật thông tin chính xác và gửi lại yêu cầu mới.");
+    toast("Vui lòng cập nhật thông tin chính xác và gửi lại yêu cầu mới.", { icon: 'ℹ️' }); 
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'front' | 'back' | 'license') => {
@@ -340,14 +456,12 @@ const SellerRegister = () => {
       const reader = new FileReader();
       reader.onloadend = async () => {
         setFormData(prev => ({ ...prev, [`${type}Image`]: file, [`${type}Preview`]: reader.result as string }));
-        
-        // 🚀 NEW: Trigger OCR immediately when FRONT ID is uploaded
         if (type === 'front') {
             try {
                 setIsOcrLoading(true);
                 const checkForm = new FormData();
                 checkForm.append('frontImage', file);
-                const res = await api.post('/auth/verify-ocr', checkForm); // This is your AI call
+                const res = await api.post('/auth/verify-ocr', checkForm);
                 if (res.data?.idNumber) {
                     setDetectedIdNumber(res.data.idNumber.replace(/\s/g, ''));
                 }
@@ -365,7 +479,7 @@ const SellerRegister = () => {
   const clearImage = (type: 'front' | 'back' | 'license', e: React.MouseEvent) => {
     e.stopPropagation(); 
     setFormData(prev => ({ ...prev, [`${type}Image`]: null, [`${type}Preview`]: '' }));
-    if (type === 'front') setDetectedIdNumber(null); // Clear AI memory
+    if (type === 'front') setDetectedIdNumber(null); 
     const input = document.getElementById(`input-${type}`) as HTMLInputElement;
     if (input) input.value = '';
     setServerError(null);
@@ -403,12 +517,10 @@ const SellerRegister = () => {
         errors.shopName = "Tên Shop là bắt buộc. Vui lòng nhập tên cửa hàng.";
     }
     if (formData.stockAddresses.length === 0) errors.addresses = "Cần ít nhất 1 địa chỉ lấy hàng";
-    
     const phones = formData.stockAddresses.map(a => a.phoneNumber.replace(/\D/g, ''));
     if (new Set(phones).size !== phones.length) {
       errors.addresses = "Số điện thoại giữa các kho phải khác nhau.";
     }
-
     if (!formData.email.trim()) errors.email = "Email là bắt buộc";
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -443,23 +555,19 @@ const SellerRegister = () => {
             errors.invoiceEmail = "Email nhận hóa đơn không được trùng nhau.";
         }
     }
-    
     const rawMST = formData.taxCode.replace(/\s|-/g, '');
     if (!rawMST) {
       errors.taxCode = "Mã số thuế là bắt buộc";
     } else if (rawMST.length !== 10 && rawMST.length !== 13) {
       errors.taxCode = "Mã số thuế phải bao gồm 10 hoặc 13 chữ số";
     }
-
     if (formData.businessType !== 'INDIVIDUAL' && !formData.licensePreview) {
       errors.license = "Vui lòng tải lên ảnh Giấy phép kinh doanh (GPKD)";
     }
-    
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
-  /** 🚀 UPDATED validateStep4: Checks directly against AI result to unblock button */
   const validateStep4 = () => {
     const errors: Record<string, string> = {};
     const rawIDInput = formData.cccdNumber.replace(/\s|-/g, '');
@@ -479,22 +587,17 @@ const SellerRegister = () => {
     if (!formData.frontPreview) errors.frontImage = `Thiếu mặt trước ${formData.identityType === 'CCCD' ? 'CCCD' : 'Hộ chiếu'}`;
     if (!formData.backPreview) errors.backImage = `Thiếu mặt sau ${formData.identityType === 'CCCD' ? 'CCCD' : 'Hộ chiếu'}`;
     
-    // 🚀 NEW: Immediate AI Match Check - this clears the block if numbers match
     if (detectedIdNumber && rawIDInput !== detectedIdNumber) {
         errors.cccdNumber = "Số định danh không khớp với ảnh.";
-        setServerError("Số định danh on ảnh không khớp với thông tin bạn nhập. Vui lòng kiểm tra lại.");
+        setServerError("Số định danh trên ảnh không khớp với thông tin bạn nhập. Vui lòng kiểm tra lại.");
     } else if (detectedIdNumber && rawIDInput === detectedIdNumber) {
-        setServerError(null); // Clear error if correct
+        setServerError(null); 
     }
-
     if (!formData.isConfirmed) {
       errors.confirmation = "Vui lòng xác nhận thông tin trước khi tiếp tục";
       toast.error("Bạn cần xác nhận tính chính xác của dữ liệu.");
     }
-
     setFormErrors(errors);
-    
-    // The button logic depends on this returning true. It now only returns false if there's a real logic error or MISMATCH.
     return Object.keys(errors).length === 0 && (detectedIdNumber ? rawIDInput === detectedIdNumber : true);
   };
 
@@ -515,7 +618,6 @@ const SellerRegister = () => {
     return true;
   };
 
-  /** 🚀 THE FINAL SUBMISSION GATE: Now only called in Step 5 button click */
   const handleFinalSubmit = async () => {
     if (!performFullValidation()) return;
     setServerError(null); 
@@ -553,13 +655,11 @@ const SellerRegister = () => {
     } catch (error: any) { 
       const errorMsg = error.response?.data?.message || error.message || "Gửi hồ sơ thất bại";
       setServerError(errorMsg); 
-      
       toast.error(errorMsg, {
         duration: 8000,
         position: 'top-center',
         style: { background: '#cf1322', color: '#fff', fontWeight: 'bold' }
       });
-      // Go back to step 4 if submission fails
       setCurrentStep(4);
     } finally { setIsSaving(false); }
   };
@@ -702,19 +802,16 @@ const SellerRegister = () => {
   if (isPageLoading) return <div className="loading-spinner">Đang tải hồ sơ Người bán...</div>;
 
   return (
-    /* 🚀 UPDATED WRAPPER: Matches fixed Profile/Bank pages for perfect alignment */
     <div className="user-page-supreme-layout">
       <style>{inlineStyles}</style>
       
       <main className="onboarding-view">
-        {/* standardized supreme header logic */}
         <div className="profile-content-header">
            <h1>Đăng ký Người bán</h1>
            <p>Hoàn tất 5 bước để bắt đầu kinh doanh trên AiNetsoft</p>
         </div>
         <hr className="supreme-divider" />
-        
-        {/* REJECTION BANNER WITH SMART DETECTION (100% RESTORED Logic) */}
+
         {isRejected && (
           <div className="preview-mode-banner no-print" style={{background: '#fff1f0', border: '1px solid #ffccc7', padding: '25px'}}>
             <h2 style={{color: '#cf1322', margin: '0 0 10px 0'}}><FaTimesCircle /> Hồ sơ bị từ chối</h2>
@@ -744,23 +841,13 @@ const SellerRegister = () => {
 
         {!isRejected && (
           <div className="onboarding-card">
-            {/* STEP 1 (100% PRESERVED LOGIC) */}
+            {/* STEP 1 */}
             {currentStep === 1 && (
               <div className="step-content">
-                {/* standardized row logic for 25% label alignment */}
                 <div className="supreme-form-row">
                   <label><span className="req">*</span> Tên Shop</label>
                   <div style={{ flex: 1, maxWidth: '600px' }}>
-                    <input 
-                        className={formErrors.shopName ? "error-border" : ""} 
-                        value={formData.shopName} 
-                        maxLength={30} 
-                        onChange={e => {
-                            setFormData({...formData, shopName: e.target.value});
-                            setFormErrors(prev => ({...prev, shopName: ""})); 
-                        }} 
-                        placeholder="Nhập tên shop" 
-                    />
+                    <input className={formErrors.shopName ? "error-border" : ""} value={formData.shopName} maxLength={30} onChange={e => setFormData({...formData, shopName: e.target.value})} placeholder="Nhập tên shop" />
                     <span className="char-counter">{formData.shopName.length}/30</span>
                     {formErrors.shopName && <p className="red-msg-inline">{formErrors.shopName}</p>}
                   </div>
@@ -770,33 +857,33 @@ const SellerRegister = () => {
                   <label><span className="req">*</span> Địa chỉ lấy hàng</label>
                   <div style={{ flex: 1, maxWidth: '600px' }}>
                     {formData.stockAddresses.map((addr, idx) => (
-                      <div key={idx} className="address-display-box" style={{marginBottom: '10px'}}><div className="addr-text"><strong>{[addr.fullName, formatPhone(addr.phoneNumber)].filter(Boolean).join(' | ')}</strong><p>{[addr.detailAddress, addr.ward, addr.province].filter(Boolean).join(', ')}</p></div><div className="trash-action-area" onClick={() => setFormData({...formData, stockAddresses: formData.stockAddresses.filter((_, i) => i !== idx)})}><FaTrash className="trash-icon" /></div></div>
+                      <div key={idx} className="address-display-box" style={{marginBottom: '10px'}}>
+                        <div className="addr-text">
+                           <strong>{[addr.fullName, formatPhone(addr.phoneNumber)].filter(Boolean).join(' | ')}</strong>
+                           <p>{[addr.detailAddress, addr.ward, addr.province].filter(Boolean).join(', ')}</p>
+                        </div>
+                        <div className="trash-action-area" onClick={() => setFormData({...formData, stockAddresses: formData.stockAddresses.filter((_, i) => i !== idx)})}>
+                          <FaTrash className="trash-icon" />
+                        </div>
+                      </div>
                     ))}
                     <button className="btn-add-ainetsoft" onClick={() => setShowAddressModal(true)} disabled={formData.stockAddresses.length >= 2} ><FaPlus /> Thêm địa chỉ ({formData.stockAddresses.length}/2)</button>
                     {formErrors.addresses && <p className="red-msg-inline">{formErrors.addresses}</p>}
                   </div>
                 </div>
                 
-                {/* email row unified with profile locked state */}
                 <div className="supreme-form-row">
                   <label><span className="req">*</span> Email liên hệ</label>
                   <div style={{ flex: 1, maxWidth: '600px' }}>
-                    <input 
-                      className={formErrors.email ? "error-border input-locked" : "input-locked"} 
-                      value={formData.email} 
-                      disabled 
-                      style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed', color: '#8c8c8c' }} 
-                      readOnly
-                    />
-                    {formErrors.email && <p className="red-msg-inline">{formErrors.email}</p>}
+                    <input className="input-locked" 
+                    value={formData.email} disabled style={{ backgroundColor: '#f5f5f5', color: '#8c8c8c' }} readOnly />
                   </div>
                 </div>
-                
                 <div className="onboarding-footer"><button className="btn-ainetsoft-primary" onClick={() => { if(validateStep1()) setCurrentStep(2); }}>Tiếp theo</button></div>
               </div>
             )}
 
-            {/* STEP 2 (100% PRESERVED) */}
+            {/* STEP 2 */}
             {currentStep === 2 && (
               <div className="step-content">
                 <div className="shipping-header-text"><h3>Phương thức vận chuyển</h3><p>Kích hoạt các đơn vị vận chuyển hỗ trợ.</p></div>
@@ -816,7 +903,7 @@ const SellerRegister = () => {
               </div>
             )}
 
-            {/* STEP 3 (100% PRESERVED LOGIC) */}
+            {/* STEP 3 */}
             {currentStep === 3 && (
               <div className="step-content">
                 <div className="ainetsoft-radio-group" style={{marginBottom: '25px'}}>{['INDIVIDUAL', 'HOUSEHOLD', 'ENTERPRISE'].map(t => (<label key={t} className="radio-item"><input type="radio" checked={formData.businessType === t} onChange={() => setFormData({...formData, businessType: t})} /><span className="radio-mark"></span> {getBusinessLabel(t)}</label>))}</div>
@@ -876,7 +963,7 @@ const SellerRegister = () => {
               </div>
             )}
 
-            {/* STEP 4 (100% PRESERVED AI/OCR LOGIC) */}
+            {/* STEP 4 */}
             {currentStep === 4 && (
               <div className="step-content">
                 {serverError && (<div className="ocr-error-banner"><FaExclamationTriangle /><p>{serverError}</p></div>)}
@@ -907,7 +994,6 @@ const SellerRegister = () => {
                     <div className={`upload-box ${(formErrors.frontImage || (serverError && serverError.includes("Mặt trước"))) ? "error-border-dashed" : ""}`} onClick={() => document.getElementById('input-front')?.click()}>
                       {formData.frontPreview ? (<div style={{position: 'relative', height: '100%'}}><div className="btn-clear-img" onClick={(e) => clearImage('front', e)}><FaTimes /></div><img src={formData.frontPreview} alt="Front" className="preview-img" /></div>) : (<div className="upload-placeholder">{formData.identityType === 'CCCD' ? <FaIdCard className="cam-icon" /> : <FaPassport className="cam-icon" />}<span>Mặt trước {formData.identityType}</span></div>)}
                     </div>
-                    {/* 🚀 AI PROCESSING FEEDBACK PRESERVED */}
                     {isOcrLoading && <div className="ocr-processing-hint"><i className="fa fa-spinner fa-spin"></i> AI đang xác thực thông tin...</div>}
                     {(formErrors.frontImage || (serverError && serverError.includes("Mặt trước"))) && <p className="red-msg-inline">{formErrors.frontImage || "Vui lòng kiểm tra lại ảnh mặt trước."}</p>}
                   </div>
@@ -946,7 +1032,7 @@ const SellerRegister = () => {
               </div>
             )}
 
-            {/* STEP 5: THE FINAL SUBMISSION GATE (100% RESTORED + SENDS EMAIL) */}
+            {/* STEP 5 */}
             {currentStep === 5 && (
               <div className="step-content success-summary-view">
                 {!isSubmitted ? (
@@ -990,26 +1076,29 @@ const SellerRegister = () => {
                   <div className="summary-addresses">
                     <span className="sum-label">Địa chỉ lấy hàng & Tọa độ (Dành cho Shipper):</span>
                     <div className="sum-addr-list">
-                      {formData.stockAddresses.map((addr, i) => (
-                        <div key={i} className="sum-addr-item" style={{border: '1px solid #eee', padding: '10px', marginBottom: '10px', borderRadius: '4px'}}>
-                           <strong>{[addr.fullName, formatPhone(addr.phone || addr.phoneNumber)].filter(Boolean).join(' | ')}</strong>
-                           <p>{[addr.detailAddress || addr.detail, addr.ward, addr.province].filter(Boolean).join(', ')}</p>
-                           {addr.latitude && String(addr.latitude).trim() !== '' && addr.longitude && String(addr.longitude).trim() !== '' && (
-                             <div className="preview-coords">
-                                <FaMapMarkedAlt style={{color: '#2f54eb'}} />
-                                <div style={{flex: 1}}>
-                                   <span className="coord-text">{addr.latitude}, {addr.longitude}</span>
-                                   <div className="qr-box-summary">
-                                      <img className="qr-code-img" src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`https://www.google.com/maps?q=${addr.latitude},${addr.longitude}`)}`} alt="QR Map" />
-                                      <div className="qr-info-text"><strong>QR Map Dẫn Đường</strong><p>Shipper dùng camera quét để mở Google Maps ngay lập tức.</p></div>
-                                   </div>
-                                </div>
-                                <div className="btn-copy-action" onClick={() => { copyToClipboard(`${addr.latitude}, ${addr.longitude}`); }}><FaCopy title="Sao chép tọa độ!" /></div>
-                                <a href={`https://www.google.com/maps?q=${addr.latitude},${addr.longitude}`} target="_blank" rel="noreferrer" className="btn-maps-link">[Bản Đồ]</a>
+                      {formData.stockAddresses.map((addr, i) => {
+                           const mapsUrl = `https://www.google.com/maps?q=${addr.latitude},${addr.longitude}`;
+                           return (
+                             <div key={i} className="sum-addr-item" style={{border: '1px solid #eee', padding: '10px', marginBottom: '10px', borderRadius: '4px'}}>
+                                <strong>{[addr.fullName, formatPhone(addr.phone || addr.phoneNumber)].filter(Boolean).join(' | ')}</strong>
+                                <p>{[addr.detailAddress || addr.detail, addr.ward, addr.province].filter(Boolean).join(', ')}</p>
+                                {addr.latitude && (
+                                  <div className="preview-coords">
+                                     <FaMapMarkedAlt style={{color: '#2f54eb'}} />
+                                     <div style={{flex: 1}}>
+                                        <span className="coord-text">{addr.latitude}, {addr.longitude}</span>
+                                        <div className="qr-box-summary">
+                                           <img className="qr-code-img" src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(mapsUrl)}`} alt="QR Map" />
+                                           <div className="qr-info-text"><strong>QR Map Dẫn Đường</strong><p>Shipper quét để mở Google Maps ngay lập tức.</p></div>
+                                        </div>
+                                     </div>
+                                     <div className="btn-copy-action" onClick={() => { copyToClipboard(`${addr.latitude}, ${addr.longitude}`); }}><FaCopy title="Sao chép tọa độ!" /></div>
+                                     <a href={mapsUrl} target="_blank" rel="noreferrer" className="btn-maps-link">[Bản Đồ]</a>
+                                  </div>
+                                )}
                              </div>
-                           )}
-                        </div>
-                      ))}
+                           );
+                      })}
                     </div>
                   </div>
                   <div className="print-footer-legal"><p>© 2026 AiNetsoft E-commerce System. Tài liệu tự động từ hệ thống.</p></div>
@@ -1037,7 +1126,53 @@ const SellerRegister = () => {
 
       {zoomedImage && (<div className="zoom-overlay" onClick={() => setZoomedImage(null)}><div className="zoom-content"><FaTimes className="zoom-close" onClick={() => setZoomedImage(null)} /><img src={zoomedImage} alt="Zoomed" /></div></div>)}
 
-      {/* 🚀 100% PRESERVED ADDRESS MODAL */}
+      {/* MAP MODAL */}
+      {showMapModal && (
+        <div className="map-modal-overlay">
+          <div className="map-modal-card">
+            <div className="map-modal-header">
+              <h3>Chọn địa điểm lấy hàng</h3>
+              <FaTimes onClick={() => setShowMapModal(false)} style={{cursor: 'pointer'}} />
+            </div>
+            
+            <div className="map-search-container">
+              <div className="map-search-input-group">
+                <input 
+                  type="text" 
+                  placeholder="Nhập tên đường, tòa nhà hoặc khu vực..." 
+                  value={mapSearch} 
+                  onChange={e => handleMapSearch(e.target.value)} 
+                  onKeyDown={e => e.key === 'Enter' && handleDirectSearch()} 
+                />
+                <button 
+                   className="btn-confirm-map" 
+                   type="button"
+                   onClick={handleDirectSearch}
+                >
+                    <FaSearch />
+                </button>
+              </div>
+              {mapSuggestions.length > 0 && (
+                <ul className="map-suggestions">
+                  {mapSuggestions.map(p => (
+                    <li key={p.place_id} onMouseDown={() => selectMapSuggestion(p)}>{p.description}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="map-canvas-area">
+               <div id="goong-map-canvas"></div>
+            </div>
+
+            <div className="map-modal-footer">
+               <button className="btn-cancel-map" onClick={() => setShowMapModal(false)}>Hủy bỏ</button>
+               <button className="btn-confirm-map" onClick={() => { setShowMapModal(false); setMapSearch(""); }}>Xác nhận vị trí</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showAddressModal && (
         <div className="ainetsoft-modal-overlay no-print">
           <div className="ainetsoft-modal-card">
@@ -1051,12 +1186,13 @@ const SellerRegister = () => {
               <div className="modal-field-full"><label><span className="req">*</span> Phường/Xã</label><input className={addressErrors.ward ? "error-border" : ""} value={addressForm.ward} onChange={e => setAddressForm({...addressForm, ward: e.target.value})} />{addressErrors.ward && <p className="red-msg-inline">{addressErrors.ward}</p>}</div>
               <div className="modal-field-full"><label>{!addressForm.ward.toLowerCase().includes("phường") && <span className="req">*</span>}Ấp/Thôn/Tổ</label><input className={addressErrors.hamlet ? "error-border" : ""} value={addressForm.hamlet} onChange={e => setAddressForm({...addressForm, hamlet: e.target.value})} />{addressErrors.hamlet && <p className="red-msg-inline">{addressErrors.hamlet}</p>}</div>
               <div className="modal-field-full"><label><span className="req">*</span> Địa chỉ chi tiết</label><textarea className={addressErrors.detailAddress ? "error-border" : ""} value={addressForm.detailAddress} onChange={e => setAddressForm({...addressForm, detailAddress: e.target.value})} placeholder="Số nhà, tên đường..." />{addressErrors.detailAddress && <p className="red-msg-inline">{addressErrors.detailAddress}</p>}</div>
-              <div className="gps-box-ainetsoft" onClick={getCurrentLocation}>
+              
+              <div className="gps-box-ainetsoft clickable" onClick={() => setShowMapModal(true)}>
                 <FaMapMarkerAlt className="gps-red" />
                 <div className="gps-text">
-                  <strong>Định vị GPS</strong>
-                  <span>{addressForm.latitude ? `${addressForm.latitude}, ${addressForm.longitude}` : 'Lấy tọa độ tự động'}</span>
-                  <p className="gps-hint-text">* Vui lòng nhấp chuột và chờ khoảng 5 giây để lấy tọa độ tự động.</p>
+                  <strong>Tọa độ GPS (Tự động)</strong>
+                  <span>{addressForm.latitude ? `${addressForm.latitude}, ${addressForm.longitude}` : 'Nhấn vào đây để chọn trên bản đồ'}</span>
+                  <p className="gps-hint-text">* Sử dụng thanh tìm kiếm trong bản đồ để lấy vị trí chính xác cho Shipper.</p>
                 </div>
               </div>
             </div>

@@ -10,12 +10,12 @@ import './SellerSettings.css';
 
 import ainetsoftLogo from '../../assets/images/logo.png';
 
-// HELPER: Real-time Slug Preview
+// HELPER: Real-time Slug Preview (100% PRESERVED)
 const slugify = (text: string) => {
     return text.toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim();
 };
 
-// HELPERS: Input Display Formatters
+// HELPERS: Input Display Formatters (100% PRESERVED)
 const formatPhoneDisplay = (val: string) => {
     if (!val) return ""; 
     const s = val.replace(/\D/g, '');
@@ -309,7 +309,10 @@ const SellerSettings = () => {
                                         </div>
                                     </div>
                                     <div className="card-side-qr">
-                                        {addr.latitude && <img src={`https://api.qrserver.com/v1/create-qr-code/?size=85x85&data=${encodeURIComponent(`http://googleusercontent.com/maps.google.com/search/${addr.latitude},${addr.longitude}`)}`} alt="QR" />}
+                                        {/* 🚀 FIXED: Đúng định dạng URL Google Maps để quét QR không bị 404 */}
+                                        {addr.latitude && (
+                                            <img src={`https://api.qrserver.com/v1/create-qr-code/?size=85x85&data=${encodeURIComponent(`https://www.google.com/maps?q=${addr.latitude},${addr.longitude}`)}`} alt="QR" />
+                                        )}
                                     </div>
                                 </div>
                             ))}
@@ -349,7 +352,6 @@ const SellerSettings = () => {
                         <div className="legal-row-full mt-25">
                             <label className="field-label-left">Giấy phép kinh doanh</label>
                             <div className="license-upload-container-fixed">
-                                {/* 🛡️ FIXED: Hide preview entirely if Individual */}
                                 {shopData.businessType !== 'INDIVIDUAL' && (
                                     <div className="license-preview-fixed">
                                         <img 
@@ -361,7 +363,6 @@ const SellerSettings = () => {
                                 )}
                                 
                                 <div className="license-actions-fixed">
-                                    {/* 🛡️ FIXED: Switch between upload UI and info box based on type */}
                                     {shopData.businessType !== 'INDIVIDUAL' ? (
                                         <>
                                             <input type="file" id="license-upload-btn" disabled={shopData.hasPendingUpdate} hidden onChange={(e) => setNewLicenseFile(e.target.files ? e.target.files[0] : null)} />

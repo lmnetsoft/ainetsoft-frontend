@@ -138,7 +138,10 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
                 <h4 className="section-title"><FaMapMarkedAlt /> KHO HÀNG & TỌA ĐỘ GPS</h4>
                 <div className="address-review-list">
                   {user.addresses.map((addr: any, idx: number) => {
-                    const mapsUrl = `http://googleusercontent.com/maps.google.com/${addr.latitude},${addr.longitude}`;
+                    
+                    // 🚀 FIXED: Dùng URL chuẩn và thêm dấu nháy để sửa lỗi Syntax Error
+                    const mapsUrl = `https://www.google.com/maps?q=${addr.latitude},${addr.longitude}`;
+                    
                     return (
                       <div key={idx} className="review-data-card mb-10" style={{ borderLeft: '4px solid #1d39c4' }}>
                         <strong>Kho {idx + 1}: {addr.receiverName}</strong>
@@ -186,7 +189,6 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
                         <span className="img-label-overlay">Nhấn để phóng to</span>
                       </div>
                     ) : user.shopProfile.businessType === 'INDIVIDUAL' ? (
-                      /* 🚀 UPDATED: Larger, more visible logo for individual sellers */
                       <div className="individual-license-fallback" style={{ height: '160px', width: '100%', border: '1px solid #eee', borderRadius: '4px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>
                          <img 
                             src={ainetsoftLogo} 
