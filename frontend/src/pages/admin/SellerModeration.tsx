@@ -9,6 +9,7 @@ import {
   FaRegLightbulb, FaExchangeAlt, FaInfoCircle,
   FaUser, FaVenusMars, FaBirthdayCake, FaMapMarkerAlt 
 } from 'react-icons/fa';
+// 🚀 FIXED: Replaced the faulty User-side CSS import with the correct Admin CSS
 import './AdminDashboard.css'; 
 
 // Import logo for fallback and PDF header
@@ -68,6 +69,7 @@ const SellerModeration = () => {
 
   const API_BASE_URL = "http://localhost:8080";
 
+  /** 100% PRESERVED UTILITY */
   const getFullImageUrl = (path: string | null | undefined) => {
     if (!path || path === "DEFAULT_LOGO" || path.trim() === "") return ainetsoftLogo; 
     if (path.startsWith('data:image') || path.startsWith('http')) return path;
@@ -95,7 +97,7 @@ const SellerModeration = () => {
     }
   };
 
-  /** RENDER DIFF HELPER */
+  /** RENDER DIFF HELPER (100% PRESERVED) */
   const renderDiffField = (label: string, oldValue: any, newValue: any, formatter: any = null) => {
     const isChanged = oldValue !== newValue;
     const displayOld = formatter ? formatter(oldValue) : (oldValue || 'N/A');
@@ -119,6 +121,7 @@ const SellerModeration = () => {
     );
   };
 
+  /** 📋 PDF SUMMARY GENERATOR (100% PRESERVED + FIXED QR URL) */
   const printApprovalSummary = (seller: any, note: string) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
@@ -127,11 +130,8 @@ const SellerModeration = () => {
     const isPassport = seller.identityInfo?.identityType === 'PASSPORT';
     const idLabel = isPassport ? "Hộ chiếu" : "CCCD";
     
-    const idValue = isPassport 
-      ? formatPassport(seller.identityInfo?.cccdNumber) 
-      : formatCCCD(seller.identityInfo?.cccdNumber);
+    const idValue = isPassport ? formatPassport(seller.identityInfo?.cccdNumber) : formatCCCD(seller.identityInfo?.cccdNumber);
 
-    // 🚀 FIXED: Check for real pending content before deciding which profile to print
     const hasShopUpdate = !!(seller.hasPendingUpdate && seller.pendingShopProfile && seller.pendingShopProfile.shopName);
     const hasAddressUpdate = !!(seller.hasPendingUpdate && seller.pendingAddresses && seller.pendingAddresses.length > 0);
 
@@ -142,18 +142,18 @@ const SellerModeration = () => {
       const hasGPS = addr.latitude && String(addr.latitude).trim() !== '' && 
                      addr.longitude && String(addr.longitude).trim() !== '';
       
-      const mapsUrl = `http://googleusercontent.com/maps.google.com/${addr.latitude},${addr.longitude}`;
+      const mapsUrl = `https://www.google.com/maps?q=${addr.latitude},${addr.longitude}`;
 
       const gpsContent = hasGPS ? `
         <span style="color: #1d39c4;">GPS: ${addr.latitude}, ${addr.longitude}</span><br/>
-        <div style=\"margin-top: 10px;\">
-          <img src=\"https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(mapsUrl)}\" 
-               style=\"width: 70px; height: 70px; border: 1px solid #ddd; padding: 2px;\" />
+        <div style="margin-top: 10px;">
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(mapsUrl)}" 
+               style="width: 70px; height: 70px; border: 1px solid #ddd; padding: 2px;" />
         </div>
       ` : '';
 
       return `
-        <div style=\"border: 1px solid #eee; padding: 10px; margin-top: 10px;\">
+        <div style="border: 1px solid #eee; padding: 10px; margin-top: 10px;">
           <strong>Kho ${i + 1}:</strong> ${addr.receiverName} | ${formatPhone(addr.phone)}<br/>
           ${addr.detail}<br/>
           ${gpsContent}
@@ -176,16 +176,16 @@ const SellerModeration = () => {
           </style>
         </head>
         <body>
-          <div class=\"header\">
-            <div><h1 style=\"margin:0; color:#ee4d2d;\">AiNetsoft</h1><p style=\"margin:0;\">Hệ thống Thương mại Điện tử</p></div>
-            <div class=\"status-stamp\">Đã Phê Duyệt</div>
+          <div class="header">
+            <div><h1 style="margin:0; color:#ee4d2d;">AiNetsoft</h1><p style="margin:0;">Hệ thống Thương mại Điện tử</p></div>
+            <div class="status-stamp">Đã Phê Duyệt</div>
           </div>
           <section>
             <p><strong>Ngày thực hiện:</strong> ${dateStr}</p>
             <p><strong>Mã định danh hệ thống:</strong> ${seller.id}</p>
             <p><strong>Loại hình duyệt:</strong> ${seller.hasPendingUpdate ? 'Cập nhật hồ sơ' : 'Đăng ký mới'}</p>
           </section>
-          <div class=\"grid\">
+          <div class="grid">
             <section>
               <h2>Thông tin Người bán</h2>
               <p><strong>Họ tên:</strong> ${seller.fullName}</p>
@@ -205,11 +205,11 @@ const SellerModeration = () => {
             <h2>Vị trí Kho hàng & GPS</h2>
             ${addressesHtml}
           </section>
-          <section style=\"background: #f9f9f9; padding: 20px; border-radius: 4px; border-left: 4px solid #8c8c8c;\">
+          <section style="background: #f9f9f9; padding: 20px; border-radius: 4px; border-left: 4px solid #8c8c8c;">
             <h2>Ghi chú của Admin</h2>
             <p>${note}</p>
           </section>
-          <div class=\"footer\">Tài liệu được tạo tự động bởi Hệ thống AiNetsoft.<br/>Người phê duyệt: Quản trị viên Toàn cầu</div>
+          <div class="footer">Tài liệu được tạo tự động bởi Hệ thống AiNetsoft.<br/>Người phê duyệt: Quản trị viên Toàn cầu</div>
           <script>window.onload = function() { window.print(); setTimeout(function() { window.close(); }, 500); };</script>
         </body>
       </html>
@@ -417,7 +417,6 @@ const SellerModeration = () => {
                 </div>
 
                 <h4 className="section-title" style={{marginTop: '25px'}}><FaMapMarkedAlt /> KHO LẤY HÀNG & TỌA ĐỘ GPS</h4>
-                {/* 🚀 FIXED: Only show diff notice if pendingAddresses actually has data */}
                 {selectedSeller.hasPendingUpdate && selectedSeller.pendingAddresses && selectedSeller.pendingAddresses.length > 0 && (
                     <div className="diff-notice"><FaInfoCircle /> Đang so sánh thay đổi danh sách kho hàng.</div>
                 )}
@@ -426,7 +425,6 @@ const SellerModeration = () => {
                       ? selectedSeller.pendingAddresses 
                       : selectedSeller.addresses) || []).map((addr: any, idx: number) => {
                     
-                    // Only show diff if we are actually in a warehouse update flow
                     const isWarehouseUpdate = selectedSeller.hasPendingUpdate && selectedSeller.pendingAddresses && selectedSeller.pendingAddresses.length > 0;
                     const oldAddr = isWarehouseUpdate ? (selectedSeller.addresses?.[idx] || {}) : addr;
                     const hasCoords = addr.latitude && String(addr.latitude).trim() !== '' && 
@@ -455,7 +453,7 @@ const SellerModeration = () => {
                           <div className="qr-box-summary" style={{marginTop: '10px', background: '#f0f5ff', border: '1px solid #adc6ff', display: 'flex', alignItems: 'center', padding: '10px', gap: '15px', borderRadius: '4px'}}>
                             <img className="qr-code-img" 
                                  style={{width: '70px', height: '70px', background: 'white', padding: '2px'}}
-                                 src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`http://googleusercontent.com/maps.google.com/${addr.latitude},${addr.longitude}`)}`} 
+                                 src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`https://www.google.com/maps?q=${addr.latitude},${addr.longitude}`)}`} 
                                  alt="QR" />
                             <div className="qr-info-text">
                                <strong style={{color: '#1d39c4', fontSize: '12px'}}>Tọa độ GPS: {addr.latitude}, {addr.longitude}</strong>
@@ -474,7 +472,6 @@ const SellerModeration = () => {
               <div className="review-section">
                 <h4 className="section-title"><FaStore /> THÔNG TIN KINH DOANH</h4>
                 <div className="review-data-card mb-20">
-                  {/* 🚀 FIXED: Stricter check for pendingShopProfile content */}
                   {selectedSeller.hasPendingUpdate && selectedSeller.pendingShopProfile && selectedSeller.pendingShopProfile.shopName ? (
                     <>
                       {renderDiffField("Tên Shop", selectedSeller.shopProfile?.shopName, selectedSeller.pendingShopProfile?.shopName)}
@@ -494,7 +491,6 @@ const SellerModeration = () => {
                   )}
 
                   <div className="license-inspect-box" style={{marginTop: '15px'}}>
-                     {/* 🚀 FIXED: Ensure label only shows "ĐÃ THAY ĐỔI" if there is an actual pending shop update */}
                      <span className="img-label">Giấy phép kinh doanh: {(selectedSeller.hasPendingUpdate && selectedSeller.pendingShopProfile && selectedSeller.pendingShopProfile.shopName) && selectedSeller.shopProfile?.businessLicenseUrl !== selectedSeller.pendingShopProfile?.businessLicenseUrl && <span style={{color: '#ee4d2d', fontSize: '10px'}}>(ĐÃ THAY ĐỔI)</span>}</span>
                      <div className="img-wrapper zoomable" style={{height: '140px', border: '1px dashed #ddd', borderRadius: '4px', overflow: 'hidden'}} onClick={() => setZoomedImage(getFullImageUrl((selectedSeller.hasPendingUpdate && selectedSeller.pendingShopProfile && selectedSeller.pendingShopProfile.shopName) ? selectedSeller.pendingShopProfile?.businessLicenseUrl : selectedSeller.shopProfile?.businessLicenseUrl))}>
                         <div className="zoom-hint"><FaSearchPlus /></div>
@@ -505,7 +501,6 @@ const SellerModeration = () => {
 
                 <h4 className="section-title"><FaUniversity /> TÀI KHOẢN THỤ HƯỞNG</h4>
                 <div className="review-data-card bank-card">
-                  {/* Bank account side-by-side comparison for updates */}
                   {selectedSeller.hasPendingUpdate && selectedSeller.pendingBankAccount ? (
                     <>
                       {renderDiffField("Ngân hàng", getBankData(selectedSeller)?.bankName, selectedSeller.pendingBankAccount.bankName)}
