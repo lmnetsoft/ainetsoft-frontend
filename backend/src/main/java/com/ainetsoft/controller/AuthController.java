@@ -219,4 +219,30 @@ public class AuthController {
         
         return ResponseEntity.ok(authService.toggleFavorite(productId, principal.getName()));
     }
+
+// 🚀 NEW: Initiate Email Change verification
+    @PostMapping("/initiate-email-change")
+    public ResponseEntity<?> initiateEmailChange(@RequestBody EmailChangeRequest request) {
+        try {
+            String message = authService.initiateEmailChange(request.getCurrentContact(), request.getNewEmail());
+            return ResponseEntity.ok(message);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    // 🚀 NEW: Confirm Email Change verification
+    @PostMapping("/confirm-email-change")
+    public ResponseEntity<?> confirmEmailChange(@RequestBody EmailChangeRequest request) {
+        try {
+            String message = authService.confirmEmailChange(
+                request.getCurrentContact(), 
+                request.getNewEmail(), 
+                request.getOtp()
+            );
+            return ResponseEntity.ok(message);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }    
 }

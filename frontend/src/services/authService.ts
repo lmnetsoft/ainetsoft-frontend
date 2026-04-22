@@ -324,4 +324,27 @@ export const getAuditLogs = async (): Promise<any> => {
   } catch (error: any) {
     throw new Error(extractError(error, "Không thể tải lịch sử hoạt động."));
   }
+
+  
+};
+
+export const initiateEmailChange = async (currentContact: string, newEmail: string): Promise<string> => {
+  try {
+    const response = await api.post('/auth/initiate-email-change', { currentContact, newEmail });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(extractError(error, "Gửi mã xác thực thất bại."));
+  }
+};
+
+/**
+ * 🚀 NEW: Confirm Secure Email Change
+ */
+export const confirmEmailChange = async (currentContact: string, newEmail: string, otp: string): Promise<string> => {
+  try {
+    const response = await api.post('/auth/confirm-email-change', { currentContact, newEmail, otp });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(extractError(error, "Xác thực mã OTP thất bại."));
+  }
 };
