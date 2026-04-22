@@ -171,6 +171,7 @@ public class AuthService {
             user.setFullName(request.getFullName().trim());
         }
 
+        // 🛡️ SECURITY FIX: Only check if email is taken. DO NOT save here
         if (request.getEmail() != null && !request.getEmail().isBlank()) {
             boolean isSocialUser = user.getProvider() != null && 
                                    !user.getProvider().toString().equalsIgnoreCase("LOCAL");
@@ -181,7 +182,8 @@ public class AuthService {
                     if (userRepository.existsByEmail(newEmail)) {
                         throw new RuntimeException("Email '" + newEmail + "' đã được sử dụng bởi tài khoản khác!");
                     }
-                    user.setEmail(newEmail);
+                    // 🚀 CRITICAL: We skip 'user.setEmail(newEmail)' to force OTP verification via confirmEmailChange
+                    log.info("Validated email availability for {}. Awaiting separate confirmation logic.", newEmail);
                 }
             }
         }
@@ -464,7 +466,6 @@ public class AuthService {
         }
     }
 
-    /** 🚀 PRESERVED ORIGINAL STRUCTURE WITH SURGICAL UPDATES for branding bypass and license clearing */
     @Transactional
     public User updateShopSettings(String contactInfo, ShopSettingsUpdateRequest request, MultipartFile newLicense, MultipartFile newLogo) throws IOException {
         String identifier = normalizeIdentifier(contactInfo);
@@ -474,18 +475,15 @@ public class AuthService {
         User.ShopProfile currentProfile = user.getShopProfile();
         if (currentProfile == null) throw new RuntimeException("Tài khoản chưa có thông tin Shop.");
 
-        // 🛡️ 1. IMMEDIATE UPDATES: Logo and Bio applied live instantly
         if (newLogo != null && !newLogo.isEmpty()) {
             currentProfile.setShopLogoUrl(saveFile(newLogo, user.getId(), "logo"));
         }
         if (request.getShopBio() != null) currentProfile.setShopDescription(request.getShopBio());
         
-        // Preserve other immediate shop configuration fields
         if (request.getInvoiceEmails() != null) currentProfile.setInvoiceEmails(new ArrayList<>(request.getInvoiceEmails()));
         currentProfile.setLowStockThreshold(request.getLowStockThreshold());
         currentProfile.setHolidayMode(request.isHolidayMode());
 
-        // 🛡️ 2. MODERATED DETECTION: Precise checks based on original logic
         boolean nameChanged = request.getShopName() != null && !request.getShopName().trim().equals(currentProfile.getShopName());
         boolean typeChanged = request.getBusinessType() != null && !request.getBusinessType().equals(currentProfile.getBusinessType());
         boolean taxChanged = request.getTaxCode() != null && !request.getTaxCode().trim().equals(currentProfile.getTaxCode());
@@ -512,7 +510,6 @@ public class AuthService {
         boolean isAlreadyVerified = "VERIFIED".equalsIgnoreCase(user.getSellerVerification());
 
         if (isAlreadyVerified && (nameChanged || typeChanged || taxChanged || licenseChanged || addressChanged)) {
-            // 🚀 PRESERVED: Shop Name change 30-day cooldown logic
             if (nameChanged && currentProfile.getLastShopNameChange() != null) {
                 LocalDateTime lastChange = currentProfile.getLastShopNameChange();
                 if (lastChange.plusMonths(1).isAfter(LocalDateTime.now())) {
@@ -521,7 +518,6 @@ public class AuthService {
                 }
             }
 
-            // 🛡️ FIXED: Clear license URL automatically if downgrading to INDIVIDUAL
             String finalLicenseUrl = currentProfile.getBusinessLicenseUrl();
             if ("INDIVIDUAL".equals(request.getBusinessType())) {
                 finalLicenseUrl = null;
@@ -529,13 +525,12 @@ public class AuthService {
                 finalLicenseUrl = saveFile(newLicense, user.getId(), "license");
             }
 
-            // 🚀 RESTORED: Full Snapshot with all fields preserved for accurate Admin Highlights
             User.ShopProfile pendingSnapshot = User.ShopProfile.builder()
                 .shopName(nameChanged ? request.getShopName() : currentProfile.getShopName())
                 .shopSlug(nameChanged ? generateUniqueSlug(request.getShopName(), user.getId()) : currentProfile.getShopSlug())
                 .businessType(typeChanged ? request.getBusinessType() : currentProfile.getBusinessType())
                 .taxCode(taxChanged ? request.getTaxCode() : currentProfile.getTaxCode())
-                .businessLicenseUrl(finalLicenseUrl) // Uses the calculated null-safe URL
+                .businessLicenseUrl(finalLicenseUrl) 
                 .shopLogoUrl(currentProfile.getShopLogoUrl())
                 .shopDescription(currentProfile.getShopDescription())
                 .businessEmail(currentProfile.getBusinessEmail())
@@ -556,7 +551,6 @@ public class AuthService {
                 Set<String> phones = new HashSet<>(); 
                 for (AddressDTO aDto : request.getStockAddresses()) {
                     String p = normalizePhone(aDto.getPhoneNumber());
-                    // 🚀 PRESERVED: Original unique warehouse phone check
                     if (p != null && !phones.add(p)) throw new RuntimeException("Số điện thoại các kho hàng phải khác nhau.");
                     pendingAddrs.add(User.AddressInfo.builder()
                             .receiverName(aDto.getFullName()).phone(p)
@@ -572,7 +566,6 @@ public class AuthService {
                 "Cửa hàng [" + currentProfile.getShopName() + "] yêu cầu thay đổi thông tin pháp lý.", 
                 "SHOP_UPDATE_REQUEST", user.getId());
         } else if (!isAlreadyVerified) {
-            // 🚀 PRESERVED: Direct update logic for unverified sellers
             if (nameChanged) {
                 currentProfile.setShopName(request.getShopName());
                 currentProfile.setShopSlug(generateUniqueSlug(request.getShopName(), user.getId()));
@@ -581,7 +574,6 @@ public class AuthService {
             if (typeChanged) currentProfile.setBusinessType(request.getBusinessType());
             if (taxChanged) currentProfile.setTaxCode(request.getTaxCode());
 
-            // 🛡️ FIXED: Clear license URL automatically if downgrading to INDIVIDUAL
             if ("INDIVIDUAL".equals(request.getBusinessType())) {
                 currentProfile.setBusinessLicenseUrl(null);
             } else if (licenseChanged) {
@@ -731,7 +723,7 @@ public class AuthService {
 
     public UserResponse getUserProfileBySlug(String slug) {
         User user = userRepository.findByShopProfile_ShopSlug(slug)
-                .orElseThrow(() -> new RuntimeException("Cửa hàng với link '" + slug + "' không tồn tại!"));
+                .orElseThrow(() -> new RuntimeException("Cửa hàng with link '" + slug + "' không tồn tại!"));
 
         return UserResponse.builder()
                 .id(user.getId()) 
@@ -747,4 +739,68 @@ public class AuthService {
                 .emailVerified(user.isEmailVerified())
                 .build();
     }    
+
+    // ==========================================================================
+    // 🚀 NEW: SECURE EMAIL CHANGE LOGIC
+    // ==========================================================================
+
+    /**
+     * 1. Sends an OTP to the NEW email address for verification.
+     * Prevents duplicate email registration.
+     */
+    @Transactional
+    public String initiateEmailChange(String currentContact, String newEmail) {
+        String identifier = normalizeIdentifier(currentContact);
+        User user = userRepository.findByIdentifier(identifier)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
+
+        String normalizedNewEmail = newEmail.trim().toLowerCase();
+
+        if (userRepository.existsByEmail(normalizedNewEmail)) {
+            throw new RuntimeException("Email '" + normalizedNewEmail + "' đã được sử dụng!");
+        }
+
+        String otp = String.format("%06d", new Random().nextInt(999999));
+        
+        tokenRepository.deleteByContactInfo(normalizedNewEmail);
+        PasswordResetToken token = PasswordResetToken.builder()
+                .contactInfo(normalizedNewEmail)
+                .otpCode(otp)
+                .expiryDate(LocalDateTime.now().plusMinutes(15))
+                .build();
+        tokenRepository.save(token);
+
+        try {
+            azureService.sendResetEmail(normalizedNewEmail, otp); 
+            log.info("Email verification OTP sent to new address: {}", normalizedNewEmail);
+        } catch (Exception e) {
+            throw new RuntimeException("Không thể gửi email xác thực. Vui lòng thử lại sau.");
+        }
+
+        return "Mã xác thực đã được gửi đến " + normalizedNewEmail;
+    }
+
+    /**
+     * 2. Verifies OTP and finally updates the user's email.
+     */
+    @Transactional
+    public String confirmEmailChange(String currentContact, String newEmail, String otp) {
+        String identifier = normalizeIdentifier(currentContact);
+        String normalizedNewEmail = newEmail.trim().toLowerCase();
+
+        PasswordResetToken token = tokenRepository.findByContactInfoAndOtpCode(normalizedNewEmail, otp)
+                .orElseThrow(() -> new RuntimeException("Mã xác thực không chính xác hoặc đã hết hạn!"));
+
+        User user = userRepository.findByIdentifier(identifier)
+                .orElseThrow(() -> new RuntimeException("Lỗi hệ thống!"));
+        
+        user.setEmail(normalizedNewEmail);
+        user.setEmailVerified(true); // User confirmed the inbox is theirs
+        user.setUpdatedAt(LocalDateTime.now());
+        userRepository.save(user);
+
+        tokenRepository.delete(token);
+
+        return "Cập nhật Email thành công!";
+    }
 }

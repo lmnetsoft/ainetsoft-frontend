@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css'; 
 import ToastNotification from '../../components/Toast/ToastNotification'; 
-import { getUserProfile, updateProfile, logoutUser } from '../../services/authService';
-import { FaGoogle, FaFacebook, FaExclamationTriangle, FaClock } from 'react-icons/fa';
+import { getUserProfile, updateProfile, logoutUser, initiateEmailChange, confirmEmailChange } from '../../services/authService';
+import { FaGoogle, FaFacebook, FaExclamationTriangle, FaClock, FaTimes } from 'react-icons/fa';
 import logoImg from '../../assets/images/logo.png';
 import './Profile.css';
 
@@ -16,14 +16,22 @@ const Profile = () => {
   const maxBirthDate = new Date(today.getFullYear() - 16, today.getMonth(), today.getDate())
     .toISOString().split('T')[0];
 
-  // 🚀 SYNC FIX: Load initial state from cache immediately to stop the "Page Flash"
+  /** 🛡️ CONSISTENT NORMALIZATION: Unifies phone format across the entire app */
+  const normalizeForDisplay = (phoneStr: string) => {
+    if (!phoneStr) return '84';
+    const digits = phoneStr.replace(/\D/g, '');
+    if (digits.startsWith('084')) return digits.slice(1); // "084..." -> "84..."
+    if (digits.startsWith('0')) return '84' + digits.slice(1); // "09..." -> "849..."
+    return digits; // "849..." stays "849..."
+  };
+
   const getInitialData = () => {
     const cached = localStorage.getItem('user');
     if (cached) {
       const data = JSON.parse(cached);
       return {
         email: data.email || '',
-        phone: data.phone?.replace(/\D/g, '').replace(/^084/, '84') || '84',
+        phone: normalizeForDisplay(data.phone),
         fullName: data.fullName || '',
         gender: data.gender || 'other',
         birthDate: data.birthDate || '',
@@ -41,11 +49,17 @@ const Profile = () => {
   };
 
   const [formData, setFormData] = useState(getInitialData());
+  const [originalData, setOriginalData] = useState(getInitialData()); // 🛡️ Used for button greyout
+  const [originalEmail, setOriginalEmail] = useState(getInitialData().email); 
   const [loading, setLoading] = useState(!localStorage.getItem('user')); 
   const [isSaving, setIsSaving] = useState(false);
   const [isSeller, setIsSeller] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpValue, setOtpValue] = useState('');
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
 
   const [verificationStatus, setVerificationStatus] = useState({
     status: 'NONE', 
@@ -54,26 +68,30 @@ const Profile = () => {
 
   const isSocialUser = formData.provider !== 'LOCAL' && formData.provider !== null;
 
+  /** 🚀 GREYOUT LOGIC: Compares current form against original saved state */
+  const hasChanges = JSON.stringify({
+    fullName: formData.fullName,
+    email: formData.email,
+    phone: formData.phone,
+    gender: formData.gender,
+    birthDate: formData.birthDate,
+    avatarUrl: formData.avatarUrl
+  }) !== JSON.stringify({
+    fullName: originalData.fullName,
+    email: originalData.email,
+    phone: originalData.phone,
+    gender: originalData.gender,
+    birthDate: originalData.birthDate,
+    avatarUrl: originalData.avatarUrl
+  });
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const data = await getUserProfile();
-        
-        let normalizedPhone = '84';
-        if (data.phone) {
-            const digits = data.phone.replace(/\D/g, '');
-            if (digits.startsWith('084')) {
-                normalizedPhone = digits.slice(1);
-            } else if (digits.startsWith('0')) {
-                normalizedPhone = '84' + digits.slice(1);
-            } else {
-                normalizedPhone = digits;
-            }
-        }
-
-        setFormData({
+        const profileData = {
           email: data.email || '',
-          phone: normalizedPhone,
+          phone: normalizeForDisplay(data.phone),
           fullName: data.fullName || '',
           gender: data.gender || 'other',
           birthDate: data.birthDate || '',
@@ -81,12 +99,14 @@ const Profile = () => {
           provider: data.provider || 'LOCAL', 
           addresses: data.addresses || [],
           bankAccounts: data.bankAccounts || []
-        });
+        };
+
+        setFormData(profileData);
+        setOriginalData(profileData); // 🛡️ Sync strictly with API data
+        setOriginalEmail(data.email || '');
 
         const roles = data.roles || [];
-        const isVerifiedSeller = roles.includes('SELLER') || data.sellerVerification === 'VERIFIED';
-        setIsSeller(isVerifiedSeller);
-
+        setIsSeller(roles.includes('SELLER') || data.sellerVerification === 'VERIFIED');
         setVerificationStatus({
           status: data.sellerVerification || 'NONE',
           rejectionReason: data.rejectionReason || ''
@@ -99,15 +119,9 @@ const Profile = () => {
         setLoading(false);
       }
     };
-
     fetchProfile();
     document.title = "Hồ sơ của tôi | AiNetsoft";
   }, [navigate]);
-
-  const handleLogout = async () => {
-    await logoutUser();
-    navigate('/login');
-  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -142,67 +156,121 @@ const Profile = () => {
       setShowToast(true);
       return;
     }
-
     if (formData.birthDate && formData.birthDate > maxBirthDate) {
       setToastMessage("Bạn phải ít nhất 16 tuổi để sử dụng dịch vụ này.");
       setShowToast(true);
       return;
     }
-
     if (!formData.phone || !validatePhone(formData.phone)) {
       setToastMessage("Số điện thoại không hợp lệ hoặc nhà mạng không hỗ trợ.");
       setShowToast(true);
       return;
     }
 
+    const emailChanged = formData.email.trim().toLowerCase() !== originalEmail.trim().toLowerCase();
+
     try {
       setIsSaving(true);
-      const finalPhone = formData.phone.startsWith('+') ? formData.phone : `+${formData.phone}`;
+      if (emailChanged && !isSocialUser) {
+        // 🚀 RESILIENT FIX: Catch Azure SDK Timeouts and show modal anyway if OTP was sent
+        try {
+          await initiateEmailChange(originalEmail, formData.email);
+        } catch (initErr: any) {
+          if (initErr.message?.includes("Timeout") || initErr.message?.includes("Polling")) {
+             console.warn("Email verification initiated but Azure response timed out. Showing modal anyway.");
+          } else {
+             throw initErr; // Rethrow real errors like 'Email already taken'
+          }
+        }
 
-      const synchronizedAddresses = (formData.addresses || []).map(addr => ({
-        ...addr,
-        phone: finalPhone 
-      }));
-
-      const payload = {
-        ...formData,
-        phone: finalPhone,
-        addresses: synchronizedAddresses
-      };
-
-      const message = await updateProfile(payload);
-      setToastMessage(message || "Cập nhật hồ sơ thành công!");
-      setShowToast(true);
-      
-      const freshData = await getUserProfile();
-      setFormData(prev => ({
-        ...prev,
-        phone: freshData.phone ? freshData.phone.replace(/\D/g, '').replace(/^084/, '84') : '84',
-        fullName: freshData.fullName,
-        avatarUrl: freshData.avatarUrl,
-        addresses: freshData.addresses || [],
-        bankAccounts: freshData.bankAccounts || []
-      }));
-
-      window.dispatchEvent(new Event('profileUpdate'));
-      
+        setShowOtpModal(true);
+        setToastMessage("Mã xác thực đã được gửi. Vui lòng kiểm tra Email mới.");
+        setShowToast(true);
+        setIsSaving(false);
+        return; 
+      }
+      await performFinalUpdate();
     } catch (error: any) {
-      setToastMessage(error.message || "Cập nhật hồ sơ thất bại.");
+      setToastMessage(error.message || "Cập nhật thất bại.");
       setShowToast(true);
-    } finally {
       setIsSaving(false);
     }
   };
 
-  // 🚀 VIBRATION FIX: We no longer unmount the whole component during loading.
-  // This keeps the right column width stable so the Sidebar doesn't jump.
+  /** 🛡️ SYNC FIX: Ensures both state objects are identical after save to reset button status */
+  const performFinalUpdate = async () => {
+    const finalPhone = formData.phone.startsWith('+') ? formData.phone : `+${formData.phone}`;
+    const synchronizedAddresses = (formData.addresses || []).map(addr => ({
+      ...addr,
+      phone: finalPhone 
+    }));
+
+    const payload = {
+      ...formData,
+      phone: finalPhone,
+      addresses: synchronizedAddresses
+    };
+
+    const message = await updateProfile(payload);
+    setToastMessage(message || "Cập nhật hồ sơ thành công!");
+    setShowToast(true);
+    
+    const freshData = await getUserProfile();
+    const freshProfile = {
+      ...freshData,
+      phone: normalizeForDisplay(freshData.phone),
+      fullName: freshData.fullName,
+      avatarUrl: freshData.avatarUrl,
+      addresses: freshData.addresses || [],
+      bankAccounts: freshData.bankAccounts || []
+    };
+
+    setFormData(freshProfile);
+    setOriginalData(freshProfile); // 🚀 FIX: Corrects the "Unable to change" bug
+    setOriginalEmail(freshData.email || '');
+
+    window.dispatchEvent(new Event('profileUpdate'));
+    setIsSaving(false);
+  };
+
+  const handleConfirmOtp = async () => {
+    if (otpValue.length !== 6) { setToastMessage("Vui lòng nhập đủ 6 chữ số OTP."); setShowToast(true); return; }
+    try {
+      setIsVerifyingOtp(true);
+      await confirmEmailChange(originalEmail, formData.email, otpValue);
+      setShowOtpModal(false);
+      setToastMessage("Email đã đổi thành công. Vui lòng đăng nhập lại.");
+      setShowToast(true);
+      setTimeout(async () => { await logoutUser(); navigate('/login'); }, 2500);
+    } catch (error: any) {
+      setToastMessage(error.message || "Mã xác thực không chính xác.");
+      setShowToast(true);
+    } finally {
+      setIsVerifyingOtp(false);
+    }
+  };
 
   return (
     <div className="user-profile-supreme-layout">
       <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
-
-      {/* 🚀 Internal overlay instead of full-page reload */}
       {loading && <div className="supreme-loading-overlay">Đang tải hồ sơ...</div>}
+
+      {/* 🛡️ OTP MODAL */}
+      {showOtpModal && (
+        <div className="admin-modal-overlay">
+          <div className="seller-review-modal" style={{ maxWidth: '450px', height: 'auto' }}>
+            <div className="modal-header"><h3>Xác thực Email mới</h3><button className="close-btn" onClick={() => setShowOtpModal(false)}><FaTimes /></button></div>
+            <div style={{ padding: '30px', textAlign: 'center' }}>
+              <p>Mã OTP đã gửi đến: <br/><strong>{formData.email}</strong></p>
+              <input type="text" maxLength={6} value={otpValue} onChange={(e) => setOtpValue(e.target.value.replace(/\D/g, ''))} placeholder="000000" style={{ fontSize: '24px', textAlign: 'center', letterSpacing: '8px', height: '50px', width: '100%', borderRadius: '10px', border: '2px solid #ddd' }} />
+            </div>
+            <div className="modal-footer-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '20px' }}>
+              <button className="btn-reject-modal" onClick={() => setShowOtpModal(false)}>Hủy</button>
+              <button className="btn-approve-modal" onClick={handleConfirmOtp} disabled={isVerifyingOtp}>{isVerifyingOtp ? "Đang xử lý..." : "Xác nhận & Lưu"}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="profile-content-header centered-header">
         <h1>Hồ sơ của tôi</h1>
@@ -237,13 +305,7 @@ const Profile = () => {
           <div className="supreme-form-row">
             <label>Email <span className="req">*</span></label>
             <div className="input-group-container">
-              <input 
-                type="email" 
-                value={formData.email} 
-                readOnly={isSocialUser} 
-                className={`${isSocialUser ? "input-field input-locked" : "input-field"}`}
-                onChange={(e) => !isSocialUser && setFormData({...formData, email: e.target.value})}
-              />
+              <input type="email" value={formData.email} readOnly={isSocialUser} className={`${isSocialUser ? "input-field input-locked" : "input-field"}`} onChange={(e) => !isSocialUser && setFormData({...formData, email: e.target.value})} />
               {isSocialUser && (
                 <div className={`lock-badge badge-${formData.provider.toLowerCase()}`}>
                   {formData.provider === 'GOOGLE' && <FaGoogle className="provider-icon" />}
@@ -256,19 +318,13 @@ const Profile = () => {
 
           <div className="supreme-form-row">
             <label>Họ và Tên <span className="req">*</span></label>
-            <div className="input-group-container">
-              <input 
-                type="text" 
-                value={formData.fullName} 
-                onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                placeholder="Nhập họ và tên"
-              />
-            </div>
+            <div className="input-group-container"><input type="text" value={formData.fullName} onChange={(e) => setFormData({...formData, fullName: e.target.value})} placeholder="Nhập họ và tên" /></div>
           </div>
 
           <div className="supreme-form-row">
             <label>Số điện thoại <span className="req">*</span></label>
             <div className="input-group-container">
+              {/* 🛡️ 🚀 RESTORED ALL ORIGINAL PROPS */}
               <PhoneInput
                 country={'vn'} 
                 preferredCountries={['vn']}
@@ -291,9 +347,7 @@ const Profile = () => {
             <div className="input-group-container">
               <div className="gender-options">
                 {['male', 'female', 'other'].map((g) => (
-                  <label key={g}>
-                    <input type="radio" name="gender" value={g} checked={formData.gender === g} onChange={(e) => setFormData({...formData, gender: e.target.value})} /> {g === 'male' ? 'Nam' : g === 'female' ? 'Nữ' : 'Khác'}
-                  </label>
+                  <label key={g}><input type="radio" name="gender" value={g} checked={formData.gender === g} onChange={(e) => setFormData({...formData, gender: e.target.value})} /> {g === 'male' ? 'Nam' : g === 'female' ? 'Nữ' : 'Khác'}</label>
                 ))}
               </div>
             </div>
@@ -301,37 +355,24 @@ const Profile = () => {
 
           <div className="supreme-form-row">
             <label>Ngày sinh</label>
-            <div className="input-group-container">
-              <input 
-                type="date" 
-                value={formData.birthDate} 
-                max={maxBirthDate}
-                onChange={(e) => setFormData({...formData, birthDate: e.target.value})}
-              />
-            </div>
+            <div className="input-group-container"><input type="date" value={formData.birthDate} max={maxBirthDate} onChange={(e) => setFormData({...formData, birthDate: e.target.value})} /></div>
           </div>
 
           <div className="form-actions">
-            <button type="button" className="save-btn-supreme" onClick={handleSave} disabled={isSaving}>
-              {isSaving ? "Đang lưu..." : "Lưu thay đổi"}
+            {/* 🛡️ GREYOUT: Remains disabled if no changes or currently saving */}
+            <button type="button" className="save-btn-supreme" onClick={handleSave} disabled={isSaving || !hasChanges}>
+              {isSaving ? "Đang xử lý..." : "Lưu thay đổi"}
             </button>
             
+            {/* 🚀 RESTORED ORIGINAL FLAT CONDITIONAL BLOCKS */}
             {!isSeller && verificationStatus.status !== 'PENDING' && (
-              <button type="button" className="become-seller-btn" onClick={() => navigate('/seller/register')}>
-                Trở thành Người bán
-              </button>
+              <button type="button" className="become-seller-btn" onClick={() => navigate('/seller/register')}>Trở thành Người bán</button>
             )}
-
             {verificationStatus.status === 'PENDING' && (
-              <button type="button" className="become-seller-btn status-pending" disabled>
-                Đang thẩm định...
-              </button>
+              <button type="button" className="become-seller-btn status-pending" disabled>Đang thẩm định...</button>
             )}
-            
             {isSeller && (
-              <button type="button" className="become-seller-btn status-active" onClick={() => navigate('/seller/dashboard')}>
-                Vào Kênh Người Bán
-              </button>
+              <button type="button" className="become-seller-btn status-active" onClick={() => navigate('/seller/dashboard')}>Vào Kênh Người Bán</button>
             )}
           </div>
         </form>
