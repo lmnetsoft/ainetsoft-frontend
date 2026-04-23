@@ -44,18 +44,17 @@ public class User {
     private String avatarUrl; 
 
     /**
-     * 🛡️ EMAIL VERIFICATION FIELDS
+     * 🛡️ VERIFICATION FIELDS
      */
     @Builder.Default
     private boolean emailVerified = false; 
+
+    @Builder.Default
+    private boolean phoneVerified = false; 
     
     @Indexed(unique = true, sparse = true)
     private String verificationToken;      
 
-    /**
-     * 🛡️ ADDED: To fix the compilation error in CustomOAuth2UserService
-     * Used to track when a verification link should expire.
-     */
     private LocalDateTime verificationTokenExpiry;
 
     @Builder.Default
@@ -110,7 +109,6 @@ public class User {
 
     private IdentityInfo identityInfo; 
 
-    // Assuming CartItem is defined elsewhere in your package
     @Builder.Default
     private List<CartItem> cart = new ArrayList<>();
 

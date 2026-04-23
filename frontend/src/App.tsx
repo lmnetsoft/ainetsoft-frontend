@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+// 🚀 NEW: Added ToastContainer and CSS for global notifications
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 import Header from './components/Header/Header';
 import Footer from './components/Footer/Footer';
 import Home from './pages/Home/Home';
 import Register from './pages/Register/Register';
 import ForgotPassword from './pages/Auth/ForgotPassword';
 import Login from './pages/Auth/Login';
-import VerifyEmail from './pages/Auth/VerifyEmail'; // 🚀 NEW: Added for Email Verification
+import VerifyEmail from './pages/Auth/VerifyEmail'; 
 import OAuth2RedirectHandler from './pages/Auth/OAuth2RedirectHandler';
 import NotFound from './pages/NotFound/NotFound'; 
 import ChatBubble from './components/ChatBubble/ChatBubble';
@@ -121,7 +125,6 @@ function App() {
                 <Route path="/register" element={<Register />} />
                 <Route path="/login" element={<Login />} />
                 
-                {/* 🛡️ NEW: Route to handle the Email Verification Link */}
                 <Route path="/verify-email" element={<VerifyEmail />} />
                 
                 <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -198,6 +201,8 @@ function App() {
 
             <GlobalChatOverlay />
             <ChatBubble />
+            {/* 🚀 NEW: Global Notification Container */}
+            <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} closeOnClick pauseOnHover draggable />
           </div>
         </ChatProvider>
       </NotificationProvider>

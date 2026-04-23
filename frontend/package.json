@@ -24,6 +24,7 @@
     "react-phone-number-input": "^3.4.16",
     "react-quill-new": "^3.8.3",
     "react-router-dom": "^7.13.1",
+    "react-toastify": "^11.1.0",
     "recharts": "^3.8.0",
     "sockjs-client": "^1.6.1",
     "stompjs": "^2.3.3"

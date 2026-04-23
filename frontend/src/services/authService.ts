@@ -324,8 +324,6 @@ export const getAuditLogs = async (): Promise<any> => {
   } catch (error: any) {
     throw new Error(extractError(error, "Không thể tải lịch sử hoạt động."));
   }
-
-  
 };
 
 export const initiateEmailChange = async (currentContact: string, newEmail: string): Promise<string> => {
@@ -343,6 +341,34 @@ export const initiateEmailChange = async (currentContact: string, newEmail: stri
 export const confirmEmailChange = async (currentContact: string, newEmail: string, otp: string): Promise<string> => {
   try {
     const response = await api.post('/auth/confirm-email-change', { currentContact, newEmail, otp });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(extractError(error, "Xác thực mã OTP thất bại."));
+  }
+};
+
+/* -----------------------------------------------------------
+ * 🚀 NEW: SMS OTP ACTIONS (APPENDED)
+ * ----------------------------------------------------------- */
+
+/**
+ * 📱 Triggers the backend to generate and send an OTP via Azure SMS.
+ */
+export const sendPhoneOtp = async (phoneNumber: string): Promise<string> => {
+  try {
+    const response = await api.post('/auth/send-otp', { phoneNumber });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(extractError(error, "Gửi mã OTP qua SMS thất bại."));
+  }
+};
+
+/**
+ * 📱 Verifies the SMS OTP provided by the user.
+ */
+export const verifyPhoneOtp = async (phoneNumber: string, otp: string): Promise<any> => {
+  try {
+    const response = await api.post('/auth/verify-otp', { phoneNumber, otp });
     return response.data;
   } catch (error: any) {
     throw new Error(extractError(error, "Xác thực mã OTP thất bại."));

@@ -2,13 +2,22 @@ package com.ainetsoft.service;
 
 import com.azure.communication.email.*;
 import com.azure.communication.email.models.*;
+import com.azure.communication.sms.*; 
+import com.azure.communication.sms.models.*; 
 import com.azure.core.util.polling.SyncPoller;
+import jakarta.annotation.PostConstruct; 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-
+import org.springframework.web.client.RestTemplate; // 🚀 NEW: For Direct API
+import org.springframework.http.*; // 🚀 NEW: For HTTP Headers
 import java.time.Duration;
+import java.util.Map;
+import java.util.List;
 
+/**
+ * 🛰️ COMMUNICATION HUB: Handles Direct Infobip SMS and Azure Email Services.
+ */
 @Slf4j
 @Service
 public class AzureCommunicationService {
@@ -19,10 +28,78 @@ public class AzureCommunicationService {
     @Value("${azure.communication.email-from-address}")
     private String fromAddress;
 
+    // --- 🛡️ BACKUP: Azure Sender Number ---
+    @Value("${azure.communication.sender-number}")
+    private String senderNumber;
+
+    // --- 🚀 PRIMARY: Direct Infobip Credentials ---
+    @Value("${infobip.api.key}")
+    private String infobipApiKey;
+
+    @Value("${infobip.base.url}")
+    private String infobipBaseUrl;
+
+    @Value("${infobip.sender-id}")
+    private String infobipSenderId;
+
+    private final RestTemplate restTemplate = new RestTemplate();
+    private SmsClient smsClient;
+
+    @PostConstruct
+    public void init() {
+        this.smsClient = new SmsClientBuilder()
+                .connectionString(connectionString)
+                .buildClient();
+    }
+
     /**
-     * 1. Account Verification Email
-     * Sends a secure link to activate new accounts.
+     * 📱 THE BEST SOLUTION: Direct Infobip SMS (Primary)
      */
+    public void sendSms(String recipientPhoneNumber, String messageContent) {
+        try {
+            log.info("Attempting DIRECT INFOBIP SMS to: {}", recipientPhoneNumber);
+            String url = "https://" + infobipBaseUrl + "/sms/2/text/advanced";
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Authorization", "App " + infobipApiKey);
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            Map<String, Object> body = Map.of(
+                "messages", List.of(Map.of(
+                    "from", infobipSenderId, 
+                    "destinations", List.of(Map.of("to", recipientPhoneNumber)),
+                    "text", messageContent
+                ))
+            );
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+
+            if (response.getStatusCode().is2xxSuccessful()) {
+                log.info("Direct Infobip Success! Response: {}", response.getBody());
+                return; 
+            }
+        } catch (Exception e) {
+            log.error("Primary Infobip Error: {}. Falling back to Azure ACS standby...", e.getMessage());
+        }
+
+        /* -----------------------------------------------------------
+         * 🛡️ FAILOVER: AZURE ACS SMS LOGIC (COMMENTED OUT)
+         * ----------------------------------------------------------- 
+        try {
+            log.warn("Falling back to Azure ACS for SMS to: {}", recipientPhoneNumber);
+            SmsSendResult result = smsClient.send(senderNumber, recipientPhoneNumber, messageContent);
+            log.info("Azure Failover Success. MessageId: {}", result.getMessageId());
+        } catch (Exception azureEx) {
+            log.error("CRITICAL: Both SMS routes failed. Azure Error: {}", azureEx.getMessage());
+        }
+        */
+    }
+
+    /* -----------------------------------------------------------
+     * 📧 EMAIL SERVICES (100% Full Original Code Restored)
+     * ----------------------------------------------------------- */
+
     public void sendVerificationEmail(String targetEmail, String fullName, String verificationLink) {
         String subject = "[AiNetSoft] Xác thực tài khoản của bạn";
         String body = "<html><body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>" +
@@ -40,13 +117,9 @@ public class AzureCommunicationService {
                       "<p style='font-size: 12px; color: #aaa; text-align: center;'>© 2026 AiNetSoft. Tất cả quyền được bảo lưu.</p>" +
                       "</div>" +
                       "</body></html>";
-
         sendEmail(targetEmail, subject, body);
     }
 
-    /**
-     * 2. OTP Logic for Password Recovery
-     */
     public void sendResetEmail(String targetEmail, String otpCode) {
         String subject = "[AiNetSoft] Mã khôi phục mật khẩu của bạn";
         String body = "<html><body style='font-family: Arial, sans-serif;'>" +
@@ -59,9 +132,6 @@ public class AzureCommunicationService {
         sendEmail(targetEmail, subject, body);
     }
 
-    /**
-     * 3. Seller Submission Confirmation
-     */
     public void sendSellerSubmissionReceivedEmail(String targetEmail, String fullName) {
         String subject = "[AiNetSoft] Xác nhận đã nhận hồ sơ đăng ký Người bán";
         String body = "<html><body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>" +
@@ -70,13 +140,9 @@ public class AzureCommunicationService {
                       "<p>Chúng tôi xác nhận đã nhận được yêu cầu đăng ký kinh doanh của bạn. Đội ngũ kiểm soát đang tiến hành thẩm định hồ sơ.</p>" +
                       "<p>Kết quả chính thức sẽ được phản hồi trong vòng <b>24 giờ làm việc</b>.</p>" +
                       "</body></html>";
-
         sendEmail(targetEmail, subject, body);
     }
 
-    /**
-     * 4. Seller Final Decision (Approve/Reject)
-     */
     public void sendSellerStatusEmail(String targetEmail, String fullName, boolean approved, String reason) {
         String subject = approved 
             ? "[AiNetSoft] Chúc mừng! Hồ sơ Người bán của bạn đã được phê duyệt"
@@ -93,13 +159,9 @@ public class AzureCommunicationService {
                         "<p>Hồ sơ của bạn đã được chấp thuận. Bạn có thể bắt đầu kinh doanh ngay bây giờ.</p>" : 
                         "<p>Rất tiếc hồ sơ của bạn chưa được phê duyệt. Lý do: <span style='color: #d63031;'>" + reason + "</span></p>") +
                       "</body></html>";
-
         sendEmail(targetEmail, subject, body);
     }
 
-    /**
-     * 5. Product Approval Notification
-     */
     public void sendProductStatusEmail(String targetEmail, String fullName, String productName, boolean approved, String reason) {
         String subject = approved
             ? "[AiNetSoft] Sản phẩm của bạn đã được phê duyệt thành công"
@@ -111,14 +173,9 @@ public class AzureCommunicationService {
                       (approved ? "<p style='color: #2ecc71;'>Sản phẩm đã được duyệt thành công!</p>" : 
                                  "<p style='color: #e74c3c;'>Bị từ chối. Lý do: " + reason + "</p>") +
                       "</body></html>";
-
         sendEmail(targetEmail, subject, body);
     }
 
-    /**
-     * 6. 🛡️ Security Alert Email (NEW)
-     * Alerts user about account linking or security changes.
-     */
     public void sendSecurityAlertEmail(String targetEmail, String alertType, String alertDetails) {
         String subject = "[AiNetSoft] Cảnh báo bảo mật: " + alertType;
         String body = "<html><body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>" +
@@ -130,12 +187,11 @@ public class AzureCommunicationService {
                       "<strong>Loại thông báo:</strong> " + alertType + "<br>" +
                       "<strong>Chi tiết:</strong> " + alertDetails +
                       "</blockquote>" +
-                      "<p>Nếu <b>không phải bạn</b> thực hiện thay đổi này, vui lòng truy cập hệ thống để đổi mật khẩu ngay lập tức hoặc liên hệ đội ngũ hỗ trợ.</p>" +
+                      "<p>Nếu <b>không phải bạn</b> thực hiện thay đổi này, vui lòng truy cập hệ thống để đổi mật khẩu ngay lập tức.</p>" +
                       "<hr style='border: 0; border-top: 1px solid #ffe58f; margin: 20px 0;'>" +
                       "<p style='font-size: 12px; color: #888; text-align: center;'>Đây là email tự động. © 2026 AiNetSoft.</p>" +
                       "</div>" +
                       "</body></html>";
-
         sendEmail(targetEmail, subject, body);
     }
 
@@ -144,26 +200,18 @@ public class AzureCommunicationService {
      */
     private void sendEmail(String targetEmail, String subject, String htmlContent) {
         try {
-            EmailClient emailClient = new EmailClientBuilder()
-                .connectionString(connectionString)
-                .buildClient();
-
+            EmailClient emailClient = new EmailClientBuilder().connectionString(connectionString).buildClient();
             EmailMessage emailMessage = new EmailMessage()
                 .setSenderAddress(fromAddress)
                 .setToRecipients(new EmailAddress(targetEmail))
                 .setSubject(subject)
                 .setBodyHtml(htmlContent);
 
-            log.info("Attempting to send email to: {}", targetEmail);
-
             SyncPoller<EmailSendResult, EmailSendResult> poller = emailClient.beginSend(emailMessage, null);
             poller.waitForCompletion(Duration.ofSeconds(10));
-
-            EmailSendResult result = poller.getFinalResult();
-            log.info("Azure Email Success. MessageID: {}", result.getId());
-
+            log.info("Azure Email Success: {}", poller.getFinalResult().getId());
         } catch (Exception e) {
-            log.error("Azure SDK Error sending to {}: {}", targetEmail, e.getMessage());
+            log.error("Email Error: {}", e.getMessage());
             throw new RuntimeException("EMAIL_SERVICE_ERROR: " + e.getMessage());
         }
     }

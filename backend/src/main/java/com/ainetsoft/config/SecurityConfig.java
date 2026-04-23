@@ -64,9 +64,11 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/api/auth/login", 
                     "/api/auth/register", 
-                    "/api/auth/verify-email", // 🚀 FIXED: Make verification link public to solve 401/403 errors
+                    "/api/auth/verify-email",
                     "/api/auth/forgot-password", 
                     "/api/auth/reset-password",
+                    "/api/auth/send-otp",   // 🚀 NEW: Added for SMS login/registration
+                    "/api/auth/verify-otp", // 🚀 NEW: Added for SMS login/registration
                     "/oauth2/**",
                     "/login/oauth2/**",
                     "/error",

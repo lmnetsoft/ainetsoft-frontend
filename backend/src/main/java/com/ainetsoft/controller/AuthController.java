@@ -89,12 +89,11 @@ public class AuthController {
             Principal principal,
             @RequestPart("data") ShopSettingsUpdateRequest request,
             @RequestPart(value = "license", required = false) MultipartFile license,
-            @RequestPart(value = "logo", required = false) MultipartFile logo) { // 🚀 NEW: Added logo parameter
+            @RequestPart(value = "logo", required = false) MultipartFile logo) { 
         
         if (principal == null) throw new RuntimeException("Unauthorized");
         
         try {
-            // Forward both files and the request data to the AuthService
             User updatedUser = authService.updateShopSettings(principal.getName(), request, license, logo);
             return ResponseEntity.ok(Map.of(
                 "message", "Cập nhật thiết lập Shop thành công!",
@@ -220,7 +219,7 @@ public class AuthController {
         return ResponseEntity.ok(authService.toggleFavorite(productId, principal.getName()));
     }
 
-// 🚀 NEW: Initiate Email Change verification
+    // 🚀 Initiate Email Change verification
     @PostMapping("/initiate-email-change")
     public ResponseEntity<?> initiateEmailChange(@RequestBody EmailChangeRequest request) {
         try {
@@ -231,7 +230,7 @@ public class AuthController {
         }
     }
 
-    // 🚀 NEW: Confirm Email Change verification
+    // 🚀 Confirm Email Change verification
     @PostMapping("/confirm-email-change")
     public ResponseEntity<?> confirmEmailChange(@RequestBody EmailChangeRequest request) {
         try {
@@ -244,5 +243,46 @@ public class AuthController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
-    }    
+    }
+
+    /* -----------------------------------------------------------
+     * 🚀 NEW: SMS OTP ENDPOINTS (APPENDED)
+     * ----------------------------------------------------------- */
+
+    /**
+     * POST /api/auth/send-otp
+     * Triggers the generation and sending of an SMS OTP.
+     */
+    @PostMapping("/send-otp")
+    public ResponseEntity<?> sendPhoneOtp(@RequestBody Map<String, String> request) {
+        try {
+            String message = authService.sendPhoneOtp(request.get("phoneNumber"));
+            return ResponseEntity.ok(message);
+        } catch (Exception e) {
+            log.error("Error sending SMS OTP: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    /**
+     * POST /api/auth/verify-otp
+     * Validates the SMS OTP provided by the user.
+     */
+    @PostMapping("/verify-otp")
+    public ResponseEntity<?> verifyPhoneOtp(@RequestBody Map<String, String> request) {
+        try {
+            boolean isValid = authService.verifyPhoneOtp(
+                request.get("phoneNumber"), 
+                request.get("otp")
+            );
+            if (isValid) {
+                return ResponseEntity.ok(Map.of("message", "Xác thực OTP thành công!"));
+            } else {
+                return ResponseEntity.badRequest().body("Mã OTP không chính xác hoặc đã hết hạn!");
+            }
+        } catch (Exception e) {
+            log.error("Error verifying SMS OTP: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }
