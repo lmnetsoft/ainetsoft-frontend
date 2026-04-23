@@ -321,24 +321,17 @@ public class AdminService {
         }
     }
 
-    /**
-     * 🚀 UPDATED: Robust Promotion logic for Shop Updates
-     * Correctly handles shopLogoUrl and businessType migration from draft to live.
-     */
     @Transactional
     private String processShopUpdateApproval(User user, SellerApprovalRequest request, User performingAdmin) {
         if (request.isApproved()) {
-            // 1. Promote Profile (Includes Name, Logo, Type, Tax Code)
             if (user.getPendingShopProfile() != null) {
                 user.setShopProfile(user.getPendingShopProfile());
             }
             
-            // 2. Promote Addresses
             if (user.getPendingAddresses() != null && !user.getPendingAddresses().isEmpty()) {
                 user.setAddresses(new ArrayList<>(user.getPendingAddresses()));
             }
 
-            // 3. Promote Bank Account changes
             if (user.getPendingBankAccount() != null) {
                 List<BankAccount> existing = bankAccountRepository.findByUserId(user.getId());
                 BankAccount target = existing.isEmpty() ? new BankAccount() : existing.get(0);
@@ -352,7 +345,6 @@ public class AdminService {
                 bankAccountRepository.save(target);
             }
             
-            // Clear all drafts upon success
             user.setPendingShopProfile(null);
             user.setPendingAddresses(new ArrayList<>());
             user.setPendingBankAccount(null); 
@@ -366,7 +358,6 @@ public class AdminService {
             recordAudit(performingAdmin, "APPROVE_SHOP_UPDATE", user.getId(), user.getEmail(), "Phê duyệt cập nhật Shop");
             return "Đã phê duyệt cập nhật Shop thành công.";
         } else {
-            // Rejection clears all drafts
             user.setPendingShopProfile(null);
             user.setPendingAddresses(new ArrayList<>());
             user.setPendingBankAccount(null);
@@ -542,14 +533,63 @@ public class AdminService {
         if (roles != null && roles.contains("SELLER")) {
             roles.remove("SELLER");
             user.setRoles(roles);
-            user.setSellerVerification("NONE"); 
+            
+            user.setSellerVerification("REVOKED"); 
+            user.setRejectionReason(reason); 
+            
             user.setUpdatedAt(LocalDateTime.now());
             userRepository.save(user);
+            
             notificationService.createNotification(user.getId(), "Quyền Người bán đã bị thu hồi", "Lý do: " + reason, "SELLER_REVOKED", null);
-            try { azureEmailService.sendSellerStatusEmail(user.getEmail(), user.getFullName(), false, "Quyền người bán bị thu hồi. Lý do: " + reason); } catch (Exception e) { log.warn("Revoke email failed: {}", e.getMessage()); }
+            
+            try { 
+                azureEmailService.sendSellerStatusEmail(user.getEmail(), user.getFullName(), false, "Quyền người bán bị thu hồi. Lý do: " + reason); 
+            } catch (Exception e) { 
+                log.warn("Revoke email failed: {}", e.getMessage()); 
+            }
+            
             recordAudit(performingAdmin, "REVOKE_SELLER", user.getId(), user.getEmail(), "Thu hồi quyền Seller: " + reason);
             return "Đã thu hồi quyền Người bán của " + user.getEmail();
-        } else { throw new RuntimeException("Người dùng không phải là Người bán!"); }
+        } else { 
+            throw new RuntimeException("Người dùng không phải là Người bán!"); 
+        }
+    }
+
+    @Transactional
+    public String restoreSellerStatus(String userId, User performingAdmin) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
+
+        if (user.getIdentityInfo() == null || user.getShopProfile() == null) {
+            throw new RuntimeException("Người dùng này không có dữ liệu hồ sơ Shop để khôi phục!");
+        }
+
+        Set<String> roles = user.getRoles();
+        if (roles == null) roles = new HashSet<>();
+        
+        roles.add("SELLER");
+        user.setRoles(roles);
+        user.setSellerVerification("VERIFIED");
+        user.setRejectionReason(null);
+        
+        user.setUpdatedAt(LocalDateTime.now());
+        userRepository.save(user);
+
+        notificationService.createNotification(
+            user.getId(), 
+            "Quyền Người bán đã được khôi phục", 
+            "Quản trị viên đã cấp lại quyền kinh doanh cho bạn. Bạn có thể tiếp tục bán hàng ngay bây giờ.", 
+            "SELLER_RESTORED", 
+            null
+        );
+
+        try {
+            azureEmailService.sendSellerStatusEmail(user.getEmail(), user.getFullName(), true, "Quyền người bán đã được khôi phục.");
+        } catch (Exception e) {
+            log.warn("Restore email failed: {}", e.getMessage());
+        }
+
+        recordAudit(performingAdmin, "RESTORE_SELLER", user.getId(), user.getEmail(), "Khôi phục quyền Seller");
+        return "Đã khôi phục quyền Người bán cho " + user.getFullName();
     }
 
     public List<FeedbackTemplate> getTemplatesByType(String type) { return feedbackTemplateRepository.findByType(type); }

@@ -3,7 +3,8 @@ import {
   FaSearch, FaFilter, FaCircle, FaEnvelope, FaPhoneAlt, 
   FaCalendarAlt, FaTimesCircle, FaEye,
   FaUserShield, FaBan, FaUnlock, FaStoreSlash,
-  FaChevronLeft, FaChevronRight 
+  FaChevronLeft, FaChevronRight,
+  FaStore // Added for Restore icon
 } from 'react-icons/fa';
 
 interface UserTableProps {
@@ -20,8 +21,8 @@ interface UserTableProps {
   onDemote: (userId: string) => void; 
   onToggleStatus: (userId: string) => void;
   onRevokeSeller: (userId: string) => void;
+  onRestoreSeller: (userId: string) => void; // NEW: Callback for restoring seller
   
-  // APPENDED: Necessary props for Pagination logic
   currentPage: number;
   pageSize: number;
   totalElements: number;
@@ -44,8 +45,8 @@ const UserTable: React.FC<UserTableProps> = ({
   onDemote, 
   onToggleStatus,
   onRevokeSeller,
+  onRestoreSeller, // Destructuring new prop
   
-  // Destructuring pagination props
   currentPage = 0,
   pageSize = 10,
   totalElements = 0,
@@ -64,7 +65,7 @@ const UserTable: React.FC<UserTableProps> = ({
   return (
     <div className="admin-table-container-supreme">
       
-      {/* 1. ORIGINAL HEADER LOGIC (PRESERVED) */}
+      {/* 1. HEADER CONTROLS */}
       <div className="table-controls-row-elite">
         <div className="admin-search-box-supreme">
           <FaSearch className="search-icon-inside" />
@@ -105,7 +106,7 @@ const UserTable: React.FC<UserTableProps> = ({
         </div>
       </div>
 
-      {/* 2. ORIGINAL TABLE CONTENT (PRESERVED) */}
+      {/* 2. TABLE CONTENT */}
       <table className="admin-data-table-supreme">
         <thead>
           <tr>
@@ -155,8 +156,10 @@ const UserTable: React.FC<UserTableProps> = ({
                 </td>
                 <td style={{ textAlign: 'right' }}>
                   <div className="action-button-group-supreme">
+                    {/* View Profile */}
                     <button className="btn-action-inspect" onClick={() => onView(u.id)} title="Xem hồ sơ"><FaEye /></button>
                     
+                    {/* Promote to Admin */}
                     {!u.roles?.includes('ADMIN') && (
                       <button 
                         className="btn-action-inspect promote-btn" 
@@ -172,6 +175,7 @@ const UserTable: React.FC<UserTableProps> = ({
                       </button>
                     )}
 
+                    {/* Demote from Admin */}
                     {u.roles?.includes('ADMIN') && u.email !== 'admin@ainetsoft.com' && (
                       <button 
                         className="btn-action-inspect demote-btn" 
@@ -186,10 +190,34 @@ const UserTable: React.FC<UserTableProps> = ({
                       </button>
                     )}
 
-                    {u.roles?.includes('SELLER') && (
-                      <button className="btn-action-inspect revoke-btn" onClick={() => onRevokeSeller(u.id)} title="Thu hồi quyền Seller"><FaStoreSlash /></button>
+                    {/* SELLER LOGIC: Toggle between Revoke and Restore */}
+                    {u.roles?.includes('SELLER') ? (
+                      <button 
+                        className="btn-action-inspect revoke-btn" 
+                        onClick={() => onRevokeSeller(u.id)} 
+                        title="Thu hồi quyền Seller"
+                      >
+                        <FaStoreSlash />
+                      </button>
+                    ) : (
+                      /* If user is NOT a seller but has shop data, show Restore button */
+                      (u.shopProfile || u.sellerVerification === 'REVOKED' || u.sellerVerification === 'REJECTED') && (
+                        <button 
+                          className="btn-action-inspect restore-btn" 
+                          onClick={() => {
+                             if(window.confirm(`Khôi phục quyền Người bán cho ${u.fullName}? Dữ liệu Shop cũ sẽ được giữ nguyên.`)) {
+                               onRestoreSeller(u.id);
+                             }
+                          }}
+                          style={{ color: '#38a169' }} // Green color for positive action
+                          title="Cấp lại quyền Seller"
+                        >
+                          <FaStore />
+                        </button>
+                      )
                     )}
 
+                    {/* Ban / Unban Toggle */}
                     <button 
                       className={`btn-action-inspect ${u.accountStatus === 'BANNED' ? 'unban-btn' : 'ban-btn'}`} 
                       onClick={() => onToggleStatus(u.id)}
@@ -205,7 +233,7 @@ const UserTable: React.FC<UserTableProps> = ({
         </tbody>
       </table>
 
-      {/* 3. APPENDED: DYNAMIC PAGINATION FOOTER (FIXES "10 / 12") */}
+      {/* 3. PAGINATION FOOTER */}
       <div className="admin-table-pagination-footer-wrapper">
         <div className="pagination-left-info">
           Hiển thị <strong>{userList.length}</strong> / <strong>{totalElements}</strong> thành viên

@@ -1,36 +1,36 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { 
-  FaUserShield, FaUserSlash, FaSearch, FaShieldAlt, 
-  FaCircle, FaSync, FaUsers, FaFilter 
+  FaUsers, FaSync 
 } from 'react-icons/fa';
 import adminService from '../../services/admin.service';
+import UserTable from './UserTable'; // Using the refined component
 import UserPromotionModal from './UserPromotionModal';
+import UserProfileModal from './UserProfileModal';
+import { toast } from 'react-hot-toast';
 import './AdminUsers.css';
 
 const AdminUsers: React.FC = () => {
-  const [users, setUsers] = useState<any[]>([]);
+  const [usersData, setUsersData] = useState<any>(null); // Stores the full Page object
   const [loading, setLoading] = useState(true);
   
-  // 🚀 PHASE 1: FILTER STATES
+  // Filter States
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
   
-  // Pagination State
+  // Pagination States
   const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10); // NEW: Dynamic page size
+  const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
-  const [totalElements, setTotalElements] = useState(0); // NEW: Total records count
+  const [totalElements, setTotalElements] = useState(0);
 
+  // Modal States
   const [selectedUser, setSelectedUser] = useState<any>(null);
-  const [showModal, setShowModal] = useState(false);
+  const [showPromotionModal, setShowPromotionModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   // 🚀 Fetch users whenever filters, page, or pageSize changes
-  useEffect(() => {
-    loadUsers();
-  }, [roleFilter, statusFilter, page, pageSize]); // NEW: pageSize added to dependencies
-
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       setLoading(true);
       const params = {
@@ -38,27 +38,85 @@ const AdminUsers: React.FC = () => {
         role: roleFilter === "ALL" ? "" : roleFilter,
         status: statusFilter === "ALL" ? "" : statusFilter,
         page: page,
-        size: pageSize // UPDATED: Using dynamic pageSize state
+        size: pageSize
       };
 
       const res = await adminService.getAllUsers(params);
       
-      // Backend returns Page<User>, accessing .content
-      setUsers(res.content || []);
+      // Store the whole response for UserTable to handle
+      setUsersData(res); 
       setTotalPages(res.totalPages || 0);
-      setTotalElements(res.totalElements || 0); // NEW: Set total elements for UI display
+      setTotalElements(res.totalElements || 0);
     } catch (error) {
       console.error("Lỗi khi lấy danh sách người dùng:", error);
+      toast.error("Không thể tải danh sách người dùng.");
     } finally {
       setLoading(false);
     }
+  }, [searchTerm, roleFilter, statusFilter, page, pageSize]);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
+
+  // --- LOGIC HANDLERS ---
+
+  const handleViewProfile = async (userId: string) => {
+    try {
+      const fullUser = await adminService.getUserDetails(userId);
+      setSelectedUser(fullUser);
+      setShowProfileModal(true);
+    } catch (err) {
+      toast.error("Không thể tải thông tin chi tiết hồ sơ.");
+    }
   };
 
-  // Handle Search Input (with Enter key support)
-  const handleSearchKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-        setPage(0);
-        loadUsers();
+  const handleToggleStatus = async (userId: string) => {
+    try {
+      const msg = await adminService.toggleUserStatus(userId);
+      toast.success(msg);
+      loadUsers();
+    } catch (err: any) {
+      toast.error(err.message || "Lỗi thay đổi trạng thái.");
+    }
+  };
+
+  const handleRevokeSeller = async (userId: string) => {
+    const reason = window.prompt("Nhập lý do thu hồi quyền Người bán:");
+    if (reason === null) return;
+    if (!reason.trim()) { toast.error("Vui lòng nhập lý do."); return; }
+    
+    try {
+      const msg = await adminService.revokeSellerRights(userId, reason);
+      toast.success(msg);
+      loadUsers();
+    } catch (err: any) {
+      toast.error(err.message || "Lỗi thu hồi quyền.");
+    }
+  };
+
+  const handleRestoreSeller = async (userId: string) => {
+    try {
+      const msg = await adminService.restoreSellerRights(userId);
+      toast.success(msg);
+      loadUsers();
+    } catch (err: any) {
+      toast.error(err.message || "Lỗi khôi phục quyền.");
+    }
+  };
+
+  const handlePromote = (userId: string) => {
+    setSelectedUser({ id: userId });
+    setShowPromotionModal(true);
+  };
+
+  const handleDemote = async (userId: string) => {
+    try {
+      const msg = await adminService.demoteFromAdmin(userId);
+      toast.success(msg);
+      loadUsers();
+    } catch (err: any) {
+      toast.error(err.message || "Lỗi thu hồi quyền Admin.");
     }
   };
 
@@ -77,174 +135,52 @@ const AdminUsers: React.FC = () => {
       </header>
 
       <div className="admin-content-body">
-        
-        {/* 🚀 FILTER BAR */}
-        <div className="table-controls-row" style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', marginBottom: '20px' }}>
-          <div className="admin-search-box-supreme" style={{ flex: 2, minWidth: '300px' }}>
-            <FaSearch className="search-icon" />
-            <input 
-              type="text" 
-              placeholder="Nhấn Enter để tìm theo email hoặc tên..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyPress={handleSearchKeyPress}
-            />
-          </div>
-
-          <div className="filter-group-elite" style={{ display: 'flex', gap: '10px' }}>
-            <div className="select-wrapper-supreme">
-               <FaFilter className="select-icon" />
-               <select value={roleFilter} onChange={(e) => { setRoleFilter(e.target.value); setPage(0); }}>
-                  <option value="ALL">Tất cả Vai trò</option>
-                  <option value="USER">Người dùng (USER)</option>
-                  <option value="SELLER">Người bán (SELLER)</option>
-                  <option value="ADMIN">Quản trị (ADMIN)</option>
-               </select>
-            </div>
-
-            <div className="select-wrapper-supreme">
-               <FaCircle className="select-icon" style={{ fontSize: '10px' }} />
-               <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}>
-                  <option value="ALL">Tất cả Trạng thái</option>
-                  <option value="ACTIVE">Hoạt động (ACTIVE)</option>
-                  <option value="BANNED">Đang bị khóa (BANNED)</option>
-                  <option value="PENDING_SELLER">Chờ duyệt Shop</option>
-               </select>
-            </div>
-          </div>
-        </div>
-
-        {loading ? (
+        {loading && !usersData ? (
           <div className="loading-placeholder">Đang tải danh sách người dùng...</div>
         ) : (
-          <div className="admin-table-container-supreme">
-            <table className="admin-data-table">
-              <thead>
-                <tr>
-                  <th>Thành viên</th>
-                  <th>Vai trò hệ thống</th>
-                  <th>Trạng thái</th>
-                  <th style={{ textAlign: 'right' }}>Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.length === 0 ? (
-                  <tr><td colSpan={4} className="empty-row">Không tìm thấy người dùng nào khớp với bộ lọc.</td></tr>
-                ) : (
-                  users.map(user => (
-                    <tr key={user.id} className={user.isGlobalAdmin ? 'row-global-admin' : ''}>
-                      <td>
-                        <div className="user-info-cell">
-                          <span className="user-name-text">{user.fullName}</span>
-                          <span className="user-email-text">{user.email}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <div className="badge-list-supreme">
-                          {user.isGlobalAdmin && <span className="badge-master">GLOBAL ADMIN</span>}
-                          {user.roles && user.roles.map((role: string) => (
-                            <span key={role} className={`badge-role-tag ${role.toLowerCase()}`}>
-                              {role}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td>
-                        <span className={`status-pill ${user.accountStatus?.toLowerCase()}`}>
-                          <FaCircle className="dot-icon" /> {user.accountStatus || 'ACTIVE'}
-                        </span>
-                      </td>
-                      <td className="actions-cell-right">
-                        {!user.isGlobalAdmin && (
-                          <div className="action-btn-group">
-                            <button 
-                              className="btn-action promote"
-                              onClick={() => { setSelectedUser(user); setShowModal(true); }}
-                              title="Phân quyền Admin"
-                            >
-                              <FaShieldAlt />
-                            </button>
-                            <button 
-                              className="btn-action ban"
-                              onClick={() => { if(window.confirm('Khóa người dùng này?')) adminService.banUser(user.id).then(loadUsers); }}
-                              title="Khóa tài khoản"
-                            >
-                              <FaUserSlash />
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-
-            {/* ENHANCED Pagination Controls */}
-            <div className="admin-pagination-footer" style={{ 
-                marginTop: '20px', 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                padding: '10px 20px',
-                background: '#f8f9fa',
-                borderRadius: '8px'
-            }}>
-                <div className="pagination-info">
-                    Hiển thị <strong>{users.length}</strong> trên tổng số <strong>{totalElements}</strong> thành viên
-                </div>
-
-                <div className="pagination-controls" style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                    {/* NEW: Records per page selector */}
-                    <div className="page-size-selector">
-                        <span style={{ marginRight: '8px', fontSize: '14px' }}>Số dòng:</span>
-                        <select 
-                            value={pageSize} 
-                            onChange={(e) => { 
-                                setPageSize(Number(e.target.value)); 
-                                setPage(0); // Reset to first page when changing size
-                            }}
-                            style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #ddd', cursor: 'pointer' }}
-                        >
-                            <option value={10}>10</option>
-                            <option value={30}>30</option>
-                            <option value={50}>50</option>
-                        </select>
-                    </div>
-
-                    <div className="page-nav-buttons" style={{ display: 'flex', gap: '8px' }}>
-                        <button 
-                            disabled={page === 0} 
-                            onClick={() => setPage(page - 1)} 
-                            className="btn-page-nav"
-                        >
-                            Trước
-                        </button>
-                        <span style={{ alignSelf: 'center', fontSize: '14px' }}>
-                            Trang {page + 1} / {totalPages || 1}
-                        </span>
-                        <button 
-                            disabled={page >= totalPages - 1} 
-                            onClick={() => setPage(page + 1)} 
-                            className="btn-page-nav"
-                        >
-                            Sau
-                        </button>
-                    </div>
-                </div>
-            </div>
-          </div>
+          <UserTable 
+            users={usersData}
+            userSearchTerm={searchTerm}
+            setUserSearchTerm={setSearchTerm}
+            roleFilter={roleFilter}
+            setRoleFilter={setRoleFilter}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            onSearchTrigger={() => { setPage(0); loadUsers(); }}
+            onView={handleViewProfile}
+            onPromote={(id) => handlePromote(id)}
+            onDemote={handleDemote}
+            onToggleStatus={handleToggleStatus}
+            onRevokeSeller={handleRevokeSeller}
+            onRestoreSeller={handleRestoreSeller} // 🚀 NEW FUNCTION LINKED
+            
+            // Pagination Props
+            currentPage={page}
+            pageSize={pageSize}
+            totalElements={totalElements}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            onPageSizeChange={(newSize) => { setPageSize(newSize); setPage(0); }}
+          />
         )}
       </div>
 
-      {showModal && selectedUser && (
+      {/* MODALS */}
+      {showPromotionModal && selectedUser && (
         <UserPromotionModal 
           user={selectedUser} 
-          onClose={() => setShowModal(false)} 
+          onClose={() => setShowPromotionModal(false)} 
           onSuccess={() => {
-            setShowModal(false);
+            setShowPromotionModal(false);
             loadUsers();
           }} 
+        />
+      )}
+
+      {showProfileModal && selectedUser && (
+        <UserProfileModal 
+          user={selectedUser} 
+          onClose={() => setShowProfileModal(false)} 
         />
       )}
     </div>

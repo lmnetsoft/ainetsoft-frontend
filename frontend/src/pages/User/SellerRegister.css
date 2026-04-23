@@ -485,3 +485,4 @@ input:checked + .slider:before { transform: translateX(20px); }
     border: 1px solid #dbdbdb !important; 
     color: #555; 
 }
+

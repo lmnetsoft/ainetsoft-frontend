@@ -48,7 +48,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
   const API_BASE_URL = "http://localhost:8080";
 
   const getFullImageUrl = (path: string | null | undefined) => {
-    if (!path || path === "DEFAULT_LOGO" || path.trim() === "") return ainetsoftLogo; 
+    if (!path || path === "DEFAULT_LOGO" || path.trim() === "") return ainetsoftLogo;
     if (path.startsWith('data:image') || path.startsWith('http')) return path;
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
     return `${API_BASE_URL}${cleanPath}`;
@@ -138,9 +138,8 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
                 <h4 className="section-title"><FaMapMarkedAlt /> KHO HÀNG & TỌA ĐỘ GPS</h4>
                 <div className="address-review-list">
                   {user.addresses.map((addr: any, idx: number) => {
-                    
-                    // 🚀 FIXED: Dùng URL chuẩn và thêm dấu nháy để sửa lỗi Syntax Error
-                    const mapsUrl = `https://www.google.com/maps?q=${addr.latitude},${addr.longitude}`;
+                    {/* 🚀 FIXED: Dùng URL chuẩn và sửa lỗi Syntax Error */}
+                    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${addr.latitude},${addr.longitude}`;
                     
                     return (
                       <div key={idx} className="review-data-card mb-10" style={{ borderLeft: '4px solid #1d39c4' }}>
@@ -231,10 +230,21 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose }) =>
               </div>
             </section>
 
+            {/* QUẢN TRỊ HỆ THỐNG */}
             <section className="inspection-section" style={{ marginTop: '25px' }}>
               <h4 className="section-title"><FaTag /> QUẢN TRỊ HỆ THỐNG</h4>
               <div className="review-data-card">
-                 <div className="data-row"><span className="label">Trạng thái:</span><span className={`status-pill-colorful ${user.accountStatus?.toLowerCase()}`}>{user.accountStatus}</span></div>
+                 <div className="data-row">
+                   <span className="label">Trạng thái tài khoản:</span>
+                   <span className={`status-pill-colorful ${user.accountStatus?.toLowerCase()}`}>{user.accountStatus}</span>
+                 </div>
+                 {/* 🚀 NEW: Hiển thị trạng thái xác minh Người bán cụ thể (ví dụ: REVOKED) */}
+                 <div className="data-row">
+                   <span className="label">Xác minh Người bán:</span>
+                   <span className={`status-pill-colorful ${user.sellerVerification?.toLowerCase() || 'none'}`}>
+                     {user.sellerVerification || 'CHƯA ĐĂNG KÝ'}
+                   </span>
+                 </div>
                  <div className="data-row"><span className="label">Ngày gia nhập:</span><span className="value">{new Date(user.createdAt).toLocaleDateString('vi-VN')}</span></div>
               </div>
             </section>

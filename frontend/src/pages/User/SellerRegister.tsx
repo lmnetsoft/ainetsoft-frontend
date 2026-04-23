@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, NavLink } from 'react-router-dom'; 
 import goongjs from '@goongmaps/goong-js';
-// 🚀 ADDED: Critical for marker visibility
 import '@goongmaps/goong-js/dist/goong-js.css'; 
 import { 
   FaStore, FaHourglassHalf, FaMapMarkerAlt, FaUniversity, FaArrowRight, 
@@ -10,10 +9,11 @@ import {
   FaChevronDown, FaChevronUp, FaIdCard, FaFileInvoiceDollar, FaCheckCircle,
   FaInfoCircle, FaShieldAlt, FaUpload, FaCamera, FaRegLightbulb, FaEdit, FaPrint,
   FaSearchPlus, FaMapMarkedAlt, FaQrcode, FaCopy, FaClock, FaPassport, FaTimesCircle,
-  FaExclamationTriangle, FaSearch 
+  FaExclamationTriangle, FaSearch, FaComments 
 } from 'react-icons/fa';
 import LegalModal from '../../components/LegalModal/LegalModal'; 
 import { getUserProfile } from '../../services/authService';
+import { useChat } from '../../context/ChatContext'; // 🚀 Hook for chat popup logic
 import { toast } from 'react-hot-toast';
 
 import api from '../../services/api'; 
@@ -180,16 +180,49 @@ const inlineStyles = `
     font-weight: 600;
   }
 
-  .map-modal-overlay { 
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-    background: rgba(0,0,0,0.7); display: flex; align-items: center; 
-    justify-content: center; z-index: 20000 !important; 
+  /* 🚀 REVOKED CARD DESIGN (Consistent typography from image_f94ce9) */
+  .revoked-view-card {
+    background: #fff; border-radius: 16px; padding: 40px; text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.06); max-width: 750px; margin: 20px auto;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
-  .map-modal-card { 
-    background: white; width: 90%; max-width: 800px; border-radius: 8px; 
-    overflow: hidden; display: flex; flex-direction: column; height: 85vh; 
-    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  .revoked-icon { font-size: 70px; color: #ee4d2d; margin-bottom: 25px; }
+  .revoked-view-card h2 {
+    font-size: 30px; font-weight: 800; color: #1f1f1f; margin-bottom: 8px;
+    letter-spacing: -0.5px;
   }
+  .revoked-view-card p.revoked-subtext {
+    color: #595959; font-size: 16px; margin-bottom: 25px;
+  }
+  .revoked-reason-box {
+    background: #fff1f0; border: 1.5px solid #ffa39e; padding: 24px;
+    border-radius: 12px; margin: 30px 0; text-align: center;
+  }
+  .revoked-reason-box label { 
+    color: #cf1322; font-weight: 900; font-size: 13px; 
+    text-transform: uppercase; display: block; margin-bottom: 12px;
+    letter-spacing: 0.5px;
+  }
+  .revoked-reason-text { 
+    color: #2d3436; font-style: italic; font-size: 17px;
+    line-height: 1.6; font-weight: 600;
+  }
+  .revoked-instructions { list-style: none; padding: 0; margin: 30px 0; text-align: left; }
+  .revoked-instructions li { 
+    display: flex; align-items: center; gap: 15px; padding: 14px 0; 
+    border-bottom: 1px solid #f1f2f6; font-size: 15.5px; color: #595959;
+    font-weight: 500;
+  }
+  .revoked-actions { display: flex; gap: 15px; justify-content: center; margin-top: 30px; }
+  .btn-chat-admin { 
+    background: #ee4d2d; color: #fff; padding: 14px 35px; border-radius: 8px; 
+    font-weight: 700; border: none; display: flex; align-items: center; 
+    gap: 10px; transition: 0.2s; font-size: 15px; cursor: pointer;
+  }
+  .btn-chat-admin:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(238, 77, 45, 0.3); }
+
+  .map-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 20000 !important; }
+  .map-modal-card { background: white; width: 90%; max-width: 800px; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; height: 85vh; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
   .map-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid #eee; }
   .map-search-container { padding: 15px; background: #f8f9fa; border-bottom: 1px solid #eee; position: relative; }
   .map-search-input-group { display: flex; gap: 10px; }
@@ -199,12 +232,7 @@ const inlineStyles = `
   .map-modal-footer { padding: 15px 20px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 15px; }
   .btn-confirm-map { background: #ee4d2d; color: white; border: none; padding: 10px 30px; border-radius: 4px; font-weight: 600; cursor: pointer; }
   .btn-cancel-map { background: #f0f0f0; color: #555; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
-  
-  .map-suggestions { 
-    position: absolute; top: 100%; left: 15px; right: 15px; background: white; 
-    border: 1px solid #ddd; z-index: 21000; max-height: 200px; overflow-y: auto; 
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15); list-style: none; padding: 0; margin: 0; 
-  }
+  .map-suggestions { position: absolute; top: 100%; left: 15px; right: 15px; background: white; border: 1px solid #ddd; z-index: 21000; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.15); list-style: none; padding: 0; margin: 0; }
   .map-suggestions li { padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #f5f5f5; font-size: 14px; }
   .map-suggestions li:hover { background: #fdf2f0; color: #ee4d2d; }
 `;
@@ -221,6 +249,8 @@ const VN_PHONE_REGEX = /^0(3[2-9]|5[2689]|7[06-9]|8[1-9]|9[0-46-9])\d{7}$/;
 
 const SellerRegister = () => {
   const navigate = useNavigate();
+  const { setIsChatOpen } = useChat(); // 🚀 Hook for chat popup trigger
+
   const [currentStep, setCurrentStep] = useState(1);
   const [isPageLoading, setIsPageLoading] = useState(true);
   const [isShippingLoading, setIsShippingLoading] = useState(false);
@@ -234,6 +264,7 @@ const SellerRegister = () => {
   const [legalSlug, setLegalSlug] = useState<string | null>(null);
 
   const [isRejected, setIsRejected] = useState(false);
+  const [isRevoked, setIsRevoked] = useState(false); 
   const [rejectionReason, setRejectionReason] = useState('');
   
   const [serverError, setServerError] = useState<string | null>(null);
@@ -302,6 +333,9 @@ const SellerRegister = () => {
         } else if (profileData.sellerVerification === 'REJECTED') {
             setIsRejected(true);
             setRejectionReason(profileData.rejectionReason || "Thông tin hồ sơ chưa hợp lệ.");
+        } else if (profileData.sellerVerification === 'REVOKED') { 
+            setIsRevoked(true);
+            setRejectionReason(profileData.rejectionReason || "Quyền Người bán của bạn đã bị thu hồi do vi phạm chính sách.");
         }
 
         setShippingMethodsList(Array.isArray(shippingRes.data) ? shippingRes.data : []);
@@ -323,7 +357,7 @@ const SellerRegister = () => {
            isDefault: addr.isDefault || false
         }));
 
-        const shouldClear = profileData.sellerVerification !== 'PENDING';
+        const shouldClear = profileData.sellerVerification !== 'PENDING' && profileData.sellerVerification !== 'REVOKED';
 
         setFormData(prev => ({
           ...prev,
@@ -359,7 +393,6 @@ const SellerRegister = () => {
     fetchData();
   }, [navigate]);
 
-  // 🚀 UPDATED: ELITE MAP CONTROLS AND CLEANUP
   useEffect(() => {
     if (showMapModal && !mapInstance.current) {
         goongjs.accessToken = GOONG_MAPTILES_KEY;
@@ -370,7 +403,6 @@ const SellerRegister = () => {
             zoom: 14
         });
 
-        // 🚀 ADDED: Zoom buttons
         map.addControl(new goongjs.NavigationControl(), 'top-right');
 
         const marker = new goongjs.Marker({ color: '#ee4d2d' }).setLngLat([106.660172, 10.762622]).addTo(map);
@@ -384,7 +416,6 @@ const SellerRegister = () => {
         });
     }
 
-    // 🚀 ADDED: Proper destruction of the map instance
     return () => { 
         if (mapInstance.current) {
             mapInstance.current.remove();
@@ -404,7 +435,6 @@ const SellerRegister = () => {
     } catch (e) {}
   };
 
-  // 🚀 ADDED: Connection for the orange search button
   const handleDirectSearch = async () => {
     if (mapSearch.length < 3) return;
     try {
@@ -724,7 +754,7 @@ const SellerRegister = () => {
       const hasGPS = addr.latitude && String(addr.latitude).trim() !== '' && 
                      addr.longitude && String(addr.longitude).trim() !== '';
       
-      const mapsUrl = `https://www.google.com/maps?q=${addr.latitude},${addr.longitude}`;
+      const mapsUrl = `http://googleusercontent.com/maps.google.com/${addr.latitude},${addr.longitude}`;
 
       const gpsContent = hasGPS ? `
         <span style="color: #1d39c4;">GPS: ${addr.latitude}, ${addr.longitude}</span><br/>
@@ -812,7 +842,48 @@ const SellerRegister = () => {
         </div>
         <hr className="supreme-divider" />
 
-        {isRejected && (
+        {/* 🚀 REVOKED NOTIFICATION (Fixed Chat Trigger) */}
+        {isRevoked && (
+          <div className="revoked-view-card animate-fade-in">
+             <div className="revoked-header">
+                <FaExclamationTriangle className="revoked-icon" />
+                <h2>Quyền Người Bán Bị Thu Hồi</h2>
+                <p className="revoked-subtext">Bạn tạm thời bị giới hạn các tính năng bán hàng trên hệ thống.</p>
+             </div>
+
+             <div className="revoked-reason-box">
+                <label>Lý do từ Ban Quản Trị:</label>
+                <div className="revoked-reason-text">
+                  "{rejectionReason}"
+                </div>
+             </div>
+
+             <div className="revoked-instructions-wrap">
+                <h3 style={{fontSize: '18px', color: '#1f1f1f', textAlign: 'left', fontWeight: '700', marginBottom: '15px'}}>Cần làm gì để khôi phục?</h3>
+                <ul className="revoked-instructions">
+                   <li><FaShieldAlt style={{color: '#ee4d2d'}} /> <span>Kiểm tra và sửa đổi các thông tin hoặc sản phẩm vi phạm chính sách.</span></li>
+                   <li><FaComments style={{color: '#5b67f1'}} /> <span>Nhắn tin cho Admin để trao đổi và nhận hướng dẫn khắc phục cụ thể.</span></li>
+                   <li><FaCheckCircle style={{color: '#16a34a'}} /> <span>Chờ Admin kiểm tra lại và nhấn <strong>Cấp lại quyền</strong> từ Hệ thống Quản trị.</span></li>
+                </ul>
+             </div>
+
+             <div className="revoked-actions">
+                {/* 🛠️ CHAT TRIGGER: Triggers the popup window instead of page redirect */}
+                <button 
+                  type="button"
+                  onClick={() => setIsChatOpen(true)} 
+                  className="btn-chat-admin"
+                >
+                   <FaComments /> Nhắn tin cho Admin
+                </button>
+                <button onClick={() => navigate('/user/profile')} style={{background: '#f1f2f6', border: 'none', padding: '12px 25px', borderRadius: '8px', cursor: 'pointer', fontWeight: '700', color: '#2d3436'}}>
+                   Về trang hồ sơ
+                </button>
+             </div>
+          </div>
+        )}
+
+        {isRejected && !isRevoked && (
           <div className="preview-mode-banner no-print" style={{background: '#fff1f0', border: '1px solid #ffccc7', padding: '25px'}}>
             <h2 style={{color: '#cf1322', margin: '0 0 10px 0'}}><FaTimesCircle /> Hồ sơ bị từ chối</h2>
             <div style={{color: '#595959', fontSize: '15px', lineHeight: '1.6', marginBottom: '20px'}}>
@@ -827,7 +898,7 @@ const SellerRegister = () => {
           </div>
         )}
 
-        {!isRejected && (
+        {!isRejected && !isRevoked && (
           <div className="onboarding-stepper no-print">
             {['Thông tin Shop', 'Cài đặt vận chuyển', 'Thông tin thuế', 'Thông tin định danh', 'Hoàn tất'].map((l, i) => (
               <div key={i} className={`step-node ${currentStep > i ? 'active' : ''}`}>
@@ -839,7 +910,7 @@ const SellerRegister = () => {
           </div>
         )}
 
-        {!isRejected && (
+        {!isRejected && !isRevoked && (
           <div className="onboarding-card">
             {/* STEP 1 */}
             {currentStep === 1 && (
@@ -1077,7 +1148,7 @@ const SellerRegister = () => {
                     <span className="sum-label">Địa chỉ lấy hàng & Tọa độ (Dành cho Shipper):</span>
                     <div className="sum-addr-list">
                       {formData.stockAddresses.map((addr, i) => {
-                           const mapsUrl = `https://www.google.com/maps?q=${addr.latitude},${addr.longitude}`;
+                           const mapsUrl = `http://googleusercontent.com/maps.google.com/${addr.latitude},${addr.longitude}`;
                            return (
                              <div key={i} className="sum-addr-item" style={{border: '1px solid #eee', padding: '10px', marginBottom: '10px', borderRadius: '4px'}}>
                                 <strong>{[addr.fullName, formatPhone(addr.phone || addr.phoneNumber)].filter(Boolean).join(' | ')}</strong>
@@ -1126,7 +1197,7 @@ const SellerRegister = () => {
 
       {zoomedImage && (<div className="zoom-overlay" onClick={() => setZoomedImage(null)}><div className="zoom-content"><FaTimes className="zoom-close" onClick={() => setZoomedImage(null)} /><img src={zoomedImage} alt="Zoomed" /></div></div>)}
 
-      {/* MAP MODAL */}
+      {/* MAP MODAL (100% PRESERVED) */}
       {showMapModal && (
         <div className="map-modal-overlay">
           <div className="map-modal-card">

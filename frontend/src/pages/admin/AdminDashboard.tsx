@@ -62,7 +62,6 @@ const AdminDashboard = () => {
   const [logTotalPages, setLogTotalPages] = useState(0);
   const [logTotalElements, setLogTotalElements] = useState(0);
 
-  // 🚀 NEW: Added Independent States for Reports and Reviews Pagination
   const [reportPage, setReportPage] = useState(0);
   const [reportPageSize, setReportPageSize] = useState(10);
 
@@ -86,7 +85,7 @@ const AdminDashboard = () => {
   const fetchSummary = async (showToast = false) => {
     try {
       if (showToast) setLoading(true);
-      const data = await adminService.getDashboardSummary(); 
+      const data = await adminService.getDashboardSummary();
       if (data) {
         setStats(prev => ({
           ...prev,
@@ -206,6 +205,24 @@ const AdminDashboard = () => {
     }
   };
 
+  /**
+   * 🚀 NEW: RESTORE SELLER HANDLER
+   * Quickly re-grants seller rights using existing verification data.
+   */
+  const handleRestoreSeller = async (userId: string) => {
+    try {
+      setTabLoading(true);
+      const msg = await adminService.restoreSellerRights(userId);
+      toast.success(msg);
+      await fetchUsersFiltered(userSearchTerm, userRoleFilter, userStatusFilter);
+      fetchSummary();
+    } catch (err: any) {
+      toast.error(err.message || "Lỗi khôi phục quyền.");
+    } finally {
+      setTabLoading(false);
+    }
+  };
+
   const handleBatchResolveReports = async (ids: string[], action: string) => {
     try {
       setTabLoading(true);
@@ -266,7 +283,7 @@ const AdminDashboard = () => {
   const fetchProducts = async () => {
     try {
       setTabLoading(true);
-      const data = await adminService.getAllProducts(productPage, productPageSize); 
+      const data = await adminService.getAllProducts(productPage, productPageSize);
       const content = data.content || (Array.isArray(data) ? data : []);
       setAllProducts(content);
       const totalElements = data.totalElements || stats.totalProducts || content.length;
@@ -374,8 +391,6 @@ const AdminDashboard = () => {
     }
   }, [activeTab]);
 
-  // --- ORIGINAL ACTIONS (RESTORED) ---
-
   const handleResolveReport = async (reportId: string, action: 'RESOLVED' | 'DISMISSED') => {
     try {
       await adminService.resolveReport(reportId, action);
@@ -458,6 +473,7 @@ const AdminDashboard = () => {
               onDemote={handleDemoteFromAdmin} 
               onToggleStatus={handleToggleUserStatus}
               onRevokeSeller={handleRevokeSeller}
+              onRestoreSeller={handleRestoreSeller} // 🚀 PASS THE NEW PROP HERE
               currentPage={userPage}
               pageSize={userPageSize}
               totalElements={userTotalElements}
@@ -496,7 +512,6 @@ const AdminDashboard = () => {
             handleResolveReport={handleResolveReport} 
             handleDeleteReport={handleDeleteReport}
             onBatchResolve={handleBatchResolveReports}
-            // 🚀 ADDED PROPS TO ENABLE SLICING LOGIC
             currentPage={reportPage}
             pageSize={reportPageSize}
             onPageChange={setReportPage}
@@ -509,7 +524,6 @@ const AdminDashboard = () => {
           <ReviewTable 
             allReviews={allReviews} 
             handleDeleteReview={handleDeleteReview} 
-            // 🚀 ADDED PROPS TO ENABLE SLICING LOGIC
             currentPage={reviewPage}
             pageSize={reviewPageSize}
             onPageChange={setReviewPage}
@@ -601,6 +615,7 @@ const AdminDashboard = () => {
       </section>
     </div>
   );
+  
 };
 
 export default AdminDashboard;

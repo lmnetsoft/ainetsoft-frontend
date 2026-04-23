@@ -643,6 +643,7 @@
 .user-primary-name { font-weight: 700 !important; color: var(--text-dark) !important; }
 .contact-cell span { color: var(--text-dark) !important; font-weight: 500 !important; }
 .date-cell { color: var(--text-dark) !important; }
+
 /* --- 25. REFINED STATUS PILLS (Colorful, Not Bold) --- */
 
 .status-pill-colorful {
