@@ -118,6 +118,11 @@ export const adminService = {
 
   revokeSellerRights: (userId: string, reason: string) => 
     api.post(`/admin/sellers/revoke/${userId}`, null, { params: { reason } }).then(res => res.data),
+
+  /** * 🚀 NEW: Re-grant seller rights quickly using existing verification data.
+   */
+  restoreSellerRights: (userId: string) => 
+    api.post(`/admin/sellers/restore/${userId}`).then(res => res.data),
     
   /** * 🚀 UPDATED: Added params to support dynamic pagination (page/size) for logs
    */

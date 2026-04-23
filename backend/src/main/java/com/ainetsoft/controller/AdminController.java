@@ -119,6 +119,10 @@ public class AdminController {
         return ResponseEntity.ok(adminService.processSellerApproval(userId, request, getCurrentAdmin()));
     }
 
+    /**
+     * 🛠️ SYNCED: Uses @RequestParam to match the frontend axios call structure.
+     * Receives the 'reason' string passed from the Admin Dashboard prompt.
+     */
     @PostMapping("/sellers/revoke/{userId}")
     public ResponseEntity<?> revokeSellerRights(
             @PathVariable String userId, 
@@ -126,6 +130,11 @@ public class AdminController {
         return ResponseEntity.ok(adminService.revokeSellerStatus(userId, reason, getCurrentAdmin()));
     }
 
+    @PostMapping("/sellers/restore/{userId}")
+    public ResponseEntity<?> restoreSellerRights(@PathVariable String userId) {
+        return ResponseEntity.ok(adminService.restoreSellerStatus(userId, getCurrentAdmin()));
+    }
+    
     // --- PRODUCT & REPORT MODERATION ---
 
     @GetMapping("/products/all")

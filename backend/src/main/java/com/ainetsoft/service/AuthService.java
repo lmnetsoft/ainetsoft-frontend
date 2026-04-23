@@ -127,6 +127,9 @@ public class AuthService {
         return normalizePhone(trimmed);
     }
 
+    /**
+     * 🛠️ SYNCED: Ensures the dynamic reason is always included in the profile data.
+     */
     public UserResponse getUserProfile(String contactInfo) {
         String identifier = normalizeIdentifier(contactInfo);
         User user = userRepository.findByIdentifier(identifier)
@@ -154,7 +157,10 @@ public class AuthService {
                 .addresses(user.getAddresses() != null ? user.getAddresses() : new ArrayList<>())
                 .cart(user.getCart() != null ? user.getCart() : new ArrayList<>())
                 .sellerVerification(user.getSellerVerification())
-                .rejectionReason(user.getRejectionReason())
+                
+                // 🚀 CRITICAL FIX: Ensure the dynamic reason from the database is mapped here
+                .rejectionReason(user.getRejectionReason()) 
+                
                 .hasPendingUpdate(user.isHasPendingUpdate()) 
                 .pendingBankAccount(user.getPendingBankAccount())
                 .emailVerified(user.isEmailVerified()) 
@@ -171,7 +177,6 @@ public class AuthService {
             user.setFullName(request.getFullName().trim());
         }
 
-        // 🛡️ SECURITY FIX: Only check if email is taken. DO NOT save here
         if (request.getEmail() != null && !request.getEmail().isBlank()) {
             boolean isSocialUser = user.getProvider() != null && 
                                    !user.getProvider().toString().equalsIgnoreCase("LOCAL");
@@ -182,7 +187,6 @@ public class AuthService {
                     if (userRepository.existsByEmail(newEmail)) {
                         throw new RuntimeException("Email '" + newEmail + "' đã được sử dụng bởi tài khoản khác!");
                     }
-                    // 🚀 CRITICAL: We skip 'user.setEmail(newEmail)' to force OTP verification via confirmEmailChange
                     log.info("Validated email availability for {}. Awaiting separate confirmation logic.", newEmail);
                 }
             }
@@ -721,6 +725,9 @@ public class AuthService {
         return "Giỏ hàng đã được đồng bộ.";
     }
 
+    /**
+     * 🛠️ SYNCED: Added rejectionReason mapping here for public shop links.
+     */
     public UserResponse getUserProfileBySlug(String slug) {
         User user = userRepository.findByShopProfile_ShopSlug(slug)
                 .orElseThrow(() -> new RuntimeException("Cửa hàng with link '" + slug + "' không tồn tại!"));
@@ -736,6 +743,10 @@ public class AuthService {
                 .identityInfo(user.getIdentityInfo()) 
                 .addresses(user.getAddresses())
                 .sellerVerification(user.getSellerVerification())
+                
+                // 🚀 SYNC FIX: Ensure reason is included in slug lookup
+                .rejectionReason(user.getRejectionReason()) 
+                
                 .emailVerified(user.isEmailVerified())
                 .build();
     }    
@@ -744,10 +755,6 @@ public class AuthService {
     // 🚀 NEW: SECURE EMAIL CHANGE LOGIC
     // ==========================================================================
 
-    /**
-     * 1. Sends an OTP to the NEW email address for verification.
-     * Prevents duplicate email registration.
-     */
     @Transactional
     public String initiateEmailChange(String currentContact, String newEmail) {
         String identifier = normalizeIdentifier(currentContact);
@@ -780,9 +787,6 @@ public class AuthService {
         return "Mã xác thực đã được gửi đến " + normalizedNewEmail;
     }
 
-    /**
-     * 2. Verifies OTP and finally updates the user's email.
-     */
     @Transactional
     public String confirmEmailChange(String currentContact, String newEmail, String otp) {
         String identifier = normalizeIdentifier(currentContact);
@@ -795,7 +799,7 @@ public class AuthService {
                 .orElseThrow(() -> new RuntimeException("Lỗi hệ thống!"));
         
         user.setEmail(normalizedNewEmail);
-        user.setEmailVerified(true); // User confirmed the inbox is theirs
+        user.setEmailVerified(true); 
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
 
