@@ -718,24 +718,45 @@ public boolean verifyOtp(String phone, String code) {
         return "Mật khẩu đã được thay đổi thành công!";
     }
 
-    public String processForgotPassword(String contactInfo) {
-        String identifier = normalizeIdentifier(contactInfo);
-        userRepository.findByIdentifier(identifier)
-                .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
-        
-        String otp = String.format("%06d", new Random().nextInt(999999));
-        tokenRepository.deleteByContactInfo(identifier);
-        
-        PasswordResetToken token = PasswordResetToken.builder()
-            .contactInfo(identifier)
-            .otpCode(otp)
-            .expiryDate(LocalDateTime.now().plusMinutes(10))
-            .build();
-        tokenRepository.save(token);
+public String processForgotPassword(String contactInfo) {
+    // 1. Normalize the identifier (e.g., +84... -> 0... or email -> lowerCase)
+    String identifier = normalizeIdentifier(contactInfo);
+    
+    // 2. Ensure the user actually exists
+    User user = userRepository.findByIdentifier(identifier)
+            .orElseThrow(() -> new RuntimeException("Tài khoản '" + contactInfo + "' không tồn tại!"));
+    
+    // 3. Generate a 6-digit OTP
+    String otp = String.format("%06d", new Random().nextInt(999999));
+    
+    // 4. Clear old reset tokens and save the new one
+    tokenRepository.deleteByContactInfo(identifier);
+    PasswordResetToken token = PasswordResetToken.builder()
+        .contactInfo(identifier)
+        .otpCode(otp)
+        .expiryDate(LocalDateTime.now().plusMinutes(10))
+        .build();
+    tokenRepository.save(token);
 
+    // 🚀 5. BRANCHING LOGIC: Determine how to deliver the OTP
+    if (identifier.contains("@")) {
+        // Send via Azure Email Service
         azureService.sendResetEmail(identifier, otp);
         return "Mã OTP đã được gửi đến email của bạn.";
+    } else {
+        // Send via Infobip SMS Service
+        // Convert local 0... to international 84... for Infobip
+        String internationalPhone = identifier.startsWith("0") 
+            ? "84" + identifier.substring(1) 
+            : identifier;
+            
+        String message = "Ma xac minh AiNetsoft de khoi phuc mat khau cua ban la: " + otp;
+        infobipService.sendSms(internationalPhone, message);
+        
+        log.info("🚀 Reset OTP [{}] sent via SMS to {}", otp, internationalPhone);
+        return "Mã OTP đã được gửi đến số điện thoại của bạn.";
     }
+}
     
     public Map<String, Object> toggleFavorite(String productId, String userEmail) {
         User user = userRepository.findByEmail(userEmail)
