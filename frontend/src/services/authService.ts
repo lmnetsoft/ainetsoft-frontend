@@ -64,7 +64,6 @@ export const getUserProfile = async (): Promise<any> => {
 
 /**
  * 🛡️ NEW: Confirm Email Verification Token
- * This calls the backend GET endpoint to activate the user's account.
  */
 export const confirmEmailToken = async (token: string): Promise<string> => {
   try {
@@ -324,8 +323,6 @@ export const getAuditLogs = async (): Promise<any> => {
   } catch (error: any) {
     throw new Error(extractError(error, "Không thể tải lịch sử hoạt động."));
   }
-
-  
 };
 
 export const initiateEmailChange = async (currentContact: string, newEmail: string): Promise<string> => {
@@ -347,4 +344,16 @@ export const confirmEmailChange = async (currentContact: string, newEmail: strin
   } catch (error: any) {
     throw new Error(extractError(error, "Xác thực mã OTP thất bại."));
   }
+};
+
+// 🛡️ Standardized key to "phone" for Infobip integration
+export const sendOtp = async (phone: string) => {
+  const response = await api.post('/auth/send-otp', { phone });
+  return response.data;
+};
+
+// 🛡️ Standardized key to "phone" for Infobip integration
+export const verifyOtp = async (phone: string, code: string) => {
+  const response = await api.post('/auth/verify-otp', { phone, code });
+  return response.data;
 };

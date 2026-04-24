@@ -205,3 +205,101 @@
   color: #334155;
   font-size: 14px;
 }
+
+/* --- 🚀 SYNC: Rename to match Register.tsx --- */
+.auth-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 160px);
+  background-color: #f8fafc;
+  padding: 40px 20px;
+}
+
+.auth-card {
+  background: #ffffff;
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.05);
+  width: 100%;
+  max-width: 460px;
+}
+
+/* --- 🛡️ OTP VERIFICATION SPECIFIC --- */
+.otp-view {
+  text-align: center;
+}
+
+.otp-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.back-btn-minimal {
+  position: absolute;
+  left: 0;
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+}
+
+.otp-subtitle {
+  color: #64748b;
+  font-size: 14px;
+  margin-bottom: 30px;
+  line-height: 1.5;
+}
+
+.otp-input-group {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 30px;
+}
+
+.otp-input-group input {
+  width: 45px;
+  height: 55px;
+  text-align: center;
+  font-size: 24px;
+  font-weight: 700;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  color: #002147;
+  transition: all 0.2s;
+}
+
+.otp-input-group input:focus {
+  border-color: #5b67f1;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(91, 103, 241, 0.1);
+}
+
+.otp-timer-text {
+  font-size: 14px;
+  color: #64748b;
+  margin-bottom: 25px;
+}
+
+.resend-link {
+  color: #5b67f1;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* 🚀 MATCH: The "Coral" button used in OtpVerification.tsx */
+.coral-btn {
+  background-color: #ff7f50 !important; /* Coral Color */
+}
+
+.coral-btn:hover {
+  background-color: #ff6347 !important; /* Slightly darker coral */
+}

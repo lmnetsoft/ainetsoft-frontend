@@ -65,6 +65,8 @@ public class SecurityConfig {
                     "/api/auth/login", 
                     "/api/auth/register", 
                     "/api/auth/verify-email", // 🚀 FIXED: Make verification link public to solve 401/403 errors
+                    "/api/auth/send-otp",   // 🚀 ADDED: Allow sending OTP without login
+                    "/api/auth/verify-otp", // 🚀 ADDED: Allow verifying OTP without login
                     "/api/auth/forgot-password", 
                     "/api/auth/reset-password",
                     "/oauth2/**",
