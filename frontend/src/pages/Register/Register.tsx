@@ -4,14 +4,15 @@ import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css'; 
 import '../Auth/Auth.css'; 
 import './Register.css'; 
-import { registerUser } from '../../services/authService';
+import { registerUser, sendOtp } from '../../services/authService'; 
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import OtpVerification from './OtpVerification'; 
 
 const Register = () => {
   const navigate = useNavigate();
+  const [step, setStep] = useState<'form' | 'otp'>('form');
   const [captcha, setCaptcha] = useState({ num1: 0, num2: 0, userAnswer: '' });
   const [inputMode, setInputMode] = useState<'phone' | 'email'>('phone');
-
   const [formData, setFormData] = useState({
     username: '', 
     email: '',
@@ -19,16 +20,12 @@ const Register = () => {
     password: '',
     confirmPassword: ''
   });
-
   const [formError, setFormError] = useState('');
   const [loading, setLoading] = useState(false);
-
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  useEffect(() => {
-    generateCaptcha();
-  }, []);
+  useEffect(() => { generateCaptcha(); }, []);
 
   const generateCaptcha = () => {
     setCaptcha({
@@ -42,25 +39,14 @@ const Register = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  /**
-   * UPDATED: Global-Friendly Phone Validation
-   * Matches the "Smart Gatekeeper" logic in the backend.
-   */
   const validatePhone = (phone: string) => {
     if (!phone) return false;
-    
-    // 1. Strip all non-digits
     const digitsOnly = phone.replace(/\D/g, '');
-    
-    // 2. Identify region
     if (digitsOnly.startsWith('0') || digitsOnly.startsWith('84')) {
-        // Normalizing for VN carrier check
         const normalized = digitsOnly.startsWith('84') ? '0' + digitsOnly.slice(2) : digitsOnly;
         const vnRegex = /^(03[2-9]|086|09[6-8]|070|07[6-9]|089|090|093|08[1-5]|088|091|094|052|05[68]|092|059|099)\d{7}$/;
         return vnRegex.test(normalized) && normalized.length === 10;
     }
-
-    // 3. Global Fallback: 7-15 digits for international users
     return digitsOnly.length >= 7 && digitsOnly.length <= 15;
   };
 
@@ -72,51 +58,72 @@ const Register = () => {
       setFormError("Mật khẩu phải có ít nhất 8 ký tự!");
       return;
     }
-
-    const hasLetter = /[a-zA-Z]/.test(formData.password);
-    if (!hasLetter) {
+    if (!/[a-zA-Z]/.test(formData.password)) {
       setFormError("Mật khẩu phải chứa ít nhất một chữ cái!");
       return;
     }
-
     if (formData.password !== formData.confirmPassword) {
       setFormError("Mật khẩu xác nhận không khớp!");
       return;
     }
-
-    if (inputMode === 'phone') {
-        if (!formData.phone || !validatePhone(formData.phone)) {
-            setFormError("Số điện thoại không hợp lệ hoặc nhà mạng không được hỗ trợ!");
-            return;
-        }
-    }
-
     if (parseInt(captcha.userAnswer) !== (captcha.num1 + captcha.num2)) {
       setFormError("Kết quả phép tính xác thực không chính xác!");
       generateCaptcha();
       return;
     }
 
-    setLoading(true);
+    if (inputMode === 'phone') {
+        if (!formData.phone || !validatePhone(formData.phone)) {
+            setFormError("Số điện thoại không hợp lệ!");
+            return;
+        }
+        
+        setLoading(true);
+        try {
+            await sendOtp(formData.phone); 
+            setStep('otp');
+        } catch (err: any) {
+            setFormError(err.message || "Không thể gửi mã xác nhận. Vui lòng thử lại.");
+        } finally {
+            setLoading(false);
+        }
+    } else {
+        handleFinalRegistration();
+    }
+  };
 
+  const handleFinalRegistration = async (otpCode?: string) => {
+    setLoading(true);
     try {
       const payload = {
         fullName: formData.username,
         email: inputMode === 'email' ? formData.email : '',
         phone: inputMode === 'phone' ? formData.phone : '',
-        password: formData.password
+        password: formData.password,
+        otpCode: otpCode 
       };
 
       const result = await registerUser(payload);
       navigate('/login', { state: { successMessage: result } });
-      
     } catch (err: any) {
       setFormError(err.message);
+      setStep('form'); 
       generateCaptcha(); 
     } finally {
       setLoading(false);
     }
   };
+
+  if (step === 'otp') {
+    return (
+      <OtpVerification 
+        phoneNumber={formData.phone}
+        onVerify={(code) => handleFinalRegistration(code)} 
+        onBack={() => setStep('form')}
+        onResend={() => sendOtp(formData.phone)}
+      />
+    );
+  }
 
   return (
     <div className="auth-page">
@@ -195,11 +202,7 @@ const Register = () => {
                 onChange={handleInputChange} 
                 required 
               />
-              <button 
-                type="button" 
-                className="toggle-password-btn"
-                onClick={() => setShowPassword(!showPassword)}
-              >
+              <button type="button" className="toggle-password-btn" onClick={() => setShowPassword(!showPassword)}>
                 {showPassword ? <FaEyeSlash /> : <FaEye />}
               </button>
             </div>
@@ -216,11 +219,7 @@ const Register = () => {
                 onChange={handleInputChange} 
                 required 
               />
-              <button 
-                type="button" 
-                className="toggle-password-btn"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              >
+              <button type="button" className="toggle-password-btn" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
                 {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
               </button>
             </div>
@@ -240,7 +239,7 @@ const Register = () => {
           </div>
 
           <button type="submit" className="auth-submit-btn" disabled={loading}>
-            {loading ? 'Đang xử lý...' : 'Tạo tài khoản'}
+            {loading ? 'Đang xử lý...' : (inputMode === 'phone' ? 'Tiếp theo' : 'Tạo tài khoản')}
           </button>
         </form>
         

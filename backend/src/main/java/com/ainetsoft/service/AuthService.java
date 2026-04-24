@@ -6,10 +6,12 @@ import com.ainetsoft.dto.*;
 import com.ainetsoft.model.User;
 import com.ainetsoft.model.CartItem;
 import com.ainetsoft.model.BankAccount;
+import com.ainetsoft.model.OtpToken; // NEW IMPORT
 import com.ainetsoft.model.PasswordResetToken;
 import com.ainetsoft.repository.UserRepository;
 import com.ainetsoft.repository.PasswordResetTokenRepository;
 import com.ainetsoft.repository.BankAccountRepository;
+import com.ainetsoft.repository.OtpTokenRepository; // NEW IMPORT
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,7 +19,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-
+import com.ainetsoft.service.InfobipService;
+import com.ainetsoft.repository.OtpTokenRepository;
+import com.ainetsoft.model.OtpToken;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -43,6 +47,10 @@ public class AuthService {
     private final AzureOCRService ocrService;
     private final BankAccountRepository bankAccountRepository;
     private final EncryptionService encryptionService;
+    
+    // 🚀 NEW DEPENDENCIES (Appended to support OTP flow)
+    private final InfobipService infobipService; 
+    private final OtpTokenRepository otpTokenRepository;
     
     private final String UPLOAD_DIR = "uploads/cccd/";
     private final String LICENSE_DIR = "uploads/license/";
@@ -127,9 +135,6 @@ public class AuthService {
         return normalizePhone(trimmed);
     }
 
-    /**
-     * 🛠️ SYNCED: Ensures the dynamic reason is always included in the profile data.
-     */
     public UserResponse getUserProfile(String contactInfo) {
         String identifier = normalizeIdentifier(contactInfo);
         User user = userRepository.findByIdentifier(identifier)
@@ -157,10 +162,7 @@ public class AuthService {
                 .addresses(user.getAddresses() != null ? user.getAddresses() : new ArrayList<>())
                 .cart(user.getCart() != null ? user.getCart() : new ArrayList<>())
                 .sellerVerification(user.getSellerVerification())
-                
-                // 🚀 CRITICAL FIX: Ensure the dynamic reason from the database is mapped here
                 .rejectionReason(user.getRejectionReason()) 
-                
                 .hasPendingUpdate(user.isHasPendingUpdate()) 
                 .pendingBankAccount(user.getPendingBankAccount())
                 .emailVerified(user.isEmailVerified()) 
@@ -223,6 +225,17 @@ public class AuthService {
         if (email != null && userRepository.existsByEmail(email)) throw new RuntimeException("Email đã tồn tại!");
         if (phone != null && userRepository.existsByPhone(phone)) throw new RuntimeException("SĐT đã tồn tại!");
 
+        // 🚀 THE GATEKEEPER: Ensure OTP is verified for phone registrations
+        if (phone != null) {
+            if (request.getOtpCode() == null || request.getOtpCode().isBlank()) {
+                throw new RuntimeException("Mã xác nhận là bắt buộc để đăng ký bằng số điện thoại!");
+            }
+            if (!verifyOtp(phone, request.getOtpCode())) {
+                throw new RuntimeException("Mã xác nhận không chính xác hoặc đã hết hạn!");
+            }
+            otpTokenRepository.deleteByPhoneNumber(phone); // Burn token after success
+        }
+
         String verificationToken = (email != null) ? UUID.randomUUID().toString() : null;
 
         User user = User.builder()
@@ -255,6 +268,52 @@ public class AuthService {
         return "Đăng ký thành công!";
     }
 
+    // --- OTP LOGIC (NEW METHODS) ---
+// src/main/java/com/ainetsoft/service/AuthService.java
+
+@Transactional
+public void generateAndSendOtp(String phone) {
+    String normalizedPhone = normalizePhone(phone);
+    // Generate code
+    String code = String.format("%06d", new Random().nextInt(999999));
+    
+    // 🛡️ Log the generated code so you can see it in your terminal
+    log.info("🚀 GENERATED OTP: [{}] for phone: {}", code, normalizedPhone);
+    
+    otpTokenRepository.deleteByPhoneNumber(normalizedPhone);
+    
+    OtpToken token = new OtpToken();
+    token.setPhoneNumber(normalizedPhone);
+    token.setCode(code);
+    // Set 5 minutes from now
+    token.setExpiryDate(LocalDateTime.now().plusMinutes(5));
+    token.setExpireAt(LocalDateTime.now().plusMinutes(5)); 
+    otpTokenRepository.save(token);
+
+    String internationalPhone = normalizedPhone.startsWith("0") ? "84" + normalizedPhone.substring(1) : normalizedPhone;
+    infobipService.sendSms(internationalPhone, "Ma xac minh AiNetsoft cua ban la: " + code);
+}
+
+public boolean verifyOtp(String phone, String code) {
+    String normalizedPhone = normalizePhone(phone);
+    
+    // 🛡️ Added robust logging for troubleshooting
+    Optional<OtpToken> tokenOpt = otpTokenRepository.findTopByPhoneNumberOrderByExpiryDateDesc(normalizedPhone);
+    
+    if (tokenOpt.isEmpty()) {
+        log.warn("❌ OTP Verification Failed: No token found in DB for {}", normalizedPhone);
+        return false;
+    }
+
+    OtpToken token = tokenOpt.get();
+    // 🛡️ Use .trim() to ensure no spaces cause a mismatch
+    boolean matches = token.getCode().trim().equals(code.trim());
+    
+    log.info("🔍 OTP Verification for {}: Input=[{}] vs Saved=[{}] -> Match={}", 
+             normalizedPhone, code, token.getCode(), matches);
+             
+    return matches;
+}
     @Transactional
     public String confirmEmail(String token) {
         User user = userRepository.findByVerificationToken(token)
@@ -659,24 +718,45 @@ public class AuthService {
         return "Mật khẩu đã được thay đổi thành công!";
     }
 
-    public String processForgotPassword(String contactInfo) {
-        String identifier = normalizeIdentifier(contactInfo);
-        userRepository.findByIdentifier(identifier)
-                .orElseThrow(() -> new RuntimeException("Tài khoản không tồn tại!"));
-        
-        String otp = String.format("%06d", new Random().nextInt(999999));
-        tokenRepository.deleteByContactInfo(identifier);
-        
-        PasswordResetToken token = PasswordResetToken.builder()
-            .contactInfo(identifier)
-            .otpCode(otp)
-            .expiryDate(LocalDateTime.now().plusMinutes(10))
-            .build();
-        tokenRepository.save(token);
+public String processForgotPassword(String contactInfo) {
+    // 1. Normalize the identifier (e.g., +84... -> 0... or email -> lowerCase)
+    String identifier = normalizeIdentifier(contactInfo);
+    
+    // 2. Ensure the user actually exists
+    User user = userRepository.findByIdentifier(identifier)
+            .orElseThrow(() -> new RuntimeException("Tài khoản '" + contactInfo + "' không tồn tại!"));
+    
+    // 3. Generate a 6-digit OTP
+    String otp = String.format("%06d", new Random().nextInt(999999));
+    
+    // 4. Clear old reset tokens and save the new one
+    tokenRepository.deleteByContactInfo(identifier);
+    PasswordResetToken token = PasswordResetToken.builder()
+        .contactInfo(identifier)
+        .otpCode(otp)
+        .expiryDate(LocalDateTime.now().plusMinutes(10))
+        .build();
+    tokenRepository.save(token);
 
+    // 🚀 5. BRANCHING LOGIC: Determine how to deliver the OTP
+    if (identifier.contains("@")) {
+        // Send via Azure Email Service
         azureService.sendResetEmail(identifier, otp);
         return "Mã OTP đã được gửi đến email của bạn.";
+    } else {
+        // Send via Infobip SMS Service
+        // Convert local 0... to international 84... for Infobip
+        String internationalPhone = identifier.startsWith("0") 
+            ? "84" + identifier.substring(1) 
+            : identifier;
+            
+        String message = "Ma xac minh AiNetsoft de khoi phuc mat khau cua ban la: " + otp;
+        infobipService.sendSms(internationalPhone, message);
+        
+        log.info("🚀 Reset OTP [{}] sent via SMS to {}", otp, internationalPhone);
+        return "Mã OTP đã được gửi đến số điện thoại của bạn.";
     }
+}
     
     public Map<String, Object> toggleFavorite(String productId, String userEmail) {
         User user = userRepository.findByEmail(userEmail)
@@ -725,9 +805,6 @@ public class AuthService {
         return "Giỏ hàng đã được đồng bộ.";
     }
 
-    /**
-     * 🛠️ SYNCED: Added rejectionReason mapping here for public shop links.
-     */
     public UserResponse getUserProfileBySlug(String slug) {
         User user = userRepository.findByShopProfile_ShopSlug(slug)
                 .orElseThrow(() -> new RuntimeException("Cửa hàng with link '" + slug + "' không tồn tại!"));
@@ -743,17 +820,10 @@ public class AuthService {
                 .identityInfo(user.getIdentityInfo()) 
                 .addresses(user.getAddresses())
                 .sellerVerification(user.getSellerVerification())
-                
-                // 🚀 SYNC FIX: Ensure reason is included in slug lookup
                 .rejectionReason(user.getRejectionReason()) 
-                
                 .emailVerified(user.isEmailVerified())
                 .build();
     }    
-
-    // ==========================================================================
-    // 🚀 NEW: SECURE EMAIL CHANGE LOGIC
-    // ==========================================================================
 
     @Transactional
     public String initiateEmailChange(String currentContact, String newEmail) {

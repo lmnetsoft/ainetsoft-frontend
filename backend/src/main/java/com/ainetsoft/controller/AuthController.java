@@ -8,6 +8,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -245,4 +247,28 @@ public class AuthController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }    
+
+   @PostMapping("/send-otp")
+    public ResponseEntity<?> sendOtp(@RequestBody Map<String, String> request) {
+        // 🚀 Standardized to "phone"
+        String phone = request.get("phone");
+        if (phone == null || phone.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Số điện thoại là bắt buộc"));
+        }
+        authService.generateAndSendOtp(phone); 
+        return ResponseEntity.ok(Map.of("message", "Mã xác minh đã được gửi!"));
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<?> verifyOtp(@RequestBody Map<String, String> request) {
+        // 🚀 CHANGED FROM "phoneNumber" TO "phone" TO MATCH
+        String phone = request.get("phone");
+        String code = request.get("code");
+        
+        boolean isValid = authService.verifyOtp(phone, code);
+        if (isValid) {
+            return ResponseEntity.ok(Map.of("success", true));
+        }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", "Mã xác nhận không chính xác hoặc đã hết hạn"));
+    }
 }
