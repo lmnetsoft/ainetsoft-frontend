@@ -116,7 +116,7 @@ public class AzureCommunicationService {
     }
 
     /**
-     * 6. 🛡️ Security Alert Email (NEW)
+     * 6. 🛡️ Security Alert Email
      * Alerts user about account linking or security changes.
      */
     public void sendSecurityAlertEmail(String targetEmail, String alertType, String alertDetails) {
@@ -136,6 +136,22 @@ public class AzureCommunicationService {
                       "</div>" +
                       "</body></html>";
 
+        sendEmail(targetEmail, subject, body);
+    }
+
+    /**
+     * 7. 📧 OTP Logic for Email Change (NEW)
+     */
+    public void sendEmailChangeVerification(String targetEmail, String otpCode) {
+        String subject = "[AiNetSoft] Xác thực địa chỉ Email mới";
+        String body = "<html><body style='font-family: Arial, sans-serif;'>" +
+                      "<h3>Chào bạn,</h3>" +
+                      "<p>Chúng tôi nhận được yêu cầu cập nhật địa chỉ Email mới cho tài khoản của bạn.</p>" +
+                      "<p>Mã OTP xác thực của bạn là: <span style='font-size: 20px; font-weight: bold; color: #1890ff;'>" + otpCode + "</span></p>" +
+                      "<p>Mã này có hiệu lực trong 15 phút.</p>" +
+                      "<p>Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email này hoặc liên hệ ngay với bộ phận hỗ trợ.</p>" +
+                      "<br><p>Trân trọng,<br>Đội ngũ AiNetsoft</p>" +
+                      "</body></html>";
         sendEmail(targetEmail, subject, body);
     }
 

@@ -6,7 +6,7 @@ import '../Auth/Auth.css';
 import './Register.css'; 
 import { registerUser, sendOtp } from '../../services/authService'; 
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
-import OtpVerification from './OtpVerification'; 
+import OtpVerification from '../../components/OtpVerification/OtpVerification'; 
 
 const Register = () => {
   const navigate = useNavigate();

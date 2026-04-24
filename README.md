@@ -31,6 +31,8 @@ db.users.deleteOne({ _id: ObjectId('699eefca676938d56c196e75') });
 // Remove the record that has an empty email string
 db.users.deleteOne({ email: "" });
 
+db.users.deleteOne({ "phone": "0981179077" });
+ 
 db.users.find()
 
 show collections

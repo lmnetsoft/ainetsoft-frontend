@@ -2,8 +2,11 @@ import React, { useState, useEffect } from 'react';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css'; 
 import ToastNotification from '../../components/Toast/ToastNotification';
-import { getUserProfile, updateProfile } from '../../services/authService';
+// 🚀 ADDED sendOtp to imports
+import { getUserProfile, updateProfile, sendOtp } from '../../services/authService';
 import './Profile.css'; 
+// 🚀 ADDED OtpVerification import
+import OtpVerification from '../../components/OtpVerification/OtpVerification';
 
 const Address = () => {
   const [addressData, setAddressData] = useState({
@@ -14,10 +17,17 @@ const Address = () => {
     detail: ''
   });
 
+  // 🚀 NEW: Track original phone to detect changes
+  const [originalPhone, setOriginalPhone] = useState('84');
+
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+
+  // 🚀 NEW: Track OTP Context
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
 
   useEffect(() => {
     const fetchAddressInfo = async () => {
@@ -53,6 +63,10 @@ const Address = () => {
             phone: normalizedPhone
           }));
         }
+        
+        // 🚀 Set the baseline to detect changes
+        setOriginalPhone(normalizedPhone);
+        
       } catch (error: any) {
         console.error("Lỗi tải địa chỉ:", error);
       } finally {
@@ -82,24 +96,60 @@ const Address = () => {
       return;
     }
 
+    // 🚀 NEW: Detect if phone number changed
+    const phoneChanged = addressData.phone !== originalPhone;
+
     try {
       setIsSaving(true);
-      const finalPhone = addressData.phone.startsWith('+') ? addressData.phone : `+${addressData.phone}`;
 
-      const payload = {
-        fullName: addressData.receiverName,
-        phone: finalPhone,
-        addresses: [{ ...addressData, phone: finalPhone, isDefault: true }]
-      };
-      
-      const result = await updateProfile(payload);
-      setToastMessage(result || "Cập nhật địa chỉ thành công!");
-      setShowToast(true);
+      // 🚀 NEW: Trigger OTP if phone changed
+      if (phoneChanged) {
+        await sendOtp(addressData.phone);
+        setShowOtpModal(true);
+        setToastMessage("Mã xác minh đã được gửi đến số điện thoại mới.");
+        setShowToast(true);
+        setIsSaving(false);
+        return; // Pause save process to wait for OTP
+      }
+
+      // If no phone change, proceed normally
+      await performFinalUpdate();
     } catch (error: any) {
       setToastMessage(error.message || "Cập nhật địa chỉ thất bại.");
       setShowToast(true);
-    } finally {
       setIsSaving(false);
+    }
+  };
+
+  // 🚀 NEW: Extracted the final update logic to support the OTP flow
+  const performFinalUpdate = async (otpCode?: string) => {
+    const finalPhone = addressData.phone.startsWith('+') ? addressData.phone : `+${addressData.phone}`;
+
+    const payload = {
+      fullName: addressData.receiverName,
+      phone: finalPhone,
+      otpCode: otpCode, // Gatekeeper token passed if applicable
+      addresses: [{ ...addressData, phone: finalPhone, isDefault: true }]
+    };
+    
+    const result = await updateProfile(payload);
+    setToastMessage(result || "Cập nhật địa chỉ thành công!");
+    setShowToast(true);
+    setOriginalPhone(addressData.phone); // Update baseline on success
+    setIsSaving(false);
+  };
+
+  // 🚀 NEW: OTP verification handler
+  const handleVerifyOtp = async (code: string) => {
+    try {
+      setIsVerifyingOtp(true);
+      await performFinalUpdate(code);
+      setShowOtpModal(false);
+    } catch (error: any) {
+      setToastMessage(error.message || "Mã xác thực không chính xác.");
+      setShowToast(true);
+    } finally {
+      setIsVerifyingOtp(false);
     }
   };
 
@@ -112,6 +162,20 @@ const Address = () => {
         <>
           <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
           
+          {/* 🚀 ADDED OTP MODAL */}
+          {showOtpModal && (
+            <div className="admin-modal-overlay">
+              <div className="seller-review-modal" style={{ maxWidth: '480px', height: 'auto', padding: '10px' }}>
+                 <OtpVerification 
+                   phoneNumber={addressData.phone}
+                   onBack={() => setShowOtpModal(false)}
+                   onVerify={handleVerifyOtp}
+                   onResend={() => sendOtp(addressData.phone)}
+                 />
+              </div>
+            </div>
+          )}
+
           <div className="profile-content-header centered-header">
             <h1>ĐỊA CHỈ CỦA TÔI</h1>
             <p>Vietnam là mặc định, đồng bộ với hồ sơ cá nhân</p>
