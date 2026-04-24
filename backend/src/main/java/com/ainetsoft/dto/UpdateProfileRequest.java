@@ -17,13 +17,13 @@ public class UpdateProfileRequest {
     @Pattern(regexp = "^[0-9+()\\- ]*$", message = "Số điện thoại chỉ được chứa chữ số và các ký hiệu +, -, ()")
     private String phone;
     
+    // 🚀 NEW: Carry the OTP code for verification
+    private String otpCode; 
+
     private String gender;
     private LocalDate birthDate;
     private String avatarUrl;
 
-    // --- Support for Shop Settings Updates ---
     private User.ShopProfile shopProfile;
-
     private List<User.AddressInfo> addresses;
-    // Bank accounts removed to enforce separation of sensitive data
 }

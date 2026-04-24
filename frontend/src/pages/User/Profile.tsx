@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css'; 
 import ToastNotification from '../../components/Toast/ToastNotification'; 
-import { getUserProfile, updateProfile, logoutUser, initiateEmailChange, confirmEmailChange } from '../../services/authService';
+import { getUserProfile, updateProfile, logoutUser, initiateEmailChange, confirmEmailChange, sendOtp } from '../../services/authService';
 import { FaGoogle, FaFacebook, FaExclamationTriangle, FaClock, FaTimes } from 'react-icons/fa';
 import logoImg from '../../assets/images/logo.png';
 import './Profile.css';
+import OtpVerification from '../../components/OtpVerification/OtpVerification';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -16,13 +17,12 @@ const Profile = () => {
   const maxBirthDate = new Date(today.getFullYear() - 16, today.getMonth(), today.getDate())
     .toISOString().split('T')[0];
 
-  /** 🛡️ CONSISTENT NORMALIZATION: Unifies phone format across the entire app */
   const normalizeForDisplay = (phoneStr: string) => {
     if (!phoneStr) return '84';
     const digits = phoneStr.replace(/\D/g, '');
-    if (digits.startsWith('084')) return digits.slice(1); // "084..." -> "84..."
-    if (digits.startsWith('0')) return '84' + digits.slice(1); // "09..." -> "849..."
-    return digits; // "849..." stays "849..."
+    if (digits.startsWith('084')) return digits.slice(1);
+    if (digits.startsWith('0')) return '84' + digits.slice(1);
+    return digits;
   };
 
   const getInitialData = () => {
@@ -49,7 +49,7 @@ const Profile = () => {
   };
 
   const [formData, setFormData] = useState(getInitialData());
-  const [originalData, setOriginalData] = useState(getInitialData()); // 🛡️ Used for button greyout
+  const [originalData, setOriginalData] = useState(getInitialData()); 
   const [originalEmail, setOriginalEmail] = useState(getInitialData().email); 
   const [loading, setLoading] = useState(!localStorage.getItem('user')); 
   const [isSaving, setIsSaving] = useState(false);
@@ -58,7 +58,7 @@ const Profile = () => {
   const [toastMessage, setToastMessage] = useState('');
 
   const [showOtpModal, setShowOtpModal] = useState(false);
-  const [otpValue, setOtpValue] = useState('');
+  const [otpType, setOtpType] = useState<'email' | 'phone' | null>(null);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
 
   const [verificationStatus, setVerificationStatus] = useState({
@@ -67,8 +67,9 @@ const Profile = () => {
   });
 
   const isSocialUser = formData.provider !== 'LOCAL' && formData.provider !== null;
+  const registeredByEmail = originalEmail && (!originalData.phone || originalData.phone === '84' || originalData.phone === '');
+  const emailMandatory = isSocialUser || registeredByEmail;
 
-  /** 🚀 GREYOUT LOGIC: Compares current form against original saved state */
   const hasChanges = JSON.stringify({
     fullName: formData.fullName,
     email: formData.email,
@@ -102,7 +103,7 @@ const Profile = () => {
         };
 
         setFormData(profileData);
-        setOriginalData(profileData); // 🛡️ Sync strictly with API data
+        setOriginalData(profileData); 
         setOriginalEmail(data.email || '');
 
         const roles = data.roles || [];
@@ -161,34 +162,64 @@ const Profile = () => {
       setShowToast(true);
       return;
     }
-    if (!formData.phone || !validatePhone(formData.phone)) {
+    
+    if (!formData.phone || formData.phone === '84') {
+      setToastMessage("Vui lòng nhập số điện thoại.");
+      setShowToast(true);
+      return;
+    }
+    if (!validatePhone(formData.phone)) {
       setToastMessage("Số điện thoại không hợp lệ hoặc nhà mạng không hỗ trợ.");
       setShowToast(true);
       return;
     }
 
+    if (emailMandatory && !formData.email.trim()) {
+      setToastMessage("Vui lòng cung cấp Email để duy trì đăng nhập bảo mật.");
+      setShowToast(true);
+      return;
+    }
+
     const emailChanged = formData.email.trim().toLowerCase() !== originalEmail.trim().toLowerCase();
+    const phoneChanged = formData.phone !== originalData.phone;
+
+    if (emailChanged && phoneChanged) {
+      setToastMessage("Vì lý do bảo mật, bạn chỉ có thể thay đổi Email HOẶC Số điện thoại cùng một lúc. Vui lòng thực hiện từng bước.");
+      setShowToast(true);
+      return;
+    }
 
     try {
       setIsSaving(true);
+
+      if (phoneChanged) {
+        await sendOtp(formData.phone);
+        setOtpType('phone');
+        setShowOtpModal(true);
+        setToastMessage("Mã xác minh đã được gửi đến số điện thoại mới.");
+        setShowToast(true);
+        setIsSaving(false);
+        return;
+      }
+
       if (emailChanged && !isSocialUser) {
-        // 🚀 RESILIENT FIX: Catch Azure SDK Timeouts and show modal anyway if OTP was sent
         try {
           await initiateEmailChange(originalEmail, formData.email);
         } catch (initErr: any) {
-          if (initErr.message?.includes("Timeout") || initErr.message?.includes("Polling")) {
-             console.warn("Email verification initiated but Azure response timed out. Showing modal anyway.");
+          if (initErr.message?.includes("Timeout") || initErr.message?.includes("timeout")) {
+            console.warn("Email verification initiated but Azure response timed out. Proceeding.");
           } else {
-             throw initErr; // Rethrow real errors like 'Email already taken'
+            throw initErr; 
           }
         }
-
+        setOtpType('email');
         setShowOtpModal(true);
-        setToastMessage("Mã xác thực đã được gửi. Vui lòng kiểm tra Email mới.");
+        setToastMessage("Mã xác minh đã được gửi. Vui lòng kiểm tra Email mới.");
         setShowToast(true);
         setIsSaving(false);
         return; 
       }
+
       await performFinalUpdate();
     } catch (error: any) {
       setToastMessage(error.message || "Cập nhật thất bại.");
@@ -197,8 +228,7 @@ const Profile = () => {
     }
   };
 
-  /** 🛡️ SYNC FIX: Ensures both state objects are identical after save to reset button status */
-  const performFinalUpdate = async () => {
+  const performFinalUpdate = async (otpCode?: string) => {
     const finalPhone = formData.phone.startsWith('+') ? formData.phone : `+${formData.phone}`;
     const synchronizedAddresses = (formData.addresses || []).map(addr => ({
       ...addr,
@@ -208,6 +238,7 @@ const Profile = () => {
     const payload = {
       ...formData,
       phone: finalPhone,
+      otpCode: otpCode, 
       addresses: synchronizedAddresses
     };
 
@@ -226,22 +257,26 @@ const Profile = () => {
     };
 
     setFormData(freshProfile);
-    setOriginalData(freshProfile); // 🚀 FIX: Corrects the "Unable to change" bug
+    setOriginalData(freshProfile); 
     setOriginalEmail(freshData.email || '');
 
     window.dispatchEvent(new Event('profileUpdate'));
     setIsSaving(false);
   };
 
-  const handleConfirmOtp = async () => {
-    if (otpValue.length !== 6) { setToastMessage("Vui lòng nhập đủ 6 chữ số OTP."); setShowToast(true); return; }
+  const handleVerifyOtp = async (code: string) => {
     try {
       setIsVerifyingOtp(true);
-      await confirmEmailChange(originalEmail, formData.email, otpValue);
-      setShowOtpModal(false);
-      setToastMessage("Email đã đổi thành công. Vui lòng đăng nhập lại.");
-      setShowToast(true);
-      setTimeout(async () => { await logoutUser(); navigate('/login'); }, 2500);
+      if (otpType === 'email') {
+        await confirmEmailChange(originalEmail, formData.email, code);
+        setShowOtpModal(false);
+        setToastMessage("Email đã đổi thành công. Vui lòng đăng nhập lại.");
+        setShowToast(true);
+        setTimeout(async () => { await logoutUser(); navigate('/login'); }, 2500);
+      } else {
+        await performFinalUpdate(code);
+        setShowOtpModal(false);
+      }
     } catch (error: any) {
       setToastMessage(error.message || "Mã xác thực không chính xác.");
       setShowToast(true);
@@ -255,19 +290,15 @@ const Profile = () => {
       <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
       {loading && <div className="supreme-loading-overlay">Đang tải hồ sơ...</div>}
 
-      {/* 🛡️ OTP MODAL */}
       {showOtpModal && (
         <div className="admin-modal-overlay">
-          <div className="seller-review-modal" style={{ maxWidth: '450px', height: 'auto' }}>
-            <div className="modal-header"><h3>Xác thực Email mới</h3><button className="close-btn" onClick={() => setShowOtpModal(false)}><FaTimes /></button></div>
-            <div style={{ padding: '30px', textAlign: 'center' }}>
-              <p>Mã OTP đã gửi đến: <br/><strong>{formData.email}</strong></p>
-              <input type="text" maxLength={6} value={otpValue} onChange={(e) => setOtpValue(e.target.value.replace(/\D/g, ''))} placeholder="000000" style={{ fontSize: '24px', textAlign: 'center', letterSpacing: '8px', height: '50px', width: '100%', borderRadius: '10px', border: '2px solid #ddd' }} />
-            </div>
-            <div className="modal-footer-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '20px' }}>
-              <button className="btn-reject-modal" onClick={() => setShowOtpModal(false)}>Hủy</button>
-              <button className="btn-approve-modal" onClick={handleConfirmOtp} disabled={isVerifyingOtp}>{isVerifyingOtp ? "Đang xử lý..." : "Xác nhận & Lưu"}</button>
-            </div>
+          <div className="seller-review-modal" style={{ maxWidth: '480px', height: 'auto', padding: '10px' }}>
+             <OtpVerification 
+               phoneNumber={otpType === 'phone' ? formData.phone : formData.email}
+               onBack={() => setShowOtpModal(false)}
+               onVerify={handleVerifyOtp}
+               onResend={() => sendOtp(formData.phone)}
+             />
           </div>
         </div>
       )}
@@ -285,7 +316,6 @@ const Profile = () => {
           <div className="warning-text">
             <strong>Yêu cầu nâng cấp Shop bị từ chối</strong>
             <p><strong>Lý do:</strong> {verificationStatus.rejectionReason}</p>
-            <p className="hint">Vui lòng cập nhật lại thông tin chính xác và gửi lại yêu cầu.</p>
           </div>
         </div>
       )}
@@ -295,7 +325,7 @@ const Profile = () => {
           <FaClock className="banner-icon" />
           <div className="info-text">
             <strong>Hồ sơ đang chờ phê duyệt</strong>
-            <p>Yêu cầu đăng ký Người bán của bạn đã được tiếp nhận. Đội ngũ kiểm duyệt sẽ phản hồi trong vòng 24 giờ làm việc.</p>
+            <p>Yêu cầu đăng ký Người bán của bạn đã được tiếp nhận. Đội ngũ kiểm duyệt sẽ phản hồi sớm nhất.</p>
           </div>
         </div>
       )}
@@ -303,9 +333,15 @@ const Profile = () => {
       <div className="profile-main-grid">
         <form className="profile-data-form" onSubmit={(e) => e.preventDefault()}>
           <div className="supreme-form-row">
-            <label>Email <span className="req">*</span></label>
+            <label>Email {emailMandatory && <span className="req">*</span>}</label>
             <div className="input-group-container">
-              <input type="email" value={formData.email} readOnly={isSocialUser} className={`${isSocialUser ? "input-field input-locked" : "input-field"}`} onChange={(e) => !isSocialUser && setFormData({...formData, email: e.target.value})} />
+              <input 
+                type="email" 
+                value={formData.email} 
+                readOnly={isSocialUser} 
+                className={`${isSocialUser ? "input-field input-locked" : "input-field"}`} 
+                onChange={(e) => !isSocialUser && setFormData({...formData, email: e.target.value})} 
+              />
               {isSocialUser && (
                 <div className={`lock-badge badge-${formData.provider.toLowerCase()}`}>
                   {formData.provider === 'GOOGLE' && <FaGoogle className="provider-icon" />}
@@ -318,13 +354,14 @@ const Profile = () => {
 
           <div className="supreme-form-row">
             <label>Họ và Tên <span className="req">*</span></label>
-            <div className="input-group-container"><input type="text" value={formData.fullName} onChange={(e) => setFormData({...formData, fullName: e.target.value})} placeholder="Nhập họ và tên" /></div>
+            <div className="input-group-container">
+                <input type="text" value={formData.fullName} onChange={(e) => setFormData({...formData, fullName: e.target.value})} />
+            </div>
           </div>
 
           <div className="supreme-form-row">
             <label>Số điện thoại <span className="req">*</span></label>
             <div className="input-group-container">
-              {/* 🛡️ 🚀 RESTORED ALL ORIGINAL PROPS */}
               <PhoneInput
                 country={'vn'} 
                 preferredCountries={['vn']}
@@ -334,7 +371,7 @@ const Profile = () => {
                 searchPlaceholder="Tìm kiếm quốc gia..."
                 searchNotFound="Không tìm thấy kết quả"
                 containerClass="supreme-phone-container"
-                inputStyle={{ width: '100%', height: '45px', paddingLeft: '48px', fontSize: '0.9375rem' }} 
+                inputStyle={{ width: '100%', height: '45px', paddingLeft: '48px', fontSize: '16px' }} 
                 specialLabel={""}
                 forceDialCode={true}
                 countryCodeEditable={false}
@@ -359,17 +396,12 @@ const Profile = () => {
           </div>
 
           <div className="form-actions">
-            {/* 🛡️ GREYOUT: Remains disabled if no changes or currently saving */}
             <button type="button" className="save-btn-supreme" onClick={handleSave} disabled={isSaving || !hasChanges}>
               {isSaving ? "Đang xử lý..." : "Lưu thay đổi"}
             </button>
             
-            {/* 🚀 RESTORED ORIGINAL FLAT CONDITIONAL BLOCKS */}
             {!isSeller && verificationStatus.status !== 'PENDING' && (
               <button type="button" className="become-seller-btn" onClick={() => navigate('/seller/register')}>Trở thành Người bán</button>
-            )}
-            {verificationStatus.status === 'PENDING' && (
-              <button type="button" className="become-seller-btn status-pending" disabled>Đang thẩm định...</button>
             )}
             {isSeller && (
               <button type="button" className="become-seller-btn status-active" onClick={() => navigate('/seller/dashboard')}>Vào Kênh Người Bán</button>
@@ -379,11 +411,10 @@ const Profile = () => {
 
         <div className="profile-avatar-column">
           <div className="avatar-preview-box">
-            <img src={formData.avatarUrl || logoImg} alt="Avatar" onError={(e) => { (e.target as HTMLImageElement).src = logoImg; }} />
+            <img src={formData.avatarUrl || logoImg} alt="Avatar" />
           </div>
           <input type="file" ref={fileInputRef} onChange={handleImageChange} accept=".jpg,.jpeg,.png" style={{ display: 'none' }} />
           <button className="upload-btn-supreme" onClick={() => fileInputRef.current?.click()}>Chọn ảnh</button>
-          <p className="upload-hint">Dung lượng tối đa 1MB<br/>Định dạng: .JPG, .PNG</p>
         </div>
       </div>
     </div>

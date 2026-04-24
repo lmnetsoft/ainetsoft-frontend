@@ -6,12 +6,12 @@ import com.ainetsoft.dto.*;
 import com.ainetsoft.model.User;
 import com.ainetsoft.model.CartItem;
 import com.ainetsoft.model.BankAccount;
-import com.ainetsoft.model.OtpToken; // NEW IMPORT
+import com.ainetsoft.model.OtpToken; 
 import com.ainetsoft.model.PasswordResetToken;
 import com.ainetsoft.repository.UserRepository;
 import com.ainetsoft.repository.PasswordResetTokenRepository;
 import com.ainetsoft.repository.BankAccountRepository;
-import com.ainetsoft.repository.OtpTokenRepository; // NEW IMPORT
+import com.ainetsoft.repository.OtpTokenRepository; 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,9 +19,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import com.ainetsoft.service.InfobipService;
-import com.ainetsoft.repository.OtpTokenRepository;
-import com.ainetsoft.model.OtpToken;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -169,42 +166,71 @@ public class AuthService {
                 .build();
     }
 
-    @Transactional
+  @Transactional
     public String updateProfile(String contactInfo, UpdateProfileRequest request) {
         String identifier = normalizeIdentifier(contactInfo);
         User user = userRepository.findByIdentifier(identifier)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
 
+        String newPhone = normalizePhone(request.getPhone());
+        if (newPhone == null || newPhone.isBlank()) {
+            throw new RuntimeException("Số điện thoại là bắt buộc để cập nhật hồ sơ!");
+        }
+
+        boolean isSocialUser = user.getProvider() != null && 
+                               !user.getProvider().toString().equalsIgnoreCase("LOCAL");
+        boolean registeredByEmail = (user.getEmail() != null && user.getPhone() == null);
+        boolean emailMandatory = isSocialUser || registeredByEmail;
+
+        String newEmail = (request.getEmail() != null) ? request.getEmail().trim().toLowerCase() : null;
+
+        if (emailMandatory && (newEmail == null || newEmail.isBlank())) {
+            throw new RuntimeException("Email là thông tin bắt buộc đối với phương thức đăng nhập của bạn!");
+        }
+
+        // 🚀 NEW SECURITY RULE: Detect if BOTH are trying to change
+        boolean phoneChanged = !newPhone.equals(user.getPhone());
+        boolean emailChanged = newEmail != null && user.getEmail() != null && !newEmail.equals(user.getEmail());
+
+        if (phoneChanged && emailChanged) {
+            throw new RuntimeException("Vì lý do bảo mật, bạn chỉ có thể thay đổi Email HOẶC Số điện thoại cùng một lúc. Vui lòng thực hiện từng bước.");
+        }
+
         if (request.getFullName() != null && !request.getFullName().isBlank()) {
             user.setFullName(request.getFullName().trim());
         }
 
-        if (request.getEmail() != null && !request.getEmail().isBlank()) {
-            boolean isSocialUser = user.getProvider() != null && 
-                                   !user.getProvider().toString().equalsIgnoreCase("LOCAL");
-
-            if (!isSocialUser) {
-                String newEmail = request.getEmail().trim().toLowerCase();
-                if (!newEmail.equals(user.getEmail())) {
-                    if (userRepository.existsByEmail(newEmail)) {
-                        throw new RuntimeException("Email '" + newEmail + "' đã được sử dụng bởi tài khoản khác!");
-                    }
-                    log.info("Validated email availability for {}. Awaiting separate confirmation logic.", newEmail);
-                }
+        // Handle Email Validation (Only runs if emailChanged is true and phoneChanged is false)
+        if (emailChanged) {
+            if (userRepository.existsByEmail(newEmail)) {
+                throw new RuntimeException("Email '" + newEmail + "' đã được sử dụng bởi tài khoản khác!");
             }
+            log.info("Validated email availability for {}. Awaiting separate confirmation logic.", newEmail);
+            // Note: If you are setting the email here immediately without OTP, uncomment the line below. 
+            // If you rely on the confirmEmailChange endpoint to do it later, leave it handled there.
+            // user.setEmail(newEmail);
         }
 
         if (request.getGender() != null) user.setGender(request.getGender());
         if (request.getBirthDate() != null) user.setBirthDate(request.getBirthDate());
         
-        if (request.getPhone() != null && !request.getPhone().isBlank()) {
-            String newPhone = normalizePhone(request.getPhone());
-            if (!newPhone.equals(user.getPhone())) {
-                if (userRepository.existsByPhone(newPhone)) {
-                    throw new RuntimeException("Số điện thoại này đã được sử dụng!");
-                }
-                user.setPhone(newPhone);
+        // Handle Phone Update (Only runs if phoneChanged is true and emailChanged is false)
+        if (phoneChanged) {
+            if (userRepository.existsByPhone(newPhone)) {
+                throw new RuntimeException("Số điện thoại này đã được sử dụng bởi tài khoản khác!");
             }
+
+            if (request.getOtpCode() == null || request.getOtpCode().isBlank()) {
+                throw new RuntimeException("Vui lòng cung cấp mã xác nhận để thay đổi số điện thoại!");
+            }
+
+            if (!verifyOtp(newPhone, request.getOtpCode())) {
+                throw new RuntimeException("Mã xác nhận không chính xác hoặc đã hết hạn!");
+            }
+
+            user.setPhone(newPhone);
+            otpTokenRepository.deleteByPhoneNumber(newPhone);
+            log.info("User {} successfully changed phone number to {}", user.getId(), newPhone);
         }
 
         if (request.getAvatarUrl() != null) user.setAvatarUrl(request.getAvatarUrl());
@@ -269,51 +295,50 @@ public class AuthService {
     }
 
     // --- OTP LOGIC (NEW METHODS) ---
-// src/main/java/com/ainetsoft/service/AuthService.java
+    @Transactional
+    public void generateAndSendOtp(String phone) {
+        String normalizedPhone = normalizePhone(phone);
+        // Generate code
+        String code = String.format("%06d", new Random().nextInt(999999));
+        
+        // 🛡️ Log the generated code so you can see it in your terminal
+        log.info("🚀 GENERATED OTP: [{}] for phone: {}", code, normalizedPhone);
+        
+        otpTokenRepository.deleteByPhoneNumber(normalizedPhone);
+        
+        OtpToken token = new OtpToken();
+        token.setPhoneNumber(normalizedPhone);
+        token.setCode(code);
+        // Set 5 minutes from now
+        token.setExpiryDate(LocalDateTime.now().plusMinutes(5));
+        token.setExpireAt(LocalDateTime.now().plusMinutes(5)); 
+        otpTokenRepository.save(token);
 
-@Transactional
-public void generateAndSendOtp(String phone) {
-    String normalizedPhone = normalizePhone(phone);
-    // Generate code
-    String code = String.format("%06d", new Random().nextInt(999999));
-    
-    // 🛡️ Log the generated code so you can see it in your terminal
-    log.info("🚀 GENERATED OTP: [{}] for phone: {}", code, normalizedPhone);
-    
-    otpTokenRepository.deleteByPhoneNumber(normalizedPhone);
-    
-    OtpToken token = new OtpToken();
-    token.setPhoneNumber(normalizedPhone);
-    token.setCode(code);
-    // Set 5 minutes from now
-    token.setExpiryDate(LocalDateTime.now().plusMinutes(5));
-    token.setExpireAt(LocalDateTime.now().plusMinutes(5)); 
-    otpTokenRepository.save(token);
-
-    String internationalPhone = normalizedPhone.startsWith("0") ? "84" + normalizedPhone.substring(1) : normalizedPhone;
-    infobipService.sendSms(internationalPhone, "Ma xac minh AiNetsoft cua ban la: " + code);
-}
-
-public boolean verifyOtp(String phone, String code) {
-    String normalizedPhone = normalizePhone(phone);
-    
-    // 🛡️ Added robust logging for troubleshooting
-    Optional<OtpToken> tokenOpt = otpTokenRepository.findTopByPhoneNumberOrderByExpiryDateDesc(normalizedPhone);
-    
-    if (tokenOpt.isEmpty()) {
-        log.warn("❌ OTP Verification Failed: No token found in DB for {}", normalizedPhone);
-        return false;
+        String internationalPhone = normalizedPhone.startsWith("0") ? "84" + normalizedPhone.substring(1) : normalizedPhone;
+        infobipService.sendSms(internationalPhone, "Ma xac minh AiNetsoft cua ban la: " + code);
     }
 
-    OtpToken token = tokenOpt.get();
-    // 🛡️ Use .trim() to ensure no spaces cause a mismatch
-    boolean matches = token.getCode().trim().equals(code.trim());
-    
-    log.info("🔍 OTP Verification for {}: Input=[{}] vs Saved=[{}] -> Match={}", 
-             normalizedPhone, code, token.getCode(), matches);
-             
-    return matches;
-}
+    public boolean verifyOtp(String phone, String code) {
+        String normalizedPhone = normalizePhone(phone);
+        
+        // 🛡️ Added robust logging for troubleshooting
+        Optional<OtpToken> tokenOpt = otpTokenRepository.findTopByPhoneNumberOrderByExpiryDateDesc(normalizedPhone);
+        
+        if (tokenOpt.isEmpty()) {
+            log.warn("❌ OTP Verification Failed: No token found in DB for {}", normalizedPhone);
+            return false;
+        }
+
+        OtpToken token = tokenOpt.get();
+        // 🛡️ Use .trim() to ensure no spaces cause a mismatch
+        boolean matches = token.getCode().trim().equals(code.trim());
+        
+        log.info("🔍 OTP Verification for {}: Input=[{}] vs Saved=[{}] -> Match={}", 
+                 normalizedPhone, code, token.getCode(), matches);
+                 
+        return matches;
+    }
+
     @Transactional
     public String confirmEmail(String token) {
         User user = userRepository.findByVerificationToken(token)
@@ -718,45 +743,37 @@ public boolean verifyOtp(String phone, String code) {
         return "Mật khẩu đã được thay đổi thành công!";
     }
 
-public String processForgotPassword(String contactInfo) {
-    // 1. Normalize the identifier (e.g., +84... -> 0... or email -> lowerCase)
-    String identifier = normalizeIdentifier(contactInfo);
-    
-    // 2. Ensure the user actually exists
-    User user = userRepository.findByIdentifier(identifier)
-            .orElseThrow(() -> new RuntimeException("Tài khoản '" + contactInfo + "' không tồn tại!"));
-    
-    // 3. Generate a 6-digit OTP
-    String otp = String.format("%06d", new Random().nextInt(999999));
-    
-    // 4. Clear old reset tokens and save the new one
-    tokenRepository.deleteByContactInfo(identifier);
-    PasswordResetToken token = PasswordResetToken.builder()
-        .contactInfo(identifier)
-        .otpCode(otp)
-        .expiryDate(LocalDateTime.now().plusMinutes(10))
-        .build();
-    tokenRepository.save(token);
-
-    // 🚀 5. BRANCHING LOGIC: Determine how to deliver the OTP
-    if (identifier.contains("@")) {
-        // Send via Azure Email Service
-        azureService.sendResetEmail(identifier, otp);
-        return "Mã OTP đã được gửi đến email của bạn.";
-    } else {
-        // Send via Infobip SMS Service
-        // Convert local 0... to international 84... for Infobip
-        String internationalPhone = identifier.startsWith("0") 
-            ? "84" + identifier.substring(1) 
-            : identifier;
-            
-        String message = "Ma xac minh AiNetsoft de khoi phuc mat khau cua ban la: " + otp;
-        infobipService.sendSms(internationalPhone, message);
+    public String processForgotPassword(String contactInfo) {
+        String identifier = normalizeIdentifier(contactInfo);
         
-        log.info("🚀 Reset OTP [{}] sent via SMS to {}", otp, internationalPhone);
-        return "Mã OTP đã được gửi đến số điện thoại của bạn.";
+        User user = userRepository.findByIdentifier(identifier)
+                .orElseThrow(() -> new RuntimeException("Tài khoản '" + contactInfo + "' không tồn tại!"));
+        
+        String otp = String.format("%06d", new Random().nextInt(999999));
+        
+        tokenRepository.deleteByContactInfo(identifier);
+        PasswordResetToken token = PasswordResetToken.builder()
+            .contactInfo(identifier)
+            .otpCode(otp)
+            .expiryDate(LocalDateTime.now().plusMinutes(10))
+            .build();
+        tokenRepository.save(token);
+
+        if (identifier.contains("@")) {
+            azureService.sendResetEmail(identifier, otp);
+            return "Mã OTP đã được gửi đến email của bạn.";
+        } else {
+            String internationalPhone = identifier.startsWith("0") 
+                ? "84" + identifier.substring(1) 
+                : identifier;
+                
+            String message = "Ma xac minh AiNetsoft de khoi phuc mat khau cua ban la: " + otp;
+            infobipService.sendSms(internationalPhone, message);
+            
+            log.info("🚀 Reset OTP [{}] sent via SMS to {}", otp, internationalPhone);
+            return "Mã OTP đã được gửi đến số điện thoại của bạn.";
+        }
     }
-}
     
     public Map<String, Object> toggleFavorite(String productId, String userEmail) {
         User user = userRepository.findByEmail(userEmail)
@@ -824,8 +841,7 @@ public String processForgotPassword(String contactInfo) {
                 .emailVerified(user.isEmailVerified())
                 .build();
     }    
-
-    @Transactional
+@Transactional
     public String initiateEmailChange(String currentContact, String newEmail) {
         String identifier = normalizeIdentifier(currentContact);
         User user = userRepository.findByIdentifier(identifier)
@@ -848,7 +864,8 @@ public String processForgotPassword(String contactInfo) {
         tokenRepository.save(token);
 
         try {
-            azureService.sendResetEmail(normalizedNewEmail, otp); 
+            // 🚀 CHANGED THIS LINE: Now uses the dedicated Email Change template
+            azureService.sendEmailChangeVerification(normalizedNewEmail, otp); 
             log.info("Email verification OTP sent to new address: {}", normalizedNewEmail);
         } catch (Exception e) {
             throw new RuntimeException("Không thể gửi email xác thực. Vui lòng thử lại sau.");
@@ -856,7 +873,7 @@ public String processForgotPassword(String contactInfo) {
 
         return "Mã xác thực đã được gửi đến " + normalizedNewEmail;
     }
-
+    
     @Transactional
     public String confirmEmailChange(String currentContact, String newEmail, String otp) {
         String identifier = normalizeIdentifier(currentContact);

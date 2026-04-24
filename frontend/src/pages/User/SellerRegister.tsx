@@ -490,7 +490,7 @@ const SellerRegister = () => {
             try {
                 setIsOcrLoading(true);
                 const checkForm = new FormData();
-                checkForm.append('frontImage', file);
+                checkForm.append('image', file);
                 const res = await api.post('/auth/verify-ocr', checkForm);
                 if (res.data?.idNumber) {
                     setDetectedIdNumber(res.data.idNumber.replace(/\s/g, ''));
