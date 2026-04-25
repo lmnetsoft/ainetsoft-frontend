@@ -45,7 +45,6 @@ public class AuthService {
     private final BankAccountRepository bankAccountRepository;
     private final EncryptionService encryptionService;
     
-    // 🚀 NEW DEPENDENCIES (Appended to support OTP flow)
     private final InfobipService infobipService; 
     private final OtpTokenRepository otpTokenRepository;
     
@@ -166,7 +165,7 @@ public class AuthService {
                 .build();
     }
 
-  @Transactional
+    @Transactional
     public String updateProfile(String contactInfo, UpdateProfileRequest request) {
         String identifier = normalizeIdentifier(contactInfo);
         User user = userRepository.findByIdentifier(identifier)
@@ -188,7 +187,6 @@ public class AuthService {
             throw new RuntimeException("Email là thông tin bắt buộc đối với phương thức đăng nhập của bạn!");
         }
 
-        // 🚀 NEW SECURITY RULE: Detect if BOTH are trying to change
         boolean phoneChanged = !newPhone.equals(user.getPhone());
         boolean emailChanged = newEmail != null && user.getEmail() != null && !newEmail.equals(user.getEmail());
 
@@ -200,21 +198,16 @@ public class AuthService {
             user.setFullName(request.getFullName().trim());
         }
 
-        // Handle Email Validation (Only runs if emailChanged is true and phoneChanged is false)
         if (emailChanged) {
             if (userRepository.existsByEmail(newEmail)) {
                 throw new RuntimeException("Email '" + newEmail + "' đã được sử dụng bởi tài khoản khác!");
             }
             log.info("Validated email availability for {}. Awaiting separate confirmation logic.", newEmail);
-            // Note: If you are setting the email here immediately without OTP, uncomment the line below. 
-            // If you rely on the confirmEmailChange endpoint to do it later, leave it handled there.
-            // user.setEmail(newEmail);
         }
 
         if (request.getGender() != null) user.setGender(request.getGender());
         if (request.getBirthDate() != null) user.setBirthDate(request.getBirthDate());
         
-        // Handle Phone Update (Only runs if phoneChanged is true and emailChanged is false)
         if (phoneChanged) {
             if (userRepository.existsByPhone(newPhone)) {
                 throw new RuntimeException("Số điện thoại này đã được sử dụng bởi tài khoản khác!");
@@ -251,7 +244,6 @@ public class AuthService {
         if (email != null && userRepository.existsByEmail(email)) throw new RuntimeException("Email đã tồn tại!");
         if (phone != null && userRepository.existsByPhone(phone)) throw new RuntimeException("SĐT đã tồn tại!");
 
-        // 🚀 THE GATEKEEPER: Ensure OTP is verified for phone registrations
         if (phone != null) {
             if (request.getOtpCode() == null || request.getOtpCode().isBlank()) {
                 throw new RuntimeException("Mã xác nhận là bắt buộc để đăng ký bằng số điện thoại!");
@@ -259,7 +251,7 @@ public class AuthService {
             if (!verifyOtp(phone, request.getOtpCode())) {
                 throw new RuntimeException("Mã xác nhận không chính xác hoặc đã hết hạn!");
             }
-            otpTokenRepository.deleteByPhoneNumber(phone); // Burn token after success
+            otpTokenRepository.deleteByPhoneNumber(phone); 
         }
 
         String verificationToken = (email != null) ? UUID.randomUUID().toString() : null;
@@ -294,14 +286,11 @@ public class AuthService {
         return "Đăng ký thành công!";
     }
 
-    // --- OTP LOGIC (NEW METHODS) ---
     @Transactional
     public void generateAndSendOtp(String phone) {
         String normalizedPhone = normalizePhone(phone);
-        // Generate code
         String code = String.format("%06d", new Random().nextInt(999999));
         
-        // 🛡️ Log the generated code so you can see it in your terminal
         log.info("🚀 GENERATED OTP: [{}] for phone: {}", code, normalizedPhone);
         
         otpTokenRepository.deleteByPhoneNumber(normalizedPhone);
@@ -309,7 +298,6 @@ public class AuthService {
         OtpToken token = new OtpToken();
         token.setPhoneNumber(normalizedPhone);
         token.setCode(code);
-        // Set 5 minutes from now
         token.setExpiryDate(LocalDateTime.now().plusMinutes(5));
         token.setExpireAt(LocalDateTime.now().plusMinutes(5)); 
         otpTokenRepository.save(token);
@@ -321,7 +309,6 @@ public class AuthService {
     public boolean verifyOtp(String phone, String code) {
         String normalizedPhone = normalizePhone(phone);
         
-        // 🛡️ Added robust logging for troubleshooting
         Optional<OtpToken> tokenOpt = otpTokenRepository.findTopByPhoneNumberOrderByExpiryDateDesc(normalizedPhone);
         
         if (tokenOpt.isEmpty()) {
@@ -330,7 +317,6 @@ public class AuthService {
         }
 
         OtpToken token = tokenOpt.get();
-        // 🛡️ Use .trim() to ensure no spaces cause a mismatch
         boolean matches = token.getCode().trim().equals(code.trim());
         
         log.info("🔍 OTP Verification for {}: Input=[{}] vs Saved=[{}] -> Match={}", 
@@ -417,7 +403,7 @@ public class AuthService {
                 String sideF = frontResult.getSide();
                 String sideB = backResult.getSide();
 
-                if (!"unknown".equals(sideF) && !"unknown".equals(sideB) && sideF.equalsIgnoreCase(sideB)) {
+                if (!"unknown".equals(sideF) && !("unknown".equals(sideB)) && sideF.equalsIgnoreCase(sideB)) {
                     throw new RuntimeException("Bạn đã tải lên cùng một mặt của thẻ. Vui lòng cung cấp cả mặt trước và mặt sau.");
                 }
 
@@ -572,6 +558,18 @@ public class AuthService {
         currentProfile.setLowStockThreshold(request.getLowStockThreshold());
         currentProfile.setHolidayMode(request.isHolidayMode());
 
+        // 🚀 PHASE 1: Direct update for Shipping Settings, Express Pause & Thermal Print
+        if (request.getEnabledShippingMethodIds() != null) {
+            currentProfile.setEnabledShippingMethodIds(new ArrayList<>(request.getEnabledShippingMethodIds()));
+        }
+        if (request.getCustomShippingMethods() != null) {
+            currentProfile.setCustomShippingMethods(new ArrayList<>(request.getCustomShippingMethods()));
+        }
+        currentProfile.setExpressPausedUntil(request.getExpressPausedUntil());
+        
+        // 🚀 NEW: Update thermal printing
+        currentProfile.setThermalPrintingEnabled(request.isThermalPrintingEnabled());
+
         boolean nameChanged = request.getShopName() != null && !request.getShopName().trim().equals(currentProfile.getShopName());
         boolean typeChanged = request.getBusinessType() != null && !request.getBusinessType().equals(currentProfile.getBusinessType());
         boolean taxChanged = request.getTaxCode() != null && !request.getTaxCode().trim().equals(currentProfile.getTaxCode());
@@ -627,6 +625,9 @@ public class AuthService {
                 .registeredAddress(currentProfile.getRegisteredAddress())
                 .invoiceEmails(new ArrayList<>(currentProfile.getInvoiceEmails()))
                 .enabledShippingMethodIds(new ArrayList<>(currentProfile.getEnabledShippingMethodIds()))
+                .customShippingMethods(new ArrayList<>(currentProfile.getCustomShippingMethods()))
+                .expressPausedUntil(currentProfile.getExpressPausedUntil())
+                .thermalPrintingEnabled(currentProfile.isThermalPrintingEnabled()) // 🚀 Maintain state
                 .lowStockThreshold(currentProfile.getLowStockThreshold())
                 .holidayMode(currentProfile.isHolidayMode())
                 .lastShopNameChange(nameChanged ? LocalDateTime.now() : currentProfile.getLastShopNameChange())
@@ -770,7 +771,7 @@ public class AuthService {
             String message = "Ma xac minh AiNetsoft de khoi phuc mat khau cua ban la: " + otp;
             infobipService.sendSms(internationalPhone, message);
             
-            log.info("🚀 Reset OTP [{}] sent via SMS to {}", otp, internationalPhone);
+            log.info("🚀 Reset OTP [{}] sent via SMS to {}", internationalPhone);
             return "Mã OTP đã được gửi đến số điện thoại của bạn.";
         }
     }
@@ -841,7 +842,8 @@ public class AuthService {
                 .emailVerified(user.isEmailVerified())
                 .build();
     }    
-@Transactional
+
+    @Transactional
     public String initiateEmailChange(String currentContact, String newEmail) {
         String identifier = normalizeIdentifier(currentContact);
         User user = userRepository.findByIdentifier(identifier)
@@ -864,7 +866,6 @@ public class AuthService {
         tokenRepository.save(token);
 
         try {
-            // 🚀 CHANGED THIS LINE: Now uses the dedicated Email Change template
             azureService.sendEmailChangeVerification(normalizedNewEmail, otp); 
             log.info("Email verification OTP sent to new address: {}", normalizedNewEmail);
         } catch (Exception e) {

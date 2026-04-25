@@ -43,19 +43,12 @@ public class User {
 
     private String avatarUrl; 
 
-    /**
-     * 🛡️ EMAIL VERIFICATION FIELDS
-     */
     @Builder.Default
     private boolean emailVerified = false; 
     
     @Indexed(unique = true, sparse = true)
     private String verificationToken;      
 
-    /**
-     * 🛡️ ADDED: To fix the compilation error in CustomOAuth2UserService
-     * Used to track when a verification link should expire.
-     */
     private LocalDateTime verificationTokenExpiry;
 
     @Builder.Default
@@ -110,13 +103,9 @@ public class User {
 
     private IdentityInfo identityInfo; 
 
-    // Assuming CartItem is defined elsewhere in your package
     @Builder.Default
     private List<CartItem> cart = new ArrayList<>();
 
-    /**
-     * 🛡️ SECURITY LOCKDOWN
-     */
     @Builder.Default
     private boolean enabled = false;
 
@@ -162,8 +151,18 @@ public class User {
         private List<String> invoiceEmails = new ArrayList<>(); 
         private String taxCode;           
         private String businessLicenseUrl; 
+        
+        // 🚀 SHIPPING SETTINGS
         @Builder.Default
         private List<String> enabledShippingMethodIds = new ArrayList<>();
+        @Builder.Default
+        private List<String> customShippingMethods = new ArrayList<>(); 
+        private LocalDateTime expressPausedUntil; 
+        
+        // 🚀 NEW: Thermal Printing Config
+        @Builder.Default
+        private boolean thermalPrintingEnabled = false;
+        
         @Builder.Default
         private int lowStockThreshold = 5;
         @Builder.Default

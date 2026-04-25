@@ -12,6 +12,7 @@ import NotFound from './pages/NotFound/NotFound';
 import ChatBubble from './components/ChatBubble/ChatBubble';
 import TitleManager from './components/TitleManager'; 
 import ContentPage from './pages/Content/ContentPage';
+import SellerShippingSettings from './pages/Seller/SellerShippingSettings';
 
 // Context Providers
 import { ChatProvider, useChat } from './context/ChatContext'; 
@@ -186,6 +187,7 @@ function App() {
                   <Route path="/admin/articles" element={<ProtectedRoute allowedRoles={['ADMIN']}><SystemContentManagement /></ProtectedRoute>} />
                   <Route path="/admin/content/:category" element={<ProtectedRoute allowedRoles={['ADMIN']}><SystemContentManagement /></ProtectedRoute>} />
                   <Route path="/admin/content" element={<ProtectedRoute allowedRoles={['ADMIN']}><SystemContentManagement /></ProtectedRoute>} />
+                  <Route path="/seller/settings/shipping" element={<SellerShippingSettings />} />
                 </Route>
 
                 {/* Root Catch for Shop Slugs */}
