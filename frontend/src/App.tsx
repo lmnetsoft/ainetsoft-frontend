@@ -6,13 +6,14 @@ import Home from './pages/Home/Home';
 import Register from './pages/Register/Register';
 import ForgotPassword from './pages/Auth/ForgotPassword';
 import Login from './pages/Auth/Login';
-import VerifyEmail from './pages/Auth/VerifyEmail'; // 🚀 NEW: Added for Email Verification
+import VerifyEmail from './pages/Auth/VerifyEmail'; 
 import OAuth2RedirectHandler from './pages/Auth/OAuth2RedirectHandler';
 import NotFound from './pages/NotFound/NotFound'; 
 import ChatBubble from './components/ChatBubble/ChatBubble';
 import TitleManager from './components/TitleManager'; 
 import ContentPage from './pages/Content/ContentPage';
 import SellerShippingSettings from './pages/Seller/SellerShippingSettings';
+import OrderDetail from './pages/User/OrderDetail';
 
 // Context Providers
 import { ChatProvider, useChat } from './context/ChatContext'; 
@@ -22,6 +23,7 @@ import { NotificationProvider } from './context/NotificationContext';
 import { getUserProfile } from './services/authService';
 import LoadingOverlay from './components/LoadingOverlay/LoadingOverlay';
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute'; 
+import FinancialSecurityGate from './components/ProtectedRoute/FinancialSecurityGate';
 
 // Layout for persistent Sidebar
 import AdminLayout from './components/Admin/AdminLayout'; 
@@ -62,15 +64,14 @@ import AdminWithdrawals from './pages/Admin/AdminWithdrawals';
 
 // MIGRATED ADMIN PAGES
 import AdminUsers from './pages/Admin/AdminUsers'; 
+import AdminStoreManager from './pages/Admin/AdminStoreManager'; 
+import AdminModeration from './pages/Admin/AdminModeration'; 
 import SellerModeration from './pages/Admin/SellerModeration'; 
 import ProductModeration from './pages/Admin/ProductModeration';
 import AdminAuditLogs from './pages/Admin/AdminAuditLogs';
 
 import './App.css';
 
-/**
- * INTERNAL COMPONENT: GlobalChatOverlay
- */
 const GlobalChatOverlay = () => {
   const { isChatOpen } = useChat();
   return isChatOpen ? <ChatPage /> : null;
@@ -117,14 +118,10 @@ function App() {
             
             <main className="content">
               <Routes>
-                {/* --- 1. PUBLIC ROUTES --- */}
                 <Route path="/" element={<Home />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/login" element={<Login />} />
-                
-                {/* 🛡️ NEW: Route to handle the Email Verification Link */}
                 <Route path="/verify-email" element={<VerifyEmail />} />
-                
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
                 <Route path="/cart" element={<Cart />} />
@@ -138,22 +135,17 @@ function App() {
                 <Route path="/shop/:identifier" element={<PublicShop />} />
                 <Route path="/my-shop" element={<PublicShop />} />
 
-                {/* --- 2. PROTECTED ROUTES WITHOUT SIDEBAR --- */}
                 <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
 
-                {/* 🚀 3. THE PERSISTENT LAYOUT ZONE (Admin/Seller/User) 🚀 */}
                 <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
-
-                  {/* --- User Account Routes --- */}
                   <Route path="/user/notifications" element={<NotificationPage />} />
                   <Route path="/user/profile" element={<Profile />} />
                   <Route path="/user/password" element={<ChangePassword />} />
-                  <Route path="/user/bank" element={<Bank />} />
+                  <Route path="/user/bank" element={<FinancialSecurityGate><Bank /></FinancialSecurityGate>} />
                   <Route path="/user/address" element={<Address />} />
                   <Route path="/user/purchase" element={<Purchase />} />
                   <Route path="/seller/register" element={<SellerRegister />} />
 
-                  {/* --- Seller Routes --- */}
                   <Route path="/seller/dashboard" element={<ProtectedRoute allowedRoles={['SELLER']}><SellerDashboard /></ProtectedRoute>} />
                   <Route path="/seller/products" element={<ProtectedRoute allowedRoles={['SELLER']}><MyProducts /></ProtectedRoute>} />
                   <Route path="/seller/add-product" element={<ProtectedRoute allowedRoles={['SELLER']}><AddProduct /></ProtectedRoute>} />
@@ -162,17 +154,18 @@ function App() {
                   <Route path="/seller/edit/:id" element={<ProtectedRoute allowedRoles={['SELLER']}><EditProduct /></ProtectedRoute>} />
                   <Route path="/seller/orders" element={<ProtectedRoute allowedRoles={['SELLER']}><SellerOrders /></ProtectedRoute>} />
                   <Route path="/seller/settings" element={<ProtectedRoute allowedRoles={['SELLER']}><SellerSettings /></ProtectedRoute>} />
-                  <Route path="/seller/withdrawal" element={<ProtectedRoute allowedRoles={['SELLER']}><Withdrawal /></ProtectedRoute>} />
+                  
+                  {/* 🚀 ĐÃ BỔ SUNG CÁC ROUTE TÀI CHÍNH BỊ THIẾU Ở ĐÂY */}
+                  <Route path="/seller/withdrawal" element={<ProtectedRoute allowedRoles={['SELLER']}><FinancialSecurityGate><Withdrawal /></FinancialSecurityGate></ProtectedRoute>} />
+                  <Route path="/seller/balance" element={<ProtectedRoute allowedRoles={['SELLER']}><FinancialSecurityGate><Withdrawal /></FinancialSecurityGate></ProtectedRoute>} />
+                  <Route path="/seller/revenue" element={<ProtectedRoute allowedRoles={['SELLER']}><SellerDashboard /></ProtectedRoute>} />
 
                   {/* --- Admin Routes --- */}
                   <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboard /></ProtectedRoute>} />
                   
-                  {/* REDIRECTS: Force sidebar links to use tabbed logic */}
-                  <Route path="/admin/users" element={<Navigate to="/admin/dashboard" replace />} />
-                  <Route path="/admin/reports" element={<Navigate to="/admin/dashboard" replace />} />
-                  <Route path="/admin/reviews" element={<Navigate to="/admin/dashboard" replace />} />
-                  <Route path="/admin/seller-moderation" element={<Navigate to="/admin/dashboard" replace />} />
-                  <Route path="/admin/product-moderation" element={<Navigate to="/admin/dashboard" replace />} />
+                  <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminUsers /></ProtectedRoute>} />
+                  <Route path="/admin/stores" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminStoreManager /></ProtectedRoute>} />
+                  <Route path="/admin/moderation" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminModeration /></ProtectedRoute>} />
 
                   {/* Specific Admin Standalone Pages */}
                   <Route path="/admin/audit-logs" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminAuditLogs /></ProtectedRoute>} />
@@ -183,14 +176,17 @@ function App() {
                   <Route path="/admin/footer-menus" element={<ProtectedRoute allowedRoles={['ADMIN']}><FooterMenuManagement /></ProtectedRoute>} />
                   <Route path="/admin/help-hierarchy" element={<ProtectedRoute allowedRoles={['ADMIN']}><HelpHierarchyManagement /></ProtectedRoute>} />
                   
-                  {/* System Content / CMS Management */}
                   <Route path="/admin/articles" element={<ProtectedRoute allowedRoles={['ADMIN']}><SystemContentManagement /></ProtectedRoute>} />
                   <Route path="/admin/content/:category" element={<ProtectedRoute allowedRoles={['ADMIN']}><SystemContentManagement /></ProtectedRoute>} />
                   <Route path="/admin/content" element={<ProtectedRoute allowedRoles={['ADMIN']}><SystemContentManagement /></ProtectedRoute>} />
                   <Route path="/seller/settings/shipping" element={<SellerShippingSettings />} />
+                  <Route path="/user/order/:id" element={<OrderDetail />} />
+                  
+                  {/* --- Seller Chat Routes --- */}
+                  <Route path="/seller/chat" element={<ProtectedRoute allowedRoles={['SELLER']}><AdminChat /></ProtectedRoute>} />
+                  <Route path="/seller/chat/:recipientId" element={<ProtectedRoute allowedRoles={['SELLER']}><AdminChat /></ProtectedRoute>} />
                 </Route>
 
-                {/* Root Catch for Shop Slugs */}
                 <Route path="/:shopSlug" element={<PublicShop />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>

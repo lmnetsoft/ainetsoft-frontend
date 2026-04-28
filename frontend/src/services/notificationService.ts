@@ -40,4 +40,10 @@ export const markAllAsRead = async () => {
   return await api.put('/notifications/read-all');
 };
 
+// 📢 API CHUYÊN DỤNG CHO ADMIN: PHÁT SÓNG THÔNG BÁO (BROADCAST)
+export const sendBroadcastNotification = async (audience: string, title: string, message: string) => {
+  const response = await api.post('/notifications/admin/broadcast', { audience, title, message });
+  return response.data;
+};
+
 export const getNotifications = getMyNotifications;

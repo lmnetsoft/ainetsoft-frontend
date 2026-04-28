@@ -26,7 +26,9 @@ const NotificationPage = () => {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
-  const { refreshNotificationCount } = useNotification();
+  
+  // 🚀 LẤY THÊM latestNotification TỪ CONTEXT ĐỂ LÀM "TAI NGHE" THỜI GIAN THỰC
+  const { refreshNotificationCount, latestNotification } = useNotification();
 
   const fetchNotifications = async () => {
     try {
@@ -45,6 +47,17 @@ const NotificationPage = () => {
     fetchNotifications();
     document.title = "Thông báo hệ thống | AiNetsoft Admin";
   }, []);
+
+  // 🚀 PHÉP MÀU NẰM Ở ĐÂY: TỰ ĐỘNG CHÈN THÔNG BÁO MỚI LÊN ĐẦU DANH SÁCH KHÔNG CẦN F5
+  useEffect(() => {
+    if (latestNotification) {
+        setNotifications(prev => {
+            // Tránh chèn trùng lặp nếu API đã lỡ fetch
+            if (prev.some(n => n.id === latestNotification.id)) return prev;
+            return [latestNotification, ...prev]; 
+        });
+    }
+  }, [latestNotification]);
 
   const handleMarkRead = async (id: string) => {
     try {
@@ -75,7 +88,7 @@ const NotificationPage = () => {
     }
 
     switch (noti.type) {
-      case 'WITHDRAWAL': // 🚀 NEW: Admin priority navigation
+      case 'WITHDRAWAL':
         navigate('/admin/withdrawals');
         break;
       case 'SYSTEM_WARNING':
@@ -102,7 +115,7 @@ const NotificationPage = () => {
   const getIconClass = (type: string) => {
     switch (type) {
       case 'ORDER': return 'order';
-      case 'WITHDRAWAL': return 'warning'; // Pulse red style
+      case 'WITHDRAWAL': return 'warning'; 
       case 'SELLER_APPROVAL': return 'seller';
       case 'SYSTEM_WARNING': return 'warning';
       default: return 'system';
@@ -111,7 +124,6 @@ const NotificationPage = () => {
 
   return (
     <div className="admin-withdrawal-container">
-      {/* 🚀 ELITE CENTERED HEADER */}
       <div className="admin-page-header">
           <h1>THÔNG BÁO HỆ THỐNG</h1>
           <p>Cập nhật trạng thái giao dịch và hoạt động toàn sàn 2026</p>

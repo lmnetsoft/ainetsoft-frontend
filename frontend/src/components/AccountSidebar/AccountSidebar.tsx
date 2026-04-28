@@ -1,24 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { 
   FaUser, FaStore, FaShoppingBag, FaShieldAlt, FaComments, FaTruck, 
   FaBalanceScale, FaList, FaSitemap, FaEdit, FaCog, FaUserCircle, 
   FaUniversity, FaMapMarkerAlt, FaKey, FaChartPie, FaBoxes, FaClipboardList, FaBuilding,
-  FaWallet,
-  FaFileInvoiceDollar, // 🚀 IMPORTED: Icon for Withdrawal Management
-  FaMoneyCheckAlt, FaBell, FaHourglassHalf // 🚀 IMPORTED: Icons for Phase 1-5
+  FaWallet, FaFileInvoiceDollar, FaMoneyCheckAlt, FaBell, FaHourglassHalf,
+  FaTicketAlt, FaCoins, FaUserEdit
 } from 'react-icons/fa'; 
 import api from '../../services/api'; 
 
 import defaultLogo from '../../assets/images/logo.png'; 
-
 import './AccountSidebar.css';
 
 const AccountSidebar = () => {
+  const location = useLocation();
+  const path = location.pathname;
+
   const [userName, setUserName] = useState(localStorage.getItem('userName') || 'Thành viên');
   const [userAvatar, setUserAvatar] = useState(localStorage.getItem('userAvatar') || '');
   const [isSeller, setIsSeller] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+
+  const isAccountPageActive = path.includes('/user/');
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(isAccountPageActive);
 
   useEffect(() => {
     const handleSync = () => {
@@ -35,6 +38,9 @@ const AccountSidebar = () => {
         try {
           const userObj = JSON.parse(userStr);
           roles = userObj.roles || [];
+          if (userObj.sellerVerification === 'VERIFIED') {
+             if (!roles.includes('SELLER')) roles.push('SELLER');
+          }
         } catch (e) { roles = []; }
       } else if (rolesStr) {
         try {
@@ -43,7 +49,6 @@ const AccountSidebar = () => {
       }
 
       setIsSeller(roles.includes('SELLER'));
-      setIsAdmin(roles.includes('ADMIN'));
     };
 
     const fetchLatestProfile = async () => {
@@ -73,140 +78,82 @@ const AccountSidebar = () => {
   }, []);
 
   return (
-    <aside className="account-sidebar-supreme">
-      <div className="sidebar-profile-box">
-        <div className="avatar-circle">
-          <img 
-            src={userAvatar ? userAvatar : defaultLogo} 
-            alt="User" 
-            onError={(e) => { 
-              const target = e.currentTarget;
-              if (target.src !== defaultLogo) {
-                target.src = defaultLogo; 
-              }
-            }}
-          />
-        </div>
-        <div className="profile-info">
-          <span className="display-name">{userName}</span>
-          <NavLink to="/user/profile" className="edit-trigger"><FaEdit /> Sửa hồ sơ</NavLink>
+    <aside className="user-sidebar-wrapper">
+      <div className="sidebar-user-header">
+        <img 
+          src={userAvatar ? userAvatar : defaultLogo} 
+          alt="User Avatar" 
+          className="sidebar-avatar" 
+          onError={(e) => { e.currentTarget.src = defaultLogo; }}
+        />
+        <div className="sidebar-user-info">
+          <span className="sidebar-username">{userName}</span>
+          <NavLink to="/user/profile" className="sidebar-edit-profile">
+            <FaEdit /> Sửa hồ sơ
+          </NavLink>
         </div>
       </div>
 
-      <nav className="sidebar-navigation">
-        
-        <div className="nav-section">
-          <div className="section-header">
-            <FaUser className="header-icon icon-blue" />
-            <span>Tài khoản của tôi</span>
+      <hr className="sidebar-divider" />
+
+      <nav className="sidebar-nav-menu">
+        <div className="nav-group">
+          <div 
+            className={`nav-group-title ${isAccountPageActive ? 'active-group' : ''}`}
+            onClick={() => setIsAccountMenuOpen(!isAccountMenuOpen)}
+          >
+            <FaUser className="menu-icon" style={{ color: '#ee4d2d' }} />
+            <span>Tài Khoản Của Tôi</span>
           </div>
-          <div className="section-links">
-            <NavLink to="/user/profile" className={({isActive}) => isActive ? 'active' : ''}>
-              <FaUserCircle className="icon-blue" /> Hồ sơ cá nhân
+          
+          <div className={`nav-sub-menu ${isAccountMenuOpen ? 'open' : ''}`}>
+            <NavLink to="/user/profile" className={({isActive}) => isActive ? "sub-item active" : "sub-item"}>
+              Hồ Sơ
             </NavLink>
-            <NavLink to="/user/bank" className={({isActive}) => isActive ? 'active' : ''}>
-              <FaUniversity className="icon-green" /> Tài khoản ngân hàng
+            <NavLink to="/user/bank" className={({isActive}) => isActive ? "sub-item active" : "sub-item"}>
+              Ngân Hàng
             </NavLink>
-            <NavLink to="/user/address" className={({isActive}) => isActive ? 'active' : ''}>
-              <FaMapMarkerAlt className="icon-red" /> Địa chỉ nhận hàng
+            <NavLink to="/user/address" className={({isActive}) => isActive ? "sub-item active" : "sub-item"}>
+              Địa Chỉ
             </NavLink>
-            <NavLink to="/user/password" className={({isActive}) => isActive ? 'active' : ''}>
-              <FaKey className="icon-gold" /> Đổi mật khẩu
+            <NavLink to="/user/password" className={({isActive}) => isActive ? "sub-item active" : "sub-item"}>
+              Đổi Mật Khẩu
+            </NavLink>
+            <NavLink to="/user/notifications" className={({isActive}) => isActive ? "sub-item active" : "sub-item"}>
+              Cài Đặt Thông Báo
+            </NavLink>
+            <NavLink to="/user/privacy" className={({isActive}) => isActive ? "sub-item active" : "sub-item"}>
+              Những Thiết Lập Riêng Tư
             </NavLink>
           </div>
         </div>
 
-        <NavLink to="/user/purchase" className={({isActive}) => `standalone-link ${isActive ? 'active' : ''}`}>
-          <FaShoppingBag className="header-icon icon-orange-red" />
-          <span>Đơn mua của tôi</span>
+        <NavLink to="/user/purchase" className={({isActive}) => isActive ? "nav-single-item active" : "nav-single-item"}>
+          <FaClipboardList className="menu-icon" style={{ color: '#096dd9' }} />
+          <span>Đơn Mua</span>
         </NavLink>
 
-        {isSeller && (
-          <div className="nav-section merged-group">
-            <div className="section-header">
-              <FaStore className="header-icon icon-orange" />
-              <span>Kênh Người Bán</span>
-            </div>
-            <div className="section-links">
-              <NavLink to="/seller/dashboard" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaChartPie className="icon-orange" /> Quản lý cửa hàng
-              </NavLink>
-              <NavLink to="/seller/products" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaBoxes className="icon-purple" /> Danh sách sản phẩm
-              </NavLink>
-              <NavLink to="/seller/orders" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaClipboardList className="icon-blue" /> Quản lý đơn hàng
-              </NavLink>
-              <NavLink to="/seller/withdrawal" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaWallet className="icon-green" style={{ color: '#2ecc71' }} /> Rút tiền doanh thu
-              </NavLink>
-              {/* 🚀 RESTORED ORIGINAL */}
-              <NavLink to="/seller/settings" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaCog className="icon-slate" /> Thiết lập shop
-              </NavLink>
+        <NavLink to="/user/vouchers" className={({isActive}) => isActive ? "nav-single-item active" : "nav-single-item"}>
+          <FaTicketAlt className="menu-icon" style={{ color: '#fa541c' }} />
+          <span>Kho Voucher</span>
+        </NavLink>
 
-              {/* 🚀 APPENDED PHASE 1 -> 5 MENUS */}
-              <div className="group-label">Cấu hình mở rộng</div>
-              <NavLink to="/seller/settings/shipping" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaTruck className="icon-red" /> Cài đặt vận chuyển
-              </NavLink>
-              <NavLink to="/seller/settings/payment" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaMoneyCheckAlt className="icon-gold" /> Cài đặt thanh toán
-              </NavLink>
-              <NavLink to="/seller/settings/products" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaBoxes className="icon-purple" /> Cài đặt sản phẩm
-              </NavLink>
-              <NavLink to="/seller/settings/chat" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaComments className="icon-cyan" /> Cài đặt Chat
-              </NavLink>
-              <NavLink to="/seller/settings/notifications" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaBell className="icon-gold" /> Cài đặt thông báo
-              </NavLink>
-              <NavLink to="/seller/settings/vacation" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaHourglassHalf className="icon-orange" /> Chế độ tạm nghỉ
-              </NavLink>
-            </div>
-          </div>
-        )}
+        <NavLink to="/user/coins" className={({isActive}) => isActive ? "nav-single-item active" : "nav-single-item"}>
+          <FaCoins className="menu-icon" style={{ color: '#fadb14' }} />
+          <span>AiNetsoft Xu</span>
+        </NavLink>
 
-        {isAdmin && (
-          <div className="nav-section merged-group">
-            <div className="section-header">
-              <FaShieldAlt className="header-icon icon-navy" />
-              <span>Quản trị viên</span>
-            </div>
-            <div className="section-links">
-              <NavLink 
-                to="/admin/dashboard" 
-                className={({isActive}) => `always-red ${isActive ? 'active' : ''}`}
-              >
-                <FaChartPie className="icon-orange" /> Tổng quan hệ thống
-              </NavLink>
-              
-              <div className="group-label">Quản lý nội dung</div>
-              <NavLink to="/admin/articles" className={({isActive}) => isActive ? 'active' : ''}><FaEdit className="icon-teal" /> Quản lý bài viết</NavLink>
-              <NavLink to="/admin/help-hierarchy" className={({isActive}) => isActive ? 'active' : ''}><FaSitemap className="icon-purple" /> Phân cấp trợ giúp</NavLink>
-              <NavLink to="/admin/content/legal" className={({isActive}) => isActive ? 'active' : ''}><FaBalanceScale className="icon-slate" /> Chính sách pháp lý</NavLink>
-              
-              <div className="group-label">Cấu hình hệ thống</div>
-              <NavLink to="/admin/footer-menus" className={({isActive}) => isActive ? 'active' : ''}><FaList className="icon-blue" /> Quản lý Menu Footer</NavLink>
-              <NavLink to="/admin/content/company" className={({isActive}) => isActive ? 'active' : ''}><FaBuilding className="icon-indigo" /> Thông tin Công ty</NavLink>
-              <NavLink to="/admin/shipping" className={({isActive}) => isActive ? 'active' : ''}><FaTruck className="icon-green" /> Cấu hình vận chuyển</NavLink>
-              
-              <NavLink to="/admin/withdrawals" className={({isActive}) => isActive ? 'active' : ''}>
-                <FaFileInvoiceDollar className="icon-gold" /> Quản lý Rút tiền
-              </NavLink>
+        <hr className="sidebar-divider" style={{ margin: '15px 0' }} />
 
-              <div className="group-label">Tương tác</div>
-              <NavLink to="/admin/chat" className={({isActive}) => isActive ? 'active' : ''}><FaComments className="icon-cyan" /> Quản lý Chat trực tuyến</NavLink>
-            </div>
-          </div>
-        )}
-
-        {!isSeller && !isAdmin && (
-          <NavLink to="/seller/register" className={({isActive}) => `standalone-link ${isActive ? 'active' : ''}`}>
-            <FaStore className="header-icon icon-orange" />
-            <span>Trở thành Người bán</span>
+        {isSeller ? (
+          <NavLink to="/seller/dashboard" className={({isActive}) => isActive ? "nav-single-item nav-seller-highlight active" : "nav-single-item nav-seller-highlight"}>
+            <FaStore className="menu-icon" style={{ color: '#ee4d2d' }} />
+            <span style={{ fontWeight: 'bold', color: '#ee4d2d' }}>Kênh Người Bán</span>
+          </NavLink>
+        ) : (
+          <NavLink to="/seller/register" className={({isActive}) => isActive ? "nav-single-item nav-seller-highlight active" : "nav-single-item nav-seller-highlight"}>
+            <FaStore className="menu-icon" style={{ color: '#ee4d2d' }} />
+            <span style={{ fontWeight: 'bold', color: '#ee4d2d' }}>Trở thành Người bán</span>
           </NavLink>
         )}
       </nav>

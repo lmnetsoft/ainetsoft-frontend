@@ -90,6 +90,14 @@
     font-weight: 800; color: #4a5568; flex-shrink: 0; position: relative;
 }
 
+/* 🚀 FIXED: Ép khung ảnh Avatar để không vỡ giao diện */
+.user-item-photo {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
 .unread-dot {
     position: absolute; top: -2px; right: -2px; background: #ee4d2d;
     color: white; font-size: 10px; width: 18px; height: 18px;

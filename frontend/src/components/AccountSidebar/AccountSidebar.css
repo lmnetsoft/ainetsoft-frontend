@@ -1,4 +1,5 @@
-.account-sidebar-supreme {
+/* --- CONTAINER --- */
+.user-sidebar-wrapper {
   width: 100%;
   background: transparent !important;
   border: none !important;
@@ -11,155 +12,151 @@
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
 }
 
-/* --- Profile Box --- */
-.sidebar-profile-box {
+/* --- THÔNG TIN USER (Kế thừa CSS cũ) --- */
+.sidebar-user-header {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 0 20px 20px 20px;
-  border-bottom: 1px solid #f1f5f9;
-  margin-bottom: 15px;
+  margin-bottom: 5px;
 }
 
-.avatar-circle {
+.sidebar-avatar {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  overflow: hidden;
   border: 1px solid #e2e8f0;
   flex-shrink: 0;
-  /* 🚀 FIX: White background so the logo looks clean */
   background: #ffffff;
+  object-fit: contain;
+}
+
+.sidebar-user-info {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
 }
 
-.avatar-circle img { 
-  width: 85%; 
-  height: 85%; 
-  /* 🚀 FIX: contain ensures the logo is fully visible in the circle */
-  object-fit: contain; 
-}
-
-.display-name {
-  display: block;
-  /* 🚀 FIX: Softened from 700 to 600 */
+.sidebar-username {
   font-weight: 600;
   font-size: 14px;
-  color: #1e293b; 
+  color: #1e293b;
   margin-bottom: 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 140px;
 }
 
-.edit-trigger {
+.sidebar-edit-profile {
   font-size: 12px;
   color: #94a3b8;
   text-decoration: none;
   display: flex;
   align-items: center;
   gap: 5px;
+  transition: color 0.2s;
 }
-.edit-trigger:hover { color: #ee4d2d; }
 
-/* --- Navigation --- */
-.sidebar-navigation {
+.sidebar-edit-profile:hover { 
+  color: #ee4d2d; 
+}
+
+/* --- ĐƯỜNG KẺ --- */
+.sidebar-divider {
+  border: none;
+  border-top: 1px solid #f1f5f9;
+  margin: 5px 0 10px 0;
+}
+
+/* --- NAVIGATION --- */
+.sidebar-nav-menu {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.nav-section { 
-  margin-bottom: 15px; 
-}
-
-.merged-group {
-  border-top: 1px solid #f1f5f9;
-  padding-top: 10px;
-  margin-top: 5px;
-}
-
-.section-header, .standalone-link {
+/* CÁC NÚT MENU CHÍNH */
+.nav-single-item, .nav-group-title {
   display: flex;
   align-items: center;
-  gap: 12px;
   padding: 10px 20px;
-  font-size: 14px;
-  /* 🚀 FIX: Softened from 700 to 600 */
-  font-weight: 600; 
-  color: #ee4d2d !important;
   text-decoration: none;
+  color: #1e293b;
+  font-weight: 600;
+  font-size: 14px;
   transition: background 0.2s;
+  cursor: pointer;
+  border-left: 4px solid transparent;
 }
 
-.standalone-link:hover {
+.nav-single-item:hover, .nav-group-title:hover {
   background: #f8fafc;
 }
 
-.section-links { 
-  display: flex; 
-  flex-direction: column; 
-  gap: 1px; 
-}
-
-.section-links a {
-  padding: 8px 20px 8px 52px;
-  font-size: 13.5px;
-  color: #64748b;
-  text-decoration: none;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  transition: all 0.2s ease;
-  border-left: 4px solid transparent; 
-}
-
-.section-links a svg { 
-  font-size: 15px; 
-  width: 18px; 
-  opacity: 0.7; 
-}
-
-.section-links a.always-red {
-  color: #ee4d2d !important;
-  font-weight: 600;
-}
-
-.section-links a.always-red svg {
-  color: #ee4d2d !important;
-  opacity: 1;
-}
-
-/* --- ICON COLORS --- */
-.icon-blue { color: #3498db !important; }
-.icon-green { color: #27ae60 !important; }
-.icon-red { color: #e74c3c !important; }
-.icon-gold { color: #f1c40f !important; }
-.icon-orange { color: #ee4d2d !important; }
-.icon-orange-red { color: #ff4757 !important; }
-.icon-purple { color: #8e44ad !important; }
-.icon-teal { color: #1abc9c !important; }
-.icon-cyan { color: #00d2d3 !important; }
-.icon-navy { color: #002147 !important; }
-.icon-slate { color: #475569 !important; }
-.icon-indigo { color: #6610f2 !important; }
-
-/* Active States */
-.section-links a.active, .standalone-link.active {
+.nav-single-item.active {
   background: #fff5f2 !important;
   color: #ee4d2d !important;
-  border-left: 4px solid #ee4d2d; 
+  border-left: 4px solid #ee4d2d;
+}
+
+.menu-icon {
+  font-size: 18px;
+  margin-right: 12px;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* --- MENU CON (Thụt lề y hệt CSS cũ) --- */
+.nav-sub-menu {
+  display: none;
+  flex-direction: column;
+  margin-bottom: 5px;
+}
+
+.nav-sub-menu.open {
+  display: flex;
+}
+
+.sub-item {
+  padding: 8px 20px 8px 52px; /* Thụt lề sâu 52px giống hệt code cũ của bạn */
+  text-decoration: none;
+  color: #64748b;
+  font-size: 13.5px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  border-left: 4px solid transparent;
+}
+
+.sub-item:hover {
+  color: #ee4d2d;
+}
+
+/* Trạng thái Active cực đẹp của bạn */
+.sub-item.active {
+  background: #fff5f2 !important;
+  color: #ee4d2d !important;
+  border-left: 4px solid #ee4d2d;
   font-weight: 600;
 }
 
-.group-label {
-  padding: 18px 20px 8px 52px; 
-  font-size: 11px; 
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-weight: 600;
-  color: #94a3b8 !important; 
-  margin-top: 5px;
+/* --- NÚT KÊNH NGƯỜI BÁN --- */
+.nav-seller-highlight {
+  margin: 0 15px;
+  padding: 12px 15px;
+  border-radius: 8px;
+  background: #fff1f0;
+  border: 1px dashed #ffa39e;
+  transition: background 0.2s;
+  border-left: none !important;
+  justify-content: center;
+}
+
+.nav-seller-highlight:hover {
+  background: #ffccc7 !important;
+}
+
+.nav-seller-highlight .menu-icon {
+  margin-right: 8px;
 }

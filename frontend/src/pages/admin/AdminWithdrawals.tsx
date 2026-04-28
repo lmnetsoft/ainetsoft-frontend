@@ -47,7 +47,7 @@ const AdminWithdrawals = () => {
             if (!loading) setRefreshing(true);
             const res = await api.get('/withdrawals/admin/all');
             
-            // 🚀 Newest on Top
+            // Newest on Top
             const sortedData = res.data.sort((a: any, b: any) => 
                 new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
             );
@@ -64,7 +64,7 @@ const AdminWithdrawals = () => {
 
     const handleProcess = async (id: string, status: 'COMPLETED' | 'REJECTED') => {
         if (status === 'REJECTED' && !adminNote.trim()) {
-            setToastMessage("Vui lòng nhập lý do từ chối.");
+            setToastMessage("Vui lòng nhập lý do từ chối vào ô Ghi chú.");
             setShowToast(true);
             return;
         }
@@ -73,13 +73,12 @@ const AdminWithdrawals = () => {
             setToastMessage(status === 'COMPLETED' ? "Giải ngân thành công!" : "Đã từ chối yêu cầu.");
             setShowToast(true);
             
-            // Reset modal state
             setProcessingId(null);
             setAdminNote('');
             
             fetchRequests(); 
         } catch (err: any) {
-            setToastMessage("Lỗi xử lý hệ thống.");
+            setToastMessage(err.response?.data?.message || "Lỗi xử lý hệ thống.");
             setShowToast(true);
         }
     };
@@ -100,7 +99,7 @@ const AdminWithdrawals = () => {
             
             <div className="admin-page-header">
                 <h1>QUẢN LÝ RÚT TIỀN</h1>
-                <p>Hệ thống đối soát và giải ngân tự động 2026</p>
+                <p>Hệ thống đối soát và giải ngân tiền doanh thu cho Người bán</p>
                 <div className="header-stats">
                     <FaMoneyBillWave className="icon-money" /> Tổng yêu cầu: <strong>{requests.length}</strong>
                     <button className={`btn-refresh-elite ${refreshing ? 'is-syncing' : ''}`} onClick={fetchRequests} disabled={refreshing}>
@@ -149,8 +148,8 @@ const AdminWithdrawals = () => {
                                         <div className="elite-shop-flex">
                                             <div className="shop-icon-circle"><FaStore /></div>
                                             <div className="shop-text-info">
-                                                <div className="shop-name-bold">{req.shopName || "Hitech Center"}</div>
-                                                <div className="seller-name-muted">{req.sellerFullName || "Hệ thống"}</div>
+                                                <div className="shop-name-bold">{req.shopName || "Unknown Shop"}</div>
+                                                <div className="seller-name-muted">{req.sellerFullName || "Seller"}</div>
                                             </div>
                                         </div>
                                     </td>
@@ -171,7 +170,7 @@ const AdminWithdrawals = () => {
                                     </td>
                                     <td>
                                         <span className={`badge-pill ${req.status?.toLowerCase()}`}>
-                                            {req.status === 'COMPLETED' ? 'Thành công' : req.status === 'PENDING' ? 'Chờ duyệt' : 'Bị từ chối'}
+                                            {req.status === 'COMPLETED' ? 'Thành công' : req.status === 'PENDING' ? 'Chờ duyệt' : 'Từ chối'}
                                         </span>
                                     </td>
                                     <td className="text-center">
@@ -194,10 +193,9 @@ const AdminWithdrawals = () => {
                 </table>
             </div>
 
-            {/* 🚀 MODAL OVERLAY SECTION */}
+            {/* MODAL OVERLAY SECTION */}
             {processingId && (
                 <div className="elite-modal-backdrop" onClick={() => setProcessingId(null)}>
-                    {/* onClick stopPropagation prevents the modal from closing when you click the content box */}
                     <div className="elite-modal-window" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header-elite">
                             <h3>Xác nhận giải ngân</h3>
@@ -207,15 +205,15 @@ const AdminWithdrawals = () => {
                         <div className="modal-body-elite">
                             <div className="warning-callout">
                                 <FaExclamationTriangle className="icon-warn" />
-                                <p>Đảm bảo bạn đã thực hiện chuyển khoản qua App Ngân hàng trước khi xác nhận trên hệ thống.</p>
+                                <p>Admin chú ý: Bạn phải dùng App Ngân hàng của mình để chuyển khoản số tiền tương ứng cho tài khoản đích trước khi bấm Xác nhận trên hệ thống này!</p>
                             </div>
                             
                             <div className="form-group-elite">
-                                <label>Ghi chú đối soát</label>
+                                <label>Ghi chú đối soát (Mã GD / Lý do từ chối)</label>
                                 <textarea 
                                     value={adminNote} 
                                     onChange={(e) => setAdminNote(e.target.value)} 
-                                    placeholder="Nhập mã giao dịch hoặc lý do từ chối (nếu có)..."
+                                    placeholder="Ví dụ: Đã chuyển khoản từ VCB, Mã GD: 123456..."
                                     rows={4}
                                 />
                             </div>
@@ -223,10 +221,10 @@ const AdminWithdrawals = () => {
 
                         <div className="modal-footer-elite">
                             <button className="btn-reject-modal" onClick={() => handleProcess(processingId, 'REJECTED')}>
-                                Từ chối yêu cầu
+                                Từ chối
                             </button>
                             <button className="btn-confirm-modal" onClick={() => handleProcess(processingId, 'COMPLETED')}>
-                                Xác nhận đã chuyển tiền
+                                Đã chuyển khoản
                             </button>
                         </div>
                     </div>

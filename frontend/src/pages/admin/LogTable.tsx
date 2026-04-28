@@ -25,7 +25,6 @@ const LogTable: React.FC<LogTableProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
 
-  // 🚀 NEW: Helper to convert technical code into human-readable Vietnamese
   const formatDescription = (desc: string) => {
     if (!desc) return "";
 
@@ -46,20 +45,17 @@ const LogTable: React.FC<LogTableProps> = ({
 
     let formatted = desc;
 
-    // Replace technical keys with friendly labels
     Object.keys(translationMap).forEach(key => {
       const regex = new RegExp(key, 'g');
       formatted = formatted.replace(regex, translationMap[key]);
     });
 
-    // Clean up brackets and commas for human readers
     return formatted
       .replace('[', '(')
       .replace(']', ')')
       .replace(/,/g, ', ');
   };
 
-  // 1. First, filter the logs based on search
   const filteredLogs = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
     if (!term) return logs;
@@ -72,7 +68,6 @@ const LogTable: React.FC<LogTableProps> = ({
     });
   }, [logs, searchTerm]);
 
-  // Calculate which slice of the array to show
   const paginatedLogs = useMemo(() => {
     const startIndex = currentPage * pageSize;
     return filteredLogs.slice(startIndex, startIndex + pageSize);
@@ -107,11 +102,12 @@ const LogTable: React.FC<LogTableProps> = ({
       <table className="admin-data-table-supreme">
         <thead>
           <tr>
-            <th>THỜI GIAN</th>
-            <th>QUẢN TRỊ VIÊN</th>
-            <th>HÀNH ĐỘNG</th>
-            <th>ĐỐI TƯỢNG</th>
-            <th style={{ textAlign: 'right' }}>CHI TIẾT</th>
+            {/* Tiêu đề vẫn giữ nguyên căn giữa như bạn yêu cầu */}
+            <th style={{ textAlign: 'center' }}>THỜI GIAN</th>
+            <th style={{ textAlign: 'center' }}>QUẢN TRỊ VIÊN</th>
+            <th style={{ textAlign: 'center' }}>HÀNH ĐỘNG</th>
+            <th style={{ textAlign: 'center' }}>ĐỐI TƯỢNG</th>
+            <th style={{ textAlign: 'center' }}>CHI TIẾT</th>
           </tr>
         </thead>
         <tbody>
@@ -120,36 +116,38 @@ const LogTable: React.FC<LogTableProps> = ({
           ) : (
             paginatedLogs.map(log => (
               <tr key={log.id}>
+                {/* 🚀 ĐÃ SỬA: Nội dung các cột được căn lề trái (flex-start, text-align: left) */}
                 <td>
-                  <div className="log-time-cell" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div className="log-time-cell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: '10px' }}>
                     <FaHistory color="#999" />
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
                         <span style={{ fontWeight: 600 }}>{new Date(log.timestamp).toLocaleTimeString('vi-VN')}</span>
                         <small style={{ color: '#888' }}>{new Date(log.timestamp).toLocaleDateString('vi-VN')}</small>
                     </div>
                   </div>
                 </td>
                 <td>
-                  <div className="user-meta-info">
-                    <span className="user-full-name">
+                  <div className="user-meta-info" style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                    <span className="user-full-name" style={{ display: 'flex', alignItems: 'center' }}>
                         <FaUserShield style={{ marginRight: '6px', opacity: 0.7 }} /> 
                         {log.adminEmail}
                     </span>
                   </div>
                 </td>
                 <td>
-                  <span className={`status-pill-colorful ${getActionClass(log.actionType)}`}>
-                    {log.actionType}
-                  </span>
+                  <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                    <span className={`status-pill-colorful ${getActionClass(log.actionType)}`}>
+                      {log.actionType}
+                    </span>
+                  </div>
                 </td>
                 <td>
-                  <div className="user-meta-info">
+                  <div className="user-meta-info" style={{ textAlign: 'left' }}>
                     <span className="user-full-name" style={{ fontWeight: 600 }}>{log.targetName}</span>
                   </div>
                 </td>
-                <td style={{ textAlign: 'right' }}>
-                  <div className="comment-cell" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                     {/* 🚀 THE FIX: Applied the formatter here */}
+                <td>
+                  <div className="comment-cell" style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: '8px' }}>
                      <small style={{ color: '#555', fontWeight: 500 }}>
                         {formatDescription(log.description)}
                      </small>

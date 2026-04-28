@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import api from '../../services/api';
 import ChatPage from '../Chat/ChatPage'; 
 import { 
@@ -8,8 +8,6 @@ import {
   FaSave, FaCheckCircle, FaPlus, FaUserSecret, FaTimes
 } from 'react-icons/fa';
 import { useChat } from '../../context/ChatContext';
-
-import alarmSound from '../../assets/sounds/Alarm01.wav';
 import './AdminChat.css'; 
 
 interface Conversation {
@@ -25,35 +23,41 @@ interface Conversation {
 
 const AdminChat = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { recipientId } = useParams();
   const { sendMessage, connected, setUnreadCount } = useChat(); 
 
-  // --- States ---
+  const isAdminRoute = location.pathname.startsWith('/admin');
+  const roles = JSON.parse(localStorage.getItem('userRoles') || '[]');
+  const isCurrentUserAdmin = Array.isArray(roles) && (roles.includes('ADMIN') || roles.includes('ROLE_ADMIN'));
+  
+  // Lấy chính xác Email của bản thân
+  const myId = isCurrentUserAdmin ? 'admin' : (localStorage.getItem('userEmail') || localStorage.getItem('userPhone') || 'unknown');
+
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   
   const [note, setNote] = useState('');
-  const [isNoteOpen, setIsNoteOpen] = useState(true); 
+  const [isNoteOpen, setIsNoteOpen] = useState(isAdminRoute); 
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
 
   const allAvailableTags = ['VIP', 'Blacklist', 'New', 'Customer'];
   const quickReplies = [
-    "Chào bạn! AiNetsoft có thể giúp gì cho bạn ạ?",
+    "Chào bạn! Shop có thể giúp gì cho bạn ạ?",
     "Sản phẩm này hiện đang còn hàng, bạn có muốn đặt ngay không?",
     "Đơn hàng của bạn đang được xử lý và sẽ giao trong 2-3 ngày tới.",
     "Bạn vui lòng cung cấp mã đơn hàng để mình kiểm tra nhé.",
     "Cảm ơn bạn đã quan tâm! Chúc bạn một ngày tốt lành."
+    
   ];
 
-  // 🚀 STABILITY FIX: Prevents Sidebar Vibration and Navigation Jumps
   useLayoutEffect(() => {
     const chatContainer = document.querySelector('.chat-content-embedded');
     if (chatContainer) chatContainer.scrollTop = 0;
   }, [recipientId]);
 
-  // --- Identity Helpers ---
   const getDisplayIdentity = (conv: Conversation) => {
     if (conv.userId.startsWith('visitor_')) {
       const shortId = conv.userId.split('_')[1] || 'Guest';
@@ -72,11 +76,12 @@ const AdminChat = () => {
     return past.toLocaleDateString('vi-VN');
   };
 
-  // --- Handlers ---
   const fetchConversations = async (query = '') => {
     try {
       setLoading(true);
-      const res = await api.get(`/chat/admin/conversations?search=${encodeURIComponent(query)}`);
+      // 🚀 CHUYỂN MẠCH THÔNG MINH: Admin gọi /admin/conversations, Seller gọi /conversations
+      const endpoint = isAdminRoute ? '/chat/admin/conversations' : '/chat/conversations';
+      const res = await api.get(`${endpoint}?search=${encodeURIComponent(query)}`);
       setConversations(res.data);
       const totalUnread = res.data.reduce((sum: number, conv: Conversation) => sum + conv.unreadCount, 0);
       setUnreadCount(totalUnread);
@@ -87,43 +92,34 @@ const AdminChat = () => {
     if (recipientId) {
       const initChat = async () => {
         try {
-          await api.post(`/chat/read/${recipientId}/admin`);
+          // Gửi đúng ID của mình để đánh dấu đã đọc
+          await api.post(`/chat/read/${recipientId}/${myId}`);
           setConversations(prev => prev.map(c => c.userId === recipientId ? { ...c, unreadCount: 0 } : c));
-          const noteRes = await api.get(`/chat/admin/notes/${recipientId}`);
-          setNote(noteRes.data.content || '');
+          if (isAdminRoute) {
+            const noteRes = await api.get(`/chat/admin/notes/${recipientId}`);
+            setNote(noteRes.data.content || '');
+          }
         } catch (err) { console.error(err); }
       };
       initChat();
     }
-  }, [recipientId]);
+  }, [recipientId, isAdminRoute, myId]);
 
   useEffect(() => {
     const timer = setTimeout(() => fetchConversations(searchTerm), 500);
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  /**
-   * 🚀 APPENDED PRO LOGIC: 
-   * Catches the 404 response and displays the friendly message from the backend 
-   * if the user does not have an official profile.
-   */
   const handleToggleTag = async (tag: string) => {
-    if (!recipientId) return;
+    if (!recipientId || !isAdminRoute) return;
     try {
       const res = await api.post(`/chat/admin/tags/toggle`, { userId: recipientId, tag });
       setConversations(prev => prev.map(c => c.userId === recipientId ? { ...c, tags: res.data.tags } : c));
-    } catch (err: any) { 
-      const friendlyMsg = err.response?.data?.message || "Lỗi cập nhật tag";
-      alert(friendlyMsg); 
-    }
+    } catch (err: any) { alert(err.response?.data?.message || "Lỗi cập nhật tag"); }
   };
 
-  /**
-   * 🚀 APPENDED PRO LOGIC: 
-   * Provides informative feedback when attempting to save notes for non-existent users.
-   */
   const handleSaveNote = async () => {
-    if (!recipientId) return;
+    if (!recipientId || !isAdminRoute) return;
     setSaveStatus('saving');
     try {
       await api.post(`/chat/admin/notes`, { userId: recipientId, content: note });
@@ -131,8 +127,7 @@ const AdminChat = () => {
       setTimeout(() => setSaveStatus('idle'), 2000);
     } catch (err: any) { 
       setSaveStatus('idle'); 
-      const friendlyMsg = err.response?.data?.message || "Không thể lưu ghi chú";
-      alert(friendlyMsg);
+      alert(err.response?.data?.message || "Không thể lưu ghi chú");
     }
   };
 
@@ -141,7 +136,7 @@ const AdminChat = () => {
   return (
     <div className="admin-chat-layout">
       <div className="admin-chat-header">
-        <h1><FaInbox /> TRUNG TÂM HỖ TRỢ KHÁCH HÀNG</h1>
+        <h1><FaInbox /> {isAdminRoute ? 'TRUNG TÂM HỖ TRỢ KHÁCH HÀNG' : 'QUẢN LÝ TIN NHẮN SHOP'}</h1>
       </div>
 
       <div className="admin-chat-content-box">
@@ -149,7 +144,7 @@ const AdminChat = () => {
            <div className="support-status-info">
              {recipientId ? (
                 <div className="supporting-label">
-                  Đang hỗ trợ: <strong>{currentConv ? getDisplayIdentity(currentConv).name : recipientId}</strong>
+                  Đang chat với: <strong>{currentConv ? getDisplayIdentity(currentConv).name : recipientId}</strong>
                 </div>
              ) : (
                 <p>Quản lý và phản hồi các yêu cầu từ người dùng.</p>
@@ -163,13 +158,15 @@ const AdminChat = () => {
               
               {recipientId && (
                 <>
-                  <button className={`note-toggle-btn ${isNoteOpen ? 'active' : ''}`} onClick={() => setIsNoteOpen(!isNoteOpen)}>
-                    <FaStickyNote /> {isNoteOpen ? 'Đóng Ghi chú' : 'Mở Ghi chú'}
-                  </button>
+                  {isAdminRoute && (
+                    <button className={`note-toggle-btn ${isNoteOpen ? 'active' : ''}`} onClick={() => setIsNoteOpen(!isNoteOpen)}>
+                      <FaStickyNote /> {isNoteOpen ? 'Đóng Ghi chú' : 'Mở Ghi chú'}
+                    </button>
+                  )}
                   <button className={`quick-reply-toggle ${showQuickReplies ? 'active' : ''}`} onClick={() => setShowQuickReplies(!showQuickReplies)}>
                     <FaBolt /> Trả lời nhanh
                   </button>
-                  <button className="close-chat-btn" onClick={() => navigate('/admin/chat')}>
+                  <button className="close-chat-btn" onClick={() => navigate(isAdminRoute ? '/admin/chat' : '/seller/chat')}>
                     <FaTimes /> Đóng
                   </button>
                 </>
@@ -177,7 +174,7 @@ const AdminChat = () => {
            </div>
         </div>
 
-        <div className={`admin-chat-main-grid ${isNoteOpen && recipientId ? 'with-notes' : ''}`}>
+        <div className={`admin-chat-main-grid ${(isNoteOpen && isAdminRoute && recipientId) ? 'with-notes' : ''}`}>
           {/* COLUMN 1: SIDEBAR */}
           <div className="admin-inbox-sidebar">
             <div className="search-bar-wrapper">
@@ -188,11 +185,13 @@ const AdminChat = () => {
             <div className="conversations-list">
               {loading ? (
                 <div className="loading-state">Đang tải...</div>
+              ) : conversations.length === 0 ? (
+                <div className="loading-state" style={{fontSize: '0.9rem', color: '#a4b0be'}}>Chưa có tin nhắn nào.</div>
               ) : conversations.map((conv) => {
                 const identity = getDisplayIdentity(conv);
                 const isActive = recipientId === conv.userId;
                 return (
-                  <div key={conv.userId} className={`admin-conv-item ${isActive ? 'is-active' : ''}`} onClick={() => navigate(`/admin/chat/${conv.userId}`)}>
+                  <div key={conv.userId} className={`admin-conv-item ${isActive ? 'is-active' : ''}`} onClick={() => navigate(`${isAdminRoute ? '/admin/chat' : '/seller/chat'}/${conv.userId}`)}>
                     <div className="user-avatar-circle">
                       {conv.userId.startsWith('visitor_') ? <FaUserSecret /> : (conv.userAvatar ? <img src={conv.userAvatar} className="user-item-photo" alt="" /> : identity.name.charAt(0).toUpperCase())}
                       {conv.unreadCount > 0 && <span className="unread-dot">{conv.unreadCount}</span>}
@@ -202,9 +201,7 @@ const AdminChat = () => {
                         <span className="conv-user-id">{identity.name}</span>
                         <span className="conv-time">{formatTimeAgo(conv.lastActiveAt)}</span>
                       </div>
-
-                      {/* 🚀 SUPREME SIDEBAR TAGS: Display tags from DB */}
-                      {conv.tags && conv.tags.length > 0 && (
+                      {isAdminRoute && conv.tags && conv.tags.length > 0 && (
                         <div className="sidebar-tag-container">
                           {conv.tags.map(tag => (
                             <span key={tag} className={`sidebar-tag-pill tag-${tag.toLowerCase()}`}>
@@ -213,7 +210,6 @@ const AdminChat = () => {
                           ))}
                         </div>
                       )}
-
                       <span className="conv-preview">{conv.lastMessageContent}</span>
                     </div>
                   </div>
@@ -230,7 +226,7 @@ const AdminChat = () => {
                   {showQuickReplies && (
                     <div className="quick-reply-drawer">
                       {quickReplies.map((reply, i) => (
-                        <button key={i} onClick={() => sendMessage({ senderId: 'admin', recipientId, content: reply, type: 'TEXT' })} className="quick-reply-item">
+                        <button key={i} onClick={() => sendMessage({ senderId: myId, recipientId, content: reply, type: 'TEXT' })} className="quick-reply-item">
                           {reply}
                         </button>
                       ))}
@@ -249,12 +245,11 @@ const AdminChat = () => {
           </div>
 
           {/* COLUMN 3: NOTES PANEL */}
-          {isNoteOpen && recipientId && (
+          {isNoteOpen && isAdminRoute && recipientId && (
             <div className="admin-internal-notes">
               <div className="notes-header">
                 <h3><FaStickyNote /> GHI CHÚ & NHÃN</h3>
               </div>
-              
               <div className="notes-section-content">
                 <div className="section-label">NHÃN PHÂN LOẠI</div>
                 <div className="tag-edit-row">
@@ -267,12 +262,9 @@ const AdminChat = () => {
                     );
                   })}
                 </div>
-
                 <div className="note-divider"></div>
-
                 <div className="section-label">GHI CHÚ CHI TIẾT</div>
                 <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Nhập ghi chú quan trọng về khách hàng này..." />
-                
                 <button className={`save-note-btn ${saveStatus}`} onClick={handleSaveNote}>
                   {saveStatus === 'saved' ? 'ĐÃ LƯU THÀNH CÔNG' : 'LƯU LẠI GHI CHÚ'}
                 </button>

@@ -1,17 +1,37 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { getUnreadCount, getPendingWithdrawalCount } from '../services/notificationService';
+import SockJS from 'sockjs-client';
+import { Client } from '@stomp/stompjs';
+import alarmSound from '../assets/sounds/Alarm01.wav';
+import toast from 'react-hot-toast';
 
 interface NotificationContextType {
   notificationCount: number;
-  withdrawalCount: number; // 🚀 NEW: Track withdrawal requests
+  withdrawalCount: number; 
   refreshNotificationCount: () => Promise<void>;
+  latestNotification: any | null;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
+// 🚀 HÀM GIẢI MÃ JWT ĐỂ LẤY EMAIL/SỐ ĐIỆN THOẠI ĐỊNH TUYẾN
+const getIdentifierFromToken = (token: string) => {
+    try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload).sub; 
+    } catch (e) {
+        return null;
+    }
+};
+
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notificationCount, setNotificationCount] = useState(0);
-  const [withdrawalCount, setWithdrawalCount] = useState(0); // 🚀 NEW State
+  const [withdrawalCount, setWithdrawalCount] = useState(0); 
+  const [latestNotification, setLatestNotification] = useState<any | null>(null);
   
   const [isAuthenticated, setIsAuthenticated] = useState(localStorage.getItem('isAuthenticated') === 'true');
   const isFetching = useRef(false);
@@ -28,14 +48,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     try {
       isFetching.current = true;
-      
-      // Fetch unread system notifications
       const count = await getUnreadCount();
       setNotificationCount(count);
 
-      // 🚀 ELITE LOGIC: If Admin, also fetch pending withdrawals
       const roles = JSON.parse(localStorage.getItem('userRoles') || '[]');
-      if (roles.includes('ADMIN')) {
+      if (roles.includes('ADMIN') || roles.includes('ROLE_ADMIN')) {
           const wCount = await getPendingWithdrawalCount();
           setWithdrawalCount(wCount);
       }
@@ -46,14 +63,68 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   }, []);
 
+  // 🚀 LẮNG NGHE WEBSOCKET BẰNG ĐƯỜNG ỐNG BYPASS
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    refreshNotificationCount();
+
+    const token = localStorage.getItem('jwt_token');
+    if (!token) return;
+
+    // Tự động phân tích Token để tìm đúng ống dẫn của mình
+    const identifier = getIdentifierFromToken(token);
+    if (!identifier) return;
+
+    const stompClient = new Client({
+        webSocketFactory: () => new SockJS('http://localhost:8080/ws'),
+        connectHeaders: { Authorization: `Bearer ${token}` },
+        debug: (str) => console.log('🚀 [STOMP]: ' + str), // Bật Radar dò lỗi
+        reconnectDelay: 5000,
+        onConnect: () => {
+            console.log(`🟢 [WebSocket] Đã kết nối! Lắng nghe tại: /topic/notifications/${identifier}`);
+            
+            // 🚀 BẮT ĐÚNG KÊNH CHỨA TÊN MÌNH, BỎ QUA LỖI ẨN DANH CỦA SPRING
+            stompClient.subscribe(`/topic/notifications/${identifier}`, (message) => {
+                console.log("🔔 [WebSocket] TIN NHẮN TỚI:", message.body);
+                if (message.body) {
+                    const notif = JSON.parse(message.body);
+                    
+                    // Nảy số tức thì
+                    setNotificationCount(prev => prev + 1);
+                    setLatestNotification(notif);
+
+                    // Hiện Toast nổi bật góc màn hình
+                    toast(notif.title || "Có thông báo hệ thống mới!", {
+                        icon: '🔔',
+                        style: { background: '#2d3436', color: '#fff', borderRadius: '8px' }
+                    });
+
+                    // Phát tiếng Ting
+                    try {
+                        const audio = new Audio(alarmSound);
+                        audio.play().catch(e => console.log('Autoplay chặn âm thanh'));
+                    } catch(e) {}
+                }
+            });
+        },
+        onStompError: (frame) => {
+            console.error('🔴 Broker báo lỗi: ' + frame.headers['message']);
+        }
+    });
+
+    stompClient.activate();
+
+    return () => {
+        stompClient.deactivate();
+    };
+  }, [isAuthenticated, refreshNotificationCount]);
+
   useEffect(() => {
     const handleAuthChange = () => {
       const status = localStorage.getItem('isAuthenticated') === 'true';
       setIsAuthenticated(prev => (prev !== status ? status : prev));
-      
-      if (status) {
-        refreshNotificationCount();
-      } else {
+      if (!status) {
         setNotificationCount(0);
         setWithdrawalCount(0);
       }
@@ -66,21 +137,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       window.removeEventListener('profileUpdate', handleAuthChange);
       window.removeEventListener('storage', handleAuthChange);
     };
-  }, [refreshNotificationCount]);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      refreshNotificationCount();
-      const interval = setInterval(refreshNotificationCount, 60000);
-      return () => clearInterval(interval);
-    } else {
-      setNotificationCount(0);
-      setWithdrawalCount(0);
-    }
-  }, [isAuthenticated, refreshNotificationCount]);
+  }, []);
 
   return (
-    <NotificationContext.Provider value={{ notificationCount, withdrawalCount, refreshNotificationCount }}>
+    <NotificationContext.Provider value={{ notificationCount, withdrawalCount, refreshNotificationCount, latestNotification }}>
       {children}
     </NotificationContext.Provider>
   );

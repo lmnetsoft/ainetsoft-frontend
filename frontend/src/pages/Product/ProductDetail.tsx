@@ -32,7 +32,6 @@ interface ShippingConfig {
 interface Product {
   id: string;
   sellerId?: string;
-  /** 🚀 NEW: Syncing with DataSeeder slug for professional navigation */
   sellerSlug?: string; 
   name: string;
   description: string;
@@ -362,8 +361,16 @@ const ProductDetail = () => {
     window.scrollTo(0, 0); 
   }, [id, navigate, location.state]);
 
+  // 🚀 CƠ CHẾ MỚI CỦA ĐIỂM #2: CHAT BẰNG BONG BÓNG NỔI (KHÔNG CHUYỂN TRANG)
   const handleChatWithSeller = () => {
     if (!localStorage.getItem('isAuthenticated')) { navigate('/login'); return; }
+    
+    // Lưu ID của Seller vào LocalStorage để bong bóng Chat (ChatPage.tsx) biết phải gửi tin cho ai
+    if (product?.sellerId) {
+      localStorage.setItem('currentChatRecipient', product.sellerId);
+    }
+    
+    // Bật bong bóng chat đè lên trang hiện tại
     setIsChatOpen(true); 
   };
 
@@ -597,7 +604,6 @@ const ProductDetail = () => {
             <h3>{product.shopName}</h3>
             <div className="shop-actions">
               <button className="chat-now-btn" onClick={handleChatWithSeller}><FaCommentDots /> Chat ngay</button>
-              {/* 🚀 FIXED: Now uses the professional Slug instead of the ID */}
               <button 
                 className="view-shop-btn" 
                 onClick={() => navigate(`/${product.sellerSlug || product.sellerId}`)}

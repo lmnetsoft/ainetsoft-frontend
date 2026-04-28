@@ -198,12 +198,82 @@
 .notif-badge { background: var(--orange); color: white; font-size: 0.7rem; padding: 2px 7px; border-radius: 10px; margin-left: 6px; }
 .notif-badge.danger { background: #d63031; }
 
-/* --- 6. Revenue Banner (UNTOUCHED) --- */
-.revenue-summary-card { background: linear-gradient(135deg, #2d3436, #000000); color: white; padding: 35px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; position: relative; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
-.rev-value-row { display: flex; align-items: baseline; gap: 10px; margin: 10px 0; }
-.rev-value-row h2 { font-size: 2.8rem; margin: 0; font-weight: 800; }
-.unit { font-size: 1.2rem; opacity: 0.6; }
-.rev-bg-icon { font-size: 7rem; position: absolute; right: -15px; bottom: -15px; opacity: 0.08; }
+/* --- 🚀 6. Revenue Banner (NÂNG CẤP GLASSMORPHISM) --- */
+.revenue-summary-card {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: white;
+  padding: 40px;
+  border-radius: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.25);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+/* Ánh sáng Glow phong cách hiện đại */
+.revenue-summary-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -10%;
+  width: 350px;
+  height: 350px;
+  background: radial-gradient(circle, rgba(238,77,45,0.15) 0%, rgba(0,0,0,0) 70%);
+  border-radius: 50%;
+  z-index: 0;
+}
+
+.rev-info { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 8px; }
+.rev-info label { font-size: 0.95rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; }
+
+.rev-value-row { display: flex; align-items: baseline; gap: 12px; margin: 5px 0; }
+.rev-value-row h2 {
+  font-size: 3.5rem;
+  margin: 0;
+  font-weight: 800;
+  background: linear-gradient(to right, #ffffff, #e2e8f0);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+.rev-value-row .unit { font-size: 1.3rem; color: #cbd5e1; font-weight: 600; padding-bottom: 5px; }
+
+/* Nút báo cáo phần trăm xu hướng */
+.rev-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  width: fit-content;
+  margin-top: 5px;
+  border: 1px solid rgba(52, 211, 153, 0.2);
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.1);
+}
+
+.rev-visual-container {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100px;
+  height: 100px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+}
+
+.rev-icon-main { font-size: 2.8rem; color: var(--orange); filter: drop-shadow(0 0 15px rgba(238,77,45,0.4)); }
+.rev-bg-icon { font-size: 14rem; position: absolute; right: -25px; bottom: -40px; opacity: 0.02; z-index: 0; color: #fff; transform: rotate(-15deg); }
 
 /* --- 7. Quick Info Grid (UNTOUCHED) --- */
 .quick-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 25px; }

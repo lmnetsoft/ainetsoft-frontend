@@ -44,11 +44,37 @@ const ChatPage = () => {
   const videoInputRef = useRef<HTMLInputElement>(null); 
   const pickerRef = useRef<HTMLDivElement>(null);
 
-  // --- IDENTITY & ROLE LOGIC (Updated for Unique Visitor Support) ---
+  const getMediaUrl = (path: string | null | undefined) => {
+    if (!path || path.trim() === "") return "";
+    
+    if (path.startsWith('data:') || path.startsWith('blob:') || path.startsWith('http')) {
+        return path;
+    }
+
+    let cleanPath = path.replace('http://localhost:8080', '');
+    if (!cleanPath.startsWith('/')) cleanPath = '/' + cleanPath;
+
+    if (cleanPath.startsWith('/uploads/chat/')) {
+        cleanPath = cleanPath.replace('/uploads/chat/', '/api/chat/file/');
+    } else if (cleanPath.startsWith('/uploads/')) {
+        cleanPath = cleanPath.replace('/uploads/', '/api/chat/file/');
+    }
+
+    if (!cleanPath.startsWith('/api/')) {
+        if (cleanPath.startsWith('/chat/')) {
+            cleanPath = cleanPath.replace('/chat/', '/api/chat/file/'); 
+        } else {
+            cleanPath = '/api/chat/file' + cleanPath; 
+        }
+    }
+
+    return `http://localhost:8080${cleanPath}`;
+  };
+  
+  // --- IDENTITY & ROLE LOGIC ---
   const roles = JSON.parse(localStorage.getItem('userRoles') || '[]');
   const isCurrentUserAdmin = Array.isArray(roles) && (roles.includes('ADMIN') || roles.includes('ROLE_ADMIN'));
   
-  // FIX: Generate a unique ID for visitors if not logged in
   let guestId = localStorage.getItem('chatGuestId');
   if (!guestId) {
       guestId = 'visitor_' + Math.random().toString(36).substring(2, 11);
@@ -59,9 +85,29 @@ const ChatPage = () => {
     ? 'admin' 
     : (localStorage.getItem('userEmail') || localStorage.getItem('userPhone') || guestId);
     
-  const targetId = isCurrentUserAdmin ? recipientId : 'admin';
+  // 🚀 TỰ ĐỘNG DỊCH ID SANG EMAIL NGAY TRÊN FRONTEND 
+  const storageRecipient = localStorage.getItem('currentChatRecipient');
+  const rawTargetId = recipientId || storageRecipient || 'admin';
+  const [targetId, setTargetId] = useState<string>(rawTargetId);
 
-  // --- CUSTOM STICKERS ---
+  useEffect(() => {
+    const resolveTarget = async () => {
+      if (rawTargetId && rawTargetId !== 'admin' && !rawTargetId.includes('@') && rawTargetId.length === 24) {
+        try {
+          const res = await api.get(`/chat/resolve/${rawTargetId}`);
+          setTargetId(res.data.email || rawTargetId);
+        } catch (e) {
+          setTargetId(rawTargetId);
+        }
+      } else {
+        setTargetId(rawTargetId);
+      }
+    };
+    resolveTarget();
+  }, [rawTargetId]);
+
+  const currentConversationId = targetId ? [myId, targetId].sort().join('_') : '';
+
   const customStickers = [
     { id: 1, url: 'https://cdn-icons-png.flaticon.com/512/2274/2274543.png' },
     { id: 2, url: 'https://cdn-icons-png.flaticon.com/512/2274/2274550.png' },
@@ -69,7 +115,6 @@ const ChatPage = () => {
     { id: 4, url: 'https://cdn-icons-png.flaticon.com/512/2274/2274547.png' },
   ];
 
-  // --- HANDLER: DOWNLOAD ALL MEDIA ---
   const handleDownloadAllMedia = () => {
     const mediaFiles = messages.filter(m => m.type === 'IMAGE' || m.type === 'VIDEO' || isImageUrl(m.content));
     if (mediaFiles.length === 0) {
@@ -80,7 +125,7 @@ const ChatPage = () => {
     mediaFiles.forEach((msg, idx) => {
       setTimeout(() => {
         const link = document.createElement('a');
-        link.href = msg.content;
+        link.href = getMediaUrl(msg.content);
         link.setAttribute('download', `chat_media_${idx}`);
         document.body.appendChild(link);
         link.click();
@@ -89,7 +134,6 @@ const ChatPage = () => {
     });
   };
 
-  // --- EFFECT: CLICK OUTSIDE PICKER ---
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (pickerRef.current && !pickerRef.current.contains(event.target as Node)) {
@@ -100,13 +144,11 @@ const ChatPage = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // --- EFFECT: LOAD HISTORY & CLEAR UNREAD ---
   useEffect(() => {
     if (!myId || !targetId) return;
     const loadData = async () => {
       try {
         const history = await getChatHistory(myId, targetId);
-        // Ensure history is an array to prevent .filter crash
         setRecipientMessages(Array.isArray(history) ? history : []);
         clearUnread();
       } catch (err) {
@@ -116,21 +158,21 @@ const ChatPage = () => {
     loadData();
   }, [targetId, myId, setRecipientMessages, clearUnread]);
 
-  // --- EFFECT: SCROLL TO BOTTOM ---
   useEffect(() => {
     if (!isMinimized) {
       scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages?.length, isMinimized]);
 
-  // --- PRODUCT MODAL HANDLERS ---
   const handleOpenProductModal = async () => {
     try {
-      const res = await api.get('/api/products');
-      setAvailableProducts(res.data);
+      const res = await api.get('/products');
+      const productList = Array.isArray(res.data) ? res.data : (res.data.content || []);
+      setAvailableProducts(productList);
       setShowProductModal(true);
     } catch (err) {
-      alert("Không thể tải danh sách sản phẩm.");
+      console.error("[Chat] Fetch products failed:", err);
+      alert("Hệ thống đang cập nhật danh mục sản phẩm. Vui lòng thử lại sau giây lát!");
     }
   };
 
@@ -140,9 +182,10 @@ const ChatPage = () => {
       id: product.id,
       name: product.name,
       price: product.price,
-      imageUrl: product.imageUrl || (product.images && product.images[0])
+      imageUrl: product.imageUrls?.[0] || product.imageUrl || (product.images && product.images[0])
     });
     sendMessage({ 
+      conversationId: currentConversationId,
       senderId: myId, 
       recipientId: targetId, 
       content: productData, 
@@ -152,14 +195,19 @@ const ChatPage = () => {
     setShowProductModal(false);
   };
 
-  // --- ORDER MODAL HANDLERS ---
   const handleOpenOrderModal = async () => {
+    if (myId.startsWith('visitor_')) {
+        alert("Tính năng này dành cho thành viên. Vui lòng đăng nhập để xem đơn hàng của bạn!");
+        return;
+    }
     try {
-      const res = await api.get('/api/orders/user'); 
-      setUserOrders(res.data);
+      const res = await api.get('/orders/my-orders'); 
+      const orderList = Array.isArray(res.data) ? res.data : (res.data.content || []);
+      setUserOrders(orderList);
       setShowOrderModal(true);
     } catch (err) {
-      alert("Không thể tải danh sách đơn hàng.");
+      console.error("[Chat] Fetch orders failed:", err);
+      alert("Không tìm thấy dữ liệu đơn hàng. Vui lòng thử lại sau.");
     }
   };
 
@@ -172,6 +220,7 @@ const ChatPage = () => {
       date: order.createdAt || order.orderDate
     });
     sendMessage({ 
+      conversationId: currentConversationId,
       senderId: myId, 
       recipientId: targetId, 
       content: orderData, 
@@ -183,17 +232,17 @@ const ChatPage = () => {
 
   const handleDownloadFile = (fileUrl: string) => {
     const link = document.createElement('a');
-    link.href = fileUrl;
+    link.href = getMediaUrl(fileUrl);
     link.setAttribute('download', '');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  // --- MESSAGE SEND HANDLERS ---
   const handleSendMessage = () => {
     if (!inputText.trim() || !connected || !myId || !targetId) return;
     sendMessage({ 
+      conversationId: currentConversationId,
       senderId: myId, 
       recipientId: targetId, 
       content: inputText, 
@@ -207,6 +256,7 @@ const ChatPage = () => {
   const handleSendSticker = (url: string) => {
     if (!connected || !myId || !targetId) return;
     sendMessage({ 
+      conversationId: currentConversationId,
       senderId: myId, 
       recipientId: targetId, 
       content: url, 
@@ -220,7 +270,6 @@ const ChatPage = () => {
     setInputText(prev => prev + emojiData.emoji);
   };
 
-  // --- UPLOAD HANDLERS (MEMORY FIX) ---
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -238,6 +287,30 @@ const ChatPage = () => {
     }
   };
 
+  // 🚀 BỔ SUNG: Hàm xử lý sự kiện Paste (Ctrl + V)
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const file = items[i].getAsFile();
+        if (file) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setPreviewImage(reader.result as string);
+            setSelectedFile(file);
+          };
+          reader.readAsDataURL(file);
+          
+          // Ngăn không cho trình duyệt in mã nhị phân rác vào khung nhập text
+          e.preventDefault(); 
+          break; // Chỉ lấy tấm ảnh đầu tiên tìm thấy
+        }
+      }
+    }
+  };
+
   const handleUploadAndSend = async () => {
     if (!selectedFile || !myId || !targetId) return;
     try {
@@ -246,7 +319,7 @@ const ChatPage = () => {
       const formData = new FormData();
       formData.append('file', selectedFile); 
       
-      const res = await api.post('chat/upload', formData, { 
+      const res = await api.post(`/chat/upload/${currentConversationId}`, formData, { 
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (progressEvent) => {
           const percent = Math.round((progressEvent.loaded * 100) / (progressEvent.total || selectedFile.size));
@@ -255,6 +328,7 @@ const ChatPage = () => {
       }); 
       
       sendMessage({ 
+        conversationId: currentConversationId,
         senderId: myId, 
         recipientId: targetId, 
         content: res.data.url, 
@@ -264,7 +338,7 @@ const ChatPage = () => {
       setPreviewImage(null);
       setSelectedFile(null);
     } catch (err: any) {
-      alert("Lỗi tải tệp!");
+      alert("Lỗi tải tệp. Vui lòng kiểm tra lại kết nối!");
     } finally {
       setUploading(false);
       setUploadProgress(0);
@@ -287,7 +361,7 @@ const ChatPage = () => {
       const formData = new FormData();
       formData.append('file', file);
       
-      const res = await api.post('chat/upload', formData, {
+      const res = await api.post(`/chat/upload/${currentConversationId}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (progressEvent) => {
           const percent = Math.round((progressEvent.loaded * 100) / (progressEvent.total || file.size));
@@ -296,6 +370,7 @@ const ChatPage = () => {
       });
       
       sendMessage({ 
+        conversationId: currentConversationId,
         senderId: myId, 
         recipientId: targetId, 
         content: res.data.url, 
@@ -304,7 +379,7 @@ const ChatPage = () => {
       });
     } catch (err) {
       console.error("Video upload error", err);
-      alert("Không thể tải video. Vui lòng kiểm tra server.");
+      alert("Lỗi tải video. Vui lòng thử lại!");
     } finally {
       setUploading(false);
       setUploadProgress(0);
@@ -313,22 +388,21 @@ const ChatPage = () => {
   };
 
   const isImageUrl = (url: string) => {
-    if (typeof url !== 'string') return false;
+    if (typeof url !== 'string' || url.trim() === "") return false;
     const isExtension = /\.(jpeg|jpg|gif|png|webp|JPG|heic|HEIC)$/i.test(url);
-    const isPathMatch = url.includes('/uploads/') || url.includes('/download/');
-    return (isExtension || isPathMatch) && url.startsWith('http');
+    const isPathMatch = url.includes('/uploads/') || url.includes('/download/') || url.includes('/file/');
+    return isExtension || isPathMatch; 
   };
 
-  if (!myId) return null;
+  if (!myId || !targetId) return null;
 
   return (
     <div className={`chat-box-master ${isMinimized ? 'minimized' : ''}`}>
-      {/* --- HEADER --- */}
       <div className="chat-box-header" onClick={() => isMinimized && setIsMinimized(false)}>
         <div className="chat-header-left">
           <span className="dot-online"></span>
           <span className="chat-title">
-            {isCurrentUserAdmin ? `Đang hỗ trợ: ${targetId}` : 'Hỗ trợ: AiNetsoft'}
+            {isCurrentUserAdmin ? `Đang hỗ trợ: ${targetId}` : (targetId === 'admin' ? 'Hỗ trợ: AiNetsoft' : `Chat: ${targetId}`)}
           </span>
         </div>
         <div className="chat-header-right">
@@ -339,7 +413,11 @@ const ChatPage = () => {
             {isMinimized ? <FaPlus /> : <FaMinus />}
           </button>
           {!isCurrentUserAdmin && (
-             <button className="chat-btn" onClick={(e) => { e.stopPropagation(); setIsChatOpen(false); }}>
+             <button className="chat-btn" onClick={(e) => { 
+                e.stopPropagation(); 
+                setIsChatOpen(false); 
+                localStorage.removeItem('currentChatRecipient'); 
+             }}>
                <FaTimes />
              </button>
           )}
@@ -348,27 +426,24 @@ const ChatPage = () => {
 
       {!isMinimized && (
         <div className="chat-box-body">
-          {/* --- MEDIA LIGHTBOX POPUP --- */}
           {mediaPopup && (
             <div className="media-lightbox-overlay" onClick={() => setMediaPopup(null)}>
               <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
-                {/* NICE PILL CLOSE BUTTON ANCHORED NEAR WINDOW */}
                 <button className="close-media-btn" onClick={() => setMediaPopup(null)}>
                   <FaTimes /> <span>Đóng</span>
                 </button>
 
                 {mediaPopup.type === 'IMAGE' ? (
-                  <img src={mediaPopup.url} alt="View" className="lightbox-img" />
+                  <img src={getMediaUrl(mediaPopup.url)} alt="View" className="lightbox-img" />
                 ) : (
-                  <video controls autoPlay className="lightbox-video">
-                    <source src={mediaPopup.url} type="video/mp4" />
+                  <video controls autoPlay className="lightbox-video" key={mediaPopup.url}>
+                    <source src={getMediaUrl(mediaPopup.url)} type="video/mp4" />
                   </video>
                 )}
               </div>
             </div>
           )}
 
-          {/* --- PRODUCT MODAL (Preserved) --- */}
           {showProductModal && (
             <div className="product-modal-overlay">
               <div className="product-modal-content">
@@ -383,7 +458,7 @@ const ChatPage = () => {
                 <div className="product-grid">
                   {availableProducts.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase())).map(p => (
                     <div key={p.id} className="product-item" onClick={() => handleSendProduct(p)}>
-                      <img src={p.imageUrl || (p.images && p.images[0])} alt="" />
+                      <img src={getMediaUrl(p.imageUrls?.[0] || p.imageUrl || (p.images && p.images[0]))} alt="" />
                       <div className="product-item-info">
                         <p>{p.name}</p>
                         <span>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p.price)}</span>
@@ -395,7 +470,6 @@ const ChatPage = () => {
             </div>
           )}
 
-          {/* --- ORDER MODAL (Preserved) --- */}
           {showOrderModal && (
             <div className="product-modal-overlay">
               <div className="product-modal-content">
@@ -427,7 +501,6 @@ const ChatPage = () => {
               <span>LƯU Ý: Không giao dịch ngoài hệ thống để tránh lừa đảo.</span>
             </div>
             
-            {/* SAFEGUARD: Ensure messages is an array before filtering/mapping to stop crash */}
             {(Array.isArray(messages) ? messages : [])
               .filter(m => (m.senderId === myId && m.recipientId === targetId) || (m.senderId === targetId && m.recipientId === myId))
               .map((msg, index) => {
@@ -439,7 +512,7 @@ const ChatPage = () => {
                         return (
                             <div key={index} className={`chat-line ${isMe ? 'line-me' : 'line-them'}`}>
                                 <div className="product-share-card">
-                                    <img src={p.imageUrl} alt="" />
+                                    <img src={getMediaUrl(p.imageUrl)} alt="" />
                                     <div className="product-card-body">
                                         <h4>{p.name}</h4>
                                         <p>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p.price)}</p>
@@ -464,8 +537,8 @@ const ChatPage = () => {
                             <div className="order-row"><span>Trạng thái:</span> <span className="status-text">{o.status}</span></div>
                             <div className="order-row :has(strong)"><span>Tổng:</span> <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(o.total)}</strong></div>
                           </div>
-                          <button className="order-view-btn" onClick={() => window.open(`/profile/orders/${o.orderId}`, '_blank')}>Xem chi tiết</button>
-                        </div>
+                          <button className="order-view-btn" onClick={() => window.open('/user/purchase', '_blank')}>Xem chi tiết</button>                        
+                          </div>
                         <span className="chat-timestamp">{new Date(msg.timestamp!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
                     );
@@ -480,16 +553,25 @@ const ChatPage = () => {
                     <div className="chat-bubble-new">
                       {isImage && !isVideo ? (
                         <img 
-                          src={msg.content} 
+                          src={getMediaUrl(msg.content)} 
                           className="chat-sent-image clickable-media" 
                           alt="" 
                           onClick={() => setMediaPopup({url: msg.content, type: 'IMAGE'})}
                           onLoad={() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' })} 
+                          onError={(e) => { 
+                            e.currentTarget.onerror = null; 
+                            e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMTUwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjhmOWZhIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjE2IiBmaWxsPSIjZGUzYTMxIiBkeT0iLjNlbSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TOG7l2kgVOG6o2kg4bqibmg8L3RleHQ+PC9zdmc+'; 
+                          }}
                         />
                       ) : isVideo ? (
                         <div className="video-thumb-container" onClick={() => setMediaPopup({url: msg.content, type: 'VIDEO'})}>
                            <div className="video-preview-wrapper">
-                              <video src={`${msg.content}#t=0.1`} preload="metadata" className="video-real-thumbnail" />
+                              <video 
+                                src={`${getMediaUrl(msg.content)}#t=0.1`} 
+                                preload="metadata" 
+                                className="video-real-thumbnail" 
+                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                              />
                               <div className="video-overlay-play">
                                 <FaRegPlayCircle className="play-icon-pro" />
                               </div>
@@ -540,7 +622,6 @@ const ChatPage = () => {
                 </div>
               )}
 
-              {/* COMPACT MINI PREVIEW (STOPS OVERFLOW) */}
               {previewImage && (
                 <div className="image-pre-send-compact">
                    <div className="preview-mini-card">
@@ -566,7 +647,14 @@ const ChatPage = () => {
               </div>
 
               <div className="chat-input-row">
-                <input value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} placeholder="Nhập tin nhắn..." />
+                {/* 🚀 ĐÃ BỔ SUNG SỰ KIỆN onPaste VÀO ĐÂY */}
+                <input 
+                  value={inputText} 
+                  onChange={(e) => setInputText(e.target.value)} 
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} 
+                  onPaste={handlePaste}
+                  placeholder="Nhập tin nhắn..." 
+                />
                 <button onClick={handleSendMessage} className={inputText.trim() && connected ? 'send-btn-active' : 'send-btn'} disabled={!inputText.trim() || !connected}><FaPaperPlane /></button>
               </div>
             </div>
