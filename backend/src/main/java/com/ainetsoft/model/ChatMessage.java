@@ -14,8 +14,13 @@ import java.time.LocalDateTime;
 @Builder
 @Document(collection = "chat_messages")
 public class ChatMessage {
+    
     @Id
     private String id;
+    
+    // 🚀 MỚI THÊM: ID của cuộc hội thoại để gom nhóm tin nhắn và phân thư mục lưu trữ file
+    private String conversationId; 
+    
     private String senderId;    
     private String recipientId; 
     private String content;

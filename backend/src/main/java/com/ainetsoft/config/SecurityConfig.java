@@ -60,13 +60,13 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 
-                // --- 1. PUBLIC ENDPOINTS (Visitors can see) ---
+                // --- 1. PUBLIC ENDPOINTS ---
                 .requestMatchers(
                     "/api/auth/login", 
                     "/api/auth/register", 
-                    "/api/auth/verify-email", // 🚀 FIXED: Make verification link public to solve 401/403 errors
-                    "/api/auth/send-otp",   // 🚀 ADDED: Allow sending OTP without login
-                    "/api/auth/verify-otp", // 🚀 ADDED: Allow verifying OTP without login
+                    "/api/auth/verify-email",
+                    "/api/auth/send-otp",
+                    "/api/auth/verify-otp",
                     "/api/auth/forgot-password", 
                     "/api/auth/reset-password",
                     "/oauth2/**",
@@ -74,6 +74,7 @@ public class SecurityConfig {
                     "/error",
                     "/api/uploads/**",
                     "/api/chat/download/**",
+                    "/api/chat/file/**",
                     "/ws/**",
                     "/api/report-reasons",
                     "/api/system-content/**",
@@ -84,18 +85,20 @@ public class SecurityConfig {
 
                 .requestMatchers("/api/chat/history/**").permitAll()
                 .requestMatchers("/api/chat/read/**").permitAll()
-                .requestMatchers("/api/chat/upload").permitAll() 
-                .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/reviews/**").permitAll()
+                .requestMatchers("/api/chat/upload/**").permitAll() 
+                
+                // 🚀 FIXED: Thêm chính xác URL không có trailing slash để Spring 6 không chặn
+                .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/reviews", "/api/reviews/**").permitAll()
 
-                // --- 2. ADMIN ONLY ENDPOINTS (Management) ---
+                // --- 2. ADMIN ONLY ---
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/chat/admin/**").hasRole("ADMIN")
                 
                 .requestMatchers(HttpMethod.POST, "/api/footer-menus/**", "/api/help/nodes/**", "/api/footer-icons/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/footer-menus/**", "/api/help/nodes/**", "/api/footer-icons/**").hasRole("ADMIN")
 
-                // --- 3. AUTHENTICATED USER ENDPOINTS ---
+                // --- 3. AUTHENTICATED USER ---
                 .requestMatchers("/api/withdrawals/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/withdrawals/**").hasRole("SELLER")
 
@@ -140,15 +143,17 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-
         config.setAllowedOriginPatterns(List.of("http://localhost:*"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin"));
+        
+        config.setAllowedHeaders(List.of("*"));
+        
+        config.setExposedHeaders(List.of("Accept-Ranges", "Content-Encoding", "Content-Length", "Content-Range"));
+        
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
-
         return source;
     }
 }

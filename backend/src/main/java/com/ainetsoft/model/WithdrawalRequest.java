@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
 import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalDateTime;
 
@@ -16,9 +17,14 @@ import java.time.LocalDateTime;
 public class WithdrawalRequest {
     @Id
     private String id;
+    
+    // 🚀 BẢO MẬT GIAO DỊCH: Ngăn chặn 2 Admin cùng duyệt 1 phiếu cùng lúc
+    @Version
+    private Long version;
+    
     private String sellerId;
     
-    // 🚀 NEW: Snapshots for Admin readability
+    // Snapshots for Admin readability
     private String shopName;      
     private String sellerFullName; 
 

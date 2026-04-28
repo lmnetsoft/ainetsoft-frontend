@@ -30,6 +30,9 @@ public interface ProductRepository extends MongoRepository<Product, String> {
     // --- SELLER MANAGEMENT ---
     List<Product> findBySellerId(String sellerId);
 
+    // 🚀 NEW: Tìm kiếm trực tiếp bằng Slug để chống lỗi lệch ID (Ghost Data)
+    List<Product> findBySellerSlug(String sellerSlug);
+
     // --- SEARCH FUNCTIONALITY (New: Essential for Admin/Shop search) ---
     /**
      * Case-insensitive search for product names.

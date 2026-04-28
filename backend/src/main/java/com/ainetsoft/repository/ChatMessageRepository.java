@@ -11,6 +11,8 @@ import java.util.List;
 @Repository
 public interface ChatMessageRepository extends MongoRepository<ChatMessage, String> {
 
+    List<ChatMessage> findByConversationIdOrderByTimestampAsc(String conversationId);
+
     List<ChatMessage> findBySenderIdAndRecipientIdOrSenderIdAndRecipientIdOrderByTimestampAsc(
             String s1, String r1, String s2, String r2);
 
@@ -18,15 +20,15 @@ public interface ChatMessageRepository extends MongoRepository<ChatMessage, Stri
 
     /**
      * SUPREME AGGREGATION:
-     * Now joins with the 'users' collection to pull 'tags' and 'updatedAt' for the sidebar.
+     * 🚀 ĐÃ SỬA: Loại bỏ chữ 'admin' gắn cứng, dùng ?0 làm ID của người đang xem hộp thư
      */
     @Aggregation(pipeline = {
-        // 1. Match all messages involving 'admin'
-        "{ $match: { $or: [ { 'senderId': 'admin' }, { 'recipientId': 'admin' } ] } }",
+        // 1. Match all messages involving the specific user (?0)
+        "{ $match: { $or: [ { 'senderId': ?0 }, { 'recipientId': ?0 } ] } }",
         
-        // 2. Identify the 'otherUser' (the customer or visitor)
+        // 2. Identify the 'otherUser' (the person they are chatting with)
         "{ $project: { " +
-            "otherUser: { $cond: [ { $eq: ['$senderId', 'admin'] }, '$recipientId', '$senderId' ] }, " +
+            "otherUser: { $cond: [ { $eq: ['$senderId', ?0] }, '$recipientId', '$senderId' ] }, " +
             "timestamp: 1, " +
             "content: 1, " +
             "isRead: 1, " +
@@ -37,10 +39,10 @@ public interface ChatMessageRepository extends MongoRepository<ChatMessage, Stri
         "{ $lookup: { from: 'users', localField: 'otherUser', foreignField: 'email', as: 'userDetails' } }",
         "{ $unwind: { path: '$userDetails', preserveNullAndEmptyArrays: true } }",
         
-        // 4. SEARCH: Filter by ID or the looked-up fullName
+        // 4. SEARCH: Filter by ID or the looked-up fullName (?1)
         "{ $match: { $or: [ " +
-            "{ 'otherUser': { $regex: ?0, $options: 'i' } }, " +
-            "{ 'userDetails.fullName': { $regex: ?0, $options: 'i' } } " +
+            "{ 'otherUser': { $regex: ?1, $options: 'i' } }, " +
+            "{ 'userDetails.fullName': { $regex: ?1, $options: 'i' } } " +
         "] } }",
         
         // 5. SORT: Latest messages first
@@ -51,12 +53,12 @@ public interface ChatMessageRepository extends MongoRepository<ChatMessage, Stri
             "_id: '$otherUser', " +
             "fullName: { $first: '$userDetails.fullName' }, " + 
             "avatarUrl: { $first: '$userDetails.avatarUrl' }, " +
-            "userTags: { $first: '$userDetails.tags' }, " +      // 🚀 NEW: Pull tags
-            "updatedAt: { $first: '$userDetails.updatedAt' }, " + // 🚀 NEW: Pull activity timestamp
+            "userTags: { $first: '$userDetails.tags' }, " +      
+            "updatedAt: { $first: '$userDetails.updatedAt' }, " + 
             "lastMessageAt: { $first: '$timestamp' }, " +
             "lastMessageContent: { $first: '$content' }, " +
             "unreadCount: { $sum: { $cond: [ " +
-                "{ $and: [ { $ne: ['$senderId', 'admin'] }, { $eq: ['$isRead', false] } ] }, 1, 0 " +
+                "{ $and: [ { $ne: ['$senderId', ?0] }, { $eq: ['$isRead', false] } ] }, 1, 0 " +
             "] } } " +
         "} }",
         
@@ -75,13 +77,13 @@ public interface ChatMessageRepository extends MongoRepository<ChatMessage, Stri
             "lastMessageAt: 1, " +
             "lastMessageContent: 1, " +
             "unreadCount: 1, " +
-            "tags: { $ifNull: ['$userTags', []] }, " + // 🚀 NEW: Default to empty list if no tags
-            "lastActiveAt: { $ifNull: ['$updatedAt', '$lastMessageAt'] }, " + // 🚀 NEW: Fallback to last msg time
+            "tags: { $ifNull: ['$userTags', []] }, " + 
+            "lastActiveAt: { $ifNull: ['$updatedAt', '$lastMessageAt'] }, " + 
             "_id: 0 " +
         "} }",
         
         // 8. FINAL SORT: Show most recently active conversations at the top
         "{ $sort: { lastMessageAt: -1 } }"
     })
-    List<ConversationDTO> findAdminConversationsWithSearch(String searchTerm);
+    List<ConversationDTO> findConversationsByUserIdWithSearch(String userId, String searchTerm);
 }

@@ -294,4 +294,9 @@ public class OrderService {
                 .filter(o -> o.getItems().stream().anyMatch(i -> sellerId.equals(i.getSellerId())))
                 .collect(Collectors.toList());
     }
+
+    public Order getOrderById(String id) {
+        return orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Order not found with id: " + id));
+    }    
 }

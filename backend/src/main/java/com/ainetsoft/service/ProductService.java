@@ -71,18 +71,26 @@ public class ProductService {
     // --- PUBLIC PRODUCT LOGIC ---
 
     /**
-     * 🚀 NEW: Fetches public shop details and its approved products using the Slug.
-     * Required to fix the 404 error on /shop/:slug
+     * 🚀 FIXED: Lấy thông tin Shop và sản phẩm bằng Slug, hỗ trợ cả ACTIVE, APPROVED.
      */
     public Map<String, Object> getPublicShopData(String slug) {
         // 1. Find the seller by their Nice URL (Slug)
         User seller = userRepository.findByShopProfile_ShopSlug(slug)
                 .orElseThrow(() -> new RuntimeException("Cửa hàng không tồn tại hoặc đã đổi địa chỉ."));
 
-        // 2. Fetch only APPROVED products for this specific seller
-        List<Product> products = productRepository.findBySellerIdAndStatus(seller.getId(), "APPROVED");
+        // 2. 🚀 NEW: Tìm tất cả sản phẩm của Shop này trực tiếp thông qua Slug để chống lỗi MongoDB ID
+        List<Product> allProducts = productRepository.findBySellerSlug(slug);
 
-        // 3. Package the data for the frontend
+        // 3. 🚀 FIXED: Lọc trạng thái linh hoạt
+        List<Product> products = new ArrayList<>();
+        for (Product p : allProducts) {
+            String status = p.getStatus() != null ? p.getStatus().toUpperCase() : "";
+            if (status.equals("ACTIVE") || status.equals("APPROVED") || status.equals("1")) {
+                products.add(p);
+            }
+        }
+
+        // 4. Package the data for the frontend
         Map<String, Object> response = new HashMap<>();
         response.put("seller", seller);
         response.put("products", products);
@@ -91,7 +99,11 @@ public class ProductService {
     }
 
     public List<Product> getAllActiveProducts() {
-        return productRepository.findByStatus("APPROVED");
+        List<Product> active = productRepository.findByStatus("ACTIVE");
+        List<Product> approved = productRepository.findByStatus("APPROVED");
+        Set<Product> combined = new LinkedHashSet<>(active);
+        combined.addAll(approved);
+        return new ArrayList<>(combined);
     }
 
     public Product getProductById(String id) {
@@ -207,6 +219,7 @@ public class ProductService {
             product.setVideoUrl(saveFile(video, sellerSubFolder));
         }
 
+        // 🚀 FULLY RESTORED: All original configurations
         product.setShippingOptions(product.getShippingOptions() != null ? product.getShippingOptions() : new ArrayList<>());
         product.setProtectionEnabled(product.isProtectionEnabled());
         product.setAllowSharing(product.isAllowSharing());
@@ -251,6 +264,7 @@ public class ProductService {
             existing.setVideoUrl(saveFile(newVideo, sellerSubFolder));
         }
 
+        // 🚀 FULLY RESTORED: All specific data fields
         existing.setName(updatedData.getName());
         existing.setDescription(updatedData.getDescription());
         existing.setPrice(updatedData.getPrice());

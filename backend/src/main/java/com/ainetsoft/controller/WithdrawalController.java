@@ -23,10 +23,6 @@ public class WithdrawalController {
     private final WithdrawalService withdrawalService;
     private final UserRepository userRepository;
 
-    /**
-     * 🛠️ SECURITY FIX: Updated to handle both "SELLER" and "ROLE_SELLER" formats.
-     * This ensures compatibility between the DataSeeder and Spring Security.
-     */
     private User getAuthenticatedSeller(Principal principal) {
         if (principal == null) return null;
         User user = userRepository.findByIdentifier(principal.getName()).orElse(null);
@@ -36,9 +32,6 @@ public class WithdrawalController {
         return null;
     }
 
-    /**
-     * 🛠️ SECURITY FIX: Updated to handle both "ADMIN" and "ROLE_ADMIN" formats.
-     */
     private User getAuthenticatedAdmin(Principal principal) {
         if (principal == null) return null;
         User user = userRepository.findByIdentifier(principal.getName()).orElse(null);
@@ -48,10 +41,6 @@ public class WithdrawalController {
         return null;
     }
 
-    /**
-     * 💰 FOR SELLER: GET CURRENT WALLET BALANCE
-     * Returns the live calculated balance for the logged-in seller.
-     */
     @GetMapping("/balance")
     public ResponseEntity<?> getBalance(Principal principal) {
         User seller = getAuthenticatedSeller(principal);
@@ -64,34 +53,27 @@ public class WithdrawalController {
         return ResponseEntity.ok(Map.of("balance", balance));
     }
 
-    /**
-     * 🔔 FOR ADMIN: GET PENDING REQUEST COUNT
-     * Fixes the NoResourceFoundException (404) for the Admin Notification Bell.
-     */
     @GetMapping("/admin/pending-count")
     public ResponseEntity<?> getPendingCount(Principal principal) {
         User admin = getAuthenticatedAdmin(principal);
-        if (admin == null) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
+        if (admin == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         long count = withdrawalService.countPendingRequests();
         return ResponseEntity.ok(count);
     }
 
-    /**
-     * 📝 FOR SELLER: SUBMIT A NEW WITHDRAWAL REQUEST
-     */
     @PostMapping("/request")
-    public ResponseEntity<?> requestWithdrawal(@RequestBody Map<String, Double> payload, Principal principal) {
+    public ResponseEntity<?> requestWithdrawal(@RequestBody Map<String, Object> payload, Principal principal) {
         User seller = getAuthenticatedSeller(principal);
         if (seller == null) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Hành động bị từ chối."));
         }
 
-        Double amount = payload.get("amount");
-        if (amount == null || amount <= 0) {
+        // 🚀 BUG FIX: Tránh lỗi ClassCastException khi JSON gởi số nguyên (50000) thay vì số thập phân (50000.0)
+        Number rawAmount = (Number) payload.get("amount");
+        if (rawAmount == null || rawAmount.doubleValue() <= 0) {
             return ResponseEntity.badRequest().body(Map.of("message", "Số tiền không hợp lệ."));
         }
+        double amount = rawAmount.doubleValue();
 
         try {
             WithdrawalRequest request = withdrawalService.createWithdrawalRequest(seller.getId(), amount);
@@ -102,37 +84,23 @@ public class WithdrawalController {
         }
     }
 
-    /**
-     * 📜 FOR SELLER: GET WITHDRAWAL HISTORY
-     */
     @GetMapping("/history")
     public ResponseEntity<?> getHistory(Principal principal) {
         User seller = getAuthenticatedSeller(principal);
-        if (seller == null) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
-
+        if (seller == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         List<WithdrawalRequest> history = withdrawalService.getSellerHistory(seller.getId());
         return ResponseEntity.ok(history);
     }
 
-    /**
-     * 📊 ADMIN: GET ALL WITHDRAWAL REQUESTS FOR MANAGEMENT
-     */
     @GetMapping("/admin/all")
     public ResponseEntity<?> getAllRequests(Principal principal) {
         User admin = getAuthenticatedAdmin(principal);
         if (admin == null) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Yêu cầu quyền Quản trị viên."));
         }
-
         return ResponseEntity.ok(withdrawalService.getAllRequests());
     }
 
-    /**
-     * ✅ ADMIN: PROCESS REQUEST (APPROVE/REJECT)
-     * Finalizes the transaction and triggers the system notification.
-     */
     @PutMapping("/admin/process/{requestId}")
     public ResponseEntity<?> processRequest(
             @PathVariable String requestId,
@@ -140,11 +108,9 @@ public class WithdrawalController {
             Principal principal) {
         
         User admin = getAuthenticatedAdmin(principal);
-        if (admin == null) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
+        if (admin == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
 
-        String status = payload.get("status"); // Expected: COMPLETED or REJECTED
+        String status = payload.get("status"); 
         String adminNote = payload.get("adminNote");
 
         try {

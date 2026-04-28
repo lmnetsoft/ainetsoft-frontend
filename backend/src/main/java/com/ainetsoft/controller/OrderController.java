@@ -5,7 +5,7 @@ import com.ainetsoft.model.User;
 import com.ainetsoft.repository.UserRepository;
 import com.ainetsoft.service.OrderService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j; // 🛠️ Added for better debugging
+import lombok.extern.slf4j.Slf4j; 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,26 +23,27 @@ public class OrderController {
     private final OrderService orderService;
     private final UserRepository userRepository;
 
-    /**
-     * Helper to get the current user. 
-     * Uses principal.getName() which is the email/identifier from your JWT.
-     */
     private User getAuthenticatedUser(Principal principal) {
         if (principal == null) return null;
         return userRepository.findByIdentifier(principal.getName()).orElse(null);
     }
 
+    // --- HÀM KIỂM TRA ROLE LINH HOẠT ---
+    private boolean hasRole(User user, String roleName) {
+        if (user == null || user.getRoles() == null) return false;
+        return user.getRoles().contains(roleName) || user.getRoles().contains("ROLE_" + roleName);
+    }
+
     /**
      * 📊 SELLER DASHBOARD STATS
-     * Fix: Changed "SELLER" to "ROLE_SELLER" to match your DB logs.
      */
     @GetMapping("/seller/stats")
     public ResponseEntity<?> getSellerStats(Principal principal) {
         User seller = getAuthenticatedUser(principal);
         
-        // 🛠️ BUG FIX: Match the ROLE_ prefix from your logs
-        if (seller == null || !seller.getRoles().contains("ROLE_SELLER")) {
-            log.warn("Access denied for stats: User {} does not have ROLE_SELLER", principal.getName());
+        // 🚀 FIXED: Dùng hàm hasRole linh hoạt
+        if (!hasRole(seller, "SELLER")) {
+            log.warn("Access denied for stats: User {} does not have SELLER role", principal != null ? principal.getName() : "Anonymous");
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "Quyền truy cập bị từ chối: Yêu cầu quyền Người bán"));
         }
@@ -56,7 +57,8 @@ public class OrderController {
     @GetMapping("/seller")
     public ResponseEntity<?> getSellerOrders(@RequestParam(required = false) String status, Principal principal) {
         User seller = getAuthenticatedUser(principal);
-        if (seller == null || !seller.getRoles().contains("ROLE_SELLER")) {
+        
+        if (!hasRole(seller, "SELLER")) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Chỉ dành cho Người bán"));
         }
         
@@ -65,7 +67,7 @@ public class OrderController {
     }
 
     /**
-     * ✅ UPDATE ORDER STATUS (e.g., PENDING -> SHIPPING)
+     * ✅ UPDATE ORDER STATUS
      */
     @PutMapping("/seller/update-status/{orderId}")
     public ResponseEntity<?> updateOrderStatus(
@@ -76,7 +78,7 @@ public class OrderController {
         User seller = getAuthenticatedUser(principal);
         String newStatus = payload.get("status");
 
-        if (seller == null || !seller.getRoles().contains("ROLE_SELLER")) {
+        if (!hasRole(seller, "SELLER")) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Quyền truy cập bị từ chối"));
         }
 
@@ -113,9 +115,33 @@ public class OrderController {
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Vui lòng đăng nhập"));
         }
-        // Passing the identifier (email) works best with your Service logic
         List<Order> orders = orderService.getUserOrders(principal.getName(), status);
         return ResponseEntity.ok(orders);
+    }
+
+    @GetMapping("/{orderId}")
+    public ResponseEntity<?> getOrderDetail(@PathVariable String orderId, Principal principal) {
+        User user = getAuthenticatedUser(principal);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Vui lòng đăng nhập để xem chi tiết"));
+        }
+
+        try {
+            Order order = orderService.getOrderById(orderId);
+            
+            // 🚀 FIXED: Bảo mật cho phép người mua, Seller hoặc Admin
+            boolean isOwner = order.getUserId() != null && order.getUserId().equals(user.getId());
+            boolean isAuthorizedSellerOrAdmin = hasRole(user, "SELLER") || hasRole(user, "ADMIN");
+
+            if (!isOwner && !isAuthorizedSellerOrAdmin) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Bạn không có quyền xem đơn hàng này"));
+            }
+            
+            return ResponseEntity.ok(order);
+        } catch (Exception e) {
+            log.error("Lỗi khi lấy chi tiết đơn {}: {}", orderId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Không tìm thấy đơn hàng"));
+        }
     }
 
     @GetMapping("/eligible-to-review/{productId}")
