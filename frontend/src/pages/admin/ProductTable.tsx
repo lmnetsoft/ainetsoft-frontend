@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { FaSearch, FaTrash, FaTimesCircle, FaChevronLeft, FaChevronRight, FaExternalLinkAlt } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 
+const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:8080';
+
 interface ProductTableProps {
   products: any[];
   onDelete: (id: string) => void;
@@ -24,6 +26,14 @@ const ProductTable: React.FC<ProductTableProps> = ({
   onPageSizeChange
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
+
+  // 🚀 FIXED 1: Added formatMediaUrl so Admin can see images correctly
+  const formatMediaUrl = (url?: string) => {
+    if (!url || url === 'undefined' || url === 'null' || url === '') return "/placeholder.png";
+    if (url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')) return url;
+    const cleanPath = url.startsWith('/') ? url : `/${url}`;
+    return `${BASE_URL}${cleanPath}`;
+  };
 
   // ORIGINAL LOGIC PRESERVED: Local filtering within the current page
   const filteredProducts = useMemo(() => {
@@ -62,7 +72,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
         </div>
       </div>
 
-      {/* 🚀 CHỐNG SẬP LAYOUT: Cố định chiều cao bảng */}
+      {/* CHỐNG SẬP LAYOUT: Cố định chiều cao bảng */}
       <div style={{ minHeight: '650px', overflowX: 'auto', flex: 1 }}>
         <table className="admin-data-table-supreme">
           <thead>
@@ -80,82 +90,87 @@ const ProductTable: React.FC<ProductTableProps> = ({
             {filteredProducts.length === 0 ? (
               <tr><td colSpan={7} className="empty-row-visual">Không tìm thấy sản phẩm nào ở trang này.</td></tr>
             ) : (
-              filteredProducts.map(p => (
-                <tr key={p.id}>
-                  
-                  {/* HÌNH ẢNH - Logic gốc của bạn */}
-                  <td style={{ textAlign: 'center' }}>
-                    <div className="admin-prod-thumb" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '50px', height: '50px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
-                      <img 
-                        src={p.imageUrls?.[0] || '/placeholder.png'} 
-                        alt="thumb" 
-                        onError={(e) => (e.currentTarget.src = "/placeholder.png")} 
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                      />
-                    </div>
-                  </td>
-                  
-                  {/* TÊN VÀ SHOP LINK - Logic gốc của bạn */}
-                  <td style={{ textAlign: 'left' }}>
-                    <div className="user-meta-info" style={{ alignItems: 'flex-start' }}>
-                      <span className="user-full-name">{p.name}</span>
-                      <small className="user-uid-text" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', marginTop: '4px' }}>
-                        Shop: <strong>
-                          {p.sellerSlug ? (
-                            <Link to={`/${p.sellerSlug}`} className="admin-shop-nav-link" title="Xem trang bán hàng" style={{ color: '#3498db', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-                              {p.shopName || p.sellerName || "N/A"} <FaExternalLinkAlt size={10} style={{marginLeft: '4px'}} />
-                            </Link>
-                          ) : (
-                            p.shopName || p.sellerName || "N/A"
-                          )}
-                        </strong>
-                      </small>
-                    </div>
-                  </td>
-                  
-                  <td style={{ textAlign: 'center' }}>
-                    <div style={{ display: 'flex', justifyContent: 'center', color: '#64748b', fontSize: '13px', fontWeight: 500 }}>
-                      {p.categoryName || "N/A"}
-                    </div>
-                  </td>
-                  
-                  <td style={{ textAlign: 'center' }}>
-                    <div style={{ display: 'flex', justifyContent: 'center', color: '#e74c3c', fontWeight: 700 }}>
-                      {formatPrice(p.price)}
-                    </div>
-                  </td>
-                  
-                  <td style={{ textAlign: 'center' }}>
-                    <div style={{ display: 'flex', justifyContent: 'center', color: '#1e293b', fontWeight: 600 }}>
-                      {p.stock}
-                    </div>
-                  </td>
-                  
-                  <td style={{ textAlign: 'center' }}>
-                    <div style={{ display: 'flex', justifyContent: 'center' }}>
-                      <span className={`status-pill-colorful ${p.status?.toLowerCase() === 'approved' ? 'active' : 'pending'}`}>
-                        {p.status === 'APPROVED' ? 'Đang bán' : 'Chờ duyệt'}
-                      </span>
-                    </div>
-                  </td>
-                  
-                  {/* THAO TÁC - Đã Căn Giữa */}
-                  <td style={{ textAlign: 'center' }}>
-                    <div className="action-button-group-supreme" style={{ justifyContent: 'center' }}>
-                      <button className="btn-action-inspect ban-btn" onClick={() => onDelete(p.id)} title="Xóa sản phẩm">
-                        <FaTrash />
-                      </button>
-                    </div>
-                  </td>
-                  
-                </tr>
-              ))
+              filteredProducts.map(p => {
+                // 🚀 FIXED 2: Fallback to sellerId if sellerSlug is missing
+                const shopIdentifier = p.sellerSlug || p.sellerId;
+
+                return (
+                  <tr key={p.id}>
+                    
+                    {/* HÌNH ẢNH */}
+                    <td style={{ textAlign: 'center' }}>
+                      <div className="admin-prod-thumb" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '50px', height: '50px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
+                        <img 
+                          src={formatMediaUrl(p.imageUrls?.[0])} 
+                          alt="thumb" 
+                          onError={(e) => (e.currentTarget.src = "/placeholder.png")} 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                        />
+                      </div>
+                    </td>
+                    
+                    {/* TÊN VÀ SHOP LINK */}
+                    <td style={{ textAlign: 'left' }}>
+                      <div className="user-meta-info" style={{ alignItems: 'flex-start' }}>
+                        <span className="user-full-name">{p.name}</span>
+                        <small className="user-uid-text" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', marginTop: '4px' }}>
+                          Shop: <strong>
+                            {shopIdentifier ? (
+                              <Link to={`/${shopIdentifier}`} className="admin-shop-nav-link" title="Xem trang bán hàng" style={{ color: '#3498db', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+                                {p.shopName || p.sellerName || "N/A"} <FaExternalLinkAlt size={10} style={{marginLeft: '4px'}} />
+                              </Link>
+                            ) : (
+                              p.shopName || p.sellerName || "N/A"
+                            )}
+                          </strong>
+                        </small>
+                      </div>
+                    </td>
+                    
+                    <td style={{ textAlign: 'center' }}>
+                      <div style={{ display: 'flex', justifyContent: 'center', color: '#64748b', fontSize: '13px', fontWeight: 500 }}>
+                        {p.categoryName || "N/A"}
+                      </div>
+                    </td>
+                    
+                    <td style={{ textAlign: 'center' }}>
+                      <div style={{ display: 'flex', justifyContent: 'center', color: '#e74c3c', fontWeight: 700 }}>
+                        {formatPrice(p.price)}
+                      </div>
+                    </td>
+                    
+                    <td style={{ textAlign: 'center' }}>
+                      <div style={{ display: 'flex', justifyContent: 'center', color: '#1e293b', fontWeight: 600 }}>
+                        {p.stock}
+                      </div>
+                    </td>
+                    
+                    <td style={{ textAlign: 'center' }}>
+                      <div style={{ display: 'flex', justifyContent: 'center' }}>
+                        <span className={`status-pill-colorful ${p.status?.toLowerCase() === 'approved' ? 'active' : 'pending'}`}>
+                          {p.status === 'APPROVED' ? 'Đang bán' : 'Chờ duyệt'}
+                        </span>
+                      </div>
+                    </td>
+                    
+                    {/* THAO TÁC */}
+                    <td style={{ textAlign: 'center' }}>
+                      <div className="action-button-group-supreme" style={{ justifyContent: 'center' }}>
+                        <button className="btn-action-inspect ban-btn" onClick={() => onDelete(p.id)} title="Xóa sản phẩm">
+                          <FaTrash />
+                        </button>
+                      </div>
+                    </td>
+                    
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
       </div>
 
-      {/* NEW: DYNAMIC PAGINATION FOOTER */}
+      {/* DYNAMIC PAGINATION FOOTER */}
       <div className="admin-table-pagination-footer-wrapper">
         <div className="pagination-left-info">
           Hiển thị <strong>{filteredProducts.length}</strong> / <strong>{totalElements}</strong> sản phẩm

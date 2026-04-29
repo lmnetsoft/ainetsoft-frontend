@@ -160,3 +160,25 @@
 .nav-seller-highlight .menu-icon {
   margin-right: 8px;
 }
+
+/* --- NÚT KÊNH NGƯỜI BÁN --- */
+.nav-seller-highlight {
+  margin: 0 15px;
+  padding: 12px 15px;
+  border-radius: 8px;
+  background: #fff1f0;
+  border: 1px dashed #ffa39e;
+  transition: background 0.2s;
+  border-left: none !important;
+  
+  /* 🚀 FIXED: Thay đổi từ center sang flex-start để căn trái */
+  justify-content: flex-start; 
+}
+
+.nav-seller-highlight:hover {
+  background: #ffccc7 !important;
+}
+
+.nav-seller-highlight .menu-icon {
+  margin-right: 8px;
+}

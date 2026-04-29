@@ -21,7 +21,6 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.UUID;
 
 @Slf4j
 @Service
@@ -35,7 +34,7 @@ public class ProductService {
 
     private final String uploadDir = "uploads";
 
-    // --- PRIVATE FILE HELPERS (100% PRESERVED) ---
+    // --- PRIVATE FILE HELPERS ---
 
     private String saveFile(MultipartFile file, String subFolder) {
         if (file == null || file.isEmpty()) return null;
@@ -47,7 +46,9 @@ public class ProductService {
             String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
             Path filePath = targetDir.resolve(fileName);
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-            return "/uploads/" + subFolder + "/" + fileName;
+            
+            // 🚀 FIXED: Added "/api/" prefix
+            return "/api/uploads/" + subFolder + "/" + fileName;
         } catch (IOException e) {
             log.error("Lỗi khi lưu tệp: {}", e.getMessage());
             throw new RuntimeException("Không thể lưu tệp đính kèm!");
@@ -57,7 +58,9 @@ public class ProductService {
     private void deletePhysicalFile(String storedUrl) {
         if (storedUrl == null || storedUrl.isEmpty() || storedUrl.contains("placeholder.png")) return;
         try {
-            String relativePath = storedUrl.startsWith("/") ? storedUrl.substring(1) : storedUrl;
+            // 🚀 FIXED: Strip out /api/ if it exists before deleting
+            String relativePath = storedUrl.startsWith("/api/") ? storedUrl.substring(5) : 
+                                  storedUrl.startsWith("/") ? storedUrl.substring(1) : storedUrl;
             Path filePath = Paths.get(relativePath);
             if (Files.exists(filePath)) {
                 Files.delete(filePath);
@@ -70,18 +73,14 @@ public class ProductService {
 
     // --- PUBLIC PRODUCT LOGIC ---
 
-    /**
-     * 🚀 FIXED: Lấy thông tin Shop và sản phẩm bằng Slug, hỗ trợ cả ACTIVE, APPROVED.
-     */
-    public Map<String, Object> getPublicShopData(String slug) {
-        // 1. Find the seller by their Nice URL (Slug)
-        User seller = userRepository.findByShopProfile_ShopSlug(slug)
-                .orElseThrow(() -> new RuntimeException("Cửa hàng không tồn tại hoặc đã đổi địa chỉ."));
+    public Map<String, Object> getPublicShopData(String slugOrId) {
+        // 🚀 FIXED: Support both Slug and ID
+        User seller = userRepository.findByShopProfile_ShopSlug(slugOrId)
+                .orElseGet(() -> userRepository.findById(slugOrId)
+                .orElseThrow(() -> new RuntimeException("Cửa hàng không tồn tại hoặc đã đổi địa chỉ.")));
 
-        // 2. 🚀 NEW: Tìm tất cả sản phẩm của Shop này trực tiếp thông qua Slug để chống lỗi MongoDB ID
-        List<Product> allProducts = productRepository.findBySellerSlug(slug);
+        List<Product> allProducts = productRepository.findBySellerId(seller.getId());
 
-        // 3. 🚀 FIXED: Lọc trạng thái linh hoạt
         List<Product> products = new ArrayList<>();
         for (Product p : allProducts) {
             String status = p.getStatus() != null ? p.getStatus().toUpperCase() : "";
@@ -90,7 +89,6 @@ public class ProductService {
             }
         }
 
-        // 4. Package the data for the frontend
         Map<String, Object> response = new HashMap<>();
         response.put("seller", seller);
         response.put("products", products);
@@ -111,8 +109,33 @@ public class ProductService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm!"));
     }
 
+    // --- DASHBOARD STATS ---
+    public Map<String, Long> getSellerProductStats(String contactInfo) {
+        User user = userRepository.findByIdentifier(contactInfo)
+                .orElseThrow(() -> new RuntimeException("Not found"));
+        List<Product> products = productRepository.findBySellerId(user.getId());
+        
+        long pending = products.stream().filter(p -> "PENDING".equals(p.getStatus())).count();
+        long banned = products.stream().filter(p -> "BANNED".equals(p.getStatus())).count();
+        
+        int threshold = 5;
+        if (user.getShopProfile() != null && user.getShopProfile().getLowStockThreshold() > 0) {
+            threshold = user.getShopProfile().getLowStockThreshold();
+        }
+        
+        final int finalThreshold = threshold;
+        long lowStockCount = products.stream().filter(p -> p.getStock() < finalThreshold).count();
+        
+        return Map.of(
+            "pending", pending, 
+            "banned", banned, 
+            "lowStockCount", lowStockCount
+        );
+    }
+
+
     // =======================================================
-    // 🛠️ FIXED: WISHLIST PERSISTENCE LOGIC (Set<String> Fix)
+    // 🛠️ WISHLIST PERSISTENCE LOGIC
     // =======================================================
 
     @Transactional
@@ -139,7 +162,7 @@ public class ProductService {
         productRepository.save(product);
     }
 
-    // --- VIOLATION REPORTING LOGIC ---
+    // --- 🛡️ RESTORED: VIOLATION REPORTING LOGIC ---
 
     @Transactional
     public void createProductReport(String productId, String reporterIdentifier, Map<String, Object> reportData) {
@@ -188,7 +211,7 @@ public class ProductService {
         productRepository.save(product);
     }
 
-    // --- CRUD OPERATIONS (100% RESTORED) ---
+    // --- CRUD OPERATIONS ---
 
     public Product createProductWithMedia(String contactInfo, Product product, List<MultipartFile> images, MultipartFile video) {
         User user = userRepository.findByIdentifier(contactInfo)
@@ -219,7 +242,6 @@ public class ProductService {
             product.setVideoUrl(saveFile(video, sellerSubFolder));
         }
 
-        // 🚀 FULLY RESTORED: All original configurations
         product.setShippingOptions(product.getShippingOptions() != null ? product.getShippingOptions() : new ArrayList<>());
         product.setProtectionEnabled(product.isProtectionEnabled());
         product.setAllowSharing(product.isAllowSharing());
@@ -243,6 +265,46 @@ public class ProductService {
         }
 
         String sellerSubFolder = "ads/" + user.getId();
+        
+        // 🚀 STRICT MODERATION FLAG: ONLY triggers for Media changes
+        boolean needsModeration = false;
+
+        // --- 1. MEDIA CHECKS (HÌNH ẢNH & VIDEO) ---
+
+        // A. Check if existing images were deleted or rearranged by comparing URLs
+        List<String> oldImages = existing.getImageUrls() != null ? existing.getImageUrls() : new ArrayList<>();
+        List<String> passedImages = updatedData.getImageUrls() != null ? updatedData.getImageUrls() : new ArrayList<>();
+        if (!oldImages.equals(passedImages)) {
+            needsModeration = true;
+            existing.setImageUrls(passedImages); // Apply the deletion/rearrangement
+        }
+
+        // B. Check for newly uploaded images
+        if (newImages != null && !newImages.isEmpty()) {
+            List<String> currentList = existing.getImageUrls() != null ? existing.getImageUrls() : new ArrayList<>();
+            for (MultipartFile img : newImages) {
+                String url = saveFile(img, sellerSubFolder);
+                if (url != null) currentList.add(url);
+            }
+            existing.setImageUrls(currentList);
+            needsModeration = true;
+        }
+
+        // C. Check for new video upload
+        if (newVideo != null && !newVideo.isEmpty()) {
+            existing.setVideoUrl(saveFile(newVideo, sellerSubFolder));
+            needsModeration = true;
+        }
+
+        // D. Check if existing video was deleted
+        String oldVideo = existing.getVideoUrl() == null ? "" : existing.getVideoUrl();
+        String passedVideo = updatedData.getVideoUrl() == null ? "" : updatedData.getVideoUrl();
+        if (!oldVideo.equals(passedVideo)) {
+            existing.setVideoUrl(passedVideo.isEmpty() ? null : passedVideo);
+            needsModeration = true;
+        }
+
+        // --- 2. ALL OTHER FIELDS (Saves directly, NO moderation trigger) ---
 
         if (updatedData.getCategoryId() != null && !updatedData.getCategoryId().equals(existing.getCategoryId())) {
             Category category = categoryRepository.findById(updatedData.getCategoryId())
@@ -251,28 +313,22 @@ public class ProductService {
             existing.setCategoryName(category.getName());
         }
 
-        if (newImages != null && !newImages.isEmpty()) {
-            List<String> currentList = existing.getImageUrls() != null ? existing.getImageUrls() : new ArrayList<>();
-            for (MultipartFile img : newImages) {
-                String url = saveFile(img, sellerSubFolder);
-                if (url != null) currentList.add(url);
-            }
-            existing.setImageUrls(currentList);
-        }
-
-        if (newVideo != null && !newVideo.isEmpty()) {
-            existing.setVideoUrl(saveFile(newVideo, sellerSubFolder));
-        }
-
-        // 🚀 FULLY RESTORED: All specific data fields
-        existing.setName(updatedData.getName());
-        existing.setDescription(updatedData.getDescription());
+        existing.setName(updatedData.getName() != null ? updatedData.getName() : existing.getName());
+        existing.setDescription(updatedData.getDescription() != null ? updatedData.getDescription() : existing.getDescription());
         existing.setPrice(updatedData.getPrice());
         existing.setStock(updatedData.getStock());
         existing.setSpecifications(updatedData.getSpecifications());
-        existing.setShippingOptions(updatedData.getShippingOptions() != null ? updatedData.getShippingOptions() : new ArrayList<>());
+        existing.setShippingOptions(updatedData.getShippingOptions() != null ? updatedData.getShippingOptions() : existing.getShippingOptions());
         existing.setProtectionEnabled(updatedData.isProtectionEnabled());
         existing.setAllowSharing(updatedData.isAllowSharing());
+
+        // --- 3. APPLY MODERATION STATUS ---
+        
+        // ONLY switch to PENDING if Hình ảnh & Video were touched
+        if (needsModeration) {
+            existing.setStatus("PENDING");
+            log.info("Product {} set to PENDING because HÌNH ẢNH & VIDEO was modified.", existing.getId());
+        }
 
         existing.setUpdatedAt(LocalDateTime.now());
         return productRepository.save(existing);
@@ -308,6 +364,12 @@ public class ProductService {
         return productRepository.findBySellerId(user.getId());
     }
 
-    public Product createProduct(String contactInfo, Product product) { return createProductWithMedia(contactInfo, product, null, null); }
-    public Product updateProduct(String productId, String contactInfo, Product updatedData) { return updateProductWithMedia(productId, contactInfo, updatedData, null, null); }
+    // --- 🛡️ RESTORED: WRAPPER METHODS ---
+    public Product createProduct(String contactInfo, Product product) { 
+        return createProductWithMedia(contactInfo, product, null, null); 
+    }
+    
+    public Product updateProduct(String productId, String contactInfo, Product updatedData) { 
+        return updateProductWithMedia(productId, contactInfo, updatedData, null, null); 
+    }
 }

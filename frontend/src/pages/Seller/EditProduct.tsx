@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api, { getCategories } from '../../services/api';
-import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import ToastNotification from '../../components/Toast/ToastNotification';
-import heic2any from 'heic2any'; // Support for iPhone photos
+import heic2any from 'heic2any'; 
 import './AddProduct.css'; 
 
 const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:8080';
@@ -47,9 +46,23 @@ const EditProduct = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
-  const formatMediaUrl = (url?: string) => {
-    if (!url || url === 'undefined' || url === 'null' || url === '') return "/placeholder.png";
-    if (url.startsWith('http') || url.startsWith('blob:')) return url;
+  // 🚀 BẢN VÁ: Xử lý an toàn link ảnh, blob, object và fallback
+  const formatMediaUrl = (media: any) => {
+    if (!media) return "bitnamilegacy";
+    
+    let url = '';
+    if (typeof media === 'string') {
+        url = media;
+    } else if (typeof media === 'object') {
+        url = media.url || media.preview || media.filepath || '';
+        if (!url && media instanceof File) {
+            url = URL.createObjectURL(media);
+        }
+    }
+
+    if (!url || url === 'undefined' || url === 'null' || url.trim() === '') return "bitnamilegacy";
+    if (url.startsWith('http') || url.startsWith('data:') || url.startsWith('blob:')) return url;
+    
     const cleanPath = url.startsWith('/') ? url : `/${url}`;
     return `${BASE_URL}${cleanPath}`;
   };
@@ -114,9 +127,6 @@ const EditProduct = () => {
     initData();
   }, [id, navigate]);
 
-  /**
-   * ASYNC IMAGE HANDLER: Supports Multi-upload + HEIC Conversion
-   */
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const totalCount = existingImages.length + newImageFiles.length + files.length;
@@ -189,7 +199,6 @@ const EditProduct = () => {
         if (s.key.trim() && s.value.trim()) specMap[s.key] = s.value;
       });
 
-      // Maintain consistency between imageUrls and existing state
       const productPayload = { 
         ...formData, 
         specifications: specMap,
@@ -200,11 +209,18 @@ const EditProduct = () => {
       newImageFiles.forEach(file => data.append("images", file));
       if (videoFile) data.append("video", videoFile);
 
-      await api.put(`/products/seller/update/${id}`, data, {
+      // 🚀 SMART MODERATION: Đọc response từ backend
+      const res = await api.put(`/products/seller/update/${id}`, data, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
-      setToastMessage("Cập nhật thành công! Đang chờ Admin duyệt lại.");
+      const updatedProduct = res.data;
+      if (updatedProduct?.status === 'PENDING') {
+        setToastMessage("Cập nhật thành công! Sản phẩm đang chờ Admin duyệt lại.");
+      } else {
+        setToastMessage("Cập nhật thành công! Sản phẩm vẫn đang hiển thị trên sàn.");
+      }
+
       setShowToast(true);
       setTimeout(() => navigate('/seller/products'), 2000);
     } catch (error: any) {
@@ -222,12 +238,11 @@ const EditProduct = () => {
       <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
 
       <div className="container seller-container">
-        <AccountSidebar />
         
-        <main className="add-product-main">
+        <main className="add-product-main" style={{ width: '100%' }}>
           <div className="form-header">
             <h1>Chỉnh sửa sản phẩm</h1>
-            <p className="warning-text">Lưu ý: Sau khi lưu, sản phẩm sẽ cần được Admin duyệt lại.</p>
+            <p className="warning-text">Lưu ý: Chỉ khi thay đổi Hình ảnh hoặc Video, sản phẩm mới cần Admin duyệt lại.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="product-form">
@@ -238,7 +253,11 @@ const EditProduct = () => {
                 {/* 1. EXISTING IMAGES (URLs) */}
                 {existingImages.map((url, index) => (
                   <div key={`exist-${index}`} className="image-preview-item">
-                    <img src={formatMediaUrl(url)} alt="Current" />
+                    <img 
+                      src={formatMediaUrl(url)} 
+                      alt="Current" 
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "bitnamilegacy"; }}
+                    />
                     <button type="button" className="remove-img" onClick={() => setExistingImages(prev => prev.filter((_, i) => i !== index))}>×</button>
                     {index === 0 && <span className="primary-badge">Ảnh bìa</span>}
                   </div>
@@ -247,7 +266,11 @@ const EditProduct = () => {
                 {/* 2. NEW IMAGE PREVIEWS (Blobs) */}
                 {newImagePreviews.map((url, index) => (
                   <div key={`new-${index}`} className="image-preview-item">
-                    <img src={url} alt="New" />
+                    <img 
+                      src={url} 
+                      alt="New" 
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "bitnamilegacy"; }}
+                    />
                     <button type="button" className="remove-img" onClick={() => {
                       setNewImageFiles(prev => prev.filter((_, i) => i !== index));
                       setNewImagePreviews(prev => prev.filter((_, i) => i !== index));
@@ -325,7 +348,7 @@ const EditProduct = () => {
             <div className="form-actions">
               <button type="button" className="cancel-btn" onClick={() => navigate(-1)}>Hủy bỏ</button>
               <button type="submit" className="submit-btn" disabled={isSubmitting}>
-                {isSubmitting ? "Đang lưu..." : "Cập nhật & Chờ duyệt"}
+                {isSubmitting ? "Đang lưu..." : "Cập nhật sản phẩm"}
               </button>
             </div>
           </form>

@@ -4,7 +4,6 @@ import {
   FaClipboardList, FaBoxOpen, FaBullhorn, FaHeadset, 
   FaWallet, FaChartBar, FaStore, FaChevronDown, FaChevronUp, FaArrowLeft
 } from 'react-icons/fa';
-// Lưu ý: Đảm bảo đường dẫn CSS đúng với thư mục hiện tại của bạn
 import './SellerSidebar.css';
 
 const SellerSidebar = () => {
@@ -12,7 +11,6 @@ const SellerSidebar = () => {
   const navigate = useNavigate();
   const path = location.pathname;
 
-  // Tự động mở các nhóm menu dựa trên URL hiện tại
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     orders: path.includes('/seller/order') || path.includes('/seller/settings/shipping'),
     products: path.includes('/seller/product') || path.includes('/seller/add'),
@@ -29,7 +27,6 @@ const SellerSidebar = () => {
 
   return (
     <aside className="seller-sidebar-wrapper">
-      {/* HEADER: Chuyển đổi về chế độ Mua hàng */}
       <div className="seller-sidebar-header">
         <div className="back-to-buyer" onClick={() => navigate('/')}>
           <FaArrowLeft /> <span>Trở về AiNetsoft</span>
@@ -41,6 +38,20 @@ const SellerSidebar = () => {
 
       <nav className="seller-nav-menu">
         
+        {/* 🚀 ĐÃ BỔ SUNG NÚT ĐIỀU HƯỚNG VỀ TỔNG QUAN SELLER */}
+        <div className="seller-nav-group">
+          <div 
+             className="seller-group-title" 
+             onClick={() => navigate('/seller/dashboard')}
+             style={{ 
+                 backgroundColor: path === '/seller/dashboard' ? '#fff5f2' : 'transparent', 
+                 color: path === '/seller/dashboard' ? '#ee4d2d' : 'inherit' 
+             }}
+          >
+            <span className="title-left"><FaChartBar style={{marginRight: '12px'}} /> Tổng Quan</span>
+          </div>
+        </div>
+
         {/* 1. QUẢN LÝ ĐƠN HÀNG */}
         <div className="seller-nav-group">
           <div className="seller-group-title" onClick={() => toggleGroup('orders')}>
@@ -83,7 +94,6 @@ const SellerSidebar = () => {
             <span className="title-left">Chăm sóc khách hàng</span>
             {openGroups.cskh ? <FaChevronUp className="chevron" /> : <FaChevronDown className="chevron" />}
           </div>
-          {/* 🚀 SUB-MENU ĐÃ ĐƯỢC BỔ SUNG Ở ĐÂY VÀ SẼ LUÔN HIỆN */}
           <div className={`seller-sub-menu ${openGroups.cskh ? 'open' : ''}`}>
             <NavLink to="/seller/chat" className={({isActive}) => isActive ? "sub-item active" : "sub-item"}>Quản Lý Tin Nhắn</NavLink>
           </div>

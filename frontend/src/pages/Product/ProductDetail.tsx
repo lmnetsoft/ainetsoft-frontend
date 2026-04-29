@@ -32,6 +32,7 @@ interface ShippingConfig {
 interface Product {
   id: string;
   sellerId?: string;
+  /** 🚀 NEW: Syncing with DataSeeder slug for professional navigation */
   sellerSlug?: string; 
   name: string;
   description: string;
@@ -106,9 +107,13 @@ const ProductDetail = () => {
   
   const [validOrderId, setValidOrderId] = useState<string | null>(null);
 
+  // 🚀 FIXED: Helper logic to resolve image paths correctly for local blobs
   const formatMediaUrl = (url?: string) => {
     if (!url || url === 'undefined' || url === 'null' || url === '') return "/placeholder.png";
-    if (url.startsWith('http')) return url;
+    
+    // Allow blob and data URLs to bypass the base URL attachment for live previews
+    if (url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')) return url; 
+    
     const cleanPath = url.startsWith('/') ? url : `/${url}`;
     return `${BASE_URL}${cleanPath}`;
   };
@@ -361,16 +366,8 @@ const ProductDetail = () => {
     window.scrollTo(0, 0); 
   }, [id, navigate, location.state]);
 
-  // 🚀 CƠ CHẾ MỚI CỦA ĐIỂM #2: CHAT BẰNG BONG BÓNG NỔI (KHÔNG CHUYỂN TRANG)
   const handleChatWithSeller = () => {
     if (!localStorage.getItem('isAuthenticated')) { navigate('/login'); return; }
-    
-    // Lưu ID của Seller vào LocalStorage để bong bóng Chat (ChatPage.tsx) biết phải gửi tin cho ai
-    if (product?.sellerId) {
-      localStorage.setItem('currentChatRecipient', product.sellerId);
-    }
-    
-    // Bật bong bóng chat đè lên trang hiện tại
     setIsChatOpen(true); 
   };
 
@@ -604,9 +601,10 @@ const ProductDetail = () => {
             <h3>{product.shopName}</h3>
             <div className="shop-actions">
               <button className="chat-now-btn" onClick={handleChatWithSeller}><FaCommentDots /> Chat ngay</button>
+              {/* 🚀 FIXED: Fallback appropriately between slug and ID for navigation */}
               <button 
                 className="view-shop-btn" 
-                onClick={() => navigate(`/${product.sellerSlug || product.sellerId}`)}
+                onClick={() => navigate(`/shop/${product.sellerSlug || product.sellerId}`)}
               >
                 <FaStoreAlt /> Xem Shop
               </button>

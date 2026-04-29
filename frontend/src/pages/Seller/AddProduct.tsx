@@ -100,7 +100,8 @@ const AddProduct = () => {
         }
 
         try {
-            const shipRes = await api.get('/api/shipping-methods');
+            // 🚀 BẢN VÁ: Đã đổi /api/shipping-methods thành /shipping-methods để tránh nhân đôi /api/api/
+            const shipRes = await api.get('/shipping-methods');
             setGlobalShippingMethods(shipRes.data);
         } catch (shipErr) {
             console.warn("Manual mode ready.");

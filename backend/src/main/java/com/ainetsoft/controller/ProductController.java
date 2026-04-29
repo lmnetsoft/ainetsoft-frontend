@@ -191,4 +191,11 @@ public class ProductController {
         productService.bulkDeleteProducts(ids, principal.getName());
         return ResponseEntity.ok(Map.of("message", "Đã xóa các sản phẩm thành công!"));
     }
+
+// 🚀 NEW: Get product counts for the seller dashboard
+    @GetMapping("/seller/stats/products")
+    public ResponseEntity<?> getSellerProductStats(Principal principal) {
+        if (principal == null) throw new RuntimeException("Unauthorized");
+        return ResponseEntity.ok(productService.getSellerProductStats(principal.getName()));
+    }    
 }

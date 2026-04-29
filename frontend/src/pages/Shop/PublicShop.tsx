@@ -4,7 +4,6 @@ import { FaStore, FaStar, FaBox, FaMapMarkerAlt, FaCommentDots } from 'react-ico
 import api from '../../services/api';
 import './PublicShop.css';
 
-// 🚀 FIXED: Import the assets correctly so Vite can bundle them
 import logoWithoutText from '../../assets/images/logo_without_text.png';
 
 const PublicShop = () => {
@@ -16,13 +15,15 @@ const PublicShop = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 🚀 FIXED: Define the Backend URL for fetching uploaded files
   const API_BASE_URL = "http://localhost:8080";
 
-  // 🚀 FIXED: Helper logic to resolve image paths correctly
+  // 🚀 FIXED: Helper logic to resolve image paths correctly including blobs
   const getFullImageUrl = (path: string | null | undefined) => {
     if (!path || path === "DEFAULT_LOGO" || path.trim() === "") return logoWithoutText; 
-    if (path.startsWith('data:image') || path.startsWith('http')) return path;
+    
+    // Bypass for external URLs, base64 strings, and local blob previews
+    if (path.startsWith('data:image') || path.startsWith('http') || path.startsWith('blob:')) return path;
+    
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
     return `${API_BASE_URL}${cleanPath}`;
   };
@@ -88,7 +89,6 @@ const PublicShop = () => {
         <div className="container shop-header-container">
           <div className="shop-profile-card">
             <div className="shop-logo-wrapper">
-              {/* 🚀 FIXED: Using getFullImageUrl for the Shop Logo */}
               <img 
                 src={getFullImageUrl(shopInfo?.shopLogoUrl)} 
                 alt="Shop Logo" 
@@ -138,7 +138,6 @@ const PublicShop = () => {
             {products.map(product => (
               <div key={product.id} className="shop-product-card" onClick={() => navigate(`/product/${product.id}`)}>
                 <div className="prod-img-box">
-                  {/* 🚀 FIXED: Applying getFullImageUrl to Product Thumbnails as well */}
                   <img 
                     src={getFullImageUrl(product.imageUrls && product.imageUrls[0] ? product.imageUrls[0] : null)} 
                     alt={product.name} 
