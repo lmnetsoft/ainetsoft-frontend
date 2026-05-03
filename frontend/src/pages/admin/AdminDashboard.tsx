@@ -151,8 +151,41 @@ const AdminDashboard = () => {
             </div>
 
             <div className="quick-info-grid">
-                <div className="info-mini-card"><div className="mini-card-icon"><FaHistory /></div><div className="mini-card-text"><label>Đơn hàng thành công</label><strong>{stats.totalOrders}</strong></div></div>
-                <div className="info-mini-card"><div className="mini-card-icon"><FaShieldAlt /></div><div className="mini-card-text"><label>Tỷ lệ duyệt Người bán</label><strong>{stats.totalSellers > 0 ? ((stats.totalSellers / (stats.totalSellers + stats.pendingSellers)) * 100).toFixed(0) : 0}%</strong></div></div>
+                
+                {/* 1. Orders Card */}
+                <div 
+                  className="info-mini-card" 
+                  onClick={() => navigate('/admin/orders')}
+                  style={{ cursor: 'pointer' }}
+                  title="Nhấn để xem chi tiết đơn hàng"
+                >
+                  <div className="mini-card-icon"><FaHistory /></div>
+                  <div className="mini-card-text" style={{ flex: 1 }}>
+                    <label>Đơn hàng thành công</label>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '2px' }}>
+                      <strong>{stats.totalOrders}</strong>
+                      <span style={{ fontSize: '13px', color: '#0284c7', fontWeight: 600 }}>Chi tiết ➔</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 🚀 FIXED: 2. Sellers Approval Card */}
+                <div 
+                  className="info-mini-card"
+                  onClick={() => navigate('/admin/stores?tab=sellers')}
+                  style={{ cursor: 'pointer' }}
+                  title="Nhấn để xem chi tiết xét duyệt shop"
+                >
+                  <div className="mini-card-icon"><FaShieldAlt /></div>
+                  <div className="mini-card-text" style={{ flex: 1 }}>
+                    <label>Tỷ lệ duyệt Người bán</label>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '2px' }}>
+                      <strong>{stats.totalSellers > 0 ? ((stats.totalSellers / (stats.totalSellers + stats.pendingSellers)) * 100).toFixed(0) : 0}%</strong>
+                      <span style={{ fontSize: '13px', color: '#0284c7', fontWeight: 600 }}>Chi tiết ➔</span>
+                    </div>
+                  </div>
+                </div>
+                
             </div>
           </div>
         );
@@ -165,7 +198,6 @@ const AdminDashboard = () => {
     <div className="admin-dashboard-wrapper">
       
       <header className="admin-page-header">
-        {/* KHỐI TRÁI: TIÊU ĐỀ VÀ BADGE (Giữ nguyên theo CSS gốc để căn giữa) */}
         <div className="header-left">
           <h1>Hệ thống Quản trị AiNetsoft</h1>
           <div className="badge-container">
@@ -174,7 +206,6 @@ const AdminDashboard = () => {
           </div>
         </div>
         
-        {/* 🚀 BẢN VÁ LỖI CỨNG: ÉP CẢ 2 NÚT VÀO MỘT HỘP Ở GÓC TRÊN CÙNG BÊN PHẢI */}
         <div style={{
             position: 'absolute',
             right: 0,
@@ -188,7 +219,6 @@ const AdminDashboard = () => {
                 className="btn-refresh" 
                 onClick={handleManualRefresh} 
                 disabled={loading} 
-                // Ghi đè CSS absolute của nút Làm mới để nó nằm gọn trong hộp này
                 style={{ position: 'relative', top: 'auto', right: 'auto', margin: 0 }}
             >
                 <FaSync className={loading ? 'spin' : ''} />

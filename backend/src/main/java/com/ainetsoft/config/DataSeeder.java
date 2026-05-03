@@ -35,6 +35,10 @@ public class DataSeeder implements CommandLineRunner {
     private final OrderRepository orderRepository;
     private final WithdrawalRepository withdrawalRepository;
     private final BankAccountRepository bankAccountRepository; 
+    
+    // 🚀 BỔ SUNG REPOSITORIES CHO MARKETING ENGINE
+    private final VoucherRepository voucherRepository;
+    private final WalletRepository walletRepository;
 
     @Value("${app.seed.mock-data:true}")
     private boolean seedMockData;
@@ -78,6 +82,9 @@ public class DataSeeder implements CommandLineRunner {
             seedRegularUsers();
             seedBankAccounts();      
             seedWithdrawalTestData(); 
+            
+            // 🚀 BỔ SUNG GỌI HÀM SEED VOUCHER & WALLET
+            seedVouchersAndWallets();
         }
         
         log.info("✅ SUCCESS: DataSeeder has executed perfectly.");
@@ -100,6 +107,65 @@ public class DataSeeder implements CommandLineRunner {
         orderRepository.deleteAll();
         withdrawalRepository.deleteAll();
         bankAccountRepository.deleteAll(); 
+        
+        // 🚀 BỔ SUNG CLEANUP
+        voucherRepository.deleteAll();
+        walletRepository.deleteAll();
+    }
+
+    // 🚀 BỔ SUNG HÀM TẠO DATA MẪU CHO VOUCHER VÀ VÍ
+    private void seedVouchersAndWallets() {
+        if (voucherRepository.count() > 0) return;
+
+        User sellerA = userRepository.findByEmail("seller_a@ainetsoft.com").orElse(null);
+        User buyer = userRepository.findByEmail("user@ainetsoft.com").orElse(null);
+
+        // 1. Tạo Voucher của Sàn (Không có sellerId)
+        Voucher platformVoucher = Voucher.builder()
+                .code("FREESHIP26")
+                .shopName("AiNetsoft Official")
+                .title("Freeship Toàn Sàn")
+                .discountType("FIXED_AMOUNT")
+                .discountValue(30000.0)
+                .minOrderValue(150000.0)
+                .usageLimit(1000)
+                .usedCount(5)
+                .validFrom(LocalDateTime.now().minusDays(2))
+                .validUntil(LocalDateTime.now().plusMonths(1))
+                .isActive(true)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        // 2. Tạo Voucher của Shop
+        Voucher shopVoucher = Voucher.builder()
+                .code("SMART10")
+                .sellerId(sellerA != null ? sellerA.getId() : null)
+                .shopName(sellerA != null ? sellerA.getShopProfile().getShopName() : "Smart Home Store")
+                .title("Giảm 10% tối đa 100k")
+                .discountType("PERCENTAGE")
+                .discountValue(10.0)
+                .maxDiscountAmount(100000.0)
+                .minOrderValue(200000.0)
+                .usageLimit(100)
+                .usedCount(12)
+                .validFrom(LocalDateTime.now().minusHours(5))
+                .validUntil(LocalDateTime.now().plusDays(15))
+                .isActive(true)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        List<Voucher> savedVouchers = voucherRepository.saveAll(Arrays.asList(platformVoucher, shopVoucher));
+
+        // 3. Khởi tạo Ví và tặng Xu cho User test
+        if (buyer != null && walletRepository.findByUserId(buyer.getId()).isEmpty()) {
+            Wallet wallet = Wallet.builder()
+                    .userId(buyer.getId())
+                    .coinBalance(15000.0) // Tặng sẵn 15,000 Xu để test
+                    .savedVoucherIds(new ArrayList<>(Arrays.asList(savedVouchers.get(0).getId(), savedVouchers.get(1).getId())))
+                    .updatedAt(LocalDateTime.now())
+                    .build();
+            walletRepository.save(wallet);
+        }
     }
 
     private void seedSystemContents() {
@@ -211,7 +277,6 @@ public class DataSeeder implements CommandLineRunner {
         ));
     }
 
-    // 🚀 FIXED: Thêm .enabled(true) cho toàn bộ User
     private void seedGlobalAdmin() {
         if (!userRepository.existsByEmail(adminEmail)) {
             User admin = User.builder()
@@ -219,7 +284,7 @@ public class DataSeeder implements CommandLineRunner {
                 .roles(new HashSet<>(Arrays.asList("ADMIN", "USER"))).permissions(new HashSet<>(Arrays.asList("ALL_ACCESS")))
                 .isGlobalAdmin(true).accountStatus("ACTIVE")
                 .emailVerified(true) 
-                .enabled(true) // <--- CHÌA KHÓA LÀ ĐÂY
+                .enabled(true)
                 .createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
             userRepository.save(admin);
         }
@@ -271,7 +336,7 @@ public class DataSeeder implements CommandLineRunner {
                 .email("seller@ainetsoft.com").fullName("AiNetsoft Mall Official").password(passwordEncoder.encode(adminPassword))
                 .roles(new HashSet<>(Arrays.asList("SELLER", "USER"))).sellerVerification("VERIFIED").accountStatus("ACTIVE")
                 .emailVerified(true) 
-                .enabled(true) // <--- VÀ ĐÂY
+                .enabled(true)
                 .shopProfile(User.ShopProfile.builder().shopName("AiNetsoft Mall").shopSlug("ainetsoft-mall").build()).build());
         } else {
             if (official.getShopProfile() == null || official.getShopProfile().getShopSlug() == null) {
@@ -291,7 +356,7 @@ public class DataSeeder implements CommandLineRunner {
                     .email(email).fullName(shopNames[i]).password(passwordEncoder.encode(adminPassword))
                     .roles(new HashSet<>(Arrays.asList("SELLER", "USER"))).sellerVerification("VERIFIED").accountStatus("ACTIVE")
                     .emailVerified(true) 
-                    .enabled(true) // <--- VÀ ĐÂY
+                    .enabled(true)
                     .shopProfile(User.ShopProfile.builder().shopName(shopNames[i]).shopSlug("seller-" + prefixes[i]).build()).build());
             } else {
                 if (seller.getShopProfile() == null || seller.getShopProfile().getShopSlug() == null) {
@@ -339,7 +404,7 @@ public class DataSeeder implements CommandLineRunner {
             m.setPassword(passwordEncoder.encode(adminPassword)); m.setRoles(new HashSet<>(Arrays.asList("ADMIN")));
             m.setAccountStatus("ACTIVE"); 
             m.setEmailVerified(true); 
-            m.setEnabled(true); // <--- VÀ ĐÂY
+            m.setEnabled(true);
             userRepository.save(m);
         }
     }
@@ -350,7 +415,7 @@ public class DataSeeder implements CommandLineRunner {
             u.setPassword(passwordEncoder.encode(adminPassword)); u.setRoles(new HashSet<>(Arrays.asList("USER")));
             u.setAccountStatus("ACTIVE"); 
             u.setEmailVerified(true); 
-            u.setEnabled(true); // <--- VÀ ĐÂY
+            u.setEnabled(true);
             userRepository.save(u);
         }
     }
@@ -361,7 +426,7 @@ public class DataSeeder implements CommandLineRunner {
             p.setPassword(passwordEncoder.encode(adminPassword)); p.setRoles(new HashSet<>(Arrays.asList("USER")));
             p.setAccountStatus("PENDING_SELLER"); 
             p.setEmailVerified(true); 
-            p.setEnabled(true); // <--- VÀ ĐÂY NỮA
+            p.setEnabled(true);
             userRepository.save(p);
         }
     }

@@ -14,7 +14,8 @@ const SellerSidebar = () => {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     orders: path.includes('/seller/order') || path.includes('/seller/settings/shipping'),
     products: path.includes('/seller/product') || path.includes('/seller/add'),
-    marketing: path.includes('/seller/marketing'),
+    // 🚀 BỔ SUNG: Nhận diện URL /seller/vouchers để giữ menu Marketing mở
+    marketing: path.includes('/seller/marketing') || path.includes('/seller/vouchers'),
     cskh: path.includes('/seller/chat') || path.includes('/seller/review'),
     finance: path.includes('/seller/revenue') || path.includes('/seller/balance') || path.includes('/seller/bank'),
     data: path.includes('/seller/data'),
@@ -38,7 +39,7 @@ const SellerSidebar = () => {
 
       <nav className="seller-nav-menu">
         
-        {/* 🚀 ĐÃ BỔ SUNG NÚT ĐIỀU HƯỚNG VỀ TỔNG QUAN SELLER */}
+        {/* NÚT ĐIỀU HƯỚNG VỀ TỔNG QUAN SELLER */}
         <div className="seller-nav-group">
           <div 
              className="seller-group-title" 
@@ -85,6 +86,10 @@ const SellerSidebar = () => {
           <div className="seller-group-title" onClick={() => toggleGroup('marketing')}>
             <span className="title-left">Kênh Marketing</span>
             {openGroups.marketing ? <FaChevronUp className="chevron" /> : <FaChevronDown className="chevron" />}
+          </div>
+          {/* 🚀 BỔ SUNG: Menu Quản lý Voucher */}
+          <div className={`seller-sub-menu ${openGroups.marketing ? 'open' : ''}`}>
+            <NavLink to="/seller/vouchers" className={({isActive}) => isActive ? "sub-item active" : "sub-item"}>Quản Lý Voucher</NavLink>
           </div>
         </div>
 

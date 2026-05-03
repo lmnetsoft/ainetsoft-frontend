@@ -41,7 +41,6 @@ public class OrderController {
     public ResponseEntity<?> getSellerStats(Principal principal) {
         User seller = getAuthenticatedUser(principal);
         
-        // 🚀 FIXED: Dùng hàm hasRole linh hoạt
         if (!hasRole(seller, "SELLER")) {
             log.warn("Access denied for stats: User {} does not have SELLER role", principal != null ? principal.getName() : "Anonymous");
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -129,7 +128,6 @@ public class OrderController {
         try {
             Order order = orderService.getOrderById(orderId);
             
-            // 🚀 FIXED: Bảo mật cho phép người mua, Seller hoặc Admin
             boolean isOwner = order.getUserId() != null && order.getUserId().equals(user.getId());
             boolean isAuthorizedSellerOrAdmin = hasRole(user, "SELLER") || hasRole(user, "ADMIN");
 
@@ -162,5 +160,21 @@ public class OrderController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
+    }
+
+    // 🚀 NEW: ADMIN ENDPOINT - LẤY TOÀN BỘ ĐƠN HÀNG HỆ THỐNG
+    @GetMapping("/admin/all")
+    public ResponseEntity<?> getAllSystemOrders(Principal principal) {
+        User admin = getAuthenticatedUser(principal);
+        
+        // Bảo mật: Chỉ User có ROLE_ADMIN mới được phép gọi API này
+        if (!hasRole(admin, "ADMIN")) {
+            log.warn("Access denied for admin orders: User {} does not have ADMIN role", principal != null ? principal.getName() : "Anonymous");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Quyền truy cập bị từ chối: Yêu cầu quyền Admin"));
+        }
+        
+        List<Order> allOrders = orderService.getAllSystemOrders();
+        return ResponseEntity.ok(allOrders);
     }
 }

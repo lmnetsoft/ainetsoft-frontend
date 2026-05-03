@@ -37,6 +37,10 @@ import Purchase from './pages/User/Purchase';
 import SellerRegister from './pages/User/SellerRegister';
 import NotificationPage from './pages/User/NotificationPage';
 
+// WALLET PAGES
+import VoucherWallet from './pages/User/VoucherWallet';
+import CoinWallet from './pages/User/CoinWallet';
+
 // Shop Components
 import Cart from './pages/Cart/Cart';
 import Checkout from './pages/Checkout/Checkout';
@@ -52,6 +56,7 @@ import MyProducts from './pages/Seller/MyProducts';
 import SellerOrders from './pages/Seller/SellerOrders';
 import SellerSettings from './pages/Seller/SellerSettings';
 import Withdrawal from './pages/Seller/Withdrawal'; 
+import SellerVouchers from './pages/Seller/SellerVouchers'; // 🚀 BỔ SUNG IMPORT
 
 // Admin Components
 import AdminDashboard from './pages/Admin/AdminDashboard';
@@ -61,6 +66,7 @@ import SystemContentManagement from './pages/Admin/SystemContentManagement';
 import FooterMenuManagement from './pages/Admin/FooterMenuManagement';
 import HelpHierarchyManagement from './pages/Admin/HelpHierarchyManagement';
 import AdminWithdrawals from './pages/Admin/AdminWithdrawals'; 
+import AdminOrders from './pages/Admin/AdminOrders'; 
 
 // MIGRATED ADMIN PAGES
 import AdminUsers from './pages/Admin/AdminUsers'; 
@@ -145,6 +151,10 @@ function App() {
                   <Route path="/user/address" element={<Address />} />
                   <Route path="/user/purchase" element={<Purchase />} />
                   <Route path="/seller/register" element={<SellerRegister />} />
+                  
+                  {/* WALLET ROUTES */}
+                  <Route path="/user/vouchers" element={<VoucherWallet />} />
+                  <Route path="/user/coins" element={<CoinWallet />} />
 
                   <Route path="/seller/dashboard" element={<ProtectedRoute allowedRoles={['SELLER']}><SellerDashboard /></ProtectedRoute>} />
                   <Route path="/seller/products" element={<ProtectedRoute allowedRoles={['SELLER']}><MyProducts /></ProtectedRoute>} />
@@ -155,13 +165,18 @@ function App() {
                   <Route path="/seller/orders" element={<ProtectedRoute allowedRoles={['SELLER']}><SellerOrders /></ProtectedRoute>} />
                   <Route path="/seller/settings" element={<ProtectedRoute allowedRoles={['SELLER']}><SellerSettings /></ProtectedRoute>} />
                   
-                  {/* 🚀 ĐÃ BỔ SUNG CÁC ROUTE TÀI CHÍNH BỊ THIẾU Ở ĐÂY */}
+                  {/* 🚀 BỔ SUNG ROUTE VOUCHER CHO SELLER */}
+                  <Route path="/seller/vouchers" element={<ProtectedRoute allowedRoles={['SELLER']}><SellerVouchers /></ProtectedRoute>} />
+
                   <Route path="/seller/withdrawal" element={<ProtectedRoute allowedRoles={['SELLER']}><FinancialSecurityGate><Withdrawal /></FinancialSecurityGate></ProtectedRoute>} />
                   <Route path="/seller/balance" element={<ProtectedRoute allowedRoles={['SELLER']}><FinancialSecurityGate><Withdrawal /></FinancialSecurityGate></ProtectedRoute>} />
                   <Route path="/seller/revenue" element={<ProtectedRoute allowedRoles={['SELLER']}><SellerDashboard /></ProtectedRoute>} />
 
                   {/* --- Admin Routes --- */}
                   <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboard /></ProtectedRoute>} />
+                  
+                  <Route path="/admin/orders" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminOrders /></ProtectedRoute>} />
+                  <Route path="/admin/orders/:id" element={<ProtectedRoute allowedRoles={['ADMIN']}><OrderDetail /></ProtectedRoute>} />
                   
                   <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminUsers /></ProtectedRoute>} />
                   <Route path="/admin/stores" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminStoreManager /></ProtectedRoute>} />

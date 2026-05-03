@@ -1,7 +1,7 @@
 package com.ainetsoft.service;
 
 import com.ainetsoft.model.*;
-import com.ainetsoft.repository.BankAccountRepository; // 🚀 NEW: Standalone repo
+import com.ainetsoft.repository.BankAccountRepository; 
 import com.ainetsoft.repository.OrderRepository;
 import com.ainetsoft.repository.ProductRepository;
 import com.ainetsoft.repository.UserRepository;
@@ -26,12 +26,8 @@ public class OrderService {
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
     private final NotificationService notificationService;
-    private final BankAccountRepository bankAccountRepository; // 🚀 NEW: Link to new collection
+    private final BankAccountRepository bankAccountRepository; 
 
-    /**
-     * Calculates statistics for a specific seller.
-     * Updated to check if seller is "Withdrawal Ready" with the new bank system.
-     */
     public Map<String, Object> getSellerStats(String sellerId) {
         List<Order> allOrders = orderRepository.findAll();
         
@@ -52,14 +48,13 @@ public class OrderService {
                 .filter(o -> "PENDING".equals(o.getStatus()))
                 .count();
 
-        // 🚀 NEW: Check if seller has a bank account linked in the new collection
         boolean hasBankAccount = !bankAccountRepository.findByUserId(sellerId).isEmpty();
 
         Map<String, Object> stats = new HashMap<>();
         stats.put("totalOrders", totalOrders);
         stats.put("totalRevenue", totalRevenue);
         stats.put("pendingOrders", pendingOrders);
-        stats.put("isWithdrawalReady", hasBankAccount); // Elite feature: Notify seller if bank is missing
+        stats.put("isWithdrawalReady", hasBankAccount); 
         return stats;
     }
 
@@ -194,8 +189,6 @@ public class OrderService {
                 .findFirst()
                 .orElse(user.getAddresses().get(0));
 
-        // 🚀 ELITE LOGIC: Fetch the user's default bank account from the NEW collection
-        // This can be used for automated refunds or to verify payment origin
         BankAccount userBank = bankAccountRepository.findByUserIdAndIsDefault(user.getId(), true)
                 .orElse(null);
 
@@ -205,7 +198,6 @@ public class OrderService {
                 .totalAmount(totalAmount)
                 .shippingAddress(shippingAddr)
                 .paymentMethod(paymentMethod)
-                // .bankAccountSnapshot(userBank) // Optional: If your Order model supports snapshots
                 .status("PENDING")
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -299,4 +291,14 @@ public class OrderService {
         return orderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Order not found with id: " + id));
     }    
+
+    // 🚀 NEW: Lấy toàn bộ đơn hàng của hệ thống và sắp xếp mới nhất lên đầu (Dành cho Admin)
+    public List<Order> getAllSystemOrders() {
+        return orderRepository.findAll().stream()
+                .sorted((o1, o2) -> {
+                    if (o1.getCreatedAt() == null || o2.getCreatedAt() == null) return 0;
+                    return o2.getCreatedAt().compareTo(o1.getCreatedAt());
+                })
+                .collect(Collectors.toList());
+    }
 }

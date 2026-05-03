@@ -84,7 +84,8 @@ const AccountSidebar = () => {
           src={userAvatar ? userAvatar : defaultLogo} 
           alt="User Avatar" 
           className="sidebar-avatar" 
-          onError={(e) => { e.currentTarget.src = defaultLogo; }}
+          // 🚀 Updated error handling fallback to system standard
+          onError={(e) => { e.currentTarget.src = "bitnamilegacy"; }}
         />
         <div className="sidebar-user-info">
           <span className="sidebar-username">{userName}</span>

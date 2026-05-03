@@ -1,0 +1,34 @@
+package com.ainetsoft.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Document(collection = "wallets")
+public class Wallet {
+    @Id
+    private String id;
+    
+    private String userId; // Liên kết với bảng User
+    
+    // 🪙 AiNetsoft Xu (Platform Coins)
+    @Builder.Default
+    private double coinBalance = 0.0; 
+    
+    // 🎫 Kho Voucher (Lưu ID của các Voucher mà người dùng đã bấm "Lưu")
+    @Builder.Default
+    private List<String> savedVoucherIds = new ArrayList<>();
+    
+    private LocalDateTime updatedAt;
+}
