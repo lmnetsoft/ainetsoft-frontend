@@ -4,6 +4,8 @@ import { FaStore, FaTruck, FaMapMarkerAlt, FaStar, FaCommentDots } from 'react-i
 import { getMyOrders } from '../../services/orderService';
 // 🚀 REMOVED redundant Sidebar import to fix double sidebar issue
 import ToastNotification from '../../components/Toast/ToastNotification';
+// 🚀 BẢN VÁ: Import useChat context
+import { useChat } from '../../context/ChatContext';
 import './Profile.css';
 import './Purchase.css'; 
 
@@ -17,6 +19,9 @@ const Purchase = () => {
   
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+
+  // 🚀 BẢN VÁ: Lấy hàm mở ChatBubble
+  const { setIsChatOpen } = useChat();
 
   const tabs = [
     { id: 'ALL', label: 'Tất cả' },
@@ -63,13 +68,17 @@ const Purchase = () => {
       case 'PENDING': return 'CHỜ XÁC NHẬN';
       case 'SHIPPING': return 'ĐANG GIAO HÀNG';
       case 'COMPLETED': return 'HOÀN THÀNH';
-      case 'CANCELLED': return 'ĐÃ HỦY';
+      case 'CANCELLED': return 'Đã hủy';
       default: return status;
     }
   };
 
+  // 🚀 BẢN VÁ: Thay đổi logic từ chuyển trang thành bật Bong Bóng Chat
   const handleChatWithSeller = (sellerId: string) => {
-    if (sellerId) navigate(`/chat/${sellerId}`);
+    if (sellerId) {
+      localStorage.setItem('currentChatRecipient', sellerId);
+      setIsChatOpen(true);
+    }
   };
 
   return (

@@ -5,6 +5,8 @@ import com.ainetsoft.repository.BankAccountRepository;
 import com.ainetsoft.repository.OrderRepository;
 import com.ainetsoft.repository.ProductRepository;
 import com.ainetsoft.repository.UserRepository;
+import com.ainetsoft.repository.VoucherRepository; // 🚀 BỔ SUNG
+import com.ainetsoft.repository.WalletRepository;   // 🚀 BỔ SUNG
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,6 +29,8 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final NotificationService notificationService;
     private final BankAccountRepository bankAccountRepository; 
+    private final VoucherRepository voucherRepository; // 🚀 BỔ SUNG
+    private final WalletRepository walletRepository;   // 🚀 BỔ SUNG
 
     public Map<String, Object> getSellerStats(String sellerId) {
         List<Order> allOrders = orderRepository.findAll();
@@ -67,7 +71,7 @@ public class OrderService {
             throw new RuntimeException("Giỏ hàng trống!");
         }
 
-        double totalAmount = 0;
+        double baseTotalAmount = 0;
         List<OrderItem> orderItems = new ArrayList<>();
 
         for (CartItem cartItem : user.getCart()) {
@@ -91,7 +95,7 @@ public class OrderService {
                     .shopName(cartItem.getShopName())
                     .build());
 
-            totalAmount += (cartItem.getPrice() * cartItem.getQuantity());
+            baseTotalAmount += (cartItem.getPrice() * cartItem.getQuantity());
 
             notificationService.createNotification(
                 product.getSellerId(),
@@ -102,8 +106,74 @@ public class OrderService {
             );
         }
 
+        double finalTotalAmount = baseTotalAmount;
+        double voucherDiscount = 0;
+        double coinDiscount = 0;
+
+        // 🚀 BƯỚC 1: XỬ LÝ VOUCHER (NẾU CÓ)
+        if (orderRequest.getAppliedVoucherId() != null && !orderRequest.getAppliedVoucherId().isEmpty()) {
+            Voucher voucher = voucherRepository.findById(orderRequest.getAppliedVoucherId())
+                    .orElseThrow(() -> new RuntimeException("Voucher không tồn tại!"));
+
+            if (!voucher.isActive() || 
+                LocalDateTime.now().isBefore(voucher.getValidFrom()) || 
+                LocalDateTime.now().isAfter(voucher.getValidUntil())) {
+                throw new RuntimeException("Voucher đã hết hạn hoặc không hợp lệ!");
+            }
+            if (voucher.getUsedCount() >= voucher.getUsageLimit()) {
+                throw new RuntimeException("Voucher này đã hết lượt sử dụng!");
+            }
+            if (baseTotalAmount < voucher.getMinOrderValue()) {
+                throw new RuntimeException("Đơn hàng chưa đạt giá trị tối thiểu để áp dụng Voucher này!");
+            }
+
+            if ("PERCENTAGE".equals(voucher.getDiscountType())) {
+                voucherDiscount = baseTotalAmount * (voucher.getDiscountValue() / 100.0);
+                if (voucher.getMaxDiscountAmount() > 0 && voucherDiscount > voucher.getMaxDiscountAmount()) {
+                    voucherDiscount = voucher.getMaxDiscountAmount();
+                }
+            } else {
+                voucherDiscount = voucher.getDiscountValue();
+            }
+
+            if (voucherDiscount > finalTotalAmount) voucherDiscount = finalTotalAmount;
+            finalTotalAmount -= voucherDiscount;
+
+            // Tăng số lượt sử dụng voucher
+            voucher.setUsedCount(voucher.getUsedCount() + 1);
+            voucherRepository.save(voucher);
+        }
+
+        // 🚀 BƯỚC 2: XỬ LÝ XU (NẾU CÓ)
+        if (orderRequest.getUsedCoins() > 0) {
+            Wallet wallet = walletRepository.findByUserId(user.getId())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy Ví AiNetsoft của người dùng!"));
+            
+            if (wallet.getCoinBalance() < orderRequest.getUsedCoins()) {
+                throw new RuntimeException("Số dư AiNetsoft Xu không đủ!");
+            }
+
+            // Quy đổi: 1 Xu = 1 VNĐ
+            coinDiscount = orderRequest.getUsedCoins();
+            if (coinDiscount > finalTotalAmount) {
+                coinDiscount = finalTotalAmount; // Tránh việc giảm tiền xuống âm
+            }
+
+            finalTotalAmount -= coinDiscount;
+
+            // Trừ Xu trong ví người mua
+            wallet.setCoinBalance(wallet.getCoinBalance() - orderRequest.getUsedCoins());
+            wallet.setUpdatedAt(LocalDateTime.now());
+            walletRepository.save(wallet);
+        }
+
+        // Cập nhật các thông số tài chính vào Order
         orderRequest.setItems(orderItems);
-        orderRequest.setTotalAmount(totalAmount);
+        orderRequest.setTotalAmount(baseTotalAmount);
+        orderRequest.setVoucherDiscountAmount(voucherDiscount);
+        orderRequest.setCoinDiscountAmount(coinDiscount);
+        orderRequest.setFinalTotalAmount(finalTotalAmount);
+        
         orderRequest.setStatus("PENDING");
         orderRequest.setCreatedAt(LocalDateTime.now());
         orderRequest.setUpdatedAt(LocalDateTime.now());
@@ -137,6 +207,7 @@ public class OrderService {
 
     @Transactional
     public Order placeOrder(String contactInfo, String paymentMethod) {
+        // Hàm này giữ nguyên như trước để đảm bảo tính tương thích ngược
         User user = userRepository.findByIdentifier(contactInfo)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
 
@@ -189,13 +260,11 @@ public class OrderService {
                 .findFirst()
                 .orElse(user.getAddresses().get(0));
 
-        BankAccount userBank = bankAccountRepository.findByUserIdAndIsDefault(user.getId(), true)
-                .orElse(null);
-
         Order newOrder = Order.builder()
                 .userId(user.getId())
                 .items(orderItems)
                 .totalAmount(totalAmount)
+                .finalTotalAmount(totalAmount) // Mặc định không có voucher
                 .shippingAddress(shippingAddr)
                 .paymentMethod(paymentMethod)
                 .status("PENDING")
@@ -252,11 +321,21 @@ public class OrderService {
             throw new RuntimeException("Chỉ có thể hủy đơn hàng ở trạng thái Chờ xác nhận!");
         }
 
+        // Hoàn trả lại kho
         for (OrderItem item : order.getItems()) {
             productRepository.findById(item.getProductId()).ifPresent(p -> {
                 p.setStock(p.getStock() + item.getQuantity());
                 productRepository.save(p);
             });
+        }
+        
+        // 🚀 BỔ SUNG: Hoàn trả lại Xu cho khách hàng nếu họ đã dùng
+        if (order.getUsedCoins() > 0) {
+             walletRepository.findByUserId(userId).ifPresent(wallet -> {
+                 wallet.setCoinBalance(wallet.getCoinBalance() + order.getUsedCoins());
+                 wallet.setUpdatedAt(LocalDateTime.now());
+                 walletRepository.save(wallet);
+             });
         }
 
         order.setStatus("CANCELLED");
@@ -292,7 +371,6 @@ public class OrderService {
                 .orElseThrow(() -> new RuntimeException("Order not found with id: " + id));
     }    
 
-    // 🚀 NEW: Lấy toàn bộ đơn hàng của hệ thống và sắp xếp mới nhất lên đầu (Dành cho Admin)
     public List<Order> getAllSystemOrders() {
         return orderRepository.findAll().stream()
                 .sorted((o1, o2) -> {

@@ -24,7 +24,6 @@ public class ReviewService {
 
     @Transactional
     public void submitReview(ReviewRequest request, User currentUser) {
-        // 🛠️ FIX: Better error handling for the "orderId" requirement
         if (request.getOrderId() == null || request.getOrderId().contains("AUTO_GENERATED")) {
             throw new RuntimeException("Bạn cần mua sản phẩm này để có thể để lại đánh giá.");
         }
@@ -87,8 +86,15 @@ public class ReviewService {
                 return getEmptyStats();
             }
 
+            // 🚀 BƯỚC TỐI ƯU HÓA: Kiểm tra tổng số lượng trước. 
+            // Nếu = 0, trả về 0 luôn, tiết kiệm 6 lượt truy vấn DB!
+            long total = reviewRepository.countByProductId(productId);
+            if (total == 0) {
+                return getEmptyStats();
+            }
+
             Map<String, Long> stats = new HashMap<>();
-            stats.put("total", reviewRepository.countByProductId(productId));
+            stats.put("total", total);
             stats.put("star5", reviewRepository.countByProductIdAndRating(productId, 5));
             stats.put("star4", reviewRepository.countByProductIdAndRating(productId, 4));
             stats.put("star3", reviewRepository.countByProductIdAndRating(productId, 3));
@@ -97,7 +103,7 @@ public class ReviewService {
             stats.put("withImages", reviewRepository.countByProductIdAndImageUrlsIsNotEmpty(productId));
             return stats;
         } catch (Exception e) {
-            log.warn("Review stats fetch failed for product {}: Returning zero stats.", productId);
+            // 🤫 Tắt cảnh báo spam console. Trả về stat trống một cách êm ái.
             return getEmptyStats();
         }
     }

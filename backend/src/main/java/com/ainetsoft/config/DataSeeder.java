@@ -113,14 +113,13 @@ public class DataSeeder implements CommandLineRunner {
         walletRepository.deleteAll();
     }
 
-    // 🚀 BỔ SUNG HÀM TẠO DATA MẪU CHO VOUCHER VÀ VÍ
     private void seedVouchersAndWallets() {
         if (voucherRepository.count() > 0) return;
 
         User sellerA = userRepository.findByEmail("seller_a@ainetsoft.com").orElse(null);
         User buyer = userRepository.findByEmail("user@ainetsoft.com").orElse(null);
 
-        // 1. Tạo Voucher của Sàn (Không có sellerId)
+        // 1. Voucher Sàn (FREESHIP)
         Voucher platformVoucher = Voucher.builder()
                 .code("FREESHIP26")
                 .shopName("AiNetsoft Official")
@@ -136,7 +135,7 @@ public class DataSeeder implements CommandLineRunner {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        // 2. Tạo Voucher của Shop
+        // 2. Voucher Shop đã lưu sẵn (Để test Checkout)
         Voucher shopVoucher = Voucher.builder()
                 .code("SMART10")
                 .sellerId(sellerA != null ? sellerA.getId() : null)
@@ -154,13 +153,30 @@ public class DataSeeder implements CommandLineRunner {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        List<Voucher> savedVouchers = voucherRepository.saveAll(Arrays.asList(platformVoucher, shopVoucher));
+        // 🚀 3. VOUCHER MỚI TẠO ĐỂ TEST NÚT "LƯU" Ở TRANG SẢN PHẨM
+        Voucher testSaveVoucher = Voucher.builder()
+                .code("WELCOME50")
+                .sellerId(sellerA != null ? sellerA.getId() : null)
+                .shopName(sellerA != null ? sellerA.getShopProfile().getShopName() : "Smart Home Store")
+                .title("Giảm 50k cho khách mới")
+                .discountType("FIXED_AMOUNT")
+                .discountValue(50000.0)
+                .minOrderValue(150000.0)
+                .usageLimit(500)
+                .usedCount(0)
+                .validFrom(LocalDateTime.now().minusHours(1))
+                .validUntil(LocalDateTime.now().plusDays(30))
+                .isActive(true)
+                .createdAt(LocalDateTime.now())
+                .build();
 
-        // 3. Khởi tạo Ví và tặng Xu cho User test
+        List<Voucher> savedVouchers = voucherRepository.saveAll(Arrays.asList(platformVoucher, shopVoucher, testSaveVoucher));
+
+        // Khởi tạo Ví và tặng Xu cho User test (Cố tình KHÔNG đưa WELCOME50 vào ví)
         if (buyer != null && walletRepository.findByUserId(buyer.getId()).isEmpty()) {
             Wallet wallet = Wallet.builder()
                     .userId(buyer.getId())
-                    .coinBalance(15000.0) // Tặng sẵn 15,000 Xu để test
+                    .coinBalance(15000.0) // 15,000 Xu
                     .savedVoucherIds(new ArrayList<>(Arrays.asList(savedVouchers.get(0).getId(), savedVouchers.get(1).getId())))
                     .updatedAt(LocalDateTime.now())
                     .build();

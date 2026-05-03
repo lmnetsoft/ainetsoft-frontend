@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaMapMarkerAlt, FaRegCreditCard, FaMoneyBillWave, FaUniversity } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaRegCreditCard, FaMoneyBillWave, FaUniversity, FaTicketAlt, FaCoins, FaTimes, FaCheckCircle } from 'react-icons/fa';
 import { getUserProfile } from '../../services/authService';
 import { placeOrder } from '../../services/orderService'; 
-import api from '../../services/api'; // 🚀 NEW: Import api to fetch standalone bank data
+import api from '../../services/api'; 
+import { getMyWallet, getMySavedVouchers } from '../../services/walletService'; // 🚀 MARKETING ENGINE
 import ToastNotification from '../../components/Toast/ToastNotification';
 import './Checkout.css';
 
@@ -17,7 +18,14 @@ const Checkout = () => {
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<any>(null);
   const [paymentMethod, setPaymentMethod] = useState('COD');
-  const [userBank, setUserBank] = useState<any>(null); // 🚀 NEW: State for the new bank collection data
+  const [userBank, setUserBank] = useState<any>(null);
+
+  // 🚀 MARKETING ENGINE STATES
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [savedVouchers, setSavedVouchers] = useState<any[]>([]);
+  const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
+  const [showVoucherModal, setShowVoucherModal] = useState(false);
+  const [useCoins, setUseCoins] = useState(false);
 
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -31,7 +39,6 @@ const Checkout = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // 1. Get profile (This now includes the 'id' we added to the backend)
         const user = await getUserProfile();
         setCartItems(user.cart || []);
         
@@ -43,14 +50,22 @@ const Checkout = () => {
           return;
         }
 
-        // 2. 🚀 ELITE FETCH: Get bank data from the dedicated collection
         if (user.id) {
           const bankRes = await api.get(`/bank-accounts/user/${user.id}`);
           if (bankRes.data && bankRes.data.length > 0) {
-            // Find the default account or just take the first one
             const defaultBank = bankRes.data.find((b: any) => b.isDefault) || bankRes.data[0];
             setUserBank(defaultBank);
           }
+        }
+
+        // 🚀 FETCH WALLET & VOUCHERS
+        try {
+            const walletData = await getMyWallet();
+            setWalletBalance(walletData?.coinBalance || 0);
+            const vouchersData = await getMySavedVouchers();
+            setSavedVouchers(vouchersData || []);
+        } catch (e) {
+            console.log("Chưa có dữ liệu ví/voucher");
         }
 
       } catch (err: any) {
@@ -65,9 +80,34 @@ const Checkout = () => {
     document.title = "Thanh toán | AiNetsoft";
   }, [navigate]);
 
+  // 🚀 TÍNH TOÁN TOÁN HỌC (MARKETING ENGINE)
   const subtotal = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   const shippingFee = 30000; 
-  const total = subtotal + shippingFee;
+
+  let voucherDiscount = 0;
+  if (selectedVoucher && subtotal >= selectedVoucher.minOrderValue) {
+      if (selectedVoucher.discountType === 'PERCENTAGE') {
+          voucherDiscount = subtotal * (selectedVoucher.discountValue / 100);
+          if (selectedVoucher.maxDiscountAmount > 0 && voucherDiscount > selectedVoucher.maxDiscountAmount) {
+              voucherDiscount = selectedVoucher.maxDiscountAmount;
+          }
+      } else {
+          voucherDiscount = selectedVoucher.discountValue;
+      }
+  }
+
+  // Đảm bảo voucher không giảm lố tiền hàng
+  if (voucherDiscount > subtotal) voucherDiscount = subtotal;
+
+  let totalAfterVoucher = subtotal + shippingFee - voucherDiscount;
+
+  let coinDiscount = 0;
+  if (useCoins && walletBalance > 0) {
+      // Dùng xu tối đa bằng tổng tiền còn lại
+      coinDiscount = Math.min(walletBalance, totalAfterVoucher);
+  }
+
+  const finalTotal = totalAfterVoucher - coinDiscount;
 
   const handlePlaceOrder = async () => {
     if (!selectedAddress) {
@@ -76,7 +116,6 @@ const Checkout = () => {
       return;
     }
 
-    // 🚀 ELITE CHECK: If they chose BANK, ensure they have a bank account saved
     if (paymentMethod === 'BANK' && !userBank) {
         setToastMessage("Vui lòng cập nhật thông tin Ngân hàng trong hồ sơ trước khi chọn phương thức này!");
         setShowToast(true);
@@ -89,7 +128,9 @@ const Checkout = () => {
       const checkoutData = {
         paymentMethod: paymentMethod,
         shippingAddress: selectedAddress,
-        totalAmount: total
+        totalAmount: subtotal, // Gửi base amount
+        appliedVoucherId: selectedVoucher ? selectedVoucher.id : null, // 🚀 Gửi ID Voucher
+        usedCoins: coinDiscount // 🚀 Gửi số Xu đã dùng
       };
 
       await placeOrder(checkoutData);
@@ -165,6 +206,52 @@ const Checkout = () => {
           ))}
         </div>
 
+        {/* 🚀 MARKETING ENGINE: VOUCHER & COINS */}
+        <div className="checkout-section marketing-section">
+            <div className="marketing-row">
+                <div className="marketing-left">
+                    <FaTicketAlt size={20} color="#ee4d2d" />
+                    <span>AiNetsoft Voucher</span>
+                </div>
+                <div className="marketing-right">
+                    {selectedVoucher && (
+                        <span className="applied-voucher-tag">
+                            - ₫{voucherDiscount.toLocaleString()} ({selectedVoucher.code})
+                            <FaTimes style={{marginLeft: '8px', cursor: 'pointer'}} onClick={() => setSelectedVoucher(null)}/>
+                        </span>
+                    )}
+                    <button className="btn-select-voucher" onClick={() => setShowVoucherModal(true)}>
+                        {selectedVoucher ? "Đổi Voucher" : "Chọn Voucher"}
+                    </button>
+                </div>
+            </div>
+
+            <hr style={{borderTop: '1px dashed #e2e8f0', margin: '15px 0'}} />
+
+            <div className="marketing-row">
+                <div className="marketing-left">
+                    <FaCoins size={20} color="#f59e0b" />
+                    <span>AiNetsoft Xu</span>
+                    <span className="coin-balance-text">Bạn đang có {walletBalance.toLocaleString()} Xu</span>
+                </div>
+                <div className="marketing-right">
+                    {walletBalance > 0 ? (
+                        <span className="coin-toggle-wrapper">
+                            <span style={{marginRight: '10px', color: useCoins ? '#16a34a' : '#64748b'}}>
+                                {useCoins ? `- ₫${coinDiscount.toLocaleString()}` : "Không sử dụng"}
+                            </span>
+                            <label className="switch">
+                                <input type="checkbox" checked={useCoins} onChange={() => setUseCoins(!useCoins)} />
+                                <span className="slider round"></span>
+                            </label>
+                        </span>
+                    ) : (
+                        <span style={{color: '#94a3b8', fontSize: '14px'}}>Không đủ Xu</span>
+                    )}
+                </div>
+            </div>
+        </div>
+
         {/* PAYMENT & SUMMARY */}
         <div className="checkout-bottom-grid">
           <div className="checkout-section payment-method">
@@ -180,7 +267,6 @@ const Checkout = () => {
               </label>
             </div>
 
-            {/* 🚀 NEW: Bank Preview Logic */}
             {paymentMethod === 'BANK' && (
                 <div className="bank-preview-box">
                     {userBank ? (
@@ -207,9 +293,22 @@ const Checkout = () => {
               <span>Phí vận chuyển:</span>
               <span>₫{shippingFee.toLocaleString()}</span>
             </div>
+            {/* 🚀 HIỂN THỊ VOUCHER & XU TRONG TỔNG KẾT */}
+            {voucherDiscount > 0 && (
+                <div className="summary-row discount-row">
+                  <span>Voucher giảm giá:</span>
+                  <span>- ₫{voucherDiscount.toLocaleString()}</span>
+                </div>
+            )}
+            {coinDiscount > 0 && (
+                <div className="summary-row discount-row">
+                  <span>Dùng Xu:</span>
+                  <span>- ₫{coinDiscount.toLocaleString()}</span>
+                </div>
+            )}
             <div className="summary-row total">
               <span>Tổng thanh toán:</span>
-              <span className="grand-total">₫{total.toLocaleString()}</span>
+              <span className="grand-total">₫{finalTotal.toLocaleString()}</span>
             </div>
             <button className="place-order-btn" onClick={handlePlaceOrder} disabled={isSubmitting}>
               {isSubmitting ? "Đang xử lý..." : "Đặt hàng"}
@@ -217,6 +316,51 @@ const Checkout = () => {
           </div>
         </div>
       </div>
+
+      {/* 🚀 MODAL CHỌN VOUCHER */}
+      {showVoucherModal && (
+          <div className="voucher-modal-overlay">
+              <div className="voucher-modal">
+                  <div className="modal-header">
+                      <h3>Chọn AiNetsoft Voucher</h3>
+                      <button onClick={() => setShowVoucherModal(false)}><FaTimes /></button>
+                  </div>
+                  <div className="modal-body">
+                      {savedVouchers.length === 0 ? (
+                          <div className="empty-vouchers">Bạn chưa có voucher nào.</div>
+                      ) : (
+                          savedVouchers.map(v => {
+                              const isValid = subtotal >= v.minOrderValue;
+                              const isSelected = selectedVoucher?.id === v.id;
+                              return (
+                                  <div key={v.id} className={`checkout-voucher-card ${!isValid ? 'disabled' : ''} ${isSelected ? 'selected' : ''}`} 
+                                       onClick={() => { if(isValid) setSelectedVoucher(v); }}>
+                                      <div className="cv-left">
+                                          <FaTicketAlt size={24} />
+                                          <span style={{fontSize: '11px', marginTop: '5px', textAlign: 'center'}}>{v.shopName}</span>
+                                      </div>
+                                      <div className="cv-right">
+                                          <div className="cv-info">
+                                              <h4>{v.title}</h4>
+                                              <p>Đơn tối thiểu ₫{v.minOrderValue.toLocaleString()}</p>
+                                          </div>
+                                          <div className="cv-action">
+                                              {isSelected ? <FaCheckCircle color="#ee4d2d" size={20}/> : <div className="circle-radio"></div>}
+                                          </div>
+                                      </div>
+                                      {!isValid && <div className="cv-reason">Chưa đạt giá trị đơn tối thiểu</div>}
+                                  </div>
+                              );
+                          })
+                      )}
+                  </div>
+                  <div className="modal-footer">
+                      <button className="btn-cancel" onClick={() => setShowVoucherModal(false)}>TRỞ LẠI</button>
+                      <button className="btn-confirm" onClick={() => setShowVoucherModal(false)}>XÁC NHẬN</button>
+                  </div>
+              </div>
+          </div>
+      )}
     </div>
   );
 };

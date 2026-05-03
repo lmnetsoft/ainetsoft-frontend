@@ -23,47 +23,61 @@ public class VoucherController {
     private final VoucherService voucherService;
     private final UserRepository userRepository;
 
-    // --- Helper function: Lấy User đang đăng nhập ---
     private User getAuthenticatedUser(Principal principal) {
         if (principal == null) return null;
         return userRepository.findByIdentifier(principal.getName()).orElse(null);
     }
 
-    // --- Helper function: Kiểm tra Quyền (Role) ---
     private boolean hasRole(User user, String roleName) {
         if (user == null || user.getRoles() == null) return false;
         return user.getRoles().contains(roleName) || user.getRoles().contains("ROLE_" + roleName);
     }
 
-    // 1. Lấy danh sách Voucher của Người bán
+    // ==========================================
+    // 🚀 PUBLIC ENDPOINTS (CHO NGƯỜI MUA XEM VOUCHER)
+    // ==========================================
+
+    @GetMapping("/public/shop/{sellerId}")
+    public ResponseEntity<?> getShopActiveVouchers(@PathVariable String sellerId) {
+        return ResponseEntity.ok(voucherService.getActiveVouchersByShop(sellerId));
+    }
+
+    @GetMapping("/public/platform")
+    public ResponseEntity<?> getPlatformActiveVouchers() {
+        return ResponseEntity.ok(voucherService.getActivePlatformVouchers());
+    }
+
+    // ==========================================
+    // 🏪 SELLER ENDPOINTS (QUẢN LÝ VOUCHER)
+    // ==========================================
+
     @GetMapping("/seller/my-vouchers")
     public ResponseEntity<?> getMyVouchers(Principal principal) {
         User seller = getAuthenticatedUser(principal);
-        
         if (!hasRole(seller, "SELLER")) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("message", "Chỉ Người bán mới có quyền truy cập kênh này."));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Chỉ Người bán mới có quyền truy cập kênh này."));
         }
-
-        List<Voucher> vouchers = voucherService.getSellerVouchers(seller.getId());
-        return ResponseEntity.ok(vouchers);
+        return ResponseEntity.ok(voucherService.getSellerVouchers(seller.getId()));
     }
 
-    // 2. Người bán Tạo Voucher mới
     @PostMapping("/seller/create")
     public ResponseEntity<?> createVoucher(@RequestBody Voucher voucherPayload, Principal principal) {
         User seller = getAuthenticatedUser(principal);
-        
         if (!hasRole(seller, "SELLER")) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("message", "Chỉ Người bán mới có quyền tạo mã giảm giá."));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Chỉ Người bán mới có quyền tạo mã giảm giá."));
         }
 
         try {
-            // Gắn thông tin chủ sở hữu vào Voucher
             voucherPayload.setSellerId(seller.getId());
-            // Sử dụng tên Shop hoặc tên đầy đủ của người bán
-            voucherPayload.setShopName(seller.getFullName() != null ? seller.getFullName() : "Shop " + seller.getUsername());
+            
+            // 🚀 FIXED: Lấy tên Shop chuẩn xác, fallback về fullName hoặc Email nếu không có
+            String finalShopName = seller.getEmail(); 
+            if (seller.getShopProfile() != null && seller.getShopProfile().getShopName() != null) {
+                finalShopName = seller.getShopProfile().getShopName();
+            } else if (seller.getFullName() != null) {
+                finalShopName = seller.getFullName();
+            }
+            voucherPayload.setShopName(finalShopName);
             
             Voucher createdVoucher = voucherService.createVoucher(voucherPayload);
             return ResponseEntity.status(HttpStatus.CREATED).body(createdVoucher);
@@ -72,22 +86,16 @@ public class VoucherController {
         }
     }
 
-    // 3. Người bán kết thúc sớm (Vô hiệu hóa) Voucher
     @PutMapping("/seller/deactivate/{id}")
     public ResponseEntity<?> deactivateVoucher(@PathVariable String id, Principal principal) {
         User seller = getAuthenticatedUser(principal);
-        
         if (!hasRole(seller, "SELLER")) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("message", "Chỉ Người bán mới có quyền thực hiện thao tác này."));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Chỉ Người bán mới có quyền thực hiện thao tác này."));
         }
 
         try {
             Voucher deactivated = voucherService.deactivateVoucher(id, seller.getId());
-            return ResponseEntity.ok(Map.of(
-                    "message", "Đã kết thúc voucher thành công", 
-                    "voucher", deactivated
-            ));
+            return ResponseEntity.ok(Map.of("message", "Đã kết thúc voucher thành công", "voucher", deactivated));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }

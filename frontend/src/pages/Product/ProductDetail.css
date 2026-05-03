@@ -553,3 +553,64 @@
     color: #888;
     font-style: italic;
 }
+
+/* =======================================================
+   🚀 MARKETING ENGINE: PRODUCT VOUCHER TICKETS
+   ======================================================= */
+.product-detail-wrapper .product-vouchers-section {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+.product-detail-wrapper .vouchers-label {
+    color: #757575;
+    font-size: 0.95rem;
+    white-space: nowrap;
+}
+.product-detail-wrapper .vouchers-list-horizontal {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.product-detail-wrapper .mini-voucher-ticket {
+    display: flex;
+    background: #fff0eb;
+    border: 1px solid #f9d8d0;
+    border-radius: 4px;
+    overflow: hidden;
+    align-items: stretch;
+}
+.product-detail-wrapper .mvt-left {
+    padding: 4px 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border-right: 1px dashed #f9d8d0;
+}
+.product-detail-wrapper .mvt-value {
+    color: #ee4d2d;
+    font-size: 0.85rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+.product-detail-wrapper .mvt-min {
+    color: #ee4d2d;
+    font-size: 0.7rem;
+    opacity: 0.9;
+}
+.product-detail-wrapper .mvt-right {
+    background: #fff0eb;
+    color: #ee4d2d;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+.product-detail-wrapper .mvt-right:hover {
+    background: #ffe4db;
+}

@@ -80,14 +80,14 @@ public class SecurityConfig {
                     "/api/system-content/**",
                     "/api/help/tree",
                     "/api/footer-menus/**",
-                    "/api/footer-icons/**"
+                    "/api/footer-icons/**",
+                    "/api/vouchers/public/**" // 🚀 BỔ SUNG: Cho phép xem public voucher
                 ).permitAll() 
 
                 .requestMatchers("/api/chat/history/**").permitAll()
                 .requestMatchers("/api/chat/read/**").permitAll()
                 .requestMatchers("/api/chat/upload/**").permitAll() 
                 
-                // 🚀 FIXED: Thêm chính xác URL không có trailing slash để Spring 6 không chặn
                 .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/reviews", "/api/reviews/**").permitAll()
 
@@ -114,7 +114,9 @@ public class SecurityConfig {
                     "/api/products/seller/**",
                     "/api/products/*/favorite",
                     "/api/products/*/report",
-                    "/api/reviews/submit"
+                    "/api/reviews/submit",
+                    "/api/wallets/**",   
+                    "/api/vouchers/seller/**" 
                 ).authenticated() 
                 
                 .anyRequest().authenticated()

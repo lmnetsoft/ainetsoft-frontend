@@ -4,6 +4,8 @@ import { FaStore, FaBoxOpen, FaTruck, FaMapMarkerAlt } from 'react-icons/fa';
 import { getMyOrders } from '../../services/orderService';
 import AccountSidebar from '../../components/AccountSidebar/AccountSidebar';
 import ToastNotification from '../../components/Toast/ToastNotification';
+// 🚀 BẢN VÁ: Import useChat context
+import { useChat } from '../../context/ChatContext';
 import './OrderHistory.css';
 
 const OrderHistory = () => {
@@ -14,6 +16,9 @@ const OrderHistory = () => {
   
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+
+  // 🚀 BẢN VÁ: Lấy hàm mở ChatBubble
+  const { setIsChatOpen } = useChat();
 
   const tabs = [
     { id: 'ALL', label: 'Tất cả' },
@@ -48,6 +53,14 @@ const OrderHistory = () => {
       case 'COMPLETED': return 'HOÀN THÀNH';
       case 'CANCELLED': return 'ĐÃ HỦY';
       default: return status;
+    }
+  };
+
+  // 🚀 BẢN VÁ: Xử lý bật Bong Bóng Chat
+  const handleChatWithSeller = (sellerId: string) => {
+    if (sellerId) {
+      localStorage.setItem('currentChatRecipient', sellerId);
+      setIsChatOpen(true);
     }
   };
 
@@ -129,7 +142,10 @@ const OrderHistory = () => {
                       {order.status === 'COMPLETED' ? (
                         <button className="btn-primary" onClick={() => navigate('/')}>Mua lại</button>
                       ) : (
-                        <button className="btn-secondary">Liên hệ người bán</button>
+                        {/* 🚀 BẢN VÁ: Gắn sự kiện onClick gọi Bong Bóng Chat */}
+                        <button className="btn-secondary" onClick={() => handleChatWithSeller(order.items?.[0]?.sellerId)}>
+                          Liên hệ người bán
+                        </button>
                       )}
                       <button className="btn-outline">Xem chi tiết</button>
                     </div>

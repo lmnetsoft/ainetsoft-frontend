@@ -102,7 +102,8 @@ const NotificationPage = () => {
         break;
       case 'ORDER':
         if (noti.relatedId) {
-          navigate(`/user/purchase/${noti.relatedId}`);
+          // 🚀 BẢN VÁ: Đã sửa 'purchase' thành 'order' để trỏ đúng vào file OrderDetail.tsx
+          navigate(`/user/order/${noti.relatedId}`);
         } else {
           navigate('/user/purchase');
         }

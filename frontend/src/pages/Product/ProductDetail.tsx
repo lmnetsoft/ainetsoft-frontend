@@ -5,7 +5,7 @@ import {
   FaExclamationTriangle, FaPlay, FaTimes, FaChevronLeft, FaChevronRight,
   FaStoreAlt, FaTruck, FaShieldAlt, FaHeart, FaRegHeart, FaFacebook,
   FaFacebookMessenger, FaPinterest, FaTwitter, FaInfoCircle, FaLink,
-  FaFlag, FaCheckCircle, FaEdit
+  FaFlag, FaCheckCircle, FaEdit, FaTicketAlt
 } from 'react-icons/fa';
 import api, { 
   shareProduct, 
@@ -32,7 +32,6 @@ interface ShippingConfig {
 interface Product {
   id: string;
   sellerId?: string;
-  /** 🚀 NEW: Syncing with DataSeeder slug for professional navigation */
   sellerSlug?: string; 
   name: string;
   description: string;
@@ -107,13 +106,12 @@ const ProductDetail = () => {
   
   const [validOrderId, setValidOrderId] = useState<string | null>(null);
 
-  // 🚀 FIXED: Helper logic to resolve image paths correctly for local blobs
+  // 🚀 MARKETING ENGINE: VOUCHERS STATE
+  const [shopVouchers, setShopVouchers] = useState<any[]>([]);
+
   const formatMediaUrl = (url?: string) => {
     if (!url || url === 'undefined' || url === 'null' || url === '') return "/placeholder.png";
-    
-    // Allow blob and data URLs to bypass the base URL attachment for live previews
     if (url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')) return url; 
-    
     const cleanPath = url.startsWith('/') ? url : `/${url}`;
     return `${BASE_URL}${cleanPath}`;
   };
@@ -163,12 +161,20 @@ const ProductDetail = () => {
         setReportReasons(names);
         if (names.length > 0) setReportReason(names[0]); 
       } catch (err) {
-        console.error("Failed to load report categories");
         setReportReasons(["Lý do khác..."]); 
       }
     };
     loadReportReasons();
   }, []);
+
+  // 🚀 FETCH ACTIVE VOUCHERS CHO SHOP NÀY
+  useEffect(() => {
+    if (product?.sellerId) {
+      api.get(`/vouchers/public/shop/${product.sellerId}`)
+         .then(res => setShopVouchers(res.data || []))
+         .catch(err => console.log("Không thể tải mã giảm giá."));
+    }
+  }, [product?.sellerId]);
 
   const handleToggleFavorite = async () => {
     if (!localStorage.getItem('isAuthenticated')) {
@@ -197,6 +203,25 @@ const ProductDetail = () => {
       setLocalFavoriteCount(localFavoriteCount);
       setToastMessage("Thao tác thất bại.");
       setShowToast(true);
+    }
+  };
+
+  // 🚀 LƯU VOUCHER VÀO VÍ
+  const handleSaveVoucher = async (voucherId: string) => {
+    if (!localStorage.getItem('isAuthenticated')) {
+       setToastMessage("Vui lòng đăng nhập để lấy mã giảm giá!");
+       setShowToast(true);
+       setTimeout(() => navigate('/login'), 1500);
+       return;
+    }
+    try {
+       await api.post(`/wallets/me/vouchers/${voucherId}`);
+       setToastMessage("Đã lưu mã giảm giá vào Kho Voucher!");
+       setShowToast(true);
+       setShopVouchers(prev => prev.filter(v => v.id !== voucherId)); // Xóa khỏi màn hình sau khi lưu
+    } catch (e: any) {
+       setToastMessage(e.response?.data?.message || "Lỗi khi lưu mã giảm giá.");
+       setShowToast(true);
     }
   };
 
@@ -571,7 +596,30 @@ const ProductDetail = () => {
               <span className="divider">|</span>
               <span className="sold-count">Đã bán {product.soldCount || 0}</span>
             </div>
+            
             <div className="price-display-box"><span className="currency">₫</span><span className="amount">{(product.price || 0).toLocaleString()}</span></div>
+
+            {/* 🚀 MARKETING ENGINE: VOUCHERS DISCOVERY */}
+            {shopVouchers.length > 0 && (
+                <div className="product-vouchers-section">
+                    <span className="vouchers-label">Mã Giảm Giá Của Shop</span>
+                    <div className="vouchers-list-horizontal">
+                        {shopVouchers.map(v => (
+                            <div key={v.id} className="mini-voucher-ticket">
+                                <div className="mvt-left">
+                                    <span className="mvt-value">
+                                        {v.discountType === 'PERCENTAGE' ? `Giảm ${v.discountValue}%` : `Giảm ${(v.discountValue / 1000)}k`}
+                                    </span>
+                                    <span className="mvt-min">Đơn tối thiểu {(v.minOrderValue / 1000)}k</span>
+                                </div>
+                                <div className="mvt-right" onClick={() => handleSaveVoucher(v.id)}>
+                                    Lưu
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <div className="purchase-grid-system">
               <div className="p-grid-row combined-action-row">
@@ -601,13 +649,7 @@ const ProductDetail = () => {
             <h3>{product.shopName}</h3>
             <div className="shop-actions">
               <button className="chat-now-btn" onClick={handleChatWithSeller}><FaCommentDots /> Chat ngay</button>
-              {/* 🚀 FIXED: Fallback appropriately between slug and ID for navigation */}
-              <button 
-                className="view-shop-btn" 
-                onClick={() => navigate(`/shop/${product.sellerSlug || product.sellerId}`)}
-              >
-                <FaStoreAlt /> Xem Shop
-              </button>
+              <button className="view-shop-btn" onClick={() => navigate(`/shop/${product.sellerSlug || product.sellerId}`)}><FaStoreAlt /> Xem Shop</button>
             </div>
           </div>
         </div>

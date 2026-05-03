@@ -15,15 +15,19 @@ public class Order {
     @Id
     private String id;
     private String userId;
-
-    // 🛠️ ADDED: This resolves the "cannot find symbol: method setUserEmail" error
     private String userEmail; 
-
     private String sellerId;
     private List<OrderItem> items;
-    private double totalAmount;
     private User.AddressInfo shippingAddress;
     private String paymentMethod;
+    
+    // 🚀 BỔ SUNG: MARKETING ENGINE FIELDS
+    private double totalAmount; // Tổng tiền gốc ban đầu
+    private String appliedVoucherId; // ID của Voucher được áp dụng (Nếu có)
+    private double voucherDiscountAmount; // Số tiền được giảm từ Voucher
+    private double usedCoins; // Số Xu khách hàng dùng
+    private double coinDiscountAmount; // Số tiền quy đổi từ Xu (Thường 1 Xu = 1 VNĐ)
+    private double finalTotalAmount; // Tổng tiền thanh toán cuối cùng (totalAmount - voucher - coin)
     
     @Builder.Default
     private String status = "PENDING"; 
