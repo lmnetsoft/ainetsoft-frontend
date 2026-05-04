@@ -108,6 +108,7 @@ const ProductDetail = () => {
 
   // 🚀 MARKETING ENGINE: VOUCHERS STATE
   const [shopVouchers, setShopVouchers] = useState<any[]>([]);
+  const [savingVoucherId, setSavingVoucherId] = useState<string | null>(null);
 
   const formatMediaUrl = (url?: string) => {
     if (!url || url === 'undefined' || url === 'null' || url === '') return "/placeholder.png";
@@ -206,22 +207,27 @@ const ProductDetail = () => {
     }
   };
 
-  // 🚀 LƯU VOUCHER VÀO VÍ
+  // 🚀 HOÀN THIỆN LƯU VOUCHER VÀO VÍ
   const handleSaveVoucher = async (voucherId: string) => {
     if (!localStorage.getItem('isAuthenticated')) {
-       setToastMessage("Vui lòng đăng nhập để lấy mã giảm giá!");
+       setToastMessage("Vui lòng đăng nhập để lưu mã giảm giá!");
        setShowToast(true);
        setTimeout(() => navigate('/login'), 1500);
        return;
     }
     try {
-       await api.post(`/wallets/me/vouchers/${voucherId}`);
+       setSavingVoucherId(voucherId);
+       // GỌI ĐÚNG API LƯU MÃ CỦA VOUCHER CONTROLLER
+       await api.post(`/vouchers/save/${voucherId}`);
        setToastMessage("Đã lưu mã giảm giá vào Kho Voucher!");
        setShowToast(true);
-       setShopVouchers(prev => prev.filter(v => v.id !== voucherId)); // Xóa khỏi màn hình sau khi lưu
+       // Ẩn mã đi sau khi lưu thành công
+       setShopVouchers(prev => prev.filter(v => v.id !== voucherId)); 
     } catch (e: any) {
        setToastMessage(e.response?.data?.message || "Lỗi khi lưu mã giảm giá.");
        setShowToast(true);
+    } finally {
+       setSavingVoucherId(null);
     }
   };
 
@@ -613,7 +619,7 @@ const ProductDetail = () => {
                                     <span className="mvt-min">Đơn tối thiểu {(v.minOrderValue / 1000)}k</span>
                                 </div>
                                 <div className="mvt-right" onClick={() => handleSaveVoucher(v.id)}>
-                                    Lưu
+                                    {savingVoucherId === v.id ? '...' : 'Lưu'}
                                 </div>
                             </div>
                         ))}

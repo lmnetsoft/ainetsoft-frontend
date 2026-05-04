@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FaStore, FaStar, FaBox, FaMapMarkerAlt, FaCommentDots } from 'react-icons/fa';
+import { FaStore, FaStar, FaBox, FaMapMarkerAlt, FaCommentDots, FaTicketAlt } from 'react-icons/fa';
+import { toast } from 'react-hot-toast';
 import api from '../../services/api';
 import './PublicShop.css';
 
@@ -12,18 +13,16 @@ const PublicShop = () => {
   
   const [shopInfo, setShopInfo] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
+  const [shopVouchers, setShopVouchers] = useState<any[]>([]);
+  const [savingVoucherId, setSavingVoucherId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const API_BASE_URL = "http://localhost:8080";
 
-  // 🚀 FIXED: Helper logic to resolve image paths correctly including blobs
   const getFullImageUrl = (path: string | null | undefined) => {
     if (!path || path === "DEFAULT_LOGO" || path.trim() === "") return logoWithoutText; 
-    
-    // Bypass for external URLs, base64 strings, and local blob previews
     if (path.startsWith('data:image') || path.startsWith('http') || path.startsWith('blob:')) return path;
-    
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
     return `${API_BASE_URL}${cleanPath}`;
   };
@@ -53,6 +52,13 @@ const PublicShop = () => {
         setProducts(products || []);
         document.title = `${info.shopName || info.fullName || 'Cửa hàng'} | AiNetsoft`;
 
+        // 🚀 FETCH VOUCHERS CHO SHOP NÀY
+        if (info.id) {
+          api.get(`/vouchers/public/shop/${info.id}`)
+             .then(vRes => setShopVouchers(vRes.data || []))
+             .catch(err => console.log("Không thể tải mã giảm giá."));
+        }
+
       } catch (err: any) {
         console.error("Lỗi khi tải dữ liệu cửa hàng:", err);
         if (err.response?.status === 404) {
@@ -68,6 +74,25 @@ const PublicShop = () => {
     fetchShopData();
     window.scrollTo(0, 0);
   }, [identifier, shopSlug]);
+
+  // 🚀 LƯU VOUCHER VÀO VÍ TRỰC TIẾP TỪ TRANG SHOP
+  const handleSaveVoucher = async (voucherId: string) => {
+    if (!localStorage.getItem('isAuthenticated')) {
+       toast.error("Vui lòng đăng nhập để lưu mã giảm giá!");
+       setTimeout(() => navigate('/login'), 1500);
+       return;
+    }
+    try {
+       setSavingVoucherId(voucherId);
+       await api.post(`/vouchers/save/${voucherId}`);
+       toast.success("Đã lưu mã giảm giá vào Kho Voucher!");
+       setShopVouchers(prev => prev.filter(v => v.id !== voucherId)); 
+    } catch (e: any) {
+       toast.error(e.response?.data?.message || "Lỗi khi lưu mã giảm giá.");
+    } finally {
+       setSavingVoucherId(null);
+    }
+  };
 
   if (loading) return (
     <div className="container" style={{padding: '100px 0', textAlign: 'center'}}>
@@ -123,6 +148,34 @@ const PublicShop = () => {
       </div>
 
       <div className="container shop-content-section">
+        
+        {/* 🚀 HIỂN THỊ DANH SÁCH MÃ GIẢM GIÁ CỦA SHOP */}
+        {shopVouchers.length > 0 && (
+          <div className="shop-vouchers-container" style={{ marginBottom: '30px', background: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+            <h3 style={{ fontSize: '18px', color: '#ee4d2d', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <FaTicketAlt /> Ưu Đãi Của Cửa Hàng
+            </h3>
+            <div style={{ display: 'flex', gap: '15px', overflowX: 'auto', paddingBottom: '10px' }}>
+              {shopVouchers.map(v => (
+                <div key={v.id} style={{ minWidth: '280px', border: '1px solid #f8d0d3', borderRadius: '4px', display: 'flex', background: '#fffafb' }}>
+                  <div style={{ padding: '15px', flex: 1, borderRight: '1px dashed #f8d0d3' }}>
+                    <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#ee4d2d' }}>
+                      {v.discountType === 'PERCENTAGE' ? `Giảm ${v.discountValue}%` : `Giảm ${(v.discountValue / 1000)}k`}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#757575', marginTop: '4px' }}>Đơn tối thiểu {(v.minOrderValue / 1000)}k</div>
+                  </div>
+                  <div 
+                    onClick={() => handleSaveVoucher(v.id)}
+                    style={{ padding: '0 15px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', background: '#ee4d2d', fontWeight: 'bold', fontSize: '14px' }}
+                  >
+                    {savingVoucherId === v.id ? '...' : 'Lưu Mã'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="section-title-row">
           <h3><FaStore /> TẤT CẢ SẢN PHẨM</h3>
           <hr />

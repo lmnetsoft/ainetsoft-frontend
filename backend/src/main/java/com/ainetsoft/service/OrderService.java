@@ -110,7 +110,6 @@ public class OrderService {
         double voucherDiscount = 0;
         double coinDiscount = 0;
 
-        // 🚀 BƯỚC 1: XỬ LÝ VOUCHER XẾP CHỒNG (STACKING)
         if (orderRequest.getAppliedVoucherIds() != null && !orderRequest.getAppliedVoucherIds().isEmpty()) {
             for (String voucherId : orderRequest.getAppliedVoucherIds()) {
                 Voucher voucher = voucherRepository.findById(voucherId)
@@ -150,7 +149,6 @@ public class OrderService {
             }
         }
 
-        // 🚀 BƯỚC 2: XỬ LÝ XU (COIN BURN)
         if (orderRequest.getUsedCoins() > 0) {
             Wallet wallet = walletRepository.findByUserId(user.getId())
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy Ví AiNetsoft của người dùng!"));
@@ -301,8 +299,33 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Đơn hàng không tồn tại!"));
 
+        String oldStatus = order.getStatus() != null ? order.getStatus().toUpperCase() : "";
         order.setStatus(newStatus.toUpperCase());
         order.setUpdatedAt(LocalDateTime.now());
+        
+        // 🚀 CƠ CHẾ KIẾM XU: Bơm Xu vào ví khi đơn hàng hoàn thành
+        if ("COMPLETED".equals(newStatus.toUpperCase()) && !"COMPLETED".equals(oldStatus)) {
+            // Tặng 1% giá trị đơn hàng thực tế (Final Total Amount)
+            int earnedCoins = (int) (order.getFinalTotalAmount() * 0.01);
+            
+            if (earnedCoins > 0) {
+                walletRepository.findByUserId(order.getUserId()).ifPresent(wallet -> {
+                    wallet.setCoinBalance(wallet.getCoinBalance() + earnedCoins);
+                    wallet.setUpdatedAt(LocalDateTime.now());
+                    walletRepository.save(wallet);
+                });
+                
+                // Bắn thông báo nhận Xu cực mượt
+                notificationService.createNotification(
+                    order.getUserId(), 
+                    "🎉 Chúc mừng bạn nhận được Xu!", 
+                    "Bạn đã được cộng " + earnedCoins + " AiNetsoft Xu từ đơn hàng " + order.getId(), 
+                    "WALLET", 
+                    null
+                );
+            }
+        }
+
         Order saved = orderRepository.save(order);
 
         String message = switch(newStatus.toUpperCase()) {
@@ -324,13 +347,11 @@ public class OrderService {
             throw new RuntimeException("Bạn không có quyền hủy đơn hàng này!");
         }
 
-        // 🚀 BẢN VÁ: Cho phép hủy đơn ở tất cả các trạng thái trước khi bàn giao vận chuyển
         String currentStatus = order.getStatus() != null ? order.getStatus().trim().toUpperCase() : "";
         if (!"PENDING".equals(currentStatus) && !"CONFIRMED".equals(currentStatus) && !"PROCESSING".equals(currentStatus)) {
             throw new RuntimeException("Không thể hủy đơn hàng đã được bàn giao cho đơn vị vận chuyển!");
         }
 
-        // Hoàn trả lại kho
         for (OrderItem item : order.getItems()) {
             productRepository.findById(item.getProductId()).ifPresent(p -> {
                 p.setStock(p.getStock() + item.getQuantity());
@@ -338,7 +359,6 @@ public class OrderService {
             });
         }
         
-        // Hoàn trả Xu
         if (order.getUsedCoins() > 0) {
              walletRepository.findByUserId(userId).ifPresent(wallet -> {
                  wallet.setCoinBalance(wallet.getCoinBalance() + order.getUsedCoins());
@@ -347,7 +367,6 @@ public class OrderService {
              });
         }
         
-        // Hoàn trả Voucher
         if (order.getAppliedVoucherIds() != null && !order.getAppliedVoucherIds().isEmpty()) {
             for (String vid : order.getAppliedVoucherIds()) {
                 voucherRepository.findById(vid).ifPresent(v -> {
@@ -378,26 +397,4 @@ public class OrderService {
     public List<Order> getOrdersBySeller(String sellerId, String status) {
         if (status == null || status.equalsIgnoreCase("ALL") || status.isBlank()) {
             return orderRepository.findAll().stream()
-                    .filter(o -> o.getItems().stream().anyMatch(i -> sellerId.equals(i.getSellerId())))
-                    .collect(Collectors.toList());
-        }
-        return orderRepository.findAll().stream()
-                .filter(o -> status.equalsIgnoreCase(o.getStatus()))
-                .filter(o -> o.getItems().stream().anyMatch(i -> sellerId.equals(i.getSellerId())))
-                .collect(Collectors.toList());
-    }
-
-    public Order getOrderById(String id) {
-        return orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Order not found with id: " + id));
-    }    
-
-    public List<Order> getAllSystemOrders() {
-        return orderRepository.findAll().stream()
-                .sorted((o1, o2) -> {
-                    if (o1.getCreatedAt() == null || o2.getCreatedAt() == null) return 0;
-                    return o2.getCreatedAt().compareTo(o1.getCreatedAt());
-                })
-                .collect(Collectors.toList());
-    }
-}
+                    .filter(

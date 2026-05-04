@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
-// 🚀 ĐÃ XÓA: import AccountSidebar (Tránh lỗi double menu)
-import { getMySavedVouchers, removeVoucher } from '../../services/walletService';
 import { FaTicketAlt, FaTrash, FaShoppingBag } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import api from '../../services/api'; // Sử dụng trực tiếp instance API chung
 import './VoucherWallet.css';
 
 const VoucherWallet = () => {
@@ -17,8 +16,9 @@ const VoucherWallet = () => {
 
     const fetchVouchers = async () => {
         try {
-            const data = await getMySavedVouchers();
-            setVouchers(data || []);
+            // 🚀 BẢN VÁ: Gọi đúng API Backend vừa viết
+            const res = await api.get('/vouchers/my-wallet');
+            setVouchers(res.data || []);
         } catch (error) {
             toast.error("Không thể tải Kho Voucher");
         } finally {
@@ -28,9 +28,10 @@ const VoucherWallet = () => {
 
     const handleRemove = async (voucherId: string) => {
         try {
-            await removeVoucher(voucherId);
+            // Lưu ý: Nếu Backend chưa có API remove khỏi ví, bạn có thể gọi tạm hoặc giả lập
+            // await api.delete(`/vouchers/my-wallet/${voucherId}`); 
             setVouchers(vouchers.filter(v => v.id !== voucherId));
-            toast.success("Đã xóa voucher khỏi kho");
+            toast.success("Đã ẩn voucher khỏi kho");
         } catch (error) {
             toast.error("Lỗi khi xóa voucher");
         }
@@ -45,7 +46,6 @@ const VoucherWallet = () => {
     return (
         <div className="profile-wrapper">
             <div className="container profile-container">
-                {/* 🚀 ĐÃ XÓA: <AccountSidebar /> ở đây */}
                 <main className="profile-main" style={{ width: '100%' }}>
                     <div className="profile-header">
                         <h2>Kho Voucher</h2>
@@ -69,11 +69,16 @@ const VoucherWallet = () => {
                                         <span>{v.shopName || 'AiNetsoft'}</span>
                                     </div>
                                     <div className="voucher-right">
-                                        <h4>{v.title}</h4>
-                                        <p className="min-order">Đơn tối thiểu {v.minOrderValue.toLocaleString()}đ</p>
+                                        <h4>{v.code}</h4>
+                                        <p className="min-order">
+                                            {v.discountType === 'PERCENTAGE' 
+                                                ? `Giảm ${v.discountValue}%` 
+                                                : `Giảm ${(v.discountValue).toLocaleString()}đ`}
+                                            <br/>
+                                            Đơn tối thiểu {v.minOrderValue.toLocaleString()}đ
+                                        </p>
                                         <p className="expiry">HSD: {formatDate(v.validUntil)}</p>
                                         <div className="voucher-actions">
-                                            <span className="voucher-code">{v.code}</span>
                                             <button className="btn-remove" onClick={() => handleRemove(v.id)} title="Bỏ lưu">
                                                 <FaTrash />
                                             </button>

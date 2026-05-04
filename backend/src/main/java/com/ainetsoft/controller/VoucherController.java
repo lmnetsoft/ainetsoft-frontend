@@ -48,6 +48,40 @@ public class VoucherController {
     }
 
     // ==========================================
+    // 🛒 BUYER ENDPOINTS (NGƯỜI MUA QUẢN LÝ VÍ VOUCHER)
+    // ==========================================
+
+    // 🚀 API LƯU VOUCHER VÀO VÍ
+    @PostMapping("/save/{voucherId}")
+    public ResponseEntity<?> saveVoucherToWallet(@PathVariable String voucherId, Principal principal) {
+        User user = getAuthenticatedUser(principal);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Vui lòng đăng nhập để lưu mã."));
+        }
+        try {
+            voucherService.saveVoucherToWallet(voucherId, user.getId());
+            return ResponseEntity.ok(Map.of("message", "Đã lưu mã giảm giá vào ví thành công!"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    // 🚀 API LẤY DANH SÁCH VOUCHER TRONG VÍ
+    @GetMapping("/my-wallet")
+    public ResponseEntity<?> getMySavedVouchers(Principal principal) {
+        User user = getAuthenticatedUser(principal);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Vui lòng đăng nhập."));
+        }
+        try {
+            List<Voucher> myVouchers = voucherService.getMySavedVouchers(user.getId());
+            return ResponseEntity.ok(myVouchers);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    // ==========================================
     // 🏪 SELLER ENDPOINTS (QUẢN LÝ VOUCHER)
     // ==========================================
 
@@ -70,7 +104,6 @@ public class VoucherController {
         try {
             voucherPayload.setSellerId(seller.getId());
             
-            // 🚀 FIXED: Lấy tên Shop chuẩn xác, fallback về fullName hoặc Email nếu không có
             String finalShopName = seller.getEmail(); 
             if (seller.getShopProfile() != null && seller.getShopProfile().getShopName() != null) {
                 finalShopName = seller.getShopProfile().getShopName();
