@@ -7,11 +7,19 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -21,6 +29,9 @@ public class ReviewService {
     private final ReviewRepository reviewRepository;
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
+    
+    // Thư mục lưu trữ file media cho đánh giá
+    private final String UPLOAD_DIR = "uploads/reviews/";
 
     @Transactional
     public void submitReview(ReviewRequest request, User currentUser) {
@@ -68,6 +79,95 @@ public class ReviewService {
         order.setReviewed(true);
         order.setUpdatedAt(LocalDateTime.now());
         orderRepository.save(order);
+    }
+
+    // 🚀 HÀM MỚI: Xử lý Đánh giá có kèm theo File (Ảnh/Video)
+    @Transactional
+    public void submitReviewWithMedia(ReviewRequest request, List<MultipartFile> images, MultipartFile video, User currentUser) {
+        if (request.getOrderId() == null || request.getOrderId().contains("AUTO_GENERATED")) {
+            throw new RuntimeException("Bạn cần mua sản phẩm này để có thể để lại đánh giá.");
+        }
+
+        Order order = orderRepository.findById(request.getOrderId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin mua hàng."));
+
+        if (!order.getUserId().equals(currentUser.getId())) {
+            throw new RuntimeException("Bạn không có quyền đánh giá đơn hàng này.");
+        }
+
+        if (!"COMPLETED".equals(order.getStatus())) {
+            throw new RuntimeException("Vui lòng chờ đơn hàng hoàn thành trước khi đánh giá.");
+        }
+
+        if (order.isReviewed()) {
+            throw new RuntimeException("Sản phẩm này đã được bạn đánh giá rồi.");
+        }
+
+        Product product = productRepository.findById(request.getProductId())
+                .orElseThrow(() -> new RuntimeException("Sản phẩm không còn tồn tại."));
+
+        // 1. Xử lý Upload Hình ảnh
+        List<String> uploadedImageUrls = new ArrayList<>();
+        if (images != null && !images.isEmpty()) {
+            for (MultipartFile img : images) {
+                if (!img.isEmpty()) {
+                    uploadedImageUrls.add(saveFileLocally(img));
+                }
+            }
+        }
+
+        // 2. Xử lý Upload Video
+        String uploadedVideoUrl = null;
+        if (video != null && !video.isEmpty()) {
+            uploadedVideoUrl = saveFileLocally(video);
+        }
+
+        // 3. Tạo Review Object
+        Review review = Review.builder()
+                .productId(product.getId())
+                .sellerId(product.getSellerId())
+                .userId(currentUser.getId())
+                .userName(currentUser.getFullName())
+                .userAvatar(currentUser.getAvatar())
+                .rating(request.getRating())
+                .comment(request.getComment())
+                .imageUrls(uploadedImageUrls.isEmpty() ? request.getImageUrls() : uploadedImageUrls)
+                .videoUrl(uploadedVideoUrl != null ? uploadedVideoUrl : request.getVideoUrl())
+                .variantInfo(request.getVariantInfo())
+                .orderId(order.getId())
+                .isVerifiedPurchase(true)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        reviewRepository.save(review);
+        updateProductRating(product);
+
+        order.setReviewed(true);
+        order.setUpdatedAt(LocalDateTime.now());
+        orderRepository.save(order);
+    }
+
+    // 🚀 HÀM HỖ TRỢ: Lưu file vào server cục bộ
+    private String saveFileLocally(MultipartFile file) {
+        try {
+            Path uploadPath = Paths.get(UPLOAD_DIR);
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+            }
+            
+            // Đổi tên file để tránh trùng lặp và lỗi ký tự đặc biệt
+            String originalFilename = file.getOriginalFilename();
+            String safeFilename = originalFilename != null ? originalFilename.replaceAll("[^a-zA-Z0-9\\.\\-]", "_") : "file";
+            String uniqueFilename = UUID.randomUUID().toString() + "_" + safeFilename;
+            
+            Path filePath = uploadPath.resolve(uniqueFilename);
+            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+            
+            return "/" + UPLOAD_DIR + uniqueFilename; 
+        } catch (IOException e) {
+            log.error("Lỗi khi lưu file media cho đánh giá", e);
+            throw new RuntimeException("Không thể tải file lên hệ thống: " + e.getMessage());
+        }
     }
 
     public List<Review> getProductReviews(String productId, Integer rating, Boolean hasImages) {

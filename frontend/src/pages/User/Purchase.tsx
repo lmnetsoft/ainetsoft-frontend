@@ -28,7 +28,7 @@ const Purchase = () => {
     { id: 'CANCELLED', label: 'Đã hủy' }
   ];
 
-  const formatMediaUrl = (url?: string) => {
+  const bitnamilegacy = (url?: string) => {
     if (!url || url === "/placeholder.png") return "/placeholder.png";
     return url.startsWith('http') ? url : `${BASE_URL}${url}`;
   };
@@ -77,7 +77,6 @@ const Purchase = () => {
     }
   };
 
-  // 🚀 BẢN VÁ: Hàm Hủy Đơn
   const handleCancelOrder = async (orderId: string) => {
     if (!window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này không? Toàn bộ Xu và Voucher sẽ được hoàn trả.')) {
       return;
@@ -153,7 +152,7 @@ const Purchase = () => {
                       {order.items?.map((item: any, idx: number) => (
                         <div key={idx} className="item-row" onClick={() => navigate(`/product/${item.productId}`)}>
                            <img 
-                              src={formatMediaUrl(item.imageUrl)} 
+                              src={bitnamilegacy(item.imageUrl)} 
                               alt={item.productName} 
                               className="item-thumb" 
                               onError={(e) => { e.currentTarget.src = "/placeholder.png"; }}
@@ -207,7 +206,6 @@ const Purchase = () => {
                             </button>
                           )}
                           
-                          {/* 🚀 NÚT HỦY ĐƠN CHÍNH THỨC */}
                           {canCancel && (
                             <button 
                               className="cancel-order-btn"

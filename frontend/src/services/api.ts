@@ -112,16 +112,11 @@ export const getProductReviews = (productId: string, rating?: number, hasImages?
 
 export const getReviewStats = (productId: string) => api.get(`/reviews/product/${productId}/stats`);
 
-export const submitReview = (reviewData: {
-  productId: string;
-  orderId: string;
-  rating: number;
-  comment: string;
-  imageUrls?: string[];
-  videoUrl?: string;
-  variantInfo?: string;
-}) => {
-  return api.post('/reviews/submit', reviewData);
+// 🚀 FIXED: Cập nhật hàm submitReview để hỗ trợ FormData (Upload File)
+export const submitReview = (formData: FormData) => {
+  return api.post('/reviews/submit', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
 };
 
 export const replyToReview = (reviewId: string, replyText: string) => {

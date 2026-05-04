@@ -56,7 +56,7 @@ import MyProducts from './pages/Seller/MyProducts';
 import SellerOrders from './pages/Seller/SellerOrders';
 import SellerSettings from './pages/Seller/SellerSettings';
 import Withdrawal from './pages/Seller/Withdrawal'; 
-import SellerVouchers from './pages/Seller/SellerVouchers'; // 🚀 BỔ SUNG IMPORT
+import SellerVouchers from './pages/Seller/SellerVouchers'; 
 
 // Admin Components
 import AdminDashboard from './pages/Admin/AdminDashboard';
@@ -75,6 +75,8 @@ import AdminModeration from './pages/Admin/AdminModeration';
 import SellerModeration from './pages/Admin/SellerModeration'; 
 import ProductModeration from './pages/Admin/ProductModeration';
 import AdminAuditLogs from './pages/Admin/AdminAuditLogs';
+import AdminVouchers from './pages/Admin/AdminVouchers'; 
+import AdminCoins from './pages/Admin/AdminCoins'; // 🚀 IMPORT ADMIN COINS
 
 import './App.css';
 
@@ -164,23 +166,22 @@ function App() {
                   <Route path="/seller/edit/:id" element={<ProtectedRoute allowedRoles={['SELLER']}><EditProduct /></ProtectedRoute>} />
                   <Route path="/seller/orders" element={<ProtectedRoute allowedRoles={['SELLER']}><SellerOrders /></ProtectedRoute>} />
                   <Route path="/seller/settings" element={<ProtectedRoute allowedRoles={['SELLER']}><SellerSettings /></ProtectedRoute>} />
-                  
-                  {/* 🚀 BỔ SUNG ROUTE VOUCHER CHO SELLER */}
                   <Route path="/seller/vouchers" element={<ProtectedRoute allowedRoles={['SELLER']}><SellerVouchers /></ProtectedRoute>} />
-
                   <Route path="/seller/withdrawal" element={<ProtectedRoute allowedRoles={['SELLER']}><FinancialSecurityGate><Withdrawal /></FinancialSecurityGate></ProtectedRoute>} />
                   <Route path="/seller/balance" element={<ProtectedRoute allowedRoles={['SELLER']}><FinancialSecurityGate><Withdrawal /></FinancialSecurityGate></ProtectedRoute>} />
                   <Route path="/seller/revenue" element={<ProtectedRoute allowedRoles={['SELLER']}><SellerDashboard /></ProtectedRoute>} />
 
                   {/* --- Admin Routes --- */}
                   <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboard /></ProtectedRoute>} />
-                  
                   <Route path="/admin/orders" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminOrders /></ProtectedRoute>} />
                   <Route path="/admin/orders/:id" element={<ProtectedRoute allowedRoles={['ADMIN']}><OrderDetail /></ProtectedRoute>} />
-                  
                   <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminUsers /></ProtectedRoute>} />
                   <Route path="/admin/stores" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminStoreManager /></ProtectedRoute>} />
                   <Route path="/admin/moderation" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminModeration /></ProtectedRoute>} />
+                  
+                  {/* 🚀 ADMIN MARKETING & FINANCE ROUTES */}
+                  <Route path="/admin/vouchers" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminVouchers /></ProtectedRoute>} />
+                  <Route path="/admin/coins" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminCoins /></ProtectedRoute>} />
 
                   {/* Specific Admin Standalone Pages */}
                   <Route path="/admin/audit-logs" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminAuditLogs /></ProtectedRoute>} />

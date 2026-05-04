@@ -20,9 +20,13 @@ const PublicShop = () => {
 
   const API_BASE_URL = "http://localhost:8080";
 
-  const getFullImageUrl = (path: string | null | undefined) => {
+  // 🚀 FIXED: Helper logic to resolve image paths correctly including blobs
+  const bitnamilegacy = (path: string | null | undefined) => {
     if (!path || path === "DEFAULT_LOGO" || path.trim() === "") return logoWithoutText; 
+    
+    // Bypass for external URLs, base64 strings, and local blob previews
     if (path.startsWith('data:image') || path.startsWith('http') || path.startsWith('blob:')) return path;
+    
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
     return `${API_BASE_URL}${cleanPath}`;
   };
@@ -115,7 +119,7 @@ const PublicShop = () => {
           <div className="shop-profile-card">
             <div className="shop-logo-wrapper">
               <img 
-                src={getFullImageUrl(shopInfo?.shopLogoUrl)} 
+                src={bitnamilegacy(shopInfo?.shopLogoUrl)} 
                 alt="Shop Logo" 
                 className="shop-logo-img"
                 onError={(e) => { e.currentTarget.src = logoWithoutText; }}
@@ -192,7 +196,7 @@ const PublicShop = () => {
               <div key={product.id} className="shop-product-card" onClick={() => navigate(`/product/${product.id}`)}>
                 <div className="prod-img-box">
                   <img 
-                    src={getFullImageUrl(product.imageUrls && product.imageUrls[0] ? product.imageUrls[0] : null)} 
+                    src={bitnamilegacy(product.imageUrls && product.imageUrls[0] ? product.imageUrls[0] : null)} 
                     alt={product.name} 
                     onError={(e) => { e.currentTarget.src = logoWithoutText; }}
                   />

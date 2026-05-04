@@ -5,11 +5,14 @@ import com.ainetsoft.model.User;
 import com.ainetsoft.service.ReviewService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -22,9 +25,17 @@ public class ReviewController {
     /**
      * POST /api/reviews/submit
      * Allows a buyer to submit a review for a completed order item.
+     * 🚀 UPDATED: Hỗ trợ upload Hình ảnh & Video thông qua multipart/form-data
      */
-    @PostMapping("/submit")
-    public ResponseEntity<?> submitReview(@Valid @RequestBody ReviewRequest request) {
+    @PostMapping(value = "/submit", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> submitReview(
+            @RequestParam("productId") String productId,
+            @RequestParam("rating") int rating,
+            @RequestParam("comment") String comment,
+            @RequestParam("orderId") String orderId,
+            @RequestParam(value = "images", required = false) List<MultipartFile> images,
+            @RequestParam(value = "video", required = false) MultipartFile video) {
+        
         // 🛠️ FIX: Get user from SecurityContext instead of HttpSession
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         
@@ -35,7 +46,18 @@ public class ReviewController {
         User currentUser = (User) authentication.getPrincipal();
 
         try {
-            reviewService.submitReview(request, currentUser);
+            // Đóng gói lại thành DTO để giữ tính tương thích logic hiện tại
+            ReviewRequest request = new ReviewRequest();
+            request.setProductId(productId);
+            request.setRating(rating);
+            request.setComment(comment);
+            request.setOrderId(orderId);
+
+            // 🚀 GỌI HÀM MỚI Ở SERVICE:
+            // LƯU Ý: Bạn cần vào ReviewService.java để tạo hàm submitReviewWithMedia
+            // giúp xử lý lưu file vật lý/Cloudinary và lưu URL vào database.
+            reviewService.submitReviewWithMedia(request, images, video, currentUser);
+            
             return ResponseEntity.ok(Map.of("message", "Đánh giá của bạn đã được ghi nhận. Cảm ơn bạn!"));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));

@@ -4,7 +4,7 @@ import {
   FaShieldAlt, FaChartPie, FaEdit, FaSitemap, FaBalanceScale, 
   FaList, FaBuilding, FaTruck, FaFileInvoiceDollar, FaComments, 
   FaHistory, FaChevronDown, FaChevronUp, FaArrowLeft, FaUsersCog,
-  FaUsers, FaStore, FaFlag
+  FaUsers, FaStore, FaFlag, FaTicketAlt
 } from 'react-icons/fa';
 import './AdminSidebar.css';
 
@@ -19,8 +19,9 @@ const AdminSidebar = () => {
     stores: path.includes('/admin/stores'),
     moderation: path.includes('/admin/moderation'),
     content: path.includes('/admin/article') || path.includes('/admin/help-hierarchy') || path.includes('/admin/content'),
+    marketing: path.includes('/admin/vouchers'), 
     config: path.includes('/admin/footer-menus') || path.includes('/admin/shipping'),
-    finance: path.includes('/admin/withdrawals'),
+    finance: path.includes('/admin/withdrawals') || path.includes('/admin/coins'), // 🚀 Cập nhật trạng thái mở
     interaction: path.includes('/admin/chat'),
     system: path.includes('/admin/audit-logs')
   });
@@ -36,7 +37,6 @@ const AdminSidebar = () => {
           <FaArrowLeft /> <span>Trở về Trang chủ</span>
         </div>
         
-        {/* 🚀 ĐÃ BỎ ÉP IN HOA ĐỂ GIỮ NGUYÊN "AiNetsoft Admin" */}
         <div className="admin-logo-area" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 0', marginTop: '10px' }}>
           <FaShieldAlt className="admin-master-icon" style={{ color: '#ee4d2d', fontSize: '26px' }} />
           <h2 style={{
@@ -95,6 +95,16 @@ const AdminSidebar = () => {
         </div>
 
         <div className="admin-nav-group">
+          <div className="admin-group-title" onClick={() => toggleGroup('marketing')}>
+            <span className="title-left"><FaTicketAlt className="admin-icon" style={{ color: '#ff4757' }}/> Marketing & Khuyến mãi</span>
+            {openGroups.marketing ? <FaChevronUp className="chevron" /> : <FaChevronDown className="chevron" />}
+          </div>
+          <div className={`admin-sub-menu ${openGroups.marketing ? 'open' : ''}`}>
+            <NavLink to="/admin/vouchers" className={({isActive}) => isActive ? "sub-item active" : "sub-item"}>Voucher Toàn Sàn</NavLink>
+          </div>
+        </div>
+
+        <div className="admin-nav-group">
           <div className="admin-group-title" onClick={() => toggleGroup('content')}>
             <span className="title-left"><FaEdit className="admin-icon" style={{ color: '#1abc9c' }}/> Quản lý Nội dung</span>
             {openGroups.content ? <FaChevronUp className="chevron" /> : <FaChevronDown className="chevron" />}
@@ -125,6 +135,8 @@ const AdminSidebar = () => {
           </div>
           <div className={`admin-sub-menu ${openGroups.finance ? 'open' : ''}`}>
             <NavLink to="/admin/withdrawals" className={({isActive}) => isActive ? "sub-item active" : "sub-item"}>Lệnh Rút Tiền</NavLink>
+            {/* 🚀 ĐÃ THÊM: Menu Quản lý Xu */}
+            <NavLink to="/admin/coins" className={({isActive}) => isActive ? "sub-item active" : "sub-item"}>Quản lý AiNetsoft Xu</NavLink>
           </div>
         </div>
 

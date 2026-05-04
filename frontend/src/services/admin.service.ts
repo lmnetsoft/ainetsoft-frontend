@@ -11,27 +11,15 @@ export const adminService = {
 
   // --- MERCHANT MODERATION (NEW APPROVAL FLOW) ---
   
-  /**
-   * Fetches all sellers needing review.
-   * Returns combined list of new registrations and existing profile updates.
-   */
   getPendingSellers: async () => {
     const response = await api.get('/admin/sellers/pending');
     return response.data;
   },
 
-  /**
-   * Fetches full verification details for a seller.
-   * Returns Map containing live info, pending draft info, and decrypted bank data.
-   */
   getSellerDetails: (userId: string) => {
     return api.get(`/admin/sellers/review/${userId}`).then(res => res.data);
   },
   
-  /**
-   * Processes both NEW registration and EXISTING profile updates.
-   * Payload: { approved: boolean, adminNote: string }
-   */
   approveSeller: (userId: string, approved: boolean, note: string = "") => {
     const payload = { 
       approved, 
@@ -119,13 +107,9 @@ export const adminService = {
   revokeSellerRights: (userId: string, reason: string) => 
     api.post(`/admin/sellers/revoke/${userId}`, null, { params: { reason } }).then(res => res.data),
 
-  /** * 🚀 NEW: Re-grant seller rights quickly using existing verification data.
-   */
   restoreSellerRights: (userId: string) => 
     api.post(`/admin/sellers/restore/${userId}`).then(res => res.data),
     
-  /** * 🚀 UPDATED: Added params to support dynamic pagination (page/size) for logs
-   */
   getAuditLogs: (params: any = {}) => 
     api.get('/admin/audit-logs', { params }).then(res => res.data),
 
@@ -137,7 +121,6 @@ export const adminService = {
   saveFeedbackTemplate: (data: any) => 
     api.post('/admin/feedback-templates', data).then(res => res.data),
 
-  /** 🛡️ FIXED: Corrected path to include /admin prefix to match backend controller */
   deleteFeedbackTemplate: (id: string) => 
     api.delete(`/admin/feedback-templates/${id}`).then(res => res.data),
 
@@ -153,7 +136,24 @@ export const adminService = {
     api.post('/admin/system-content', content).then(res => res.data),
 
   deleteSystemContent: (id: string) => 
-    api.delete(`/admin/system-content/${id}`).then(res => res.data)
+    api.delete(`/admin/system-content/${id}`).then(res => res.data),
+
+  // 🚀 --- PLATFORM VOUCHERS (ADMIN ONLY) ---
+
+  getAllPlatformVouchers: () => 
+    api.get('/vouchers/admin/platform').then(res => res.data),
+
+  createPlatformVoucher: (data: any) => 
+    api.post('/vouchers/admin/platform', data).then(res => res.data),
+
+  deactivatePlatformVoucher: (id: string) => 
+    api.put(`/vouchers/admin/platform/${id}/deactivate`).then(res => res.data),
+
+  // 🚀 --- COIN & FINANCE MANAGEMENT ---
+  getCoinStats: () => api.get('/admin/coins/stats').then(res => res.data),
+  updatePlatformConfig: (config: any) => api.post('/admin/coins/config', config).then(res => res.data),
+  adjustUserCoins: (data: { userId: string, amount: number, reason: string }) => api.post('/admin/coins/adjust', data).then(res => res.data)
+  
 };
 
 export default adminService;
