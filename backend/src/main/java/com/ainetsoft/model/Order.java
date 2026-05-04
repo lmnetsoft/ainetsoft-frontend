@@ -46,4 +46,8 @@ public class Order {
     
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    
+    private String trackingCode;     // Mã vận đơn (VD: GHN-123456)
+    private String shippingProvider; // Đơn vị vận chuyển (VD: Giao Hàng Nhanh)
+    private String carrierStatus;    // Trạng thái từ ĐVVC: PICKED_UP, IN_TRANSIT, DELIVERED    
 }

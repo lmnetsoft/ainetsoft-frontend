@@ -4,6 +4,9 @@ mvn clean compile -DskipTests && \
 mvn spring-boot:run -Dspring-boot.run.arguments="--app.seed.mock-data=true"
 
 mvn clean compile -DskipTests && \
+mvn spring-boot:run -Dspring-boot.run.arguments="--app.seed.force-clean=true --app.seed.mock-data=true"
+
+mvn clean compile -DskipTests && \
 mvn spring-boot:run -Dspring-boot.run.arguments="--app.seed.mock-data=false"
 
 mvn clean compile -DskipTests && \

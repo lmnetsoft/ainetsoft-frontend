@@ -30,8 +30,8 @@ public class ReviewService {
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
     
-    // Thư mục lưu trữ file media cho đánh giá
-    private final String UPLOAD_DIR = "uploads/reviews/";
+    // Thư mục gốc lưu trữ file media cho đánh giá
+    private final String BASE_UPLOAD_DIR = "uploads/reviews/";
 
     @Transactional
     public void submitReview(ReviewRequest request, User currentUser) {
@@ -106,12 +106,15 @@ public class ReviewService {
         Product product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new RuntimeException("Sản phẩm không còn tồn tại."));
 
+        // Tạo đường dẫn thư mục lưu trữ động: uploads/reviews/{productId}/{userId}/
+        String dynamicDir = BASE_UPLOAD_DIR + product.getId() + "/" + currentUser.getId() + "/";
+
         // 1. Xử lý Upload Hình ảnh
         List<String> uploadedImageUrls = new ArrayList<>();
         if (images != null && !images.isEmpty()) {
             for (MultipartFile img : images) {
                 if (!img.isEmpty()) {
-                    uploadedImageUrls.add(saveFileLocally(img));
+                    uploadedImageUrls.add(saveFileLocally(img, dynamicDir));
                 }
             }
         }
@@ -119,7 +122,7 @@ public class ReviewService {
         // 2. Xử lý Upload Video
         String uploadedVideoUrl = null;
         if (video != null && !video.isEmpty()) {
-            uploadedVideoUrl = saveFileLocally(video);
+            uploadedVideoUrl = saveFileLocally(video, dynamicDir);
         }
 
         // 3. Tạo Review Object
@@ -147,10 +150,10 @@ public class ReviewService {
         orderRepository.save(order);
     }
 
-    // 🚀 HÀM HỖ TRỢ: Lưu file vào server cục bộ
-    private String saveFileLocally(MultipartFile file) {
+    // 🚀 HÀM HỖ TRỢ: Lưu file vào server cục bộ theo cấu trúc động
+    private String saveFileLocally(MultipartFile file, String dynamicDir) {
         try {
-            Path uploadPath = Paths.get(UPLOAD_DIR);
+            Path uploadPath = Paths.get(dynamicDir);
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
             }
@@ -163,7 +166,7 @@ public class ReviewService {
             Path filePath = uploadPath.resolve(uniqueFilename);
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
             
-            return "/" + UPLOAD_DIR + uniqueFilename; 
+            return "/" + dynamicDir + uniqueFilename; 
         } catch (IOException e) {
             log.error("Lỗi khi lưu file media cho đánh giá", e);
             throw new RuntimeException("Không thể tải file lên hệ thống: " + e.getMessage());
@@ -186,24 +189,33 @@ public class ReviewService {
                 return getEmptyStats();
             }
 
-            // 🚀 BƯỚC TỐI ƯU HÓA: Kiểm tra tổng số lượng trước. 
-            // Nếu = 0, trả về 0 luôn, tiết kiệm 6 lượt truy vấn DB!
-            long total = reviewRepository.countByProductId(productId);
-            if (total == 0) {
+            // Tải danh sách tất cả các review của sản phẩm này
+            List<Review> productReviews = reviewRepository.findByProductIdOrderByCreatedAtDesc(productId);
+            
+            if (productReviews == null || productReviews.isEmpty()) {
                 return getEmptyStats();
             }
 
             Map<String, Long> stats = new HashMap<>();
+            long total = productReviews.size();
+            
             stats.put("total", total);
-            stats.put("star5", reviewRepository.countByProductIdAndRating(productId, 5));
-            stats.put("star4", reviewRepository.countByProductIdAndRating(productId, 4));
-            stats.put("star3", reviewRepository.countByProductIdAndRating(productId, 3));
-            stats.put("star2", reviewRepository.countByProductIdAndRating(productId, 2));
-            stats.put("star1", reviewRepository.countByProductIdAndRating(productId, 1));
-            stats.put("withImages", reviewRepository.countByProductIdAndImageUrlsIsNotEmpty(productId));
+            stats.put("star5", productReviews.stream().filter(r -> r.getRating() == 5).count());
+            stats.put("star4", productReviews.stream().filter(r -> r.getRating() == 4).count());
+            stats.put("star3", productReviews.stream().filter(r -> r.getRating() == 3).count());
+            stats.put("star2", productReviews.stream().filter(r -> r.getRating() == 2).count());
+            stats.put("star1", productReviews.stream().filter(r -> r.getRating() == 1).count());
+            
+            // Đếm các review có hình ảnh hoặc video
+            long withImages = productReviews.stream()
+                    .filter(r -> (r.getImageUrls() != null && !r.getImageUrls().isEmpty()) || (r.getVideoUrl() != null && !r.getVideoUrl().isEmpty()))
+                    .count();
+                    
+            stats.put("withImages", withImages);
+            
             return stats;
         } catch (Exception e) {
-            // 🤫 Tắt cảnh báo spam console. Trả về stat trống một cách êm ái.
+            log.error("Lỗi khi lấy thống kê đánh giá", e);
             return getEmptyStats();
         }
     }

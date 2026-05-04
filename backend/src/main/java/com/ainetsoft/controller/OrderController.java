@@ -177,4 +177,21 @@ public class OrderController {
         List<Order> allOrders = orderService.getAllSystemOrders();
         return ResponseEntity.ok(allOrders);
     }
+    
+    @PutMapping("/{orderId}/status")
+    public ResponseEntity<?> updateOrderStatus(
+            @PathVariable String orderId,
+            @RequestBody java.util.Map<String, String> payload) {
+        
+        String newStatus = payload.get("status");
+        
+        try {
+            // Tạm thời truyền null cho tham số thứ 3 (sellerId) vì đây là Người mua tự cập nhật
+            com.ainetsoft.model.Order updatedOrder = orderService.updateStatus(orderId, newStatus, null);
+            return ResponseEntity.ok(java.util.Map.of("message", "Cập nhật trạng thái thành công!", "order", updatedOrder));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));
+        }
+    }
+    
 }

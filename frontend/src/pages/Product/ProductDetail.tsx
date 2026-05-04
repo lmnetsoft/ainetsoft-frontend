@@ -78,7 +78,15 @@ const ProductDetail = () => {
 
   const [product, setProduct] = useState<Product | null>(location.state?.productPreview || null);
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [reviewStats, setReviewStats] = useState<any>(null); 
+  const [reviewStats, setReviewStats] = useState<any>({
+    total: 0,
+    star5: 0,
+    star4: 0,
+    star3: 0,
+    star2: 0,
+    star1: 0,
+    withImages: 0
+  }); 
   const [selectedFilter, setSelectedFilter] = useState('all'); 
   
   const [loading, setLoading] = useState(!location.state?.productPreview);
@@ -87,6 +95,9 @@ const ProductDetail = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [isZoomed, setIsZoomed] = useState(false);
+
+  // 🚀 MỚI: State quản lý Pop-up xem ảnh/video phóng to của riêng phần Đánh giá
+  const [zoomedReviewMedia, setZoomedReviewMedia] = useState<{ url: string; type: 'image' | 'video' } | null>(null);
 
   const [showShippingDrawer, setShowShippingDrawer] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
@@ -103,20 +114,21 @@ const ProductDetail = () => {
   const [hoverRating, setHoverRating] = useState(0);
   const [reviewComment, setReviewComment] = useState("");
   
-  // 🚀 BỔ SUNG STATE QUẢN LÝ FILE UPLOAD ĐÁNH GIÁ
   const [reviewImages, setReviewImages] = useState<File[]>([]);
   const [reviewVideo, setReviewVideo] = useState<File | null>(null);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   
   const [validOrderId, setValidOrderId] = useState<string | null>(null);
-
-  // 🚀 MARKETING ENGINE: VOUCHERS STATE
   const [shopVouchers, setShopVouchers] = useState<any[]>([]);
 
   const bitnamilegacy = (url?: string) => {
     if (!url || url === 'undefined' || url === 'null' || url === '') return "/placeholder.png";
     if (url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')) return url; 
-    const cleanPath = url.startsWith('/') ? url : `/${url}`;
+    
+    let cleanPath = url.startsWith('/') ? url : `/${url}`;
+    if (!cleanPath.startsWith('/api/')) {
+        cleanPath = `/api${cleanPath}`;
+    }
     return `${BASE_URL}${cleanPath}`;
   };
 
@@ -158,6 +170,15 @@ const ProductDetail = () => {
   }, [id]);
 
   useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const isReview = searchParams.get('review');
+    
+    if (isReview === 'true' && validOrderId) {
+      setShowReviewModal(true);
+    }
+  }, [validOrderId]);
+
+  useEffect(() => {
     const loadReportReasons = async () => {
       try {
         const res = await api.get('/report-reasons');
@@ -171,7 +192,6 @@ const ProductDetail = () => {
     loadReportReasons();
   }, []);
 
-  // 🚀 FETCH ACTIVE VOUCHERS CHO SHOP NÀY
   useEffect(() => {
     if (product?.sellerId) {
       api.get(`/vouchers/public/shop/${product.sellerId}`)
@@ -210,7 +230,6 @@ const ProductDetail = () => {
     }
   };
 
-  // 🚀 LƯU VOUCHER VÀO VÍ
   const handleSaveVoucher = async (voucherId: string) => {
     if (!localStorage.getItem('isAuthenticated')) {
        setToastMessage("Vui lòng đăng nhập để lấy mã giảm giá!");
@@ -222,14 +241,13 @@ const ProductDetail = () => {
        await api.post(`/wallets/me/vouchers/${voucherId}`);
        setToastMessage("Đã lưu mã giảm giá vào Kho Voucher!");
        setShowToast(true);
-       setShopVouchers(prev => prev.filter(v => v.id !== voucherId)); // Xóa khỏi màn hình sau khi lưu
+       setShopVouchers(prev => prev.filter(v => v.id !== voucherId)); 
     } catch (e: any) {
        setToastMessage(e.response?.data?.message || "Lỗi khi lưu mã giảm giá.");
        setShowToast(true);
     }
   };
 
-  // 🚀 XỬ LÝ CHỌN FILE ĐÁNH GIÁ
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
@@ -272,7 +290,6 @@ const ProductDetail = () => {
     setShowReviewModal(true);
   };
 
-  // 🚀 BẮN API ĐÁNH GIÁ VỚI FORMDATA (CHỨA FILE)
   const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id || !reviewComment.trim() || !validOrderId) return;
@@ -297,6 +314,9 @@ const ProductDetail = () => {
       setReviewImages([]);
       setReviewVideo(null);
       
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+
       const [statsRes, revRes] = await Promise.all([
         getReviewStats(id),
         getProductReviews(id)
@@ -420,7 +440,7 @@ const ProductDetail = () => {
             getReviewStats(id!),
             getProductReviews(id!)
           ]);
-          setReviewStats(statsRes.data);
+          setReviewStats(statsRes.data || { total: 0, star5: 0, star4: 0, star3: 0, star2: 0, star1: 0, withImages: 0 });
           setReviews(revRes.data);
         } catch (revErr) { console.warn("Review data not found yet."); }
       } catch (error) {
@@ -461,7 +481,22 @@ const ProductDetail = () => {
     <div className="product-detail-wrapper">
       <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
 
-      {/* 🚀 REVIEW MODAL CÓ GIAO DIỆN CHỌN FILE */}
+      {/* 🚀 MỚI: Modal phóng to hình ảnh hoặc video dành riêng cho phần Đánh giá */}
+      {zoomedReviewMedia && (
+        <div className="zoom-modal-overlay" onClick={() => setZoomedReviewMedia(null)} style={{ zIndex: 9999 }}>
+          <div className="zoom-modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="zoom-close-btn" onClick={() => setZoomedReviewMedia(null)}><FaTimes /></button>
+            {zoomedReviewMedia.type === 'video' ? (
+              <video autoPlay controls className="zoom-media-main" style={{ maxHeight: '85vh', maxWidth: '90vw' }}>
+                <source src={zoomedReviewMedia.url} type="video/mp4" />
+              </video>
+            ) : (
+              <img src={zoomedReviewMedia.url} alt="Zoomed Review Media" className="zoom-media-main" style={{ maxHeight: '85vh', maxWidth: '90vw', objectFit: 'contain' }} />
+            )}
+          </div>
+        </div>
+      )}
+
       {showReviewModal && (
         <div className="report-modal-overlay" onClick={() => setShowReviewModal(false)}>
           <div className="report-modal-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px' }}>
@@ -506,7 +541,6 @@ const ProductDetail = () => {
                   </label>
                 </div>
 
-                {/* KHU VỰC PREVIEW FILE ĐÃ CHỌN */}
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                   {reviewImages.map((file, idx) => (
                     <div key={idx} style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '4px', overflow: 'hidden', border: '1px solid #eee' }}>
@@ -539,7 +573,6 @@ const ProductDetail = () => {
         </div>
       )}
 
-      {/* --- REPORT MODAL --- */}
       {showReportModal && (
         <div className="report-modal-overlay" onClick={() => setShowReportModal(false)}>
           <div className="report-modal-card" onClick={e => e.stopPropagation()}>
@@ -565,7 +598,6 @@ const ProductDetail = () => {
         </div>
       )}
 
-      {/* --- SHIPPING DRAWER --- */}
       {showShippingDrawer && (
         <div className="shipping-drawer-overlay" onClick={() => setShowShippingDrawer(false)}>
           <div className="shipping-drawer-card" onClick={e => e.stopPropagation()}>
@@ -591,7 +623,6 @@ const ProductDetail = () => {
         </div>
       )}
 
-      {/* --- MEDIA ZOOM --- */}
       {isZoomed && (
         <div className="zoom-modal-overlay" onClick={() => setIsZoomed(false)}>
           <div className="zoom-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -607,14 +638,12 @@ const ProductDetail = () => {
         </div>
       )}
 
-      {/* BOX 1: BANNER */}
       {product.status !== 'APPROVED' && (
         <div className="container sync-container">
           <div className="preview-mode-banner"><FaExclamationTriangle size={20} /> <div className="banner-text"><strong>BẢN XEM TRƯỚC:</strong> Sản phẩm chưa phê duyệt.</div></div>
         </div>
       )}
 
-      {/* BOX 2: PRODUCT INFO */}
       <div className="container sync-container">
         <div className="detail-container">
           <div className="detail-media-section">
@@ -758,23 +787,37 @@ const ProductDetail = () => {
           <div className="reviews-list">
             {reviews.map(review => (
               <div key={review.id} className="review-card-item">
-                <div className="rev-user-avatar"><img src={review.userAvatar || "/default-avatar.png"} alt="avatar" /></div>
+                <div className="rev-user-avatar">
+                  <img 
+                    src={review.userAvatar ? bitnamilegacy(review.userAvatar) : "https://ui-avatars.com/api/?name=" + encodeURIComponent(review.userName || "U") + "&background=random"} 
+                    alt="avatar" 
+                    onError={(e) => { e.currentTarget.src = "https://ui-avatars.com/api/?name=" + encodeURIComponent(review.userName || "U") + "&background=random"; }}
+                    style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }}
+                  />
+                </div>
                 <div className="rev-content-side">
                   <div className="rev-username">{review.userName}</div>
                   <div className="rev-stars">{[...Array(5)].map((_, i) => <FaStar key={i} size={12} color={i < review.rating ? "#ee4d2d" : "#e4e5e9"} />)}</div>
                   <div className="rev-meta-line">{new Date(review.createdAt).toLocaleString('vi-VN')}</div>
                   <div className="rev-comment-text">{review.comment}</div>
                   
-                  {/* 🚀 HIỂN THỊ MEDIA CỦA BÌNH LUẬN NẾU CÓ */}
+                  {/* 🚀 ĐÃ CẬP NHẬT: Cho phép bấm vào Ảnh / Video để hiển thị Pop-up xem lớn */}
                   {(review.imageUrls?.length || review.videoUrl) && (
                     <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
                       {review.imageUrls?.map((img, idx) => (
-                        <div key={idx} style={{ width: '70px', height: '70px', borderRadius: '4px', overflow: 'hidden', border: '1px solid #e2e8f0', cursor: 'pointer' }}>
+                        <div 
+                          key={idx} 
+                          onClick={() => setZoomedReviewMedia({ url: bitnamilegacy(img), type: 'image' })}
+                          style={{ width: '70px', height: '70px', borderRadius: '4px', overflow: 'hidden', border: '1px solid #e2e8f0', cursor: 'pointer' }}
+                        >
                           <img src={bitnamilegacy(img)} alt="review media" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         </div>
                       ))}
                       {review.videoUrl && (
-                        <div style={{ position: 'relative', width: '70px', height: '70px', borderRadius: '4px', overflow: 'hidden', border: '1px solid #e2e8f0', background: '#000', cursor: 'pointer' }}>
+                        <div 
+                          onClick={() => setZoomedReviewMedia({ url: bitnamilegacy(review.videoUrl), type: 'video' })}
+                          style={{ position: 'relative', width: '70px', height: '70px', borderRadius: '4px', overflow: 'hidden', border: '1px solid #e2e8f0', background: '#000', cursor: 'pointer' }}
+                        >
                           <video src={bitnamilegacy(review.videoUrl)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#fff', fontSize: '20px' }}><FaPlay /></div>
                         </div>

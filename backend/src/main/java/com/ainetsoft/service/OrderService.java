@@ -32,7 +32,7 @@ public class OrderService {
     private final BankAccountRepository bankAccountRepository; 
     private final VoucherRepository voucherRepository; 
     private final WalletRepository walletRepository;   
-    private final PlatformConfigRepository platformConfigRepository; // 🚀 BỔ SUNG: Để đọc tỷ lệ hoàn tiền
+    private final PlatformConfigRepository platformConfigRepository; 
 
     public Map<String, Object> getSellerStats(String sellerId) {
         List<Order> allOrders = orderRepository.findAll();
@@ -307,10 +307,17 @@ public class OrderService {
         order.setStatus(newStatus.toUpperCase());
         order.setUpdatedAt(LocalDateTime.now());
         
-        // 🚀 Bơm Xu vào ví khi đơn hàng hoàn thành (ĐỌC TỪ CẤU HÌNH ADMIN)
+        // 🚀 MOCK API: TỰ ĐỘNG SINH MÃ VẬN ĐƠN KHI ĐƠN HÀNG ĐƯỢC GIAO
+        if ("SHIPPING".equals(newStatus.toUpperCase()) && !"SHIPPING".equals(oldStatus)) {
+            String trackingCode = "GHN-" + java.util.UUID.randomUUID().toString().substring(0, 10).toUpperCase();
+            order.setTrackingCode(trackingCode);
+            order.setShippingProvider("Giao Hàng Nhanh");
+            order.setCarrierStatus("PICKED_UP"); // Đã lấy hàng
+            log.info("Đã tạo mã vận đơn giả lập: {} cho Order ID: {}", trackingCode, order.getId());
+        }
+
+        // Bơm Xu vào ví khi đơn hàng hoàn thành
         if ("COMPLETED".equals(newStatus.toUpperCase()) && !"COMPLETED".equals(oldStatus)) {
-            
-            // Đọc cấu hình hoàn tiền toàn sàn (Mặc định 1% nếu Admin chưa cấu hình)
             double rate = platformConfigRepository.findAll().stream().findFirst()
                             .map(PlatformConfig::getCashbackRate).orElse(0.01);
             
@@ -336,13 +343,44 @@ public class OrderService {
         Order saved = orderRepository.save(order);
 
         String message = switch(newStatus.toUpperCase()) {
-            case "SHIPPING" -> "Đơn hàng của bạn đã được giao cho đơn vị vận chuyển.";
+            case "SHIPPING" -> "Đơn hàng của bạn đã được giao cho đơn vị vận chuyển (" + saved.getTrackingCode() + ").";
             case "COMPLETED" -> "Đơn hàng đã giao thành công. Hãy để lại đánh giá nhé!";
             default -> "Trạng thái đơn hàng của bạn đã thay đổi thành: " + newStatus;
         };
 
         notificationService.createNotification(order.getUserId(), "Cập nhật đơn hàng", message, "ORDER", order.getId());
         return saved;
+    }
+
+    // 🚀 HÀM MỚI: XỬ LÝ WEBHOOK TỪ ĐƠN VỊ VẬN CHUYỂN
+    @Transactional
+    public void processShippingWebhook(String trackingCode, String carrierStatus, String note) {
+        // Tìm đơn hàng qua trackingCode
+        Order order = orderRepository.findAll().stream()
+                .filter(o -> trackingCode.equals(o.getTrackingCode()))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng với mã vận đơn: " + trackingCode));
+
+        order.setCarrierStatus(carrierStatus.toUpperCase());
+        order.setUpdatedAt(LocalDateTime.now());
+        orderRepository.save(order);
+
+        // Bắn thông báo "Ting Ting" cập nhật hành trình cho User
+        String message = "Kiện hàng " + trackingCode + " đang được cập nhật: " + carrierStatus;
+        
+        if ("DELIVERED".equalsIgnoreCase(carrierStatus)) {
+            message = "🎉 Gói hàng của bạn đã được giao thành công. Vui lòng vào app kiểm tra và bấm 'Đã nhận được hàng' nhé!";
+        } else if ("IN_TRANSIT".equalsIgnoreCase(carrierStatus)) {
+            message = "🚚 Gói hàng của bạn đang trên đường vận chuyển tới kho đích.";
+        }
+        
+        notificationService.createNotification(
+            order.getUserId(), 
+            "Cập nhật Vận chuyển 📦", 
+            message, 
+            "SHIPPING", 
+            order.getId()
+        );
     }
 
     @Transactional

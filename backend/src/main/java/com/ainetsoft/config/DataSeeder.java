@@ -110,9 +110,7 @@ public class DataSeeder implements CommandLineRunner {
         walletRepository.deleteAll();
     }
 
-    // 🚀 BẢN VÁ LOGIC TEST VOUCHER STACKING & COIN BURN
     private void seedVouchersAndWallets() {
-        // Xóa cũ đi để luôn có dữ liệu mới tươi nhất mỗi lần chạy DataSeeder
         voucherRepository.deleteAll();
         
         User sellerA = userRepository.findByEmail("seller_a@ainetsoft.com").orElse(null);
@@ -121,7 +119,6 @@ public class DataSeeder implements CommandLineRunner {
 
         if (buyer == null) return;
 
-        // 1. Voucher Sàn (SYSTEM)
         Voucher platformVoucher = Voucher.builder()
                 .type(Voucher.VoucherType.SYSTEM)
                 .code("SYSTEM20K")
@@ -139,7 +136,6 @@ public class DataSeeder implements CommandLineRunner {
                 .collectedUserIds(new HashSet<>(Arrays.asList(buyer.getId())))
                 .build();
 
-        // 2. Voucher Shop (SELLER A)
         Voucher shopVoucherA = Voucher.builder()
                 .type(Voucher.VoucherType.SELLER)
                 .code("SHOP_A_10")
@@ -159,7 +155,6 @@ public class DataSeeder implements CommandLineRunner {
                 .collectedUserIds(new HashSet<>(Arrays.asList(buyer.getId())))
                 .build();
                 
-        // 3. Voucher Shop (SELLER B)
         Voucher shopVoucherB = Voucher.builder()
                 .type(Voucher.VoucherType.SELLER)
                 .code("SHOP_B_50")
@@ -179,7 +174,6 @@ public class DataSeeder implements CommandLineRunner {
                 .collectedUserIds(new HashSet<>(Arrays.asList(buyer.getId())))
                 .build();
 
-        // 4. Voucher FREESHIP
         Voucher freeshipVoucher = Voucher.builder()
                 .type(Voucher.VoucherType.FREESHIP)
                 .code("FREESHIP15K")
@@ -199,14 +193,13 @@ public class DataSeeder implements CommandLineRunner {
 
         List<Voucher> savedVouchers = voucherRepository.saveAll(Arrays.asList(platformVoucher, shopVoucherA, shopVoucherB, freeshipVoucher));
 
-        // Khởi tạo Ví và tặng 100,000 Xu cho User test
         List<String> savedIds = Arrays.asList(savedVouchers.get(0).getId(), savedVouchers.get(1).getId(), savedVouchers.get(2).getId(), savedVouchers.get(3).getId());
         
         Optional<Wallet> existingWallet = walletRepository.findByUserId(buyer.getId());
         if (existingWallet.isEmpty()) {
             Wallet wallet = Wallet.builder()
                     .userId(buyer.getId())
-                    .coinBalance(100000) // 100,000 Xu
+                    .coinBalance(100000) 
                     .savedVoucherIds(new ArrayList<>(savedIds))
                     .updatedAt(LocalDateTime.now())
                     .build();
@@ -218,12 +211,22 @@ public class DataSeeder implements CommandLineRunner {
              walletRepository.save(w);
         }
         
-        // Đồng bộ 100k xu vào bảng User
         buyer.setCoinBalance(100000);
         buyer.setSavedVoucherIds(new HashSet<>(savedIds));
         userRepository.save(buyer);
     }
-
+    
+    private void seedIfMissing(String slug, String title, String content) {
+            if (!systemContentRepository.existsBySlug(slug)) {
+                SystemContent sc = new SystemContent();
+                sc.setSlug(slug); 
+                sc.setTitle(title); 
+                sc.setHtmlContent(content);
+                sc.setLastUpdated(LocalDateTime.now());
+                systemContentRepository.save(sc);
+            }
+        }
+        
     private void seedSystemContents() {
         seedIfMissing("shipping-policy", "Chính Sách Vận Chuyển AiNetsoft", "<article><h3>Quy trình giao nhận chuyên nghiệp</h3><p>Chúng tôi đảm bảo hàng hóa được đóng gói cẩn thận và bàn giao cho đơn vị vận chuyển trong vòng 24h.</p><h4>Danh sách đối tác tin cậy</h4><ul><li>SPX Express</li><li>GHTK</li><li>Viettel Post</li></ul></article>");
         seedIfMissing("phi-van-chuyen", "Hướng dẫn tính phí vận chuyển", "<article><h3>Cơ chế phí ship minh bạch</h3><p>Phí vận chuyển được tính dựa trên cân nặng thực tế hoặc cân nặng quy đổi của kiện hàng.</p></article>");
@@ -487,17 +490,6 @@ public class DataSeeder implements CommandLineRunner {
         }
     }
 
-    private void seedIfMissing(String slug, String title, String content) {
-        if (!systemContentRepository.existsBySlug(slug)) {
-            SystemContent sc = new SystemContent();
-            sc.setSlug(slug); 
-            sc.setTitle(title); 
-            sc.setHtmlContent(content);
-            sc.setLastUpdated(LocalDateTime.now());
-            systemContentRepository.save(sc);
-        }
-    }
-
     private void seedBankAccounts() {
         User sellerA = userRepository.findByEmail("seller_a@ainetsoft.com").orElse(null);
         if (sellerA == null || bankAccountRepository.existsByUserId(sellerA.getId())) return;
@@ -507,19 +499,64 @@ public class DataSeeder implements CommandLineRunner {
         bankAccountRepository.save(bank);
     }
 
+    // 🚀 BẢN VÁ LOGIC TEST VẬN CHUYỂN
     private void seedWithdrawalTestData() {
         User sellerA = userRepository.findByEmail("seller_a@ainetsoft.com").orElse(null);
-        if (sellerA == null || withdrawalRepository.countBySellerId(sellerA.getId()) > 0) return;
+        User buyer = userRepository.findByEmail("user@ainetsoft.com").orElse(null);
+        if (sellerA == null || buyer == null || withdrawalRepository.countBySellerId(sellerA.getId()) > 0) return;
 
-        orderRepository.saveAll(Arrays.asList(
-            Order.builder().status("COMPLETED")
-                .items(Arrays.asList(OrderItem.builder().sellerId(sellerA.getId()).price(500000.0).quantity(1).build()))
-                .createdAt(LocalDateTime.now().minusDays(3)).build(),
-            Order.builder().status("COMPLETED")
-                .items(Arrays.asList(OrderItem.builder().sellerId(sellerA.getId()).price(150000.0).quantity(1).build()))
-                .createdAt(LocalDateTime.now().minusDays(2)).build()
-        ));
+        // LẤY 1 SẢN PHẨM THẬT TRONG DB ĐỂ TRÁNH LỖI NULL KHI CLICK VÀO CHI TIẾT
+        Product validProduct = productRepository.findAll().stream()
+                .filter(p -> p.getSellerId().equals(sellerA.getId()))
+                .findFirst().orElse(null);
+        String safeProductId = validProduct != null ? validProduct.getId() : "69ee23e7841d823d3e14e424";
 
+        User.AddressInfo dummyAddress = User.AddressInfo.builder()
+            .receiverName(buyer.getFullName())
+            .phone("0987654321")
+            .province("Hồ Chí Minh")
+            .ward("Quận 12")
+            .detail("A2.804 Chung cư Hưng Ngân")
+            .isDefault(true)
+            .build();
+
+        // 1. Sinh 1 đơn hàng ĐÃ HOÀN THÀNH để test Lệnh Rút Tiền và Tính năng Đánh giá
+        Order order1 = Order.builder()
+            .userId(buyer.getId())
+            .status("COMPLETED")
+            .totalAmount(500000.0)
+            .finalTotalAmount(500000.0)
+            .paymentMethod("COD")
+            .shippingAddress(dummyAddress)
+            .trackingCode("GHN-SEED-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase())
+            .shippingProvider("Giao Hàng Nhanh")
+            .carrierStatus("DELIVERED")
+            // 👉 ĐÃ FIX: Thêm productId vào đây
+            .items(Arrays.asList(OrderItem.builder().productId(safeProductId).sellerId(sellerA.getId()).shopName(sellerA.getShopProfile().getShopName()).productName("Bàn phím cơ Test").imageUrl("https://picsum.photos/200").price(500000.0).quantity(1).build()))
+            .createdAt(LocalDateTime.now().minusDays(3))
+            .updatedAt(LocalDateTime.now().minusDays(1))
+            .build();
+
+        // 2. Sinh 1 đơn hàng ĐANG GIAO HÀNG để test luồng Xác nhận nhận hàng
+        Order order2 = Order.builder()
+            .userId(buyer.getId())
+            .status("SHIPPING")
+            .totalAmount(150000.0)
+            .finalTotalAmount(150000.0)
+            .paymentMethod("COD")
+            .shippingAddress(dummyAddress)
+            .trackingCode("GHN-SEED-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase())
+            .shippingProvider("Giao Hàng Nhanh")
+            .carrierStatus("IN_TRANSIT")
+            // 👉 ĐÃ FIX: Thêm productId vào đây
+            .items(Arrays.asList(OrderItem.builder().productId(safeProductId).sellerId(sellerA.getId()).shopName(sellerA.getShopProfile().getShopName()).productName("Chuột không dây Test").imageUrl("https://picsum.photos/200").price(150000.0).quantity(1).build()))
+            .createdAt(LocalDateTime.now().minusDays(1))
+            .updatedAt(LocalDateTime.now())
+            .build();
+
+        orderRepository.saveAll(Arrays.asList(order1, order2));
+
+        // Sinh dữ liệu lệnh rút tiền cho Admin test
         WithdrawalRequest oldReq = WithdrawalRequest.builder()
                 .sellerId(sellerA.getId()).shopName(sellerA.getShopProfile().getShopName())
                 .sellerFullName(sellerA.getFullName()).amount(100000.0).status("COMPLETED")

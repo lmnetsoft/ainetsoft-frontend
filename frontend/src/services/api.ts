@@ -1,8 +1,5 @@
 import axios from 'axios';
 
-/**
- * 🚀 PRODUCTION READY: Syncing with your .env file.
- */
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 const api = axios.create({
@@ -13,9 +10,6 @@ const api = axios.create({
   withCredentials: true, 
 });
 
-/**
- * Utility to clear ONLY authentication data.
- */
 const clearAuthData = () => {
     const authKeys = [
         'jwt_token', 
@@ -32,7 +26,6 @@ const clearAuthData = () => {
     authKeys.forEach(key => localStorage.removeItem(key));
 };
 
-// Request interceptor: Attach JWT and handle Multipart data
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('jwt_token');
@@ -41,7 +34,11 @@ api.interceptors.request.use(
     }
 
     if (config.data instanceof FormData) {
-      delete config.headers['Content-Type'];
+      if (config.headers && typeof config.headers.delete === 'function') {
+        config.headers.delete('Content-Type');
+      } else if (config.headers) {
+        delete config.headers['Content-Type'];
+      }
     }
 
     return config;
@@ -49,48 +46,35 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor: Handle global errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     const originalRequest = error.config;
 
-    /**
-     * 🛠️ ENHANCED FIX: Prevent aggressive redirects on public pages.
-     * We only want to force a logout/error screen if the user WAS logged in and their token expired.
-     */
     if (error.response && error.response.status === 401 && !originalRequest._retry) {
       const hasToken = !!localStorage.getItem('jwt_token');
       const currentPath = window.location.pathname;
 
-      // 🚀 List of public paths where we should NOT trigger the "Unauthorized" error screen.
       const publicPaths = ['/login', '/verify-email', '/register', '/forgot-password', '/reset-password'];
       const isPublicPath = publicPaths.some(path => currentPath.includes(path));
 
       if (hasToken && !isPublicPath) {
-        console.warn("Session expired. Clearing data and redirecting...");
+        console.warn("Phiên đăng nhập hết hạn. Đang làm sạch dữ liệu và chuyển hướng...");
         clearAuthData();
         window.dispatchEvent(new Event('profileUpdate'));
         
         window.location.href = `/login?message=session_expired&redirect=${encodeURIComponent(currentPath)}`;
       } 
-      // If no token exists or we are on a public path, we just let the error pass 
-      // so the specific component (like VerifyEmail) can handle it silently.
     }
     
     return Promise.reject(error);
   }
 );
 
-/**
- * SMART DYNAMIC ENDPOINTS
- */
 export const getCategories = () => api.get('/categories');
+
 export const getProductsByCategory = (categoryId: string) => api.get(`/products/category/${categoryId}`);
 
-/**
- * SOCIAL & REPORTING ENDPOINTS
- */
 export const shareProduct = (productId: string) => api.post(`/products/${productId}/share`);
 
 export const reportProduct = (productId: string, reportData: { reason: string; details: string; evidenceUrls?: string[] }) => {
@@ -100,9 +84,6 @@ export const reportProduct = (productId: string, reportData: { reason: string; d
   });
 };
 
-/**
- * PROFESSIONAL REVIEW SYSTEM ENDPOINTS
- */
 export const getProductReviews = (productId: string, rating?: number, hasImages?: boolean) => {
   const params = new URLSearchParams();
   if (rating) params.append('rating', rating.toString());
@@ -112,15 +93,36 @@ export const getProductReviews = (productId: string, rating?: number, hasImages?
 
 export const getReviewStats = (productId: string) => api.get(`/reviews/product/${productId}/stats`);
 
-// 🚀 FIXED: Cập nhật hàm submitReview để hỗ trợ FormData (Upload File)
-export const submitReview = (formData: FormData) => {
-  return api.post('/reviews/submit', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  });
-};
-
 export const replyToReview = (reviewId: string, replyText: string) => {
   return api.post(`/reviews/${reviewId}/reply`, { replyText });
+};
+
+export const confirmOrderReceived = (orderId: string) => {
+  return api.put(`/orders/${orderId}/status`, { status: 'COMPLETED' }); 
+};
+
+export const submitReview = async (formData: FormData) => {
+  const token = localStorage.getItem('jwt_token');
+  const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
+  const response = await fetch(`${API_URL}/api/reviews/submit`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    },
+    body: formData
+  });
+
+  if (!response.ok) {
+    let errorMsg = "Lỗi khi upload đánh giá!";
+    try {
+      const errorData = await response.json();
+      errorMsg = errorData.message || errorMsg;
+    } catch (e) {}
+    throw { response: { data: { message: errorMsg } } };
+  }
+
+  return response.json();
 };
 
 export default api;
