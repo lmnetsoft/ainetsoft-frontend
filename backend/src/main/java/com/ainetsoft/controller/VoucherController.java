@@ -51,7 +51,6 @@ public class VoucherController {
     // 🛒 BUYER ENDPOINTS (NGƯỜI MUA QUẢN LÝ VÍ VOUCHER)
     // ==========================================
 
-    // 🚀 API LƯU VOUCHER VÀO VÍ
     @PostMapping("/save/{voucherId}")
     public ResponseEntity<?> saveVoucherToWallet(@PathVariable String voucherId, Principal principal) {
         User user = getAuthenticatedUser(principal);
@@ -66,7 +65,6 @@ public class VoucherController {
         }
     }
 
-    // 🚀 API LẤY DANH SÁCH VOUCHER TRONG VÍ
     @GetMapping("/my-wallet")
     public ResponseEntity<?> getMySavedVouchers(Principal principal) {
         User user = getAuthenticatedUser(principal);
@@ -129,6 +127,49 @@ public class VoucherController {
         try {
             Voucher deactivated = voucherService.deactivateVoucher(id, seller.getId());
             return ResponseEntity.ok(Map.of("message", "Đã kết thúc voucher thành công", "voucher", deactivated));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    // ==========================================
+    // 👑 ADMIN ENDPOINTS (QUẢN LÝ VOUCHER TOÀN SÀN)
+    // ==========================================
+
+    @GetMapping("/admin/platform")
+    public ResponseEntity<?> getAllPlatformVouchers(Principal principal) {
+        User admin = getAuthenticatedUser(principal);
+        if (!hasRole(admin, "ADMIN")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Chỉ Admin mới có quyền truy cập."));
+        }
+        return ResponseEntity.ok(voucherService.getAllPlatformVouchers());
+    }
+
+    @PostMapping("/admin/platform")
+    public ResponseEntity<?> createPlatformVoucher(@RequestBody Voucher voucherPayload, Principal principal) {
+        User admin = getAuthenticatedUser(principal);
+        if (!hasRole(admin, "ADMIN")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Chỉ Admin mới có quyền tạo mã toàn sàn."));
+        }
+        try {
+            voucherPayload.setSellerId(null); 
+            voucherPayload.setShopName("AiNetsoft Platform");
+            Voucher created = voucherService.createVoucher(voucherPayload);
+            return ResponseEntity.status(HttpStatus.CREATED).body(created);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/admin/platform/{id}/deactivate")
+    public ResponseEntity<?> deactivatePlatformVoucher(@PathVariable String id, Principal principal) {
+        User admin = getAuthenticatedUser(principal);
+        if (!hasRole(admin, "ADMIN")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Chỉ Admin mới có quyền khóa mã toàn sàn."));
+        }
+        try {
+            Voucher deactivated = voucherService.deactivatePlatformVoucher(id);
+            return ResponseEntity.ok(Map.of("message", "Đã khóa mã voucher toàn sàn", "voucher", deactivated));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }

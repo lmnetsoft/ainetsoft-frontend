@@ -119,4 +119,26 @@ public class VoucherService {
         voucher.setActive(false);
         return voucherRepository.save(voucher);
     }
+
+    // ==========================================
+    // 👑 ADMIN: QUẢN LÝ VOUCHER TOÀN SÀN
+    // ==========================================
+    
+    public List<Voucher> getAllPlatformVouchers() {
+        return voucherRepository.findAll().stream()
+                .filter(v -> v.getSellerId() == null)
+                .sorted((v1, v2) -> {
+                    if (v1.getCreatedAt() == null || v2.getCreatedAt() == null) return 0;
+                    return v2.getCreatedAt().compareTo(v1.getCreatedAt());
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public Voucher deactivatePlatformVoucher(String voucherId) {
+        Voucher voucher = voucherRepository.findById(voucherId)
+                .orElseThrow(() -> new RuntimeException("Voucher không tồn tại!"));
+        voucher.setActive(false);
+        return voucherRepository.save(voucher);
+    }
 }

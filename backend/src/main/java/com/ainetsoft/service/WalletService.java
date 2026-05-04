@@ -11,7 +11,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -21,6 +23,7 @@ public class WalletService {
 
     private final WalletRepository walletRepository;
     private final VoucherRepository voucherRepository;
+    private final NotificationService notificationService; // 🚀 BỔ SUNG: Để gửi thông báo khi Admin tặng Xu
 
     // --- Lấy Ví của User (Tự động tạo nếu chưa có) ---
     public Wallet getOrCreateWallet(String userId) {
@@ -106,5 +109,33 @@ public class WalletService {
         wallet.setCoinBalance(wallet.getCoinBalance() - amount);
         wallet.setUpdatedAt(LocalDateTime.now());
         return walletRepository.save(wallet);
+    }
+
+    // ==========================================
+    // 👑 ADMIN: THỐNG KÊ VÀ QUẢN LÝ XU TOÀN SÀN
+    // ==========================================
+    public Map<String, Object> getSystemCoinStats() {
+        double totalBalance = walletRepository.findAll().stream()
+                .mapToDouble(Wallet::getCoinBalance)
+                .sum();
+        
+        long activeWallets = walletRepository.count();
+
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("totalCoinsInCirculation", totalBalance);
+        stats.put("totalWallets", activeWallets);
+        return stats;
+    }
+
+    @Transactional
+    public void adjustUserCoins(String userId, double amount, String reason, String adminName) {
+        Wallet wallet = getOrCreateWallet(userId);
+        wallet.setCoinBalance(wallet.getCoinBalance() + amount);
+        wallet.setUpdatedAt(LocalDateTime.now());
+        walletRepository.save(wallet);
+
+        // Bắn thông báo ngay cho người dùng
+        String title = amount > 0 ? "🎉 Bạn nhận được Xu từ hệ thống" : "Tài khoản Xu bị điều chỉnh";
+        notificationService.createNotification(userId, title, reason, "WALLET", null);
     }
 }

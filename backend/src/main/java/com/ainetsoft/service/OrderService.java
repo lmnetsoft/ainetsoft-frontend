@@ -3,6 +3,7 @@ package com.ainetsoft.service;
 import com.ainetsoft.model.*;
 import com.ainetsoft.repository.BankAccountRepository; 
 import com.ainetsoft.repository.OrderRepository;
+import com.ainetsoft.repository.PlatformConfigRepository;
 import com.ainetsoft.repository.ProductRepository;
 import com.ainetsoft.repository.UserRepository;
 import com.ainetsoft.repository.VoucherRepository; 
@@ -31,6 +32,7 @@ public class OrderService {
     private final BankAccountRepository bankAccountRepository; 
     private final VoucherRepository voucherRepository; 
     private final WalletRepository walletRepository;   
+    private final PlatformConfigRepository platformConfigRepository; // 🚀 BỔ SUNG: Để đọc tỷ lệ hoàn tiền
 
     public Map<String, Object> getSellerStats(String sellerId) {
         List<Order> allOrders = orderRepository.findAll();
@@ -110,6 +112,7 @@ public class OrderService {
         double voucherDiscount = 0;
         double coinDiscount = 0;
 
+        // XỬ LÝ VOUCHER XẾP CHỒNG (STACKING)
         if (orderRequest.getAppliedVoucherIds() != null && !orderRequest.getAppliedVoucherIds().isEmpty()) {
             for (String voucherId : orderRequest.getAppliedVoucherIds()) {
                 Voucher voucher = voucherRepository.findById(voucherId)
@@ -149,6 +152,7 @@ public class OrderService {
             }
         }
 
+        // XỬ LÝ XU (COIN BURN)
         if (orderRequest.getUsedCoins() > 0) {
             Wallet wallet = walletRepository.findByUserId(user.getId())
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy Ví AiNetsoft của người dùng!"));
@@ -303,10 +307,14 @@ public class OrderService {
         order.setStatus(newStatus.toUpperCase());
         order.setUpdatedAt(LocalDateTime.now());
         
-        // 🚀 CƠ CHẾ KIẾM XU: Bơm Xu vào ví khi đơn hàng hoàn thành
+        // 🚀 Bơm Xu vào ví khi đơn hàng hoàn thành (ĐỌC TỪ CẤU HÌNH ADMIN)
         if ("COMPLETED".equals(newStatus.toUpperCase()) && !"COMPLETED".equals(oldStatus)) {
-            // Tặng 1% giá trị đơn hàng thực tế (Final Total Amount)
-            int earnedCoins = (int) (order.getFinalTotalAmount() * 0.01);
+            
+            // Đọc cấu hình hoàn tiền toàn sàn (Mặc định 1% nếu Admin chưa cấu hình)
+            double rate = platformConfigRepository.findAll().stream().findFirst()
+                            .map(PlatformConfig::getCashbackRate).orElse(0.01);
+            
+            int earnedCoins = (int) (order.getFinalTotalAmount() * rate);
             
             if (earnedCoins > 0) {
                 walletRepository.findByUserId(order.getUserId()).ifPresent(wallet -> {
@@ -315,7 +323,6 @@ public class OrderService {
                     walletRepository.save(wallet);
                 });
                 
-                // Bắn thông báo nhận Xu cực mượt
                 notificationService.createNotification(
                     order.getUserId(), 
                     "🎉 Chúc mừng bạn nhận được Xu!", 
@@ -397,4 +404,26 @@ public class OrderService {
     public List<Order> getOrdersBySeller(String sellerId, String status) {
         if (status == null || status.equalsIgnoreCase("ALL") || status.isBlank()) {
             return orderRepository.findAll().stream()
-                    .filter(
+                    .filter(o -> o.getItems().stream().anyMatch(i -> sellerId.equals(i.getSellerId())))
+                    .collect(Collectors.toList());
+        }
+        return orderRepository.findAll().stream()
+                .filter(o -> status.equalsIgnoreCase(o.getStatus()))
+                .filter(o -> o.getItems().stream().anyMatch(i -> sellerId.equals(i.getSellerId())))
+                .collect(Collectors.toList());
+    }
+
+    public Order getOrderById(String id) {
+        return orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Order not found with id: " + id));
+    }    
+
+    public List<Order> getAllSystemOrders() {
+        return orderRepository.findAll().stream()
+                .sorted((o1, o2) -> {
+                    if (o1.getCreatedAt() == null || o2.getCreatedAt() == null) return 0;
+                    return o2.getCreatedAt().compareTo(o1.getCreatedAt());
+                })
+                .collect(Collectors.toList());
+    }
+}
