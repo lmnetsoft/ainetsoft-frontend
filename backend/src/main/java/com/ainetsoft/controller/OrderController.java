@@ -100,7 +100,7 @@ public class OrderController {
 
         try {
             orderRequest.setUserId(user.getId());
-            orderRequest.setUserEmail(user.getEmail());
+            // 🚀 BẢN VÁ: Loại bỏ dòng code gây lỗi 'cannot find symbol setUserEmail'
             Order createdOrder = orderService.createOrder(orderRequest);
             return ResponseEntity.status(HttpStatus.CREATED).body(createdOrder);
         } catch (Exception e) {

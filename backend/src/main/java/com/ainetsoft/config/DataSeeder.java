@@ -36,7 +36,6 @@ public class DataSeeder implements CommandLineRunner {
     private final WithdrawalRepository withdrawalRepository;
     private final BankAccountRepository bankAccountRepository; 
     
-    // 🚀 BỔ SUNG REPOSITORIES CHO MARKETING ENGINE
     private final VoucherRepository voucherRepository;
     private final WalletRepository walletRepository;
 
@@ -83,7 +82,7 @@ public class DataSeeder implements CommandLineRunner {
             seedBankAccounts();      
             seedWithdrawalTestData(); 
             
-            // 🚀 BỔ SUNG GỌI HÀM SEED VOUCHER & WALLET
+            // 🚀 MARKETING ENGINE SETUP
             seedVouchersAndWallets();
         }
         
@@ -107,81 +106,122 @@ public class DataSeeder implements CommandLineRunner {
         orderRepository.deleteAll();
         withdrawalRepository.deleteAll();
         bankAccountRepository.deleteAll(); 
-        
-        // 🚀 BỔ SUNG CLEANUP
         voucherRepository.deleteAll();
         walletRepository.deleteAll();
     }
 
+    // 🚀 BẢN VÁ LOGIC TEST VOUCHER STACKING & COIN BURN
     private void seedVouchersAndWallets() {
-        if (voucherRepository.count() > 0) return;
-
+        // Xóa cũ đi để luôn có dữ liệu mới tươi nhất mỗi lần chạy DataSeeder
+        voucherRepository.deleteAll();
+        
         User sellerA = userRepository.findByEmail("seller_a@ainetsoft.com").orElse(null);
+        User sellerB = userRepository.findByEmail("seller_b@ainetsoft.com").orElse(null);
         User buyer = userRepository.findByEmail("user@ainetsoft.com").orElse(null);
 
-        // 1. Voucher Sàn (FREESHIP)
+        if (buyer == null) return;
+
+        // 1. Voucher Sàn (SYSTEM)
         Voucher platformVoucher = Voucher.builder()
-                .code("FREESHIP26")
+                .type(Voucher.VoucherType.SYSTEM)
+                .code("SYSTEM20K")
                 .shopName("AiNetsoft Official")
-                .title("Freeship Toàn Sàn")
+                .title("MÃ SÀN: Giảm 20k")
                 .discountType("FIXED_AMOUNT")
-                .discountValue(30000.0)
-                .minOrderValue(150000.0)
+                .discountValue(20000.0)
+                .minOrderValue(50000.0)
                 .usageLimit(1000)
-                .usedCount(5)
+                .usedCount(0)
                 .validFrom(LocalDateTime.now().minusDays(2))
                 .validUntil(LocalDateTime.now().plusMonths(1))
                 .isActive(true)
                 .createdAt(LocalDateTime.now())
+                .collectedUserIds(new HashSet<>(Arrays.asList(buyer.getId())))
                 .build();
 
-        // 2. Voucher Shop đã lưu sẵn (Để test Checkout)
-        Voucher shopVoucher = Voucher.builder()
-                .code("SMART10")
+        // 2. Voucher Shop (SELLER A)
+        Voucher shopVoucherA = Voucher.builder()
+                .type(Voucher.VoucherType.SELLER)
+                .code("SHOP_A_10")
                 .sellerId(sellerA != null ? sellerA.getId() : null)
-                .shopName(sellerA != null ? sellerA.getShopProfile().getShopName() : "Smart Home Store")
-                .title("Giảm 10% tối đa 100k")
+                .shopName(sellerA != null ? sellerA.getShopProfile().getShopName() : "Hitech Center")
+                .title("MÃ SHOP: Giảm 10% (Tối đa 30k)")
                 .discountType("PERCENTAGE")
                 .discountValue(10.0)
-                .maxDiscountAmount(100000.0)
-                .minOrderValue(200000.0)
-                .usageLimit(100)
-                .usedCount(12)
+                .maxDiscountAmount(30000.0)
+                .minOrderValue(100000.0)
+                .usageLimit(1000)
+                .usedCount(0)
                 .validFrom(LocalDateTime.now().minusHours(5))
-                .validUntil(LocalDateTime.now().plusDays(15))
+                .validUntil(LocalDateTime.now().plusMonths(1))
                 .isActive(true)
                 .createdAt(LocalDateTime.now())
+                .collectedUserIds(new HashSet<>(Arrays.asList(buyer.getId())))
                 .build();
-
-        // 🚀 3. VOUCHER MỚI TẠO ĐỂ TEST NÚT "LƯU" Ở TRANG SẢN PHẨM
-        Voucher testSaveVoucher = Voucher.builder()
-                .code("WELCOME50")
-                .sellerId(sellerA != null ? sellerA.getId() : null)
-                .shopName(sellerA != null ? sellerA.getShopProfile().getShopName() : "Smart Home Store")
-                .title("Giảm 50k cho khách mới")
+                
+        // 3. Voucher Shop (SELLER B)
+        Voucher shopVoucherB = Voucher.builder()
+                .type(Voucher.VoucherType.SELLER)
+                .code("SHOP_B_50")
+                .sellerId(sellerB != null ? sellerB.getId() : null)
+                .shopName(sellerB != null ? sellerB.getShopProfile().getShopName() : "Fashion World")
+                .title("MÃ SHOP: Giảm 50k")
                 .discountType("FIXED_AMOUNT")
                 .discountValue(50000.0)
+                .maxDiscountAmount(0.0)
                 .minOrderValue(150000.0)
-                .usageLimit(500)
+                .usageLimit(1000)
                 .usedCount(0)
-                .validFrom(LocalDateTime.now().minusHours(1))
-                .validUntil(LocalDateTime.now().plusDays(30))
+                .validFrom(LocalDateTime.now().minusHours(5))
+                .validUntil(LocalDateTime.now().plusMonths(1))
                 .isActive(true)
                 .createdAt(LocalDateTime.now())
+                .collectedUserIds(new HashSet<>(Arrays.asList(buyer.getId())))
                 .build();
 
-        List<Voucher> savedVouchers = voucherRepository.saveAll(Arrays.asList(platformVoucher, shopVoucher, testSaveVoucher));
+        // 4. Voucher FREESHIP
+        Voucher freeshipVoucher = Voucher.builder()
+                .type(Voucher.VoucherType.FREESHIP)
+                .code("FREESHIP15K")
+                .shopName("AiNetsoft Express")
+                .title("MÃ VẬN CHUYỂN: Giảm 15k phí Ship")
+                .discountType("FIXED_AMOUNT")
+                .discountValue(15000.0)
+                .minOrderValue(0.0)
+                .usageLimit(1000)
+                .usedCount(0)
+                .validFrom(LocalDateTime.now().minusHours(1))
+                .validUntil(LocalDateTime.now().plusMonths(1))
+                .isActive(true)
+                .createdAt(LocalDateTime.now())
+                .collectedUserIds(new HashSet<>(Arrays.asList(buyer.getId())))
+                .build();
 
-        // Khởi tạo Ví và tặng Xu cho User test (Cố tình KHÔNG đưa WELCOME50 vào ví)
-        if (buyer != null && walletRepository.findByUserId(buyer.getId()).isEmpty()) {
+        List<Voucher> savedVouchers = voucherRepository.saveAll(Arrays.asList(platformVoucher, shopVoucherA, shopVoucherB, freeshipVoucher));
+
+        // Khởi tạo Ví và tặng 100,000 Xu cho User test
+        List<String> savedIds = Arrays.asList(savedVouchers.get(0).getId(), savedVouchers.get(1).getId(), savedVouchers.get(2).getId(), savedVouchers.get(3).getId());
+        
+        Optional<Wallet> existingWallet = walletRepository.findByUserId(buyer.getId());
+        if (existingWallet.isEmpty()) {
             Wallet wallet = Wallet.builder()
                     .userId(buyer.getId())
-                    .coinBalance(15000.0) // 15,000 Xu
-                    .savedVoucherIds(new ArrayList<>(Arrays.asList(savedVouchers.get(0).getId(), savedVouchers.get(1).getId())))
+                    .coinBalance(100000) // 100,000 Xu
+                    .savedVoucherIds(new ArrayList<>(savedIds))
                     .updatedAt(LocalDateTime.now())
                     .build();
             walletRepository.save(wallet);
+        } else {
+             Wallet w = existingWallet.get();
+             w.setCoinBalance(100000);
+             w.setSavedVoucherIds(new ArrayList<>(savedIds));
+             walletRepository.save(w);
         }
+        
+        // Đồng bộ 100k xu vào bảng User
+        buyer.setCoinBalance(100000);
+        buyer.setSavedVoucherIds(new HashSet<>(savedIds));
+        userRepository.save(buyer);
     }
 
     private void seedSystemContents() {

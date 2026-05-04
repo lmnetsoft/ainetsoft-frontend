@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaMapMarkerAlt, FaRegCreditCard, FaMoneyBillWave, FaUniversity, FaTicketAlt, FaCoins, FaTimes, FaCheckCircle } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaRegCreditCard, FaMoneyBillWave, FaUniversity, FaTicketAlt, FaCoins, FaTimes, FaCheckSquare, FaSquare } from 'react-icons/fa';
 import { getUserProfile } from '../../services/authService';
 import { placeOrder } from '../../services/orderService'; 
 import api from '../../services/api'; 
-import { getMyWallet, getMySavedVouchers } from '../../services/walletService'; // 🚀 MARKETING ENGINE
+import { getMyWallet, getMySavedVouchers } from '../../services/walletService'; 
 import ToastNotification from '../../components/Toast/ToastNotification';
 import './Checkout.css';
 
@@ -23,7 +23,9 @@ const Checkout = () => {
   // 🚀 MARKETING ENGINE STATES
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [savedVouchers, setSavedVouchers] = useState<any[]>([]);
-  const [selectedVoucher, setSelectedVoucher] = useState<any>(null);
+  
+  // 🚀 BẢN VÁ: Đổi từ 1 Voucher sang Mảng Voucher (Tối đa 3 mã)
+  const [selectedVouchers, setSelectedVouchers] = useState<any[]>([]);
   const [showVoucherModal, setShowVoucherModal] = useState(false);
   const [useCoins, setUseCoins] = useState(false);
 
@@ -58,7 +60,6 @@ const Checkout = () => {
           }
         }
 
-        // 🚀 FETCH WALLET & VOUCHERS
         try {
             const walletData = await getMyWallet();
             setWalletBalance(walletData?.coinBalance || 0);
@@ -80,34 +81,54 @@ const Checkout = () => {
     document.title = "Thanh toán | AiNetsoft";
   }, [navigate]);
 
-  // 🚀 TÍNH TOÁN TOÁN HỌC (MARKETING ENGINE)
+  // 🚀 TÍNH TOÁN STACKING VOUCHER (Tính tổng tiền giảm từ nhiều mã)
   const subtotal = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   const shippingFee = 30000; 
 
   let voucherDiscount = 0;
-  if (selectedVoucher && subtotal >= selectedVoucher.minOrderValue) {
-      if (selectedVoucher.discountType === 'PERCENTAGE') {
-          voucherDiscount = subtotal * (selectedVoucher.discountValue / 100);
-          if (selectedVoucher.maxDiscountAmount > 0 && voucherDiscount > selectedVoucher.maxDiscountAmount) {
-              voucherDiscount = selectedVoucher.maxDiscountAmount;
+  selectedVouchers.forEach(v => {
+      if (subtotal >= v.minOrderValue) {
+          let currentDiscount = 0;
+          if (v.discountType === 'PERCENTAGE') {
+              currentDiscount = subtotal * (v.discountValue / 100);
+              if (v.maxDiscountAmount > 0 && currentDiscount > v.maxDiscountAmount) {
+                  currentDiscount = v.maxDiscountAmount;
+              }
+          } else {
+              currentDiscount = v.discountValue;
           }
-      } else {
-          voucherDiscount = selectedVoucher.discountValue;
+          voucherDiscount += currentDiscount;
       }
-  }
+  });
 
-  // Đảm bảo voucher không giảm lố tiền hàng
+  // Chống âm tiền
   if (voucherDiscount > subtotal) voucherDiscount = subtotal;
 
   let totalAfterVoucher = subtotal + shippingFee - voucherDiscount;
 
+  // 🚀 TÍNH TOÁN XU (Áp dụng trần 50% theo chuẩn Shopee)
   let coinDiscount = 0;
   if (useCoins && walletBalance > 0) {
-      // Dùng xu tối đa bằng tổng tiền còn lại
-      coinDiscount = Math.min(walletBalance, totalAfterVoucher);
+      const maxCoinUsage = totalAfterVoucher * 0.5; // Tối đa 50% giá trị còn lại
+      coinDiscount = Math.min(walletBalance, maxCoinUsage);
   }
 
   const finalTotal = totalAfterVoucher - coinDiscount;
+
+  // 🚀 HÀM TOGGLE VOUCHER: Cho phép chọn/bỏ chọn tối đa 3 mã
+  const handleToggleVoucher = (voucher: any) => {
+      const isSelected = selectedVouchers.some(v => v.id === voucher.id);
+      if (isSelected) {
+          setSelectedVouchers(selectedVouchers.filter(v => v.id !== voucher.id));
+      } else {
+          if (selectedVouchers.length >= 3) {
+              setToastMessage("Chỉ được áp dụng tối đa 3 Voucher cùng lúc!");
+              setShowToast(true);
+              return;
+          }
+          setSelectedVouchers([...selectedVouchers, voucher]);
+      }
+  };
 
   const handlePlaceOrder = async () => {
     if (!selectedAddress) {
@@ -128,9 +149,10 @@ const Checkout = () => {
       const checkoutData = {
         paymentMethod: paymentMethod,
         shippingAddress: selectedAddress,
-        totalAmount: subtotal, // Gửi base amount
-        appliedVoucherId: selectedVoucher ? selectedVoucher.id : null, // 🚀 Gửi ID Voucher
-        usedCoins: coinDiscount // 🚀 Gửi số Xu đã dùng
+        totalAmount: subtotal, 
+        // 🚀 BẢN VÁ: Truyền lên Mảng ID Voucher
+        appliedVoucherIds: selectedVouchers.map(v => v.id), 
+        usedCoins: Math.floor(coinDiscount)
       };
 
       await placeOrder(checkoutData);
@@ -214,14 +236,18 @@ const Checkout = () => {
                     <span>AiNetsoft Voucher</span>
                 </div>
                 <div className="marketing-right">
-                    {selectedVoucher && (
-                        <span className="applied-voucher-tag">
-                            - ₫{voucherDiscount.toLocaleString()} ({selectedVoucher.code})
-                            <FaTimes style={{marginLeft: '8px', cursor: 'pointer'}} onClick={() => setSelectedVoucher(null)}/>
-                        </span>
-                    )}
+                    {/* Hiển thị danh sách các mã đang chọn */}
+                    <div className="applied-vouchers-container">
+                        {selectedVouchers.map(v => (
+                            <span key={v.id} className="applied-voucher-tag">
+                                -₫{v.discountType === 'FIXED_AMOUNT' ? v.discountValue.toLocaleString() : (v.discountValue + '%')}
+                                <FaTimes style={{marginLeft: '8px', cursor: 'pointer'}} onClick={() => handleToggleVoucher(v)}/>
+                            </span>
+                        ))}
+                    </div>
+                    
                     <button className="btn-select-voucher" onClick={() => setShowVoucherModal(true)}>
-                        {selectedVoucher ? "Đổi Voucher" : "Chọn Voucher"}
+                        {selectedVouchers.length > 0 ? `Đã chọn (${selectedVouchers.length}/3)` : "Chọn Voucher"}
                     </button>
                 </div>
             </div>
@@ -238,7 +264,7 @@ const Checkout = () => {
                     {walletBalance > 0 ? (
                         <span className="coin-toggle-wrapper">
                             <span style={{marginRight: '10px', color: useCoins ? '#16a34a' : '#64748b'}}>
-                                {useCoins ? `- ₫${coinDiscount.toLocaleString()}` : "Không sử dụng"}
+                                {useCoins ? `- ₫${Math.floor(coinDiscount).toLocaleString()}` : "Không sử dụng"}
                             </span>
                             <label className="switch">
                                 <input type="checkbox" checked={useCoins} onChange={() => setUseCoins(!useCoins)} />
@@ -293,7 +319,6 @@ const Checkout = () => {
               <span>Phí vận chuyển:</span>
               <span>₫{shippingFee.toLocaleString()}</span>
             </div>
-            {/* 🚀 HIỂN THỊ VOUCHER & XU TRONG TỔNG KẾT */}
             {voucherDiscount > 0 && (
                 <div className="summary-row discount-row">
                   <span>Voucher giảm giá:</span>
@@ -303,7 +328,7 @@ const Checkout = () => {
             {coinDiscount > 0 && (
                 <div className="summary-row discount-row">
                   <span>Dùng Xu:</span>
-                  <span>- ₫{coinDiscount.toLocaleString()}</span>
+                  <span>- ₫{Math.floor(coinDiscount).toLocaleString()}</span>
                 </div>
             )}
             <div className="summary-row total">
@@ -317,7 +342,7 @@ const Checkout = () => {
         </div>
       </div>
 
-      {/* 🚀 MODAL CHỌN VOUCHER */}
+      {/* 🚀 MODAL CHỌN VOUCHER (ĐA LỰA CHỌN) */}
       {showVoucherModal && (
           <div className="voucher-modal-overlay">
               <div className="voucher-modal">
@@ -331,10 +356,10 @@ const Checkout = () => {
                       ) : (
                           savedVouchers.map(v => {
                               const isValid = subtotal >= v.minOrderValue;
-                              const isSelected = selectedVoucher?.id === v.id;
+                              const isSelected = selectedVouchers.some(sv => sv.id === v.id);
                               return (
                                   <div key={v.id} className={`checkout-voucher-card ${!isValid ? 'disabled' : ''} ${isSelected ? 'selected' : ''}`} 
-                                       onClick={() => { if(isValid) setSelectedVoucher(v); }}>
+                                       onClick={() => { if(isValid) handleToggleVoucher(v); }}>
                                       <div className="cv-left">
                                           <FaTicketAlt size={24} />
                                           <span style={{fontSize: '11px', marginTop: '5px', textAlign: 'center'}}>{v.shopName}</span>
@@ -345,7 +370,8 @@ const Checkout = () => {
                                               <p>Đơn tối thiểu ₫{v.minOrderValue.toLocaleString()}</p>
                                           </div>
                                           <div className="cv-action">
-                                              {isSelected ? <FaCheckCircle color="#ee4d2d" size={20}/> : <div className="circle-radio"></div>}
+                                              {/* 🚀 Hiển thị dạng Checkbox */}
+                                              {isSelected ? <FaCheckSquare color="#ee4d2d" size={22}/> : <FaSquare color="#cbd5e1" size={22}/>}
                                           </div>
                                       </div>
                                       {!isValid && <div className="cv-reason">Chưa đạt giá trị đơn tối thiểu</div>}
@@ -355,6 +381,7 @@ const Checkout = () => {
                       )}
                   </div>
                   <div className="modal-footer">
+                      <span style={{marginRight: 'auto', alignSelf: 'center', fontSize: '13px', color: '#64748b'}}>Đã chọn {selectedVouchers.length}/3</span>
                       <button className="btn-cancel" onClick={() => setShowVoucherModal(false)}>TRỞ LẠI</button>
                       <button className="btn-confirm" onClick={() => setShowVoucherModal(false)}>XÁC NHẬN</button>
                   </div>

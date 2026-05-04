@@ -12,7 +12,6 @@ const SellerVouchers = () => {
     const [showToast, setShowToast] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
 
-    // Form State
     const [formData, setFormData] = useState({
         code: '',
         title: '',
@@ -44,7 +43,6 @@ const SellerVouchers = () => {
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            // Ensure dates are in standard ISO format for the backend
             const payload = {
                 ...formData,
                 validFrom: new Date(formData.validFrom).toISOString(),
@@ -57,7 +55,6 @@ const SellerVouchers = () => {
             setShowToast(true);
             setShowCreateModal(false);
             
-            // Reset form
             setFormData({
                 code: '', title: '', discountType: 'FIXED_AMOUNT', discountValue: 0,
                 minOrderValue: 0, maxDiscountAmount: 0, usageLimit: 100, validFrom: '', validUntil: ''
@@ -83,10 +80,20 @@ const SellerVouchers = () => {
         }
     };
 
+    // 🚀 BẢN VÁ: Format ngày tháng chuẩn xác, thêm số 0 đằng trước nếu là số đơn
     const formatDate = (isoString: string) => {
         if (!isoString) return '';
         const d = new Date(isoString);
-        return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()} ${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`;
+        return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+    };
+
+    // 🚀 BẢN VÁ: Logic kiểm tra trạng thái hoạt động siêu chuẩn
+    const checkIsActive = (v: any) => {
+        // Xử lý lỗi Jackson đổi tên biến thành "active" thay vì "isActive"
+        const activeBool = v.isActive !== undefined ? v.isActive : v.active;
+        // Kiểm tra thời gian hiện tại có còn nằm trong HSD không
+        const notExpired = new Date(v.validUntil) > new Date();
+        return activeBool && notExpired;
     };
 
     return (
@@ -125,41 +132,43 @@ const SellerVouchers = () => {
                         ) : vouchers.length === 0 ? (
                             <tr><td colSpan={7} style={{ textAlign: 'center', padding: '30px', color: '#64748b' }}>Bạn chưa có voucher nào. Hãy tạo mới ngay!</td></tr>
                         ) : (
-                            vouchers.map(v => (
-                                <tr key={v.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                    <td style={{ padding: '15px', fontWeight: 'bold', color: '#ee4d2d' }}>{v.code}</td>
-                                    <td style={{ padding: '15px' }}>{v.title}</td>
-                                    <td style={{ padding: '15px', textAlign: 'right', fontWeight: 600 }}>
-                                        {v.discountType === 'PERCENTAGE' ? `${v.discountValue}%` : `${v.discountValue.toLocaleString()}đ`}
-                                    </td>
-                                    <td style={{ padding: '15px', textAlign: 'center' }}>{v.usedCount} / {v.usageLimit}</td>
-                                    <td style={{ padding: '15px', textAlign: 'center', fontSize: '13px', color: '#64748b' }}>
-                                        {formatDate(v.validFrom)} - {formatDate(v.validUntil)}
-                                    </td>
-                                    <td style={{ padding: '15px', textAlign: 'center' }}>
-                                        {v.isActive ? 
-                                            <span style={{ padding: '4px 8px', background: '#dcfce7', color: '#16a34a', borderRadius: '4px', fontSize: '12px', fontWeight: 600 }}>Đang chạy</span> : 
-                                            <span style={{ padding: '4px 8px', background: '#f1f5f9', color: '#64748b', borderRadius: '4px', fontSize: '12px', fontWeight: 600 }}>Đã kết thúc</span>
-                                        }
-                                    </td>
-                                    <td style={{ padding: '15px', textAlign: 'center' }}>
-                                        {v.isActive && (
-                                            <button 
-                                                onClick={() => deactivateVoucher(v.id)}
-                                                style={{ padding: '6px 12px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}
-                                            >
-                                                Kết thúc sớm
-                                            </button>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))
+                            vouchers.map(v => {
+                                const isRunning = checkIsActive(v);
+                                return (
+                                    <tr key={v.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                        <td style={{ padding: '15px', fontWeight: 'bold', color: '#ee4d2d' }}>{v.code}</td>
+                                        <td style={{ padding: '15px' }}>{v.title}</td>
+                                        <td style={{ padding: '15px', textAlign: 'right', fontWeight: 600 }}>
+                                            {v.discountType === 'PERCENTAGE' ? `${v.discountValue}%` : `${v.discountValue.toLocaleString()}đ`}
+                                        </td>
+                                        <td style={{ padding: '15px', textAlign: 'center' }}>{v.usedCount} / {v.usageLimit}</td>
+                                        <td style={{ padding: '15px', textAlign: 'center', fontSize: '13px', color: '#64748b' }}>
+                                            {formatDate(v.validFrom)} - {formatDate(v.validUntil)}
+                                        </td>
+                                        <td style={{ padding: '15px', textAlign: 'center' }}>
+                                            {isRunning ? 
+                                                <span style={{ padding: '4px 8px', background: '#dcfce7', color: '#16a34a', borderRadius: '4px', fontSize: '12px', fontWeight: 600 }}>Đang chạy</span> : 
+                                                <span style={{ padding: '4px 8px', background: '#f1f5f9', color: '#64748b', borderRadius: '4px', fontSize: '12px', fontWeight: 600 }}>Đã kết thúc</span>
+                                            }
+                                        </td>
+                                        <td style={{ padding: '15px', textAlign: 'center' }}>
+                                            {isRunning && (
+                                                <button 
+                                                    onClick={() => deactivateVoucher(v.id)}
+                                                    style={{ padding: '6px 12px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '13px' }}
+                                                >
+                                                    Kết thúc sớm
+                                                </button>
+                                            )}
+                                        </td>
+                                    </tr>
+                                );
+                            })
                         )}
                     </tbody>
                 </table>
             </div>
 
-            {/* MODAL TẠO VOUCHER */}
             {showCreateModal && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
                     <div style={{ background: '#fff', width: '600px', borderRadius: '8px', padding: '24px', maxHeight: '90vh', overflowY: 'auto' }}>

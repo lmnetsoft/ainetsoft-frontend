@@ -106,6 +106,14 @@ public class User {
     @Builder.Default
     private List<CartItem> cart = new ArrayList<>();
 
+    // 🚀 BẢN VÁ: VÍ VOUCHER - Lưu ID của các mã mà khách đã bấm "Lưu"
+    @Builder.Default
+    private Set<String> savedVoucherIds = new HashSet<>();
+
+    // 🚀 BẢN VÁ: VÍ XU - Lưu số dư AiNetsoft Xu của khách hàng
+    @Builder.Default
+    private int coinBalance = 0;
+
     @Builder.Default
     private boolean enabled = false;
 

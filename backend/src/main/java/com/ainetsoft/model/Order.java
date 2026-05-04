@@ -1,9 +1,14 @@
 package com.ainetsoft.model;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -15,31 +20,30 @@ public class Order {
     @Id
     private String id;
     private String userId;
-    private String userEmail; 
-    private String sellerId;
-    private List<OrderItem> items;
+    
+    @Builder.Default
+    private List<OrderItem> items = new ArrayList<>();
+    
+    private double totalAmount; // Tổng tiền hàng gốc
+    
+    // 🚀 BẢN VÁ: Chuyển từ appliedVoucherId sang appliedVoucherIds để lưu danh sách nhiều mã
+    @Builder.Default
+    private List<String> appliedVoucherIds = new ArrayList<>();
+    
+    private double voucherDiscountAmount; // Tổng tiền giảm từ các Voucher
+    
+    private int usedCoins; // Số xu khách hàng đã thực tế sử dụng
+    private double coinDiscountAmount; // Tiền giảm tương ứng từ Xu
+    
+    private double finalTotalAmount; // Tiền cuối cùng khách phải trả
+    
     private User.AddressInfo shippingAddress;
     private String paymentMethod;
-    
-    // 🚀 BỔ SUNG: MARKETING ENGINE FIELDS
-    private double totalAmount; // Tổng tiền gốc ban đầu
-    private String appliedVoucherId; // ID của Voucher được áp dụng (Nếu có)
-    private double voucherDiscountAmount; // Số tiền được giảm từ Voucher
-    private double usedCoins; // Số Xu khách hàng dùng
-    private double coinDiscountAmount; // Số tiền quy đổi từ Xu (Thường 1 Xu = 1 VNĐ)
-    private double finalTotalAmount; // Tổng tiền thanh toán cuối cùng (totalAmount - voucher - coin)
+    private String status; // PENDING, SHIPPING, COMPLETED, CANCELLED
     
     @Builder.Default
-    private String status = "PENDING"; 
-
-    @Builder.Default
-    private boolean reviewed = false; 
-
-    private boolean isFlagged; 
+    private boolean isReviewed = false;
     
-    @Builder.Default
-    private LocalDateTime createdAt = LocalDateTime.now();
-    
-    @Builder.Default
-    private LocalDateTime updatedAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }
