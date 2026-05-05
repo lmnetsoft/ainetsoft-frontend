@@ -28,15 +28,11 @@ public class OrderController {
         return userRepository.findByIdentifier(principal.getName()).orElse(null);
     }
 
-    // --- HÀM KIỂM TRA ROLE LINH HOẠT ---
     private boolean hasRole(User user, String roleName) {
         if (user == null || user.getRoles() == null) return false;
         return user.getRoles().contains(roleName) || user.getRoles().contains("ROLE_" + roleName);
     }
 
-    /**
-     * 📊 SELLER DASHBOARD STATS
-     */
     @GetMapping("/seller/stats")
     public ResponseEntity<?> getSellerStats(Principal principal) {
         User seller = getAuthenticatedUser(principal);
@@ -50,9 +46,6 @@ public class OrderController {
         return ResponseEntity.ok(orderService.getSellerStats(seller.getId()));
     }
 
-    /**
-     * 📦 LIST ORDERS FOR SELLER
-     */
     @GetMapping("/seller")
     public ResponseEntity<?> getSellerOrders(@RequestParam(required = false) String status, Principal principal) {
         User seller = getAuthenticatedUser(principal);
@@ -65,9 +58,6 @@ public class OrderController {
         return ResponseEntity.ok(orders);
     }
 
-    /**
-     * ✅ UPDATE ORDER STATUS
-     */
     @PutMapping("/seller/update-status/{orderId}")
     public ResponseEntity<?> updateOrderStatus(
             @PathVariable String orderId, 
@@ -89,8 +79,6 @@ public class OrderController {
         }
     }
 
-    // --- BUYER / CUSTOMER ENDPOINTS ---
-
     @PostMapping("/checkout")
     public ResponseEntity<?> checkout(@RequestBody Order orderRequest, Principal principal) {
         User user = getAuthenticatedUser(principal);
@@ -100,7 +88,6 @@ public class OrderController {
 
         try {
             orderRequest.setUserId(user.getId());
-            // 🚀 BẢN VÁ: Loại bỏ dòng code gây lỗi 'cannot find symbol setUserEmail'
             Order createdOrder = orderService.createOrder(orderRequest);
             return ResponseEntity.status(HttpStatus.CREATED).body(createdOrder);
         } catch (Exception e) {
@@ -162,12 +149,10 @@ public class OrderController {
         }
     }
 
-    // 🚀 NEW: ADMIN ENDPOINT - LẤY TOÀN BỘ ĐƠN HÀNG HỆ THỐNG
     @GetMapping("/admin/all")
     public ResponseEntity<?> getAllSystemOrders(Principal principal) {
         User admin = getAuthenticatedUser(principal);
         
-        // Bảo mật: Chỉ User có ROLE_ADMIN mới được phép gọi API này
         if (!hasRole(admin, "ADMIN")) {
             log.warn("Access denied for admin orders: User {} does not have ADMIN role", principal != null ? principal.getName() : "Anonymous");
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -186,12 +171,24 @@ public class OrderController {
         String newStatus = payload.get("status");
         
         try {
-            // Tạm thời truyền null cho tham số thứ 3 (sellerId) vì đây là Người mua tự cập nhật
             com.ainetsoft.model.Order updatedOrder = orderService.updateStatus(orderId, newStatus, null);
             return ResponseEntity.ok(java.util.Map.of("message", "Cập nhật trạng thái thành công!", "order", updatedOrder));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));
         }
     }
-    
+
+    @PostMapping("/webhook/shipping")
+    public ResponseEntity<?> shippingWebhook(@RequestBody Map<String, String> payload) {
+        String trackingCode = payload.get("trackingCode");
+        String carrierStatus = payload.get("carrierStatus");
+        String note = payload.get("note");
+        
+        try {
+            orderService.processShippingWebhook(trackingCode, carrierStatus, note);
+            return ResponseEntity.ok(Map.of("message", "Webhook processed successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
 }

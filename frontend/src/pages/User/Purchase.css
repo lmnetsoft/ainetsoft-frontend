@@ -2,19 +2,16 @@
 .user-page-supreme-layout {
     width: 100%;
     background-color: #ffffff !important; 
-    padding: 0; /* Let internal containers handle padding */
+    padding: 0; 
     box-sizing: border-box;
-
-    /* 🚀 THE SUPREME HEIGHT FIX: Matches the sidebar perfectly */
     flex: 1;
     display: flex;
     flex-direction: column;
     min-height: 100%;
-    
     border-radius: 10px;
     border: 1px solid #eef2f6;
     box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-    overflow: hidden; /* Keeps the tabs border-radius clean at the top */
+    overflow: hidden; 
 }
 
 .purchase-main-view {
@@ -28,7 +25,6 @@
 .purchase-tabs-container {
     display: flex;
     background-color: #ffffff;
-    /* 🚀 THE FIX: Removed margin and shadow to integrate into the main box */
     margin-bottom: 0; 
     position: sticky;
     top: 0;
@@ -40,7 +36,7 @@
 .purchase-tab-item {
     flex: 1;
     text-align: center;
-    padding: 18px 0; /* Slightly taller for premium feel */
+    padding: 18px 0; 
     font-size: 0.95rem;
     color: #64748b; 
     cursor: pointer;
@@ -61,7 +57,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    background-color: #fcfdfe; /* Subtle off-white for the list area */
+    background-color: #fcfdfe; 
     padding: 20px;
 }
 
@@ -70,7 +66,6 @@
     background: #fff;
     padding: 24px;
     margin-bottom: 15px;
-    /* 🚀 THE FIX: Lighter shadow since it's inside a white container */
     box-shadow: 0 1px 2px rgba(0,0,0,0.03);
     border-radius: 8px;
     border: 1px solid #f1f5f9;
@@ -104,7 +99,7 @@
 
 /* --- 5. Empty State: THE HEIGHT FIX --- */
 .purchase-empty-state {
-    flex: 1; /* 🚀 Fills the remaining vertical space */
+    flex: 1; 
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -130,15 +125,72 @@
 /* Footer Actions */
 .order-item-footer { margin-top: 20px; display: flex; flex-direction: column; align-items: flex-end; gap: 15px; }
 .grand-total { font-size: 1.4rem; font-weight: 700; color: #ee4d2d; margin-left: 10px; }
-.footer-actions { display: flex; gap: 12px; }
 
-.view-detail-btn, .contact-seller-btn {
-    padding: 10px 22px;
-    border-radius: 4px;
-    border: 1px solid #d1d5db;
-    background: #fff;
-    color: #475569;
+/* =========================================================
+   6. ACTION BUTTONS STYLING
+========================================================= */
+.purchase-action-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    align-items: center;
+    width: 100%;
+    margin-top: 5px;
+    flex-wrap: wrap;
+}
+
+.purchase-btn {
+    padding: 8px 20px;
+    border-radius: 4px; 
+    font-size: 14px;
+    font-weight: 500;
     cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: 600;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 130px;
+    box-sizing: border-box;
+}
+
+/* Nút Chính (Đã nhận hàng, Mua lại) */
+.purchase-btn.btn-primary {
+    background-color: #ee4d2d;
+    color: #fff;
+    border: 1px solid #ee4d2d;
+}
+
+.purchase-btn.btn-primary:hover:not(:disabled) {
+    background-color: #d73d1f;
+}
+
+/* Trạng thái Disable */
+.purchase-btn.btn-primary:disabled {
+    background-color: #f5f5f5;
+    color: #ccc;
+    border: 1px solid #ddd;
+    cursor: not-allowed;
+}
+
+/* Nút Đánh giá (Màu viền cam, chữ cam) */
+.purchase-btn.btn-outline {
+    background-color: #fff;
+    color: #ee4d2d;
+    border: 1px solid #ee4d2d;
+}
+
+.purchase-btn.btn-outline:hover {
+    background-color: #fffaf9;
+}
+
+/* Nút Phụ (Xem chi tiết, Liên hệ, Hủy đơn) */
+.purchase-btn.btn-secondary {
+    background-color: #fff;
+    color: #555;
+    border: 1px solid #e0e0e0;
+}
+
+.purchase-btn.btn-secondary:hover {
+    background-color: #f8f8f8;
+    border-color: #c6c6c6;
 }

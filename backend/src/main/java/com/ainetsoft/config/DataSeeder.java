@@ -436,6 +436,17 @@ public class DataSeeder implements CommandLineRunner {
         Random rand = new Random();
         int prodGlobalCount = 1;
 
+        String professionalDescription = "🌟 SẢN PHẨM CHÍNH HÃNG CAO CẤP\n\n" +
+                "🔹 Thiết kế hiện đại, sang trọng và tinh tế.\n" +
+                "🔹 Chất liệu cao cấp, độ bền bỉ vượt trội theo thời gian.\n" +
+                "🔹 Tính năng thông minh, đáp ứng hoàn hảo nhu cầu sử dụng hàng ngày.\n" +
+                "🔹 Đóng gói cẩn thận, giao hàng hỏa tốc an toàn.\n\n" +
+                "🛡️ CAM KẾT TỪ SHOP:\n" +
+                "- Bảo hành chính hãng uy tín 12 tháng.\n" +
+                "- Đổi trả miễn phí trong 7 ngày nếu có lỗi từ nhà sản xuất.\n" +
+                "- Hỗ trợ tư vấn nhiệt tình 24/7.\n\n" +
+                "Sở hữu ngay hôm nay để nhận những ưu đãi hấp dẫn nhất từ AiNetsoft Mall!";
+
         for (User seller : sellers) {
             String slug = seller.getShopProfile().getShopSlug();
             String shopName = seller.getShopProfile().getShopName();
@@ -444,6 +455,7 @@ public class DataSeeder implements CommandLineRunner {
                 Category cat = savedCats.get(rand.nextInt(savedCats.size()));
                 Product p = Product.builder()
                         .name(cat.getName() + " Elite Gen " + (prodGlobalCount++))
+                        .description(professionalDescription)
                         .price(100000.0 + (rand.nextInt(500) * 1000)).stock(50)
                         .categoryId(cat.getId()).categoryName(cat.getName())
                         .sellerId(seller.getId())
@@ -475,6 +487,17 @@ public class DataSeeder implements CommandLineRunner {
             u.setAccountStatus("ACTIVE"); 
             u.setEmailVerified(true); 
             u.setEnabled(true);
+            
+            User.AddressInfo defaultAddress = User.AddressInfo.builder()
+                .receiverName("Test Consumer")
+                .phone("084123456789")
+                .province("Hồ Chí Minh")
+                .ward("Quận 12")
+                .detail("A2.804 Chung cư Hưng Ngân, Phường Tân Chánh Hiệp")
+                .isDefault(true)
+                .build();
+            u.setAddresses(new ArrayList<>(Arrays.asList(defaultAddress)));
+            
             userRepository.save(u);
         }
     }
@@ -499,13 +522,11 @@ public class DataSeeder implements CommandLineRunner {
         bankAccountRepository.save(bank);
     }
 
-    // 🚀 BẢN VÁ LOGIC TEST VẬN CHUYỂN
     private void seedWithdrawalTestData() {
         User sellerA = userRepository.findByEmail("seller_a@ainetsoft.com").orElse(null);
         User buyer = userRepository.findByEmail("user@ainetsoft.com").orElse(null);
         if (sellerA == null || buyer == null || withdrawalRepository.countBySellerId(sellerA.getId()) > 0) return;
 
-        // LẤY 1 SẢN PHẨM THẬT TRONG DB ĐỂ TRÁNH LỖI NULL KHI CLICK VÀO CHI TIẾT
         Product validProduct = productRepository.findAll().stream()
                 .filter(p -> p.getSellerId().equals(sellerA.getId()))
                 .findFirst().orElse(null);
@@ -520,7 +541,6 @@ public class DataSeeder implements CommandLineRunner {
             .isDefault(true)
             .build();
 
-        // 1. Sinh 1 đơn hàng ĐÃ HOÀN THÀNH để test Lệnh Rút Tiền và Tính năng Đánh giá
         Order order1 = Order.builder()
             .userId(buyer.getId())
             .status("COMPLETED")
@@ -531,13 +551,11 @@ public class DataSeeder implements CommandLineRunner {
             .trackingCode("GHN-SEED-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase())
             .shippingProvider("Giao Hàng Nhanh")
             .carrierStatus("DELIVERED")
-            // 👉 ĐÃ FIX: Thêm productId vào đây
             .items(Arrays.asList(OrderItem.builder().productId(safeProductId).sellerId(sellerA.getId()).shopName(sellerA.getShopProfile().getShopName()).productName("Bàn phím cơ Test").imageUrl("https://picsum.photos/200").price(500000.0).quantity(1).build()))
             .createdAt(LocalDateTime.now().minusDays(3))
             .updatedAt(LocalDateTime.now().minusDays(1))
             .build();
 
-        // 2. Sinh 1 đơn hàng ĐANG GIAO HÀNG để test luồng Xác nhận nhận hàng
         Order order2 = Order.builder()
             .userId(buyer.getId())
             .status("SHIPPING")
@@ -548,7 +566,6 @@ public class DataSeeder implements CommandLineRunner {
             .trackingCode("GHN-SEED-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase())
             .shippingProvider("Giao Hàng Nhanh")
             .carrierStatus("IN_TRANSIT")
-            // 👉 ĐÃ FIX: Thêm productId vào đây
             .items(Arrays.asList(OrderItem.builder().productId(safeProductId).sellerId(sellerA.getId()).shopName(sellerA.getShopProfile().getShopName()).productName("Chuột không dây Test").imageUrl("https://picsum.photos/200").price(150000.0).quantity(1).build()))
             .createdAt(LocalDateTime.now().minusDays(1))
             .updatedAt(LocalDateTime.now())
@@ -556,7 +573,6 @@ public class DataSeeder implements CommandLineRunner {
 
         orderRepository.saveAll(Arrays.asList(order1, order2));
 
-        // Sinh dữ liệu lệnh rút tiền cho Admin test
         WithdrawalRequest oldReq = WithdrawalRequest.builder()
                 .sellerId(sellerA.getId()).shopName(sellerA.getShopProfile().getShopName())
                 .sellerFullName(sellerA.getFullName()).amount(100000.0).status("COMPLETED")

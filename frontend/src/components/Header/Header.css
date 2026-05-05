@@ -393,3 +393,50 @@
   vertical-align: middle;
   box-shadow: 0 0 5px rgba(238, 77, 45, 0.8);
 }
+
+/* ==========================================================================
+   CART ICON STYLING FIX
+   ========================================================================== */
+.cart-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  margin-right: 15px;
+  transition: transform 0.2s ease;
+}
+
+.cart-wrapper:hover {
+  transform: translateY(-2px);
+}
+
+.cart-main-icon {
+  font-size: 24px; 
+  color: #5b67f1; 
+}
+
+.cart-badge {
+  position: absolute;
+  top: -2px;
+  right: -8px;
+  background-color: #ee4d2d; 
+  color: white;
+  font-size: 11px;
+  font-weight: 800;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid white;
+  padding: 0 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes popIn {
+  0% { transform: scale(0); }
+  100% { transform: scale(1); }
+}

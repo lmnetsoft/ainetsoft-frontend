@@ -13,8 +13,8 @@ const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:8080';
 const Purchase = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('ALL');
-  const [allOrders, setAllOrders] = useState<any[]>([]); // 🚀 CHỨA TẤT CẢ ĐƠN HÀNG
-  const [displayedOrders, setDisplayedOrders] = useState<any[]>([]); // 🚀 CHỨA ĐƠN HÀNG CỦA TAB HIỆN TẠI
+  const [allOrders, setAllOrders] = useState<any[]>([]); 
+  const [displayedOrders, setDisplayedOrders] = useState<any[]>([]); 
   const [loading, setLoading] = useState(false);
   
   const [showToast, setShowToast] = useState(false);
@@ -35,7 +35,6 @@ const Purchase = () => {
     return url.startsWith('http') ? url : `${BASE_URL}${url}`;
   };
 
-  // 🚀 FETCH TOÀN BỘ ĐƠN HÀNG 1 LẦN DUY NHẤT
   const fetchAllOrders = async () => {
     try {
       setLoading(true);
@@ -56,7 +55,6 @@ const Purchase = () => {
     document.title = "Đơn mua của tôi | AiNetsoft";
   }, []);
 
-  // 🚀 LỌC DỮ LIỆU LOCAL KHI CHUYỂN TAB
   useEffect(() => {
     if (activeTab === 'ALL') {
       setDisplayedOrders(allOrders);
@@ -68,7 +66,6 @@ const Purchase = () => {
     }
   }, [activeTab, allOrders]);
 
-  // 🚀 HÀM ĐẾM SỐ LƯỢNG CHO TỪNG TAB
   const getTabCount = (tabId: string) => {
     if (tabId === 'ALL') return allOrders.length;
     return allOrders.filter(order => {
@@ -85,7 +82,7 @@ const Purchase = () => {
       case 'PROCESSING': return 'ĐANG XỬ LÝ';
       case 'SHIPPING': return 'ĐANG GIAO HÀNG';
       case 'COMPLETED': return 'HOÀN THÀNH';
-      case 'CANCELLED': return 'ĐÃ HỦY';
+      case 'CANCELLED': return 'Đã HỦY';
       default: return status || 'CHỜ XÁC NHẬN';
     }
   };
@@ -115,7 +112,7 @@ const Purchase = () => {
       await cancelOrder(orderId);
       setToastMessage("Hủy đơn hàng thành công! Xu và Voucher đã được hoàn trả.");
       setShowToast(true);
-      fetchAllOrders(); // Reload lại allOrders
+      fetchAllOrders(); 
     } catch (err: any) {
       setToastMessage(err.message || "Không thể hủy đơn hàng.");
       setShowToast(true);
@@ -130,7 +127,7 @@ const Purchase = () => {
       await confirmOrderReceived(orderId);
       setToastMessage("🎉 Xác nhận thành công! Bạn đã được nhận Xu và có thể Đánh giá sản phẩm.");
       setShowToast(true);
-      fetchAllOrders(); // Reload lại allOrders
+      fetchAllOrders(); 
     } catch (err: any) {
       setToastMessage(err.response?.data?.message || err.message || "Có lỗi xảy ra khi xác nhận.");
       setShowToast(true);
@@ -144,14 +141,13 @@ const Purchase = () => {
       <main className="purchase-main-view" style={{ width: '100%' }}>
         <div className="purchase-tabs-container">
           {tabs.map(tab => {
-            const count = getTabCount(tab.id); // 🚀 TÍNH TOÁN SỐ LƯỢNG
+            const count = getTabCount(tab.id); 
             return (
               <div 
                 key={tab.id}
                 className={`purchase-tab-item ${activeTab === tab.id ? 'active' : ''}`}
                 onClick={() => setActiveTab(tab.id)}
               >
-                {/* 🚀 HIỂN THỊ CON SỐ MÀU CAM BÊN CẠNH CHỮ */}
                 {tab.label} {count > 0 && <span style={{ marginLeft: '6px', fontSize: '13px', color: activeTab === tab.id ? '#ee4d2d' : '#888' }}>({count})</span>}
               </div>
             );
@@ -174,7 +170,7 @@ const Purchase = () => {
             </div>
           ) : (
             <div className="order-cards-wrapper">
-              {displayedOrders.map(order => { // 🚀 RENDER TỪ displayedOrders
+              {displayedOrders.map(order => { 
                 const rawStatus = order.status ? order.status.toString().trim().toUpperCase() : '';
                 const canCancel = ['PENDING', 'CONFIRMED', 'PROCESSING', 'UNPAID', ''].includes(rawStatus);
 
@@ -247,38 +243,36 @@ const Purchase = () => {
                           <span className="grand-total" style={{ color: '#ee4d2d', fontWeight: 'bold', fontSize: '20px' }}>₫{order.finalTotalAmount?.toLocaleString() || order.totalAmount?.toLocaleString()}</span>
                         </div>
                         
-                        <div className="footer-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', flexWrap: 'wrap' }}>
-                          
+                        <div className="footer-actions purchase-action-buttons">
                           {rawStatus === 'SHIPPING' && (
-                             <button 
-                               onClick={() => handleConfirmReceipt(order.id)}
-                               style={{ background: '#ee4d2d', color: '#fff', border: 'none', padding: '8px 20px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}
-                             >
-                               <FaCheckCircle /> Đã nhận được hàng
-                             </button>
+                            <button 
+                                className={`purchase-btn btn-primary ${order.carrierStatus !== 'DELIVERED' ? 'disabled' : ''}`}
+                                disabled={order.carrierStatus !== 'DELIVERED'}
+                                onClick={() => handleConfirmReceipt(order.id)}
+                                title={order.carrierStatus !== 'DELIVERED' ? 'Chỉ có thể xác nhận khi đơn vị vận chuyển đã giao hàng' : ''}>
+                                <FaCheckCircle style={{ marginRight: '6px' }} /> Đã nhận được hàng
+                            </button>
                           )}
 
                           {rawStatus === 'COMPLETED' ? (
                             <>
                               <button 
                                 onClick={() => navigate(`/product/${order.items[0]?.productId}?review=true&orderId=${order.id}`)}
-                                style={{ background: '#fff', color: '#ee4d2d', border: '1px solid #ee4d2d', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+                                className="purchase-btn btn-outline"
                               >
-                                <FaStar /> Đánh giá sản phẩm
+                                <FaStar style={{ marginRight: '6px' }} /> Đánh giá sản phẩm
                               </button>
                               <button 
-                                className="buy-again-btn" 
+                                className="purchase-btn btn-primary" 
                                 onClick={() => navigate(`/product/${order.items[0]?.productId}`)}
-                                style={{ background: '#ee4d2d', color: '#fff', border: 'none', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer' }}
                               >
                                 Mua lại
                               </button>
                             </>
                           ) : (
                             <button 
-                              className="contact-seller-btn" 
+                              className="purchase-btn btn-secondary" 
                               onClick={() => handleChatWithSeller(order.items?.[0]?.sellerId)}
-                              style={{ background: '#fff', color: '#555', border: '1px solid #ccc', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer' }}
                             >
                                Liên hệ người bán
                             </button>
@@ -286,18 +280,16 @@ const Purchase = () => {
                           
                           {canCancel && (
                             <button 
-                              className="cancel-order-btn"
+                              className="purchase-btn btn-secondary"
                               onClick={() => handleCancelOrder(order.id)}
-                              style={{ background: '#fff', color: '#555', border: '1px solid #ccc', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer' }}
                             >
                               Hủy đơn
                             </button>
                           )}
 
                           <button 
-                             className="view-detail-btn" 
+                             className="purchase-btn btn-secondary" 
                              onClick={() => navigate(`/user/order/${order.id}`)}
-                             style={{ background: '#fff', color: '#555', border: '1px solid #ccc', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer' }}
                           >
                               Xem chi tiết
                           </button>

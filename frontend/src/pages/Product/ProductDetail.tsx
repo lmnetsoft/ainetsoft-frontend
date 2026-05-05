@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { 
-  FaShoppingCart, FaStore, FaStar, FaCommentDots, FaClipboardList, 
-  FaExclamationTriangle, FaPlay, FaTimes, FaChevronLeft, FaChevronRight,
-  FaStoreAlt, FaTruck, FaShieldAlt, FaHeart, FaRegHeart, FaFacebook,
-  FaFacebookMessenger, FaPinterest, FaTwitter, FaInfoCircle, FaLink,
-  FaFlag, FaCheckCircle, FaEdit, FaTicketAlt, FaCamera, FaVideo
+  FaShoppingCart, FaStore, FaStar, FaCommentDots, FaExclamationTriangle, 
+  FaPlay, FaTimes, FaChevronLeft, FaChevronRight, FaStoreAlt, 
+  FaHeart, FaRegHeart, FaFacebook, FaFacebookMessenger, FaTwitter, FaLink,
+  FaFlag, FaEdit, FaCamera, FaVideo
 } from 'react-icons/fa';
 import api, { 
   shareProduct, 
@@ -14,13 +13,13 @@ import api, {
   getReviewStats,
   submitReview 
 } from '../../services/api'; 
+import { getUserProfile } from '../../services/authService';
 import ToastNotification from '../../components/Toast/ToastNotification';
 import { useChat } from '../../context/ChatContext'; 
 import './ProductDetail.css';
 
 const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:8080';
 
-// --- INTERFACES ---
 interface ShippingConfig {
   methodId: string;
   methodName: string;
@@ -79,15 +78,10 @@ const ProductDetail = () => {
   const [product, setProduct] = useState<Product | null>(location.state?.productPreview || null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewStats, setReviewStats] = useState<any>({
-    total: 0,
-    star5: 0,
-    star4: 0,
-    star3: 0,
-    star2: 0,
-    star1: 0,
-    withImages: 0
+    total: 0, star5: 0, star4: 0, star3: 0, star2: 0, star1: 0, withImages: 0
   }); 
   const [selectedFilter, setSelectedFilter] = useState('all'); 
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   
   const [loading, setLoading] = useState(!location.state?.productPreview);
   const [quantity, setQuantity] = useState(1);
@@ -95,10 +89,9 @@ const ProductDetail = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [isZoomed, setIsZoomed] = useState(false);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
 
-  // 🚀 MỚI: State quản lý Pop-up xem ảnh/video phóng to của riêng phần Đánh giá
   const [zoomedReviewMedia, setZoomedReviewMedia] = useState<{ url: string; type: 'image' | 'video' } | null>(null);
-
   const [showShippingDrawer, setShowShippingDrawer] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [localFavoriteCount, setLocalFavoriteCount] = useState(0);
@@ -124,11 +117,8 @@ const ProductDetail = () => {
   const bitnamilegacy = (url?: string) => {
     if (!url || url === 'undefined' || url === 'null' || url === '') return "/placeholder.png";
     if (url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')) return url; 
-    
     let cleanPath = url.startsWith('/') ? url : `/${url}`;
-    if (!cleanPath.startsWith('/api/')) {
-        cleanPath = `/api${cleanPath}`;
-    }
+    if (!cleanPath.startsWith('/api/')) cleanPath = `/api${cleanPath}`;
     return `${BASE_URL}${cleanPath}`;
   };
 
@@ -148,9 +138,7 @@ const ProductDetail = () => {
       const res = await getProductReviews(id, rating, hasImages);
       setReviews(res.data);
       setSelectedFilter(filterType);
-    } catch (err) {
-      console.error("Filtering failed", err);
-    }
+    } catch (err) {}
   };
 
   useEffect(() => {
@@ -158,9 +146,7 @@ const ProductDetail = () => {
       if (localStorage.getItem('isAuthenticated') && id) {
         try {
           const res = await api.get(`/orders/eligible-to-review/${id}`);
-          if (res.data && res.data.orderId) {
-            setValidOrderId(res.data.orderId);
-          }
+          if (res.data && res.data.orderId) setValidOrderId(res.data.orderId);
         } catch (e) {
           setValidOrderId(null);
         }
@@ -171,11 +157,7 @@ const ProductDetail = () => {
 
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
-    const isReview = searchParams.get('review');
-    
-    if (isReview === 'true' && validOrderId) {
-      setShowReviewModal(true);
-    }
+    if (searchParams.get('review') === 'true' && validOrderId) setShowReviewModal(true);
   }, [validOrderId]);
 
   useEffect(() => {
@@ -196,7 +178,7 @@ const ProductDetail = () => {
     if (product?.sellerId) {
       api.get(`/vouchers/public/shop/${product.sellerId}`)
          .then(res => setShopVouchers(res.data || []))
-         .catch(err => console.log("Không thể tải mã giảm giá."));
+         .catch(() => {});
     }
   }, [product?.sellerId]);
 
@@ -295,7 +277,6 @@ const ProductDetail = () => {
     if (!id || !reviewComment.trim() || !validOrderId) return;
     try {
       setIsSubmittingReview(true);
-      
       const formData = new FormData();
       formData.append('productId', id);
       formData.append('rating', userRating.toString());
@@ -314,13 +295,8 @@ const ProductDetail = () => {
       setReviewImages([]);
       setReviewVideo(null);
       
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, '', newUrl);
-
-      const [statsRes, revRes] = await Promise.all([
-        getReviewStats(id),
-        getProductReviews(id)
-      ]);
+      window.history.replaceState({}, '', window.location.pathname);
+      const [statsRes, revRes] = await Promise.all([getReviewStats(id), getProductReviews(id)]);
       setReviewStats(statsRes.data);
       setReviews(revRes.data);
     } catch (err: any) {
@@ -334,7 +310,7 @@ const ProductDetail = () => {
   const handleShare = async (platform: 'facebook' | 'messenger' | 'link' | 'twitter') => {
     if (!product) return;
     const currentUrl = window.location.href;
-    try { await shareProduct(product.id); } catch (e) { console.error("Share count fail"); }
+    try { await shareProduct(product.id); } catch (e) {}
     if (platform === 'link') {
       navigator.clipboard.writeText(currentUrl);
       setToastMessage("Đã sao chép liên kết vào bộ nhớ tạm!");
@@ -397,9 +373,7 @@ const ProductDetail = () => {
   }, [isZoomed, totalMediaCount]);
 
   useEffect(() => {
-    if (activeMedia === images.length && videoRef.current) {
-      videoRef.current.play().catch(() => {});
-    }
+    if (activeMedia === images.length && videoRef.current) videoRef.current.play().catch(() => {});
   }, [activeMedia, images.length]);
 
   useEffect(() => {
@@ -417,11 +391,13 @@ const ProductDetail = () => {
         const productData = prodRes.data;
         setProduct(productData);
         setLocalFavoriteCount(productData.favoriteCount || 0);
+        
         const rawUser = localStorage.getItem('user');
         if (rawUser) {
           const userObj = JSON.parse(rawUser);
           setIsLiked((userObj.favoriteProductIds || []).includes(id));
         }
+        
         const storedRoles = JSON.parse(localStorage.getItem('userRoles') || '[]');
         const isAdmin = storedRoles.includes('ADMIN');
         if (productData.status !== 'APPROVED' && !isAdmin) {
@@ -435,14 +411,18 @@ const ProductDetail = () => {
           }
         }
         document.title = `${productData.name} | AiNetsoft`;
+
         try {
-          const [statsRes, revRes] = await Promise.all([
-            getReviewStats(id!),
-            getProductReviews(id!)
-          ]);
+          const relRes = await api.get('/products');
+          const allProds = Array.isArray(relRes.data) ? relRes.data : (relRes.data.content || []);
+          setRelatedProducts(allProds.filter((p: any) => p.id !== id).slice(0, 6));
+        } catch (err) {}
+
+        try {
+          const [statsRes, revRes] = await Promise.all([getReviewStats(id!), getProductReviews(id!)]);
           setReviewStats(statsRes.data || { total: 0, star5: 0, star4: 0, star3: 0, star2: 0, star1: 0, withImages: 0 });
           setReviews(revRes.data);
-        } catch (revErr) { console.warn("Review data not found yet."); }
+        } catch (revErr) {}
       } catch (error) {
         setToastMessage("Không tìm thấy sản phẩm.");
         setShowToast(true);
@@ -458,17 +438,45 @@ const ProductDetail = () => {
   };
 
   const handleAddToCart = async () => {
-    if (!localStorage.getItem('isAuthenticated')) { navigate('/login'); return; }
-    if (!product) return;
+    if (!localStorage.getItem('isAuthenticated')) { navigate('/login'); return false; }
+    if (!product) return false;
+    
     try {
-      const cartItem = { productId: product.id, productName: product.name, productImage: (product.imageUrls?.[0] || "/placeholder.png"), price: product.price, quantity: quantity, shopName: product.shopName };
-      await api.post('/auth/sync-cart', { items: [cartItem] });
-      setToastMessage("Đã thêm vào giỏ hàng!");
+      setIsAddingToCart(true); 
+
+      const profile = await getUserProfile();
+      let currentCart = profile.cart || [];
+
+      const existingItemIndex = currentCart.findIndex((item: any) => item.productId === product.id);
+      
+      if (existingItemIndex >= 0) {
+        currentCart[existingItemIndex].quantity += quantity;
+      } else {
+        currentCart.push({
+          productId: product.id, 
+          productName: product.name, 
+          productImage: (product.imageUrls?.[0] || "/placeholder.png"), 
+          price: product.price, 
+          quantity: quantity, 
+          shopName: product.shopName 
+        });
+      }
+      
+      await api.post('/auth/sync-cart', { items: currentCart }); 
+      
+      setToastMessage("Đã thêm vào giỏ hàng thành công!"); 
       setShowToast(true);
-      window.dispatchEvent(new Event('cartUpdate'));
+      
+      window.dispatchEvent(new Event('cartUpdate')); 
+      
+      return true; 
+      
     } catch (error) {
       setToastMessage("Lỗi khi thêm vào giỏ hàng.");
       setShowToast(true);
+      return false;
+    } finally {
+      setIsAddingToCart(false); 
     }
   };
 
@@ -481,7 +489,6 @@ const ProductDetail = () => {
     <div className="product-detail-wrapper">
       <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
 
-      {/* 🚀 MỚI: Modal phóng to hình ảnh hoặc video dành riêng cho phần Đánh giá */}
       {zoomedReviewMedia && (
         <div className="zoom-modal-overlay" onClick={() => setZoomedReviewMedia(null)} style={{ zIndex: 9999 }}>
           <div className="zoom-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -491,7 +498,7 @@ const ProductDetail = () => {
                 <source src={zoomedReviewMedia.url} type="video/mp4" />
               </video>
             ) : (
-              <img src={zoomedReviewMedia.url} alt="Zoomed Review Media" className="zoom-media-main" style={{ maxHeight: '85vh', maxWidth: '90vw', objectFit: 'contain' }} />
+              <img src={zoomedReviewMedia.url} alt="Zoomed" className="zoom-media-main" style={{ maxHeight: '85vh', maxWidth: '90vw', objectFit: 'contain' }} />
             )}
           </div>
         </div>
@@ -523,13 +530,13 @@ const ProductDetail = () => {
                 </div>
                 <label>Bình luận</label>
                 <textarea 
-                  placeholder="Hãy chia sẻ cảm nhận của bạn về sản phẩm này..." 
+                  placeholder="Hãy chia sẻ cảm nhận của bạn..." 
                   value={reviewComment} onChange={e => setReviewComment(e.target.value)} 
                   rows={4} required 
                   style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ddd', marginBottom: '15px' }}
                 />
 
-                <label>Thêm hình ảnh / Video (Mẹo: Có hình ảnh sẽ giúp tăng uy tín)</label>
+                <label>Thêm hình ảnh / Video</label>
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '10px 15px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', color: '#475569', fontWeight: 'bold' }}>
                     <FaCamera size={18} /> Thêm Hình Ảnh
@@ -545,18 +552,14 @@ const ProductDetail = () => {
                   {reviewImages.map((file, idx) => (
                     <div key={idx} style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '4px', overflow: 'hidden', border: '1px solid #eee' }}>
                       <img src={URL.createObjectURL(file)} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      <button type="button" onClick={() => removeImage(idx)} style={{ position: 'absolute', top: 0, right: 0, background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', padding: '4px', cursor: 'pointer' }}>
-                        <FaTimes size={10} />
-                      </button>
+                      <button type="button" onClick={() => removeImage(idx)} style={{ position: 'absolute', top: 0, right: 0, background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', padding: '4px', cursor: 'pointer' }}><FaTimes size={10} /></button>
                     </div>
                   ))}
                   {reviewVideo && (
                     <div style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '4px', overflow: 'hidden', border: '1px solid #eee', background: '#000' }}>
                       <video src={URL.createObjectURL(reviewVideo)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#fff' }}><FaPlay /></div>
-                      <button type="button" onClick={() => setReviewVideo(null)} style={{ position: 'absolute', top: 0, right: 0, background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', padding: '4px', cursor: 'pointer' }}>
-                        <FaTimes size={10} />
-                      </button>
+                      <button type="button" onClick={() => setReviewVideo(null)} style={{ position: 'absolute', top: 0, right: 0, background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', padding: '4px', cursor: 'pointer' }}><FaTimes size={10} /></button>
                     </div>
                   )}
                 </div>
@@ -693,13 +696,16 @@ const ProductDetail = () => {
           <div className="detail-info-section">
             <div className="report-link-row"><button className="btn-report-action" onClick={() => setShowReportModal(true)}><FaFlag /> Báo Vi Phạm</button></div>
             <h1 className="product-title">{product.name}</h1>
+            
             <div className="product-rating-overview">
-              <div className="star-row">{[...Array(5)].map((_, i) => <FaStar key={i} color={i < Math.floor(product.averageRating || 0) ? "#ee4d2d" : "#e4e5e9"} />)}</div>
-              <span className="rating-value">{product.averageRating || 0}</span>
+              <div className="star-row">
+                  <span className="rating-value">{product.averageRating || 0}</span>
+                  {[...Array(5)].map((_, i) => <FaStar key={i} color={i < Math.floor(product.averageRating || 0) ? "#ee4d2d" : "#e4e5e9"} size={16} />)}
+              </div>
               <span className="divider">|</span>
-              <span className="review-count">{product.reviewCount || 0} Đánh giá</span>
+              <span className="review-count">{product.reviewCount || 0} <span className="text-hint">Đánh giá</span></span>
               <span className="divider">|</span>
-              <span className="sold-count">Đã bán {product.soldCount || 0}</span>
+              <span className="sold-count">{product.soldCount || 0} <span className="text-hint">Đã bán</span></span>
             </div>
             
             <div className="price-display-box"><span className="currency">₫</span><span className="amount">{(product.price || 0).toLocaleString()}</span></div>
@@ -716,9 +722,7 @@ const ProductDetail = () => {
                                     </span>
                                     <span className="mvt-min">Đơn tối thiểu {(v.minOrderValue / 1000)}k</span>
                                 </div>
-                                <div className="mvt-right" onClick={() => handleSaveVoucher(v.id)}>
-                                    Lưu
-                                </div>
+                                <div className="mvt-right" onClick={() => handleSaveVoucher(v.id)}>Lưu</div>
                             </div>
                         ))}
                     </div>
@@ -726,7 +730,8 @@ const ProductDetail = () => {
             )}
 
             <div className="purchase-grid-system">
-              <div className="p-grid-row combined-action-row">
+              
+              <div className="p-grid-row">
                 <span className="p-grid-label">Số lượng</span>
                 <div className="p-grid-content horizontal-actions">
                   <div className="qty-controls">
@@ -734,13 +739,29 @@ const ProductDetail = () => {
                     <input type="number" value={quantity} readOnly />
                     <button onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}>+</button>
                   </div>
-                  <div className="action-button-group">
-                    <button className="add-to-cart-btn" onClick={handleAddToCart} disabled={product.status !== 'APPROVED'}><FaShoppingCart /> Thêm vào giỏ hàng</button>
-                    <button className="buy-now-btn" onClick={() => { if(product.status === 'APPROVED'){ handleAddToCart(); navigate('/cart'); } }} disabled={product.status !== 'APPROVED'}>Mua ngay</button>
-                  </div>
+                  <span className="stock-hint">{product.stock} sản phẩm có sẵn</span>
                 </div>
               </div>
-              <div className="p-grid-row"><span className="p-grid-label"></span><span className="stock-hint">{product.stock} sản phẩm có sẵn</span></div>
+
+              <div className="p-grid-row action-row">
+                <span className="p-grid-label"></span>
+                <div className="action-button-group">
+                  <button className="add-to-cart-btn" onClick={handleAddToCart} disabled={product.status !== 'APPROVED' || isAddingToCart}>
+                    <FaShoppingCart /> {isAddingToCart ? "Đang xử lý..." : "Thêm vào giỏ hàng"}
+                  </button>
+                  <button className="buy-now-btn" 
+                    onClick={async () => { 
+                      if(product.status === 'APPROVED'){ 
+                        const success = await handleAddToCart(); 
+                        if(success) navigate('/cart'); 
+                      } 
+                    }} 
+                    disabled={product.status !== 'APPROVED' || isAddingToCart}>
+                    Mua ngay
+                  </button>
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
@@ -757,6 +778,23 @@ const ProductDetail = () => {
             </div>
           </div>
         </div>
+
+        {relatedProducts.length > 0 && (
+          <div className="related-products-section">
+            <h3 className="section-title">SẢN PHẨM TƯƠNG TỰ</h3>
+            <div className="related-products-grid">
+              {relatedProducts.map(p => (
+                <div key={p.id} className="related-product-card" onClick={() => navigate(`/product/${p.id}`)}>
+                  <img src={bitnamilegacy(p.imageUrls?.[0])} alt={p.name} />
+                  <div className="rp-info">
+                    <p className="rp-name">{p.name}</p>
+                    <p className="rp-price">₫{(p.price || 0).toLocaleString()}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="description-section">
           <h3 className="section-title">MÔ TẢ SẢN PHẨM</h3>
@@ -801,30 +839,21 @@ const ProductDetail = () => {
                   <div className="rev-meta-line">{new Date(review.createdAt).toLocaleString('vi-VN')}</div>
                   <div className="rev-comment-text">{review.comment}</div>
                   
-                  {/* 🚀 ĐÃ CẬP NHẬT: Cho phép bấm vào Ảnh / Video để hiển thị Pop-up xem lớn */}
                   {(review.imageUrls?.length || review.videoUrl) && (
                     <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
                       {review.imageUrls?.map((img, idx) => (
-                        <div 
-                          key={idx} 
-                          onClick={() => setZoomedReviewMedia({ url: bitnamilegacy(img), type: 'image' })}
-                          style={{ width: '70px', height: '70px', borderRadius: '4px', overflow: 'hidden', border: '1px solid #e2e8f0', cursor: 'pointer' }}
-                        >
+                        <div key={idx} onClick={() => setZoomedReviewMedia({ url: bitnamilegacy(img), type: 'image' })} style={{ width: '70px', height: '70px', borderRadius: '4px', overflow: 'hidden', border: '1px solid #e2e8f0', cursor: 'pointer' }}>
                           <img src={bitnamilegacy(img)} alt="review media" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         </div>
                       ))}
                       {review.videoUrl && (
-                        <div 
-                          onClick={() => setZoomedReviewMedia({ url: bitnamilegacy(review.videoUrl), type: 'video' })}
-                          style={{ position: 'relative', width: '70px', height: '70px', borderRadius: '4px', overflow: 'hidden', border: '1px solid #e2e8f0', background: '#000', cursor: 'pointer' }}
-                        >
+                        <div onClick={() => setZoomedReviewMedia({ url: bitnamilegacy(review.videoUrl), type: 'video' })} style={{ position: 'relative', width: '70px', height: '70px', borderRadius: '4px', overflow: 'hidden', border: '1px solid #e2e8f0', background: '#000', cursor: 'pointer' }}>
                           <video src={bitnamilegacy(review.videoUrl)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#fff', fontSize: '20px' }}><FaPlay /></div>
                         </div>
                       )}
                     </div>
                   )}
-
                   {review.sellerReply && <div className="seller-reply-container"><div className="reply-text">{review.sellerReply}</div></div>}
                 </div>
               </div>

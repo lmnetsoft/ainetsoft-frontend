@@ -318,6 +318,9 @@ public class OrderService {
 
         // Bơm Xu vào ví khi đơn hàng hoàn thành
         if ("COMPLETED".equals(newStatus.toUpperCase()) && !"COMPLETED".equals(oldStatus)) {
+            // 🚀 ĐÃ FIX: Ép trạng thái đơn vị vận chuyển thành Đã giao thành công
+            order.setCarrierStatus("DELIVERED");
+
             double rate = platformConfigRepository.findAll().stream().findFirst()
                             .map(PlatformConfig::getCashbackRate).orElse(0.01);
             

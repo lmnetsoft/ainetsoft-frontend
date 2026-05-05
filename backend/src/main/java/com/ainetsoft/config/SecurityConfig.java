@@ -82,7 +82,7 @@ public class SecurityConfig {
                     "/api/footer-menus/**",
                     "/api/footer-icons/**",
                     "/api/vouchers/public/**",
-                    "/api/shipping/webhook" // 🚀 BỔ SUNG: Mở khóa cho ĐVVC bắn Webhook không cần Token
+                    "/api/orders/webhook/**" // 🚀 ĐÃ FIX: Mở khóa đúng endpoint Webhook mới
                 ).permitAll() 
 
                 .requestMatchers("/api/chat/history/**").permitAll()

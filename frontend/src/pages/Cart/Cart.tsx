@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaTrashAlt, FaMinus, FaPlus, FaStore } from 'react-icons/fa';
+import { FaTrashAlt, FaMinus, FaPlus, FaStore, FaShoppingCart } from 'react-icons/fa';
 import api from '../../services/api';
 import { getUserProfile } from '../../services/authService';
 import ToastNotification from '../../components/Toast/ToastNotification';
+import logoImg from '../../assets/images/logo.png'; 
 import './Cart.css';
 
 const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:8080';
@@ -24,10 +25,6 @@ const Cart = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
-  /**
-   * BITNAMILEGACY IMAGE FIX: Ensures relative paths from the backend
-   * are correctly resolved to the full server URL.
-   */
   const formatMediaUrl = (url?: string) => {
     if (!url || url === "/placeholder.png") return "/placeholder.png";
     return url.startsWith('http') ? url : `${BASE_URL}${url}`;
@@ -35,7 +32,6 @@ const Cart = () => {
 
   useEffect(() => {
     const fetchCart = async () => {
-      // 1. Avoid fetching if no token is present (Guest Mode)
       if (!localStorage.getItem('jwt_token')) {
         setLoading(false);
         return;
@@ -47,7 +43,6 @@ const Cart = () => {
         setCartItems(data.cart || []);
       } catch (error) {
         console.error("Cart fetch error:", error);
-        // Only show toast if the user is supposed to be logged in
         if (localStorage.getItem('isAuthenticated') === 'true') {
            setToastMessage("Không thể tải giỏ hàng. Vui lòng đăng nhập lại.");
            setShowToast(true);
@@ -99,9 +94,11 @@ const Cart = () => {
   const totalAmount = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
   if (loading) return (
-    <div className="cart-loading">
-      <div className="loading-spinner"></div>
-      <p>Đang tải giỏ hàng...</p>
+    <div className="cart-page-wrapper">
+      <div className="container cart-container cart-loading-fullscreen">
+        <div className="loading-spinner"></div>
+        <p className="loading-text">Đang tải giỏ hàng...</p>
+      </div>
     </div>
   );
 
@@ -113,12 +110,15 @@ const Cart = () => {
       
       <div className="container cart-container">
         <div className="cart-title-section">
-          <h2>Giỏ hàng</h2>
+          <div className="cart-title-content">
+            <FaShoppingCart className="cart-title-icon" />
+            <h2>Giỏ Hàng</h2>
+          </div>
         </div>
         
         {(!isAuthenticated || cartItems.length === 0) ? (
           <div className="cart-empty-state">
-            <img src="/logo.svg" alt="Empty" /> 
+            <img src={logoImg} alt="Empty Cart" /> 
             <p>{!isAuthenticated ? "Vui lòng đăng nhập để xem giỏ hàng của bạn." : "Giỏ hàng của bạn còn trống."}</p>
             <button onClick={() => navigate(!isAuthenticated ? '/login' : '/')} className="go-shopping-btn">
               {!isAuthenticated ? "Đăng nhập ngay" : "Mua sắm ngay"}
@@ -141,11 +141,17 @@ const Cart = () => {
                     <img 
                       src={formatMediaUrl(item.productImage)} 
                       alt={item.productName} 
-                      className="cart-item-img" 
+                      className="cart-item-img clickable-item" 
+                      onClick={() => navigate(`/product/${item.productId}`)}
                       onError={(e) => { e.currentTarget.src = "/placeholder.png"; }}
                     />
                     <div className="product-info-text">
-                      <p className="product-name">{item.productName}</p>
+                      <p 
+                        className="product-name clickable-item"
+                        onClick={() => navigate(`/product/${item.productId}`)}
+                      >
+                        {item.productName}
+                      </p>
                       <span className="shop-name-tag"><FaStore size={12} /> {item.shopName}</span>
                     </div>
                   </div>

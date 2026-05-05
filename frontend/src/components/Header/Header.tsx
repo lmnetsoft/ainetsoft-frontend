@@ -4,7 +4,6 @@ import { FaSearch, FaChevronDown, FaShoppingCart, FaBell, FaUserShield, FaCrown 
 import logoImg from '../../assets/images/logo.png';
 import { getUserProfile, logoutUser } from '../../services/authService';
 
-// Integrated Contexts - PRESERVED
 import { useChat } from '../../context/ChatContext'; 
 import { useNotification } from '../../context/NotificationContext';
 
@@ -14,7 +13,6 @@ const Header: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation(); 
 
-  // PRESERVED & UPDATED: Chat and Notification logic
   const { unreadCount, resetChat, setIsChatOpen } = useChat(); 
   const { notificationCount: systemCount, withdrawalCount } = useNotification(); 
 
@@ -25,10 +23,25 @@ const Header: React.FC = () => {
   const [userName, setUserName] = useState('');
   const [userAvatar, setUserAvatar] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
-  const [cartCount, setCartCount] = useState(3);
+  
+  const [cartCount, setCartCount] = useState(0);
 
   const isHelpCenter = location.pathname.startsWith('/tro-giup');
   const avatarFallback = '/logo.svg';
+
+  const fetchCartCount = async () => {
+    if (localStorage.getItem('isAuthenticated') === 'true') {
+      try {
+        const profile = await getUserProfile();
+        const currentCart = profile.cart || [];
+        setCartCount(currentCart.length);
+      } catch (err) {
+        setCartCount(0);
+      }
+    } else {
+      setCartCount(0);
+    }
+  };
 
   const loadUserData = () => {
     const authStatus = localStorage.getItem('isAuthenticated');
@@ -37,11 +50,7 @@ const Header: React.FC = () => {
     const storedRoles = JSON.parse(localStorage.getItem('userRoles') || '[]');
     const isGlobal = localStorage.getItem('isGlobalAdmin') === 'true';
 
-    const isValidName =
-      !!rawName &&
-      rawName !== 'undefined' &&
-      rawName !== 'null' &&
-      rawName.trim().length > 0;
+    const isValidName = !!rawName && rawName !== 'undefined' && rawName !== 'null' && rawName.trim().length > 0;
 
     if (authStatus === 'true' && isValidName) {
       setIsLoggedIn(true);
@@ -50,6 +59,7 @@ const Header: React.FC = () => {
       setIsSeller(Array.isArray(storedRoles) && storedRoles.includes('SELLER'));
       setIsAdmin(Array.isArray(storedRoles) && (storedRoles.includes('ADMIN') || storedRoles.includes('ROLE_ADMIN'))); 
       setIsGlobalAdmin(isGlobal); 
+      fetchCartCount(); 
     } else {
       setIsLoggedIn(false);
       setIsSeller(false);
@@ -57,6 +67,7 @@ const Header: React.FC = () => {
       setIsGlobalAdmin(false);
       setUserName('');
       setUserAvatar('');
+      setCartCount(0);
     }
   };
 
@@ -84,15 +95,12 @@ const Header: React.FC = () => {
           localStorage.setItem('userRoles', JSON.stringify(profile.roles || []));
           localStorage.setItem('userPermissions', JSON.stringify(profile.permissions || []));
           localStorage.setItem('isGlobalAdmin', profile.isGlobalAdmin ? 'true' : 'false');
-          
           loadUserData();
         } else {
           clearStorage();
         }
       } catch (err) {
-        if (localStorage.getItem('isAuthenticated') === 'true') {
-           clearStorage();
-        }
+        if (localStorage.getItem('isAuthenticated') === 'true') clearStorage();
       }
     };
 
@@ -100,19 +108,19 @@ const Header: React.FC = () => {
 
     window.addEventListener('storage', loadUserData);
     window.addEventListener('profileUpdate', loadUserData);
+    window.addEventListener('cartUpdate', fetchCartCount);
 
     return () => {
       window.removeEventListener('storage', loadUserData);
       window.removeEventListener('profileUpdate', loadUserData);
+      window.removeEventListener('cartUpdate', fetchCartCount);
     };
   }, []);
 
   const handleLogout = async () => {
     try {
       await logoutUser();
-    } catch (err) {
-      console.error('Logout error:', err);
-    } finally {
+    } catch (err) {} finally {
       resetChat(); 
       clearStorage(); 
       setShowDropdown(false);
@@ -124,30 +132,17 @@ const Header: React.FC = () => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const query = formData.get('search')?.toString();
-    
     if (query && query.trim()) {
-      if (isHelpCenter) {
-        navigate(`/tro-giup/tim-kiem?q=${encodeURIComponent(query)}`);
-      } else {
-        navigate(`/?search=${encodeURIComponent(query)}`);
-      }
+      if (isHelpCenter) navigate(`/tro-giup/tim-kiem?q=${encodeURIComponent(query)}`);
+      else navigate(`/?search=${encodeURIComponent(query)}`);
     }
   };
 
   const handleNotificationClick = () => {
     if (isAdmin) {
-      // 🚀 PRIORITY 1: Pending money requests (Admin Action)
-      if (withdrawalCount > 0) {
-        navigate('/admin/withdrawals');
-      } 
-      // 🚀 PRIORITY 2: Unread chats (Support Action)
-      else if (unreadCount > 0) {
-        navigate('/admin/chat');
-      } 
-      // 🚀 PRIORITY 3: Show the actual notification list (System Alerts)
-      else {
-        navigate('/user/notifications'); // Fixed: Don't just dump to Dashboard
-      }
+      if (withdrawalCount > 0) navigate('/admin/withdrawals');
+      else if (unreadCount > 0) navigate('/admin/chat');
+      else navigate('/user/notifications'); 
     } else {
       navigate('/user/notifications');
     }
@@ -178,21 +173,10 @@ const Header: React.FC = () => {
               </>
             )}
 
-              <div
-                className={`notification-wrapper ${totalAlerts > 0 ? 'active-alerts' : ''}`}
-                onClick={handleNotificationClick}
-                style={{ cursor: 'pointer' }}
-              >
-                <FaBell className={`nav-icon ${systemCount > 0 || (isAdmin && withdrawalCount > 0) ? 'pulse-animation' : ''}`} 
-                        style={{ color: (isAdmin && withdrawalCount > 0) ? '#ff4d4f' : 'inherit' }} />
-                <span className={`blue-link ${totalAlerts > 0 ? 'alert-red-text' : ''}`}>
-                  Thông báo
-                </span>
-                {totalAlerts > 0 && (
-                  <span className={`notification-badge ${systemCount > 0 || (isAdmin && withdrawalCount > 0) ? 'pulse' : ''}`}>
-                    {totalAlerts > 99 ? '99+' : totalAlerts}
-                  </span>
-                )}
+              <div className={`notification-wrapper ${totalAlerts > 0 ? 'active-alerts' : ''}`} onClick={handleNotificationClick} style={{ cursor: 'pointer' }}>
+                <FaBell className={`nav-icon ${systemCount > 0 || (isAdmin && withdrawalCount > 0) ? 'pulse-animation' : ''}`} style={{ color: (isAdmin && withdrawalCount > 0) ? '#ff4d4f' : 'inherit' }} />
+                <span className={`blue-link ${totalAlerts > 0 ? 'alert-red-text' : ''}`}>Thông báo</span>
+                {totalAlerts > 0 && <span className={`notification-badge ${systemCount > 0 || (isAdmin && withdrawalCount > 0) ? 'pulse' : ''}`}>{totalAlerts > 99 ? '99+' : totalAlerts}</span>}
               </div>
 
             <span>|</span>
@@ -202,21 +186,14 @@ const Header: React.FC = () => {
 
         <div className="action-bar">
           <form className="search-wrapper" onSubmit={handleSearch}>
-            <input 
-              type="text" 
-              name="search" 
-              placeholder={isHelpCenter ? "Tìm kiếm hướng dẫn, trợ giúp..." : "Bạn muốn tìm gì hôm nay?..."} 
-              autoComplete="off" 
-            />
-            <button type="submit" className="search-icon-btn">
-              <FaSearch />
-            </button>
+            <input type="text" name="search" placeholder={isHelpCenter ? "Tìm kiếm hướng dẫn, trợ giúp..." : "Bạn muốn tìm gì hôm nay?..."} autoComplete="off" />
+            <button type="submit" className="search-icon-btn"><FaSearch /></button>
           </form>
 
           <div className="user-actions">
             <div className="cart-wrapper" onClick={() => navigate('/cart')} style={{ cursor: 'pointer' }}>
               <FaShoppingCart className="cart-main-icon" />
-              {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
+              {cartCount > 0 && <span className="cart-badge">{cartCount > 99 ? '99+' : cartCount}</span>}
             </div>
 
             <a href="#" className="nav-text-bold blue-link share-corner">Góc Chia Sẻ</a>
@@ -229,22 +206,10 @@ const Header: React.FC = () => {
               </div>
             ) : (
               <div className="logged-in-controls">
-                <div
-                  className={`user-account-wrapper ${isGlobalAdmin ? 'is-global' : ''}`}
-                  onMouseEnter={() => setShowDropdown(true)}
-                  onMouseLeave={() => setShowDropdown(false)}
-                >
+                <div className={`user-account-wrapper ${isGlobalAdmin ? 'is-global' : ''}`} onMouseEnter={() => setShowDropdown(true)} onMouseLeave={() => setShowDropdown(false)}>
                   <div className="user-profile-trigger">
-                    <img
-                      src={userAvatar || avatarFallback}
-                      alt="User"
-                      className="user-avatar-small-header"
-                      onError={(e) => { (e.target as HTMLImageElement).src = avatarFallback; }}
-                    />
-                    <span className="user-name-text">
-                        {isGlobalAdmin && <FaCrown className="global-crown-icon" style={{color: '#FFD700', marginRight: '5px'}} />}
-                        {userName}
-                    </span>
+                    <img src={userAvatar || avatarFallback} alt="User" className="user-avatar-small-header" onError={(e) => { (e.target as HTMLImageElement).src = avatarFallback; }} />
+                    <span className="user-name-text">{isGlobalAdmin && <FaCrown className="global-crown-icon" style={{color: '#FFD700', marginRight: '5px'}} />}{userName}</span>
                     <FaChevronDown className={`chevron-icon ${showDropdown ? 'rotate' : ''}`} />
                   </div>
 
@@ -252,14 +217,11 @@ const Header: React.FC = () => {
                     <ul className="dropdown-menu">
                       {isAdmin && (
                         <>
-                          <li onClick={() => navigate('/admin/dashboard')} className="admin-menu-item">
-                            <FaUserShield /> {isGlobalAdmin ? 'Quản trị Hệ thống' : 'Tổng quan Admin'}
-                          </li>
+                          <li onClick={() => navigate('/admin/dashboard')} className="admin-menu-item"><FaUserShield /> {isGlobalAdmin ? 'Quản trị Hệ thống' : 'Tổng quan Admin'}</li>
                           <li onClick={() => navigate('/admin/chat')}>Quản lý Chat</li>
                           <hr className="dropdown-divider" />
                         </>
                       )}
-                      
                       <li onClick={() => navigate('/user/profile')}>Tài khoản của tôi</li>
                       <li onClick={() => navigate('/user/purchase')}>Đơn mua</li>
                       <li className="logout-item" onClick={handleLogout}>Đăng xuất</li>
@@ -267,9 +229,7 @@ const Header: React.FC = () => {
                   )}
                 </div>
 
-                {isSeller && (
-                  <a onClick={() => navigate('/post-ad')} className="nav-text-bold blue-link">Đăng Tin</a>
-                )}
+                {isSeller && <a onClick={() => navigate('/post-ad')} className="nav-text-bold blue-link">Đăng Tin</a>}
               </div>
             )}
           </div>
