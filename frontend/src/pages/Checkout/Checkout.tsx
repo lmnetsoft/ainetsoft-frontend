@@ -355,15 +355,25 @@ const Checkout = () => {
                           <div className="empty-vouchers">Bạn chưa có voucher nào.</div>
                       ) : (
                           savedVouchers.map(v => {
-                              const isValid = subtotal >= v.minOrderValue;
+                              // 🚀 LOGIC KIỂM TRA MỚI
+                              const isExhausted = v.usedCount >= v.usageLimit;
+                              const isExpired = new Date() > new Date(v.validUntil);
+                              const isSubtotalValid = subtotal >= v.minOrderValue;
+                              const isDisabled = !isSubtotalValid || isExhausted || isExpired;
+                              
                               const isSelected = selectedVouchers.some(sv => sv.id === v.id);
+
                               return (
-                                  <div key={v.id} className={`checkout-voucher-card ${!isValid ? 'disabled' : ''} ${isSelected ? 'selected' : ''}`} 
-                                       onClick={() => { if(isValid) handleToggleVoucher(v); }}>
+                                  <div key={v.id} 
+                                       className={`checkout-voucher-card ${isDisabled ? 'disabled' : ''} ${isSelected ? 'selected' : ''}`} 
+                                       onClick={() => { if(!isDisabled) handleToggleVoucher(v); }}
+                                       style={{ opacity: isDisabled ? 0.6 : 1, cursor: isDisabled ? 'not-allowed' : 'pointer' }}>
+                                      
                                       <div className="cv-left">
                                           <FaTicketAlt size={24} />
-                                          <span style={{fontSize: '11px', marginTop: '5px', textAlign: 'center'}}>{v.shopName}</span>
+                                          <span style={{fontSize: '11px', marginTop: '5px', textAlign: 'center'}}>{v.shopName || 'AiNetsoft'}</span>
                                       </div>
+                                      
                                       <div className="cv-right">
                                           <div className="cv-info">
                                               <h4>{v.title}</h4>
@@ -371,10 +381,18 @@ const Checkout = () => {
                                           </div>
                                           <div className="cv-action">
                                               {/* 🚀 Hiển thị dạng Checkbox */}
-                                              {isSelected ? <FaCheckSquare color="#ee4d2d" size={22}/> : <FaSquare color="#cbd5e1" size={22}/>}
+                                              {isSelected ? <FaCheckSquare color="#ee4d2d" size={22}/> : <FaSquare color={isDisabled ? "#e2e8f0" : "#cbd5e1"} size={22}/>}
                                           </div>
                                       </div>
-                                      {!isValid && <div className="cv-reason">Chưa đạt giá trị đơn tối thiểu</div>}
+                                      
+                                      {/* 🚀 Hiển thị lỗi rõ ràng */}
+                                      {isDisabled && (
+                                          <div className="cv-reason" style={{ color: '#ef4444', fontWeight: 'bold' }}>
+                                              {isExhausted ? 'Đã hết lượt sử dụng' 
+                                                  : isExpired ? 'Voucher đã hết hạn' 
+                                                  : 'Chưa đạt giá trị đơn tối thiểu'}
+                                          </div>
+                                      )}
                                   </div>
                               );
                           })

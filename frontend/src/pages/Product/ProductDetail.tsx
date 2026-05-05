@@ -480,8 +480,15 @@ const ProductDetail = () => {
     }
   };
 
-  if (loading) return <div className="detail-loading">Đang tải...</div>;
-  if (!product) return <div className="detail-error">Sản phẩm không tồn tại.</div>;
+  if (loading) {
+      return (
+        <div className="page-loading-container">
+          <div className="custom-spinner"></div>
+          <p>Đang tải dữ liệu...</p>
+        </div>
+      );
+    }
+    if (!product) return <div className="detail-error">Sản phẩm không tồn tại.</div>;
 
   const descriptionLines = (product.description || "").split('\n');
 

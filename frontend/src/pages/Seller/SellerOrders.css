@@ -48,25 +48,65 @@
 /* --- 3. HORIZONTAL TABS --- */
 .purchase-tabs-container {
     display: flex;
-    border-bottom: 1px solid #f1f5f9;
+    background-color: #ffffff;
+    width: 100%;
     margin-bottom: 25px;
+    border-bottom: 1px solid #e0e0e0; /* 🚀 The solid ground line */
 }
 
 .tab-item-seller {
     flex: 1;
-    padding: 15px 0;
     text-align: center;
+    padding: 16px 0; 
+    font-size: 15px;
+    color: #555; 
     cursor: pointer;
-    color: #64748b;
-    font-size: 0.95rem;
-    border-bottom: 3px solid transparent;
-    transition: 0.2s;
-    font-weight: 600;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px; /* 🚀 THE TRICK: Pulls the active border down to overlap the container's border */
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    font-weight: 500; 
+    position: relative; /* Needed for vertical dividers */
+}
+
+/* Subtle vertical dividers between tabs */
+.tab-item-seller:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 35%;
+    height: 30%;
+    width: 1px;
+    background-color: #f0f0f0;
+}
+
+.tab-item-seller:hover { 
+    color: #ee4d2d;
+    background-color: #fffaf9; /* Very soft orange background on hover */
 }
 
 .tab-item-seller.active {
-    color: #ee4d2d;
-    border-bottom-color: #ee4d2d;
+    color: #ee4d2d; 
+    border-bottom: 2px solid #ee4d2d;
+    font-weight: 600;
+}
+
+/* Kiểu dáng cho bộ đếm số lượng (Badge) bên trong Tab của Seller */
+.tab-item-seller .badge-count {
+    display: inline-block;
+    background-color: #f1f5f9;
+    color: #64748b;
+    border-radius: 10px;
+    padding: 2px 8px;
+    font-size: 12px;
+    margin-left: 6px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.tab-item-seller.active .badge-count {
+    background-color: #ee4d2d;
+    color: #ffffff;
 }
 
 /* --- 4. ORDER CARDS --- */

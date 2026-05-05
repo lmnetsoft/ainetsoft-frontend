@@ -114,22 +114,36 @@ public class OrderService {
 
         // XỬ LÝ VOUCHER XẾP CHỒNG (STACKING)
         if (orderRequest.getAppliedVoucherIds() != null && !orderRequest.getAppliedVoucherIds().isEmpty()) {
+            // 🚀 BƯỚC 1: Tải lịch sử đơn hàng của User để kiểm tra
+            List<Order> pastOrders = orderRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
+
             for (String voucherId : orderRequest.getAppliedVoucherIds()) {
                 Voucher voucher = voucherRepository.findById(voucherId)
                         .orElseThrow(() -> new RuntimeException("Voucher không tồn tại!"));
 
+                // Kiểm tra giới hạn Toàn cục (Global Limit)
                 if (!voucher.isActive() || 
                     LocalDateTime.now().isBefore(voucher.getValidFrom()) || 
                     LocalDateTime.now().isAfter(voucher.getValidUntil())) {
                     throw new RuntimeException("Voucher " + voucher.getCode() + " đã hết hạn hoặc không hợp lệ!");
                 }
                 if (voucher.getUsedCount() >= voucher.getUsageLimit()) {
-                    throw new RuntimeException("Voucher " + voucher.getCode() + " đã hết lượt sử dụng!");
+                    throw new RuntimeException("Voucher " + voucher.getCode() + " đã hết lượt sử dụng toàn sàn!");
                 }
                 if (baseTotalAmount < voucher.getMinOrderValue()) {
                     throw new RuntimeException("Đơn hàng chưa đạt giá trị tối thiểu để áp dụng Voucher " + voucher.getCode() + "!");
                 }
 
+                // 🚀 BƯỚC 2: Kiểm tra giới hạn Cá nhân (Per-User Limit)
+                boolean hasUsed = pastOrders.stream()
+                        .filter(o -> !"CANCELLED".equalsIgnoreCase(o.getStatus())) // Bỏ qua các đơn đã hủy
+                        .anyMatch(o -> o.getAppliedVoucherIds() != null && o.getAppliedVoucherIds().contains(voucherId));
+                
+                if (hasUsed) {
+                    throw new RuntimeException("Bạn đã sử dụng Voucher " + voucher.getCode() + " trước đó! Mỗi tài khoản chỉ được áp dụng 1 lần.");
+                }
+
+                // Tính toán tiền giảm giá
                 double currentDiscount = 0;
                 if ("PERCENTAGE".equals(voucher.getDiscountType())) {
                     currentDiscount = baseTotalAmount * (voucher.getDiscountValue() / 100.0);
@@ -147,8 +161,18 @@ public class OrderService {
                 finalTotalAmount -= currentDiscount;
                 voucherDiscount += currentDiscount;
 
+                // Tăng lượt dùng toàn cục
                 voucher.setUsedCount(voucher.getUsedCount() + 1);
                 voucherRepository.save(voucher);
+
+                // 🚀 BƯỚC 3: Xóa Voucher khỏi Kho (Wallet Cleanup)
+                walletRepository.findByUserId(user.getId()).ifPresent(wallet -> {
+                    if (wallet.getSavedVoucherIds() != null && wallet.getSavedVoucherIds().contains(voucherId)) {
+                        wallet.getSavedVoucherIds().remove(voucherId);
+                        wallet.setUpdatedAt(LocalDateTime.now());
+                        walletRepository.save(wallet);
+                    }
+                });
             }
         }
 
@@ -318,9 +342,6 @@ public class OrderService {
 
         // Bơm Xu vào ví khi đơn hàng hoàn thành
         if ("COMPLETED".equals(newStatus.toUpperCase()) && !"COMPLETED".equals(oldStatus)) {
-            // 🚀 ĐÃ FIX: Ép trạng thái đơn vị vận chuyển thành Đã giao thành công
-            order.setCarrierStatus("DELIVERED");
-
             double rate = platformConfigRepository.findAll().stream().findFirst()
                             .map(PlatformConfig::getCashbackRate).orElse(0.01);
             
@@ -355,10 +376,8 @@ public class OrderService {
         return saved;
     }
 
-    // 🚀 HÀM MỚI: XỬ LÝ WEBHOOK TỪ ĐƠN VỊ VẬN CHUYỂN
     @Transactional
     public void processShippingWebhook(String trackingCode, String carrierStatus, String note) {
-        // Tìm đơn hàng qua trackingCode
         Order order = orderRepository.findAll().stream()
                 .filter(o -> trackingCode.equals(o.getTrackingCode()))
                 .findFirst()
@@ -368,7 +387,6 @@ public class OrderService {
         order.setUpdatedAt(LocalDateTime.now());
         orderRepository.save(order);
 
-        // Bắn thông báo "Ting Ting" cập nhật hành trình cho User
         String message = "Kiện hàng " + trackingCode + " đang được cập nhật: " + carrierStatus;
         
         if ("DELIVERED".equalsIgnoreCase(carrierStatus)) {
@@ -419,8 +437,17 @@ public class OrderService {
             for (String vid : order.getAppliedVoucherIds()) {
                 voucherRepository.findById(vid).ifPresent(v -> {
                     if (v.getUsedCount() > 0) {
-                        v.setUsedCount(v.getUsedCount() - 1);
+                        v.setUsedCount(v.getUsedCount() - 1); // Trả lại lượt cho hệ thống
                         voucherRepository.save(v);
+                    }
+                });
+                
+                // 🚀 BƯỚC 4: Trả lại Voucher vào Wallet khi user Hủy Đơn
+                walletRepository.findByUserId(userId).ifPresent(wallet -> {
+                    if (wallet.getSavedVoucherIds() != null && !wallet.getSavedVoucherIds().contains(vid)) {
+                        wallet.getSavedVoucherIds().add(vid);
+                        wallet.setUpdatedAt(LocalDateTime.now());
+                        walletRepository.save(wallet);
                     }
                 });
             }
