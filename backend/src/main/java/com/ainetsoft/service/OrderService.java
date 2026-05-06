@@ -114,7 +114,6 @@ public class OrderService {
 
         // XỬ LÝ VOUCHER XẾP CHỒNG (STACKING)
         if (orderRequest.getAppliedVoucherIds() != null && !orderRequest.getAppliedVoucherIds().isEmpty()) {
-            // 🚀 BƯỚC 1: Tải lịch sử đơn hàng của User để kiểm tra
             List<Order> pastOrders = orderRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
 
             for (String voucherId : orderRequest.getAppliedVoucherIds()) {
@@ -134,9 +133,9 @@ public class OrderService {
                     throw new RuntimeException("Đơn hàng chưa đạt giá trị tối thiểu để áp dụng Voucher " + voucher.getCode() + "!");
                 }
 
-                // 🚀 BƯỚC 2: Kiểm tra giới hạn Cá nhân (Per-User Limit)
+                // Kiểm tra giới hạn Cá nhân (Per-User Limit)
                 boolean hasUsed = pastOrders.stream()
-                        .filter(o -> !"CANCELLED".equalsIgnoreCase(o.getStatus())) // Bỏ qua các đơn đã hủy
+                        .filter(o -> !"CANCELLED".equalsIgnoreCase(o.getStatus())) 
                         .anyMatch(o -> o.getAppliedVoucherIds() != null && o.getAppliedVoucherIds().contains(voucherId));
                 
                 if (hasUsed) {
@@ -165,7 +164,7 @@ public class OrderService {
                 voucher.setUsedCount(voucher.getUsedCount() + 1);
                 voucherRepository.save(voucher);
 
-                // 🚀 BƯỚC 3: Xóa Voucher khỏi Kho (Wallet Cleanup)
+                // Xóa Voucher khỏi Kho (Wallet Cleanup)
                 walletRepository.findByUserId(user.getId()).ifPresent(wallet -> {
                     if (wallet.getSavedVoucherIds() != null && wallet.getSavedVoucherIds().contains(voucherId)) {
                         wallet.getSavedVoucherIds().remove(voucherId);
@@ -209,6 +208,7 @@ public class OrderService {
         orderRequest.setFinalTotalAmount(finalTotalAmount);
         
         orderRequest.setStatus("PENDING");
+        orderRequest.setReturnStatus("NONE"); // Trạng thái hoàn tiền mặc định
         orderRequest.setCreatedAt(LocalDateTime.now());
         orderRequest.setUpdatedAt(LocalDateTime.now());
 
@@ -301,6 +301,7 @@ public class OrderService {
                 .shippingAddress(shippingAddr)
                 .paymentMethod(paymentMethod)
                 .status("PENDING")
+                .returnStatus("NONE")
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -327,11 +328,16 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Đơn hàng không tồn tại!"));
 
+        // 🚀 CHẶN: Không cho phép đổi trạng thái thông thường nếu đang tranh chấp trả hàng
+        if ("RETURNING".equals(order.getStatus())) {
+            throw new RuntimeException("Đơn hàng đang trong quá trình tranh chấp/trả hàng, không thể thay đổi trạng thái lúc này!");
+        }
+
         String oldStatus = order.getStatus() != null ? order.getStatus().toUpperCase() : "";
         order.setStatus(newStatus.toUpperCase());
         order.setUpdatedAt(LocalDateTime.now());
         
-        // 🚀 MOCK API: TỰ ĐỘNG SINH MÃ VẬN ĐƠN KHI ĐƠN HÀNG ĐƯỢC GIAO
+        // MOCK API: TỰ ĐỘNG SINH MÃ VẬN ĐƠN KHI ĐƠN HÀNG ĐƯỢC GIAO
         if ("SHIPPING".equals(newStatus.toUpperCase()) && !"SHIPPING".equals(oldStatus)) {
             String trackingCode = "GHN-" + java.util.UUID.randomUUID().toString().substring(0, 10).toUpperCase();
             order.setTrackingCode(trackingCode);
@@ -385,23 +391,122 @@ public class OrderService {
 
         order.setCarrierStatus(carrierStatus.toUpperCase());
         order.setUpdatedAt(LocalDateTime.now());
-        orderRepository.save(order);
-
+        
         String message = "Kiện hàng " + trackingCode + " đang được cập nhật: " + carrierStatus;
         
+        // 🚀 BẬT ĐỒNG HỒ ĐẾM NGƯỢC 3 NGÀY KHI GIAO THÀNH CÔNG
         if ("DELIVERED".equalsIgnoreCase(carrierStatus)) {
-            message = "🎉 Gói hàng của bạn đã được giao thành công. Vui lòng vào app kiểm tra và bấm 'Đã nhận được hàng' nhé!";
+            order.setReturnDeadline(LocalDateTime.now().plusDays(3)); 
+            message = "🎉 Gói hàng đã giao thành công. Bạn có 3 ngày để kiểm tra và Yêu cầu Trả hàng nếu có lỗi!";
         } else if ("IN_TRANSIT".equalsIgnoreCase(carrierStatus)) {
             message = "🚚 Gói hàng của bạn đang trên đường vận chuyển tới kho đích.";
         }
         
-        notificationService.createNotification(
-            order.getUserId(), 
-            "Cập nhật Vận chuyển 📦", 
-            message, 
-            "SHIPPING", 
-            order.getId()
-        );
+        orderRepository.save(order);
+        notificationService.createNotification(order.getUserId(), "Cập nhật Vận chuyển 📦", message, "SHIPPING", order.getId());
+    }
+
+    // ==========================================
+    // 🚀 TÍNH NĂNG: NGƯỜI MUA YÊU CẦU TRẢ HÀNG
+    // ==========================================
+    @Transactional
+    public Order requestReturn(String orderId, String userId, String reason, String description, List<String> images) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Đơn hàng không tồn tại!"));
+
+        if (!order.getUserId().equals(userId)) {
+            throw new RuntimeException("Bạn không có quyền thực hiện thao tác này!");
+        }
+
+        if ("COMPLETED".equals(order.getStatus()) || "CANCELLED".equals(order.getStatus())) {
+            throw new RuntimeException("Đơn hàng đã hoàn tất hoặc đã hủy, không thể yêu cầu trả hàng.");
+        }
+
+        if (order.getReturnDeadline() != null && LocalDateTime.now().isAfter(order.getReturnDeadline())) {
+            throw new RuntimeException("Đã quá hạn 3 ngày để yêu cầu trả hàng/hoàn tiền theo quy định.");
+        }
+
+        // Đóng băng đơn hàng
+        order.setStatus("RETURNING"); 
+        order.setReturnStatus("REQUESTED");
+        order.setReturnReason(reason);
+        order.setReturnDescription(description);
+        order.setReturnImages(images != null ? images : new ArrayList<>());
+        order.setUpdatedAt(LocalDateTime.now());
+        
+        // Báo cho Seller
+        notificationService.createNotification(order.getItems().get(0).getSellerId(), "⚠️ Yêu cầu trả hàng", "Người mua vừa yêu cầu hoàn tiền cho đơn " + orderId, "RETURN", orderId);
+        
+        return orderRepository.save(order);
+    }
+
+    // ==========================================
+    // 🚀 TÍNH NĂNG: NGƯỜI BÁN XỬ LÝ TRẢ HÀNG (HOÀN TIỀN & XU & VOUCHER)
+    // ==========================================
+    @Transactional
+    public Order processReturn(String orderId, String sellerId, boolean isApproved) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Đơn hàng không tồn tại!"));
+        
+        if (sellerId != null && !order.getItems().get(0).getSellerId().equals(sellerId)) {
+            throw new RuntimeException("Bạn không có quyền xử lý đơn này!");
+        }
+        
+        if (!"REQUESTED".equals(order.getReturnStatus())) {
+            throw new RuntimeException("Đơn hàng không ở trạng thái yêu cầu trả hàng.");
+        }
+
+        if (isApproved) {
+            order.setStatus("RETURNED"); // Hoàn tất quy trình trả
+            order.setReturnStatus("APPROVED");
+            
+            // 1. Nhập lại kho sản phẩm
+            for (OrderItem item : order.getItems()) {
+                productRepository.findById(item.getProductId()).ifPresent(p -> {
+                    p.setStock(p.getStock() + item.getQuantity());
+                    productRepository.save(p);
+                });
+            }
+            
+            // 2. Hoàn lại AiNetsoft Xu cho người mua
+            if (order.getUsedCoins() > 0) {
+                 walletRepository.findByUserId(order.getUserId()).ifPresent(wallet -> {
+                     wallet.setCoinBalance(wallet.getCoinBalance() + order.getUsedCoins());
+                     wallet.setUpdatedAt(LocalDateTime.now());
+                     walletRepository.save(wallet);
+                 });
+            }
+            
+            // 3. Hoàn lại Voucher vào ví người mua
+            if (order.getAppliedVoucherIds() != null && !order.getAppliedVoucherIds().isEmpty()) {
+                for (String vid : order.getAppliedVoucherIds()) {
+                    voucherRepository.findById(vid).ifPresent(v -> {
+                        if (v.getUsedCount() > 0) {
+                            v.setUsedCount(v.getUsedCount() - 1); // Giảm lượt sử dụng hệ thống
+                            voucherRepository.save(v);
+                        }
+                    });
+                    
+                    walletRepository.findByUserId(order.getUserId()).ifPresent(wallet -> {
+                        if (wallet.getSavedVoucherIds() != null && !wallet.getSavedVoucherIds().contains(vid)) {
+                            wallet.getSavedVoucherIds().add(vid); // Nhét lại vào kho Voucher
+                            wallet.setUpdatedAt(LocalDateTime.now());
+                            walletRepository.save(wallet);
+                        }
+                    });
+                }
+            }
+            
+            notificationService.createNotification(order.getUserId(), "✅ Trả hàng thành công", "Người bán đã chấp nhận hoàn tiền cho đơn " + orderId, "RETURN", orderId);
+        } else {
+            // Nếu người bán TỪ CHỐI -> Ép đơn hàng hoàn thành
+            order.setStatus("COMPLETED"); 
+            order.setReturnStatus("REJECTED");
+            notificationService.createNotification(order.getUserId(), "❌ Trả hàng bị từ chối", "Người bán đã từ chối yêu cầu trả hàng của đơn " + orderId, "RETURN", orderId);
+        }
+        
+        order.setUpdatedAt(LocalDateTime.now());
+        return orderRepository.save(order);
     }
 
     @Transactional
@@ -442,7 +547,6 @@ public class OrderService {
                     }
                 });
                 
-                // 🚀 BƯỚC 4: Trả lại Voucher vào Wallet khi user Hủy Đơn
                 walletRepository.findByUserId(userId).ifPresent(wallet -> {
                     if (wallet.getSavedVoucherIds() != null && !wallet.getSavedVoucherIds().contains(vid)) {
                         wallet.getSavedVoucherIds().add(vid);

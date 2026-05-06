@@ -191,4 +191,47 @@ public class OrderController {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
+
+    // ==========================================
+    // 🚀 NEW API: NGƯỜI MUA YÊU CẦU TRẢ HÀNG
+    // ==========================================
+    @PostMapping("/{orderId}/return")
+    public ResponseEntity<?> requestReturn(
+            @PathVariable String orderId,
+            @RequestBody Map<String, Object> payload,
+            Principal principal) {
+        User user = getAuthenticatedUser(principal);
+        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
+        try {
+            String reason = (String) payload.get("reason");
+            String description = (String) payload.get("description");
+            List<String> images = (List<String>) payload.get("images");
+
+            Order updatedOrder = orderService.requestReturn(orderId, user.getId(), reason, description, images);
+            return ResponseEntity.ok(Map.of("message", "Đã gửi yêu cầu trả hàng thành công", "order", updatedOrder));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    // ==========================================
+    // 🚀 NEW API: NGƯỜI BÁN DUYỆT TRẢ HÀNG
+    // ==========================================
+    @PutMapping("/seller/{orderId}/return-process")
+    public ResponseEntity<?> processReturn(
+            @PathVariable String orderId,
+            @RequestBody Map<String, Object> payload,
+            Principal principal) {
+        User seller = getAuthenticatedUser(principal);
+        if (!hasRole(seller, "SELLER")) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+
+        try {
+            boolean isApproved = (boolean) payload.get("isApproved");
+            Order updatedOrder = orderService.processReturn(orderId, seller.getId(), isApproved);
+            return ResponseEntity.ok(Map.of("message", "Đã xử lý yêu cầu trả hàng", "order", updatedOrder));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
 }

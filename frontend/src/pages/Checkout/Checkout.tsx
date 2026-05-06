@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaMapMarkerAlt, FaRegCreditCard, FaMoneyBillWave, FaUniversity, FaTicketAlt, FaCoins, FaTimes, FaCheckSquare, FaSquare } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaRegCreditCard, FaMoneyBillWave, FaUniversity, FaTicketAlt, FaCoins, FaTimes, FaCheckSquare, FaSquare, FaQuestionCircle } from 'react-icons/fa';
 import { getUserProfile } from '../../services/authService';
 import { placeOrder } from '../../services/orderService'; 
 import api from '../../services/api'; 
@@ -20,14 +20,17 @@ const Checkout = () => {
   const [paymentMethod, setPaymentMethod] = useState('COD');
   const [userBank, setUserBank] = useState<any>(null);
 
-  // 🚀 MARKETING ENGINE STATES
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [savedVouchers, setSavedVouchers] = useState<any[]>([]);
   
-  // 🚀 BẢN VÁ: Đổi từ 1 Voucher sang Mảng Voucher (Tối đa 3 mã)
   const [selectedVouchers, setSelectedVouchers] = useState<any[]>([]);
   const [showVoucherModal, setShowVoucherModal] = useState(false);
   const [useCoins, setUseCoins] = useState(false);
+
+  const [voucherCodeInput, setVoucherCodeInput] = useState('');
+  const [isApplyingCode, setIsApplyingCode] = useState(false);
+  
+  const [showVoucherHelp, setShowVoucherHelp] = useState(false);
 
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -81,7 +84,6 @@ const Checkout = () => {
     document.title = "Thanh toán | AiNetsoft";
   }, [navigate]);
 
-  // 🚀 TÍNH TOÁN STACKING VOUCHER (Tính tổng tiền giảm từ nhiều mã)
   const subtotal = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   const shippingFee = 30000; 
 
@@ -101,21 +103,18 @@ const Checkout = () => {
       }
   });
 
-  // Chống âm tiền
   if (voucherDiscount > subtotal) voucherDiscount = subtotal;
 
   let totalAfterVoucher = subtotal + shippingFee - voucherDiscount;
 
-  // 🚀 TÍNH TOÁN XU (Áp dụng trần 50% theo chuẩn Shopee)
   let coinDiscount = 0;
   if (useCoins && walletBalance > 0) {
-      const maxCoinUsage = totalAfterVoucher * 0.5; // Tối đa 50% giá trị còn lại
+      const maxCoinUsage = totalAfterVoucher * 0.5; 
       coinDiscount = Math.min(walletBalance, maxCoinUsage);
   }
 
   const finalTotal = totalAfterVoucher - coinDiscount;
 
-  // 🚀 HÀM TOGGLE VOUCHER: Cho phép chọn/bỏ chọn tối đa 3 mã
   const handleToggleVoucher = (voucher: any) => {
       const isSelected = selectedVouchers.some(v => v.id === voucher.id);
       if (isSelected) {
@@ -128,6 +127,33 @@ const Checkout = () => {
           }
           setSelectedVouchers([...selectedVouchers, voucher]);
       }
+  };
+
+  const handleApplyVoucherCode = async () => {
+    if (!voucherCodeInput.trim()) return;
+    try {
+        setIsApplyingCode(true);
+        const res = await api.get(`/vouchers/code/${voucherCodeInput.trim().toUpperCase()}`);
+        const fetchedVoucher = res.data;
+
+        const alreadySaved = savedVouchers.some(v => v.id === fetchedVoucher.id);
+        
+        if (alreadySaved) {
+            setToastMessage("Mã voucher này đã có sẵn trong danh sách của bạn!");
+            setShowToast(true);
+        } else {
+            await api.post(`/wallets/me/vouchers/${fetchedVoucher.id}`);
+            setSavedVouchers(prev => [fetchedVoucher, ...prev]);
+            setToastMessage("Áp dụng mã Voucher thành công!");
+            setShowToast(true);
+            setVoucherCodeInput(''); 
+        }
+    } catch (err: any) {
+        setToastMessage(err.response?.data?.message || "Mã Voucher không hợp lệ hoặc đã hết hạn!");
+        setShowToast(true);
+    } finally {
+        setIsApplyingCode(false);
+    }
   };
 
   const handlePlaceOrder = async () => {
@@ -150,7 +176,6 @@ const Checkout = () => {
         paymentMethod: paymentMethod,
         shippingAddress: selectedAddress,
         totalAmount: subtotal, 
-        // 🚀 BẢN VÁ: Truyền lên Mảng ID Voucher
         appliedVoucherIds: selectedVouchers.map(v => v.id), 
         usedCoins: Math.floor(coinDiscount)
       };
@@ -182,7 +207,6 @@ const Checkout = () => {
 
       <div className="container checkout-container">
         
-        {/* ADDRESS SECTION */}
         <div className="checkout-section address-section">
           <div className="section-header">
             <FaMapMarkerAlt className="icon-orange" />
@@ -203,7 +227,6 @@ const Checkout = () => {
           )}
         </div>
 
-        {/* PRODUCT LIST */}
         <div className="checkout-section product-list-section">
           <div className="product-header-grid">
             <div className="col-prod">Sản phẩm</div>
@@ -228,7 +251,6 @@ const Checkout = () => {
           ))}
         </div>
 
-        {/* 🚀 MARKETING ENGINE: VOUCHER & COINS */}
         <div className="checkout-section marketing-section">
             <div className="marketing-row">
                 <div className="marketing-left">
@@ -236,7 +258,6 @@ const Checkout = () => {
                     <span>AiNetsoft Voucher</span>
                 </div>
                 <div className="marketing-right">
-                    {/* Hiển thị danh sách các mã đang chọn */}
                     <div className="applied-vouchers-container">
                         {selectedVouchers.map(v => (
                             <span key={v.id} className="applied-voucher-tag">
@@ -278,7 +299,6 @@ const Checkout = () => {
             </div>
         </div>
 
-        {/* PAYMENT & SUMMARY */}
         <div className="checkout-bottom-grid">
           <div className="checkout-section payment-method">
             <h3>Phương thức thanh toán</h3>
@@ -342,20 +362,64 @@ const Checkout = () => {
         </div>
       </div>
 
-      {/* 🚀 MODAL CHỌN VOUCHER (ĐA LỰA CHỌN) */}
       {showVoucherModal && (
           <div className="voucher-modal-overlay">
               <div className="voucher-modal">
+                  
                   <div className="modal-header">
                       <h3>Chọn AiNetsoft Voucher</h3>
-                      <button onClick={() => setShowVoucherModal(false)}><FaTimes /></button>
+                      <div className="modal-header-actions">
+                          <div 
+                              className="help-tooltip-container"
+                              onMouseEnter={() => setShowVoucherHelp(true)}
+                              onMouseLeave={() => setShowVoucherHelp(false)}
+                              onClick={() => setShowVoucherHelp(!showVoucherHelp)}
+                          >
+                              <span className="help-text">Hỗ Trợ <FaQuestionCircle size={14}/></span>
+                              
+                              {/* 🚀 NỘI DUNG HỖ TRỢ ĐÃ ĐƯỢC TỔNG HỢP VÀ KHÔI PHỤC */}
+                                  {showVoucherHelp && (
+                                  <div className="help-tooltip-content">
+                                      <h4>Cách Lưu/Sưu Tầm Voucher</h4>
+                                      <p>Để các thẻ tự động xuất hiện tại đây, bạn hãy nhớ bấm nút <strong>"Lưu"</strong> khi nhìn thấy chúng trên trang Chủ hoặc trang Chi tiết sản phẩm nhé.</p>
+                                      
+                                      <h4>Cách "Săn" Mã Khuyến Mãi Mới</h4>
+                                      <p>Nếu bạn có một mã bí mật, hãy nhập ngay vào ô <strong>"Mã Voucher"</strong> và bấm <strong>"ÁP DỤNG"</strong>. Hệ thống sẽ lưu thẳng thẻ Voucher đó vào danh sách bên dưới cho bạn.</p>
+                                      
+                                      <h4>Cách "Chốt Mã" Cho Đơn Hàng Này</h4>
+                                      <p>Hãy đánh dấu tick (✅) vào các thẻ Voucher bạn muốn sử dụng (tối đa 3 mã). Sau đó bấm nút <strong>XÁC NHẬN</strong> màu cam ở dưới cùng để chốt mã và trừ thẳng vào tổng tiền thanh toán!</p>
+                                      
+                                      <h4>Mẹo Tối Ưu Chi Phí</h4>
+                                      <p>Bạn hoàn toàn có thể kết hợp nhiều loại mã cùng lúc (Ví dụ: Mã Miễn phí vận chuyển + Mã Giảm giá của Shop) để mua được hàng với giá rẻ nhất nhé.</p>
+                                  </div>
+                              )}
+                          </div>
+                          <button className="close-modal-btn" onClick={() => setShowVoucherModal(false)}><FaTimes /></button>
+                      </div>
                   </div>
+                  
+                  <div className="voucher-search-box">
+                      <span className="vs-label">Mã Voucher</span>
+                      <input 
+                          type="text" 
+                          placeholder="Mã AiNetsoft Voucher" 
+                          value={voucherCodeInput}
+                          onChange={e => setVoucherCodeInput(e.target.value)}
+                      />
+                      <button 
+                          className={`vs-apply-btn ${voucherCodeInput.trim() ? 'active' : ''}`}
+                          onClick={handleApplyVoucherCode}
+                          disabled={!voucherCodeInput.trim() || isApplyingCode}
+                      >
+                          {isApplyingCode ? 'ĐANG XỬ LÝ...' : 'ÁP DỤNG'}
+                      </button>
+                  </div>
+
                   <div className="modal-body">
                       {savedVouchers.length === 0 ? (
-                          <div className="empty-vouchers">Bạn chưa có voucher nào.</div>
+                          <div className="empty-vouchers" style={{ textAlign: 'center', padding: '40px 0', color: '#999' }}>Bạn chưa có voucher nào.</div>
                       ) : (
                           savedVouchers.map(v => {
-                              // 🚀 LOGIC KIỂM TRA MỚI
                               const isExhausted = v.usedCount >= v.usageLimit;
                               const isExpired = new Date() > new Date(v.validUntil);
                               const isSubtotalValid = subtotal >= v.minOrderValue;
@@ -366,12 +430,11 @@ const Checkout = () => {
                               return (
                                   <div key={v.id} 
                                        className={`checkout-voucher-card ${isDisabled ? 'disabled' : ''} ${isSelected ? 'selected' : ''}`} 
-                                       onClick={() => { if(!isDisabled) handleToggleVoucher(v); }}
-                                       style={{ opacity: isDisabled ? 0.6 : 1, cursor: isDisabled ? 'not-allowed' : 'pointer' }}>
+                                       onClick={() => { if(!isDisabled) handleToggleVoucher(v); }}>
                                       
                                       <div className="cv-left">
                                           <FaTicketAlt size={24} />
-                                          <span style={{fontSize: '11px', marginTop: '5px', textAlign: 'center'}}>{v.shopName || 'AiNetsoft'}</span>
+                                          <span style={{fontSize: '11px', marginTop: '5px', textAlign: 'center', fontWeight: 500}}>{v.shopName || 'AiNetsoft'}</span>
                                       </div>
                                       
                                       <div className="cv-right">
@@ -380,14 +443,12 @@ const Checkout = () => {
                                               <p>Đơn tối thiểu ₫{v.minOrderValue.toLocaleString()}</p>
                                           </div>
                                           <div className="cv-action">
-                                              {/* 🚀 Hiển thị dạng Checkbox */}
                                               {isSelected ? <FaCheckSquare color="#ee4d2d" size={22}/> : <FaSquare color={isDisabled ? "#e2e8f0" : "#cbd5e1"} size={22}/>}
                                           </div>
                                       </div>
                                       
-                                      {/* 🚀 Hiển thị lỗi rõ ràng */}
                                       {isDisabled && (
-                                          <div className="cv-reason" style={{ color: '#ef4444', fontWeight: 'bold' }}>
+                                          <div className="cv-reason">
                                               {isExhausted ? 'Đã hết lượt sử dụng' 
                                                   : isExpired ? 'Voucher đã hết hạn' 
                                                   : 'Chưa đạt giá trị đơn tối thiểu'}
@@ -399,7 +460,7 @@ const Checkout = () => {
                       )}
                   </div>
                   <div className="modal-footer">
-                      <span style={{marginRight: 'auto', alignSelf: 'center', fontSize: '13px', color: '#64748b'}}>Đã chọn {selectedVouchers.length}/3</span>
+                      <span style={{marginRight: 'auto', alignSelf: 'center', fontSize: '13px', color: 'rgba(0,0,0,0.54)'}}>Đã chọn {selectedVouchers.length}/3</span>
                       <button className="btn-cancel" onClick={() => setShowVoucherModal(false)}>TRỞ LẠI</button>
                       <button className="btn-confirm" onClick={() => setShowVoucherModal(false)}>XÁC NHẬN</button>
                   </div>

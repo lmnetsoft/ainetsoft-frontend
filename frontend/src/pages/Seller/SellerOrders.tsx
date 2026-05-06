@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaBox, FaUser, FaPhoneAlt, FaClipboardList, FaTimes } from 'react-icons/fa';
+import { FaBox, FaUser, FaPhoneAlt, FaClipboardList, FaTimes, FaExclamationTriangle, FaCheck, FaBan } from 'react-icons/fa';
 import api from '../../services/api'; 
+import { processReturnOrder } from '../../services/orderService';
 import ToastNotification from '../../components/Toast/ToastNotification';
 import './SellerOrders.css';
 
@@ -20,14 +21,15 @@ const SellerOrders = () => {
 
   // 🚀 TÍNH NĂNG MỚI: State lưu trữ số lượng đơn hàng của từng Tab
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({
-    PENDING: 0, SHIPPING: 0, COMPLETED: 0, CANCELLED: 0
+    PENDING: 0, SHIPPING: 0, COMPLETED: 0, CANCELLED: 0, RETURNING: 0
   });
 
   const tabs = [
     { id: 'PENDING', label: 'Chờ xác nhận' },
     { id: 'SHIPPING', label: 'Đang giao' },
     { id: 'COMPLETED', label: 'Hoàn thành' },
-    { id: 'CANCELLED', label: 'Đã hủy' }
+    { id: 'CANCELLED', label: 'Đã hủy' },
+    { id: 'RETURNING', label: 'Trả hàng/Hoàn tiền' } // 🚀 Tab Mới
   ];
 
   useEffect(() => {
@@ -39,8 +41,12 @@ const SellerOrders = () => {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const res = await api.get(`/orders/seller?status=${activeTab}`);
-      setOrders(res.data);
+      const res = await api.get(`/orders/seller?status=${activeTab === 'RETURNING' ? 'ALL' : activeTab}`);
+      let filtered = res.data;
+      if (activeTab === 'RETURNING') {
+          filtered = res.data.filter((o: any) => o.status === 'RETURNING' || o.status === 'RETURNED');
+      }
+      setOrders(filtered);
     } catch (err: any) {
       let message = "Không thể kết nối đến máy chủ.";
 
@@ -63,7 +69,7 @@ const SellerOrders = () => {
   // 🚀 TÍNH NĂNG MỚI: Hàm chạy ngầm đếm số lượng tất cả các Tab
   const fetchTabCounts = async () => {
     try {
-      const statuses = ['PENDING', 'SHIPPING', 'COMPLETED', 'CANCELLED'];
+      const statuses = ['PENDING', 'SHIPPING', 'COMPLETED', 'CANCELLED', 'RETURNING'];
       // Gọi API song song cho tất cả các trạng thái để lấy độ dài (số lượng)
       const promises = statuses.map(status => api.get(`/orders/seller?status=${status}`));
       const results = await Promise.all(promises);
@@ -90,6 +96,22 @@ const SellerOrders = () => {
       setToastMessage(errMsg);
       setShowToast(true);
     }
+  };
+
+  // 🚀 XỬ LÝ DUYỆT TRẢ HÀNG
+  const handleProcessReturn = async (orderId: string, isApproved: boolean) => {
+      if(!window.confirm(`Bạn có chắc muốn ${isApproved ? 'CHẤP NHẬN hoàn tiền' : 'TỪ CHỐI trả hàng'} cho đơn này?`)) return;
+      try {
+          await processReturnOrder(orderId, isApproved);
+          setToastMessage(isApproved ? "Đã chấp nhận hoàn tiền thành công!" : "Đã từ chối trả hàng.");
+          setShowToast(true);
+          fetchOrders();
+          fetchTabCounts();
+          setSelectedOrder(null);
+      } catch (err: any) {
+          setToastMessage(err.message);
+          setShowToast(true);
+      }
   };
 
   const formatMediaUrl = (media: any) => {
@@ -125,6 +147,23 @@ const SellerOrders = () => {
             </div>
             
             <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: '5px' }}>
+              
+              {/* 🚀 HIỂN THỊ BẰNG CHỨNG TRẢ HÀNG NẾU CÓ */}
+              {(selectedOrder.status === 'RETURNING' || selectedOrder.status === 'RETURNED') && (
+                  <div style={{ marginBottom: '20px', background: '#fff1f0', padding: '15px', borderRadius: '8px', border: '1px solid #ffccc7' }}>
+                      <h4 style={{ margin: '0 0 10px 0', color: '#cf1322', display: 'flex', alignItems: 'center', gap: '8px' }}><FaExclamationTriangle/> Thông tin khiếu nại / Trả hàng</h4>
+                      <p style={{ margin: '5px 0', fontSize: '14px' }}><strong>Lý do:</strong> {selectedOrder.returnReason}</p>
+                      <p style={{ margin: '5px 0', fontSize: '14px', whiteSpace: 'pre-wrap' }}><strong>Mô tả:</strong> {selectedOrder.returnDescription}</p>
+                      {selectedOrder.returnImages && selectedOrder.returnImages.length > 0 && (
+                          <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
+                              {selectedOrder.returnImages.map((img: string, i: number) => (
+                                  <img key={i} src={formatMediaUrl(img)} alt="Bằng chứng" style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #ffa39e' }}/>
+                              ))}
+                          </div>
+                      )}
+                  </div>
+              )}
+
               <div style={{ marginBottom: '20px', background: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                 <h4 style={{ margin: '0 0 10px 0', fontSize: '15px', color: '#334155' }}>Thông tin giao hàng</h4>
                 <p style={{ margin: '5px 0', fontSize: '14px', color: '#475569' }}><strong>Người nhận:</strong> {selectedOrder.shippingAddress?.receiverName}</p>
@@ -153,13 +192,20 @@ const SellerOrders = () => {
                 ))}
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff5f5', padding: '15px', borderRadius: '8px', border: '1px solid #fed7d7' }}>
-                <strong style={{ fontSize: '15px', color: '#1e293b' }}>Tổng thu (Khách đã trả):</strong>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: selectedOrder.status === 'RETURNED' ? '#fff1f0' : '#fff5f5', padding: '15px', borderRadius: '8px', border: '1px solid #fed7d7' }}>
+                <strong style={{ fontSize: '15px', color: '#1e293b' }}>{selectedOrder.status === 'RETURNED' ? 'Số tiền đã hoàn trả:' : 'Tổng thu (Khách đã trả):'}</strong>
                 <strong style={{ fontSize: '18px', color: '#ee4d2d' }}>₫{selectedOrder.totalAmount?.toLocaleString()}</strong>
               </div>
             </div>
             
-            <div className="modal-footer" style={{ marginTop: '20px', textAlign: 'right', borderTop: '1px solid #e2e8f0', paddingTop: '15px' }}>
+            <div className="modal-footer" style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px', borderTop: '1px solid #e2e8f0', paddingTop: '15px' }}>
+               {/* 🚀 NÚT CHẤP NHẬN / TỪ CHỐI (Chỉ hiện khi đang Yêu cầu) */}
+               {selectedOrder.status === 'RETURNING' && (
+                   <>
+                       <button onClick={() => handleProcessReturn(selectedOrder.id, false)} style={{ padding: '10px 20px', background: '#fff', border: '1px solid #d9d9d9', borderRadius: '4px', cursor: 'pointer', fontWeight: '600', color: '#cf1322', display: 'flex', alignItems: 'center', gap: '5px', transition: 'background 0.2s' }}><FaBan/> Từ chối</button>
+                       <button onClick={() => handleProcessReturn(selectedOrder.id, true)} style={{ padding: '10px 20px', background: '#ee4d2d', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '600', color: '#fff', display: 'flex', alignItems: 'center', gap: '5px', transition: 'background 0.2s' }}><FaCheck/> Chấp nhận hoàn tiền</button>
+                   </>
+               )}
                <button onClick={() => setSelectedOrder(null)} style={{ padding: '10px 24px', background: '#f1f5f9', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', color: '#475569', transition: 'background 0.2s' }}>Đóng</button>
             </div>
           </div>
@@ -185,7 +231,7 @@ const SellerOrders = () => {
               <span style={{
                 marginLeft: '8px',
                 backgroundColor: tabCounts[tab.id] > 0 
-                  ? (tab.id === 'PENDING' ? '#ee4d2d' : '#3b82f6') 
+                  ? (['PENDING', 'RETURNING'].includes(tab.id) ? '#ee4d2d' : '#3b82f6') 
                   : '#e2e8f0',
                 color: tabCounts[tab.id] > 0 ? '#ffffff' : '#64748b',
                 padding: '2px 8px',
@@ -210,11 +256,11 @@ const SellerOrders = () => {
             </div>
           ) : (
             orders.map(order => (
-              <div key={order.id} className="seller-order-item-card">
+              <div key={order.id} className="seller-order-item-card" style={{ border: order.status === 'RETURNING' ? '1px solid #ffa39e' : '' }}>
                 <div className="order-item-header">
                   <span className="order-id">Mã đơn: #{order.id.slice(-8).toUpperCase()}</span>
                   <span className={`status-pill ${order.status.toLowerCase()}`}>
-                     {order.status === 'PENDING' ? 'Chờ xác nhận' : order.status}
+                     {order.status === 'PENDING' ? 'Chờ xác nhận' : order.status === 'RETURNING' ? 'Đang Y/C Trả hàng' : order.status === 'RETURNED' ? 'Đã Hoàn Tiền' : order.status}
                   </span>
                 </div>
 
@@ -242,12 +288,18 @@ const SellerOrders = () => {
 
                 <div className="order-item-footer">
                   <div className="total-amount">
-                    Tổng thu: <span>₫{order.totalAmount.toLocaleString()}</span>
+                     {order.status === 'RETURNED' ? 'Đã Hoàn trả:' : 'Tổng thu:'} <span>₫{order.totalAmount.toLocaleString()}</span>
                   </div>
                   <div className="action-buttons">
                     {order.status === 'PENDING' && (
                       <button className="confirm-btn-seller" onClick={() => handleUpdateStatus(order.id, 'SHIPPING')}>
                         Xác nhận giao hàng
+                      </button>
+                    )}
+                    {/* 🚀 NÚT XỬ LÝ TRẢ HÀNG MÀU ĐỎ */}
+                    {order.status === 'RETURNING' && (
+                      <button className="confirm-btn-seller" style={{background: '#cf1322'}} onClick={() => setSelectedOrder(order)}>
+                        Xử lý Trả Hàng
                       </button>
                     )}
                     <button className="btn-detail" onClick={() => setSelectedOrder(order)}>

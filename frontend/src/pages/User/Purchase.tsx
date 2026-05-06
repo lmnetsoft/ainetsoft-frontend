@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaStore, FaTruck, FaMapMarkerAlt, FaStar, FaCommentDots, FaCheckCircle, FaClipboardList } from 'react-icons/fa';
-import { getMyOrders, cancelOrder } from '../../services/orderService';
+import { FaStore, FaTruck, FaMapMarkerAlt, FaStar, FaCommentDots, FaCheckCircle, FaClipboardList, FaUndoAlt, FaBox, FaTimes, FaCamera } from 'react-icons/fa';
+import { getMyOrders, cancelOrder, requestReturnOrder } from '../../services/orderService';
 import { confirmOrderReceived } from '../../services/api';
 import ToastNotification from '../../components/Toast/ToastNotification';
 import { useChat } from '../../context/ChatContext';
@@ -13,8 +13,8 @@ const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:8080';
 const Purchase = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('ALL');
-  const [allOrders, setAllOrders] = useState<any[]>([]); 
-  const [displayedOrders, setDisplayedOrders] = useState<any[]>([]); 
+  const [allOrders, setAllOrders] = useState<any[]>([]); // 🚀 CHỨA TẤT CẢ ĐƠN HÀNG
+  const [displayedOrders, setDisplayedOrders] = useState<any[]>([]); // 🚀 CHỨA ĐƠN HÀNG CỦA TAB HIỆN TẠI
   const [loading, setLoading] = useState(false);
   
   const [showToast, setShowToast] = useState(false);
@@ -22,12 +22,21 @@ const Purchase = () => {
 
   const { setIsChatOpen } = useChat();
 
+  // 🚀 STATE CHO TRẢ HÀNG
+  const [stepReturn, setStepReturn] = useState(0); // 0: Đóng, 1: Chọn Tình Huống, 2: Nhập Form
+  const [selectedReturnOrder, setSelectedReturnOrder] = useState<any>(null);
+  const [returnReason, setReturnReason] = useState('');
+  const [returnDesc, setReturnDesc] = useState('');
+  const [returnImages, setReturnImages] = useState<string[]>([]);
+  const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
+
   const tabs = [
     { id: 'ALL', label: 'Tất cả' },
     { id: 'PENDING', label: 'Chờ xác nhận' },
     { id: 'SHIPPING', label: 'Đang giao' },
     { id: 'COMPLETED', label: 'Hoàn thành' },
-    { id: 'CANCELLED', label: 'Đã hủy' }
+    { id: 'CANCELLED', label: 'Đã hủy' },
+    { id: 'RETURN', label: 'Trả hàng/Hoàn tiền' } // 🚀 Tab Mới
   ];
 
   const bitnamilegacy = (url?: string) => {
@@ -58,6 +67,9 @@ const Purchase = () => {
   useEffect(() => {
     if (activeTab === 'ALL') {
       setDisplayedOrders(allOrders);
+    } else if (activeTab === 'RETURN') {
+      // 🚀 Nhóm cả đơn đang yêu cầu trả và đơn đã được hoàn tiền vào 1 tab
+      setDisplayedOrders(allOrders.filter(order => ['RETURNING', 'RETURNED'].includes(order.status?.toString().trim().toUpperCase())));
     } else {
       setDisplayedOrders(allOrders.filter(order => {
         const s = order.status ? order.status.toString().trim().toUpperCase() : '';
@@ -68,6 +80,7 @@ const Purchase = () => {
 
   const getTabCount = (tabId: string) => {
     if (tabId === 'ALL') return allOrders.length;
+    if (tabId === 'RETURN') return allOrders.filter(order => ['RETURNING', 'RETURNED'].includes(order.status?.toString().trim().toUpperCase())).length;
     return allOrders.filter(order => {
        const s = order.status ? order.status.toString().trim().toUpperCase() : '';
        return s === tabId;
@@ -83,6 +96,8 @@ const Purchase = () => {
       case 'SHIPPING': return 'ĐANG GIAO HÀNG';
       case 'COMPLETED': return 'HOÀN THÀNH';
       case 'CANCELLED': return 'Đã HỦY';
+      case 'RETURNING': return 'ĐANG YÊU CẦU TRẢ HÀNG';
+      case 'RETURNED': return 'ĐÃ HOÀN TIỀN';
       default: return status || 'CHỜ XÁC NHẬN';
     }
   };
@@ -134,9 +149,111 @@ const Purchase = () => {
     }
   };
 
+  // 🚀 XỬ LÝ TRẢ HÀNG
+  const handleOpenReturnModal = (order: any) => {
+      setSelectedReturnOrder(order);
+      setStepReturn(1); 
+  };
+
+  const submitReturnRequest = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!returnReason || !returnDesc) return;
+      try {
+          setIsSubmittingReturn(true);
+          await requestReturnOrder(selectedReturnOrder.id, { reason: returnReason, description: returnDesc, images: returnImages });
+          setToastMessage("Yêu cầu trả hàng của bạn đã được gửi tới Người bán.");
+          setShowToast(true);
+          setStepReturn(0);
+          fetchAllOrders();
+      } catch (err: any) {
+          setToastMessage(err.message);
+          setShowToast(true);
+      } finally {
+          setIsSubmittingReturn(false);
+      }
+  };
+
+  // Giả lập upload ảnh (Vì chưa có API upload ảnh riêng)
+  const handleImageMockUpload = () => {
+      setReturnImages([...returnImages, "/logo.svg"]); 
+  };
+
   return (
     <div className="user-page-supreme-layout">
       <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
+
+      {/* 🚀 MODAL 1: CHỌN TÌNH HUỐNG */}
+      {stepReturn === 1 && (
+         <div className="return-modal-overlay">
+            <div className="return-modal-card">
+               <div className="rm-header">
+                  <h3>Tình huống bạn đang gặp?</h3>
+                  <button onClick={() => setStepReturn(0)}><FaTimes/></button>
+               </div>
+               <div className="rm-body situation-list">
+                  <div className="situation-card" onClick={() => setStepReturn(2)}>
+                     <FaUndoAlt className="sit-icon" />
+                     <div>
+                        <strong>Tôi đã nhận hàng nhưng hàng có vấn đề</strong>
+                        <p>Bể vỡ, sai mẫu, hàng lỗi, khác mô tả...</p>
+                     </div>
+                  </div>
+                  <div className="situation-card" onClick={() => setStepReturn(2)}>
+                     <FaBox className="sit-icon" />
+                     <div>
+                        <strong>Tôi chưa nhận hàng / nhận thiếu hàng</strong>
+                        <p>Shopee Xu, Voucher sẽ được hoàn lại nếu yêu cầu hợp lệ.</p>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </div>
+      )}
+
+      {/* 🚀 MODAL 2: ĐIỀN FORM HOÀN TIỀN */}
+      {stepReturn === 2 && (
+         <div className="return-modal-overlay">
+            <div className="return-modal-card large">
+               <div className="rm-header">
+                  <h3><FaUndoAlt/> Chọn sản phẩm cần Trả hàng và Hoàn tiền</h3>
+                  <button onClick={() => setStepReturn(0)}><FaTimes/></button>
+               </div>
+               <form onSubmit={submitReturnRequest} className="rm-body form-body">
+                  <div className="form-group">
+                     <label>Lý do *</label>
+                     <select value={returnReason} onChange={e => setReturnReason(e.target.value)} required>
+                        <option value="">Chọn Lý Do</option>
+                        <option value="Hàng lỗi, không hoạt động">Hàng lỗi, không hoạt động</option>
+                        <option value="Khác với mô tả">Khác với mô tả</option>
+                        <option value="Thiếu hàng/Phụ kiện">Thiếu hàng/Phụ kiện</option>
+                        <option value="Hàng bể vỡ">Hàng bể vỡ do vận chuyển</option>
+                     </select>
+                  </div>
+                  <div className="form-group">
+                     <label>Mô tả chi tiết *</label>
+                     <textarea value={returnDesc} onChange={e => setReturnDesc(e.target.value)} placeholder="Chi tiết vấn đề bạn gặp phải..." required rows={4}></textarea>
+                  </div>
+                  <div className="form-group">
+                     <label>Thêm hình ảnh (Bằng chứng)</label>
+                     <div className="upload-box" onClick={handleImageMockUpload}>
+                        <FaCamera size={24} color="#ee4d2d" />
+                        <span>Thêm ảnh ({returnImages.length}/5)</span>
+                     </div>
+                  </div>
+                  
+                  <div className="refund-summary-box">
+                     <p>Số tiền hoàn lại tối đa: <strong>₫{selectedReturnOrder?.finalTotalAmount?.toLocaleString()}</strong></p>
+                     <p>Hoàn tiền vào: Tài khoản/Ví hệ thống</p>
+                  </div>
+
+                  <div className="rm-footer">
+                     <button type="button" className="btn-cancel" onClick={() => setStepReturn(1)}>Trở lại</button>
+                     <button type="submit" className="btn-submit" disabled={isSubmittingReturn}>Hoàn thành</button>
+                  </div>
+               </form>
+            </div>
+         </div>
+      )}
 
       <main className="purchase-main-view" style={{ width: '100%' }}>
         <div className="purchase-tabs-container">
@@ -173,9 +290,11 @@ const Purchase = () => {
               {displayedOrders.map(order => { 
                 const rawStatus = order.status ? order.status.toString().trim().toUpperCase() : '';
                 const canCancel = ['PENDING', 'CONFIRMED', 'PROCESSING', 'UNPAID', ''].includes(rawStatus);
+                // 🚀 HIỆN NÚT TRẢ HÀNG KHI HÀNG VỪA GIAO HOẶC MỚI HOÀN THÀNH
+                const canReturn = (rawStatus === 'SHIPPING' && order.carrierStatus === 'DELIVERED') || rawStatus === 'COMPLETED';
 
                 return (
-                  <div key={order.id} className="order-card-item" style={{ border: '1px solid #e5e5e5', marginBottom: '15px', background: '#fff' }}>
+                  <div key={order.id} className="order-card-item" style={{ border: (rawStatus === 'RETURNING' || rawStatus === 'RETURNED') ? '1px solid #ffccc7' : '1px solid #e5e5e5', marginBottom: '15px', background: '#fff' }}>
                     <div className="order-item-header" style={{ padding: '15px', borderBottom: '1px solid #f1f1f1', display: 'flex', justifyContent: 'space-between' }}>
                       <div className="shop-name-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <FaStore className="icon-orange" color="#ee4d2d" />
@@ -189,7 +308,8 @@ const Purchase = () => {
                         </button>
                       </div>
                       <div className="status-tag" style={{ color: '#ee4d2d', fontWeight: 'bold' }}>
-                        <FaTruck style={{ marginRight: '5px' }}/> {getStatusText(order.status)}
+                        {rawStatus === 'RETURNED' || rawStatus === 'RETURNING' ? '' : <FaTruck style={{ marginRight: '5px' }}/>} 
+                        {getStatusText(rawStatus)}
                       </div>
                     </div>
 
@@ -239,7 +359,9 @@ const Purchase = () => {
 
                     <div className="order-item-footer" style={{ borderTop: '1px solid #f1f1f1', padding: '15px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                         <div className="total-display" style={{ alignSelf: 'flex-end', fontSize: '18px' }}>
-                          <span style={{ fontSize: '14px', color: '#555' }}>Thành tiền: </span>
+                          <span style={{ fontSize: '14px', color: '#555' }}>
+                              {rawStatus === 'RETURNED' ? 'Tổng tiền hoàn:' : 'Thành tiền:'} 
+                          </span>
                           <span className="grand-total" style={{ color: '#ee4d2d', fontWeight: 'bold', fontSize: '20px' }}>₫{order.finalTotalAmount?.toLocaleString() || order.totalAmount?.toLocaleString()}</span>
                         </div>
                         
@@ -252,6 +374,16 @@ const Purchase = () => {
                                 title={order.carrierStatus !== 'DELIVERED' ? 'Chỉ có thể xác nhận khi đơn vị vận chuyển đã giao hàng' : ''}>
                                 <FaCheckCircle style={{ marginRight: '6px' }} /> Đã nhận được hàng
                             </button>
+                          )}
+
+                          {/* 🚀 NÚT TRẢ HÀNG / HOÀN TIỀN */}
+                          {canReturn && (
+                             <button 
+                                className="purchase-btn btn-outline" 
+                                onClick={() => handleOpenReturnModal(order)}
+                             >
+                                 <FaUndoAlt style={{ marginRight: '6px' }}/> Trả hàng/Hoàn tiền
+                             </button>
                           )}
 
                           {rawStatus === 'COMPLETED' ? (

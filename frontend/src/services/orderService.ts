@@ -7,9 +7,6 @@ const extractError = (error: any, defaultMsg: string): string => {
   return error.message || defaultMsg;
 };
 
-/**
- * Retrieves orders for the current user.
- */
 export const getMyOrders = async (status: string = 'ALL'): Promise<any[]> => {
   try {
     const response = await api.get('/orders/my-orders', { params: { status } });
@@ -19,13 +16,8 @@ export const getMyOrders = async (status: string = 'ALL'): Promise<any[]> => {
   }
 };
 
-/**
- * 🛠️ FIXED: Creates a new order from the cart.
- * Updated to accept a full data object (address, payment method, etc.)
- */
 export const placeOrder = async (checkoutData: any): Promise<any> => {
   try {
-    // Send the full object to match the @RequestBody Order in Java
     const response = await api.post('/orders/checkout', checkoutData);
     return response.data;
   } catch (error: any) {
@@ -33,10 +25,6 @@ export const placeOrder = async (checkoutData: any): Promise<any> => {
   }
 };
 
-/**
- * 🛠️ NEW: Checks if a product can be reviewed.
- * Required for the "Write Review" button logic in ProductDetail.tsx
- */
 export const checkReviewEligibility = async (productId: string): Promise<{ eligible: boolean, orderId?: string }> => {
   try {
     const response = await api.get(`/orders/eligible-to-review/${productId}`);
@@ -47,9 +35,6 @@ export const checkReviewEligibility = async (productId: string): Promise<{ eligi
   }
 };
 
-/**
- * Cancels an order.
- */
 export const cancelOrder = async (orderId: string): Promise<any> => {
   try {
     const response = await api.post(`/orders/cancel/${orderId}`);
@@ -59,9 +44,6 @@ export const cancelOrder = async (orderId: string): Promise<any> => {
   }
 };
 
-/**
- * Seller-specific: Get orders for their shop.
- */
 export const getSellerOrders = async (status: string = 'ALL'): Promise<any[]> => {
   try {
     const response = await api.get('/orders/seller', { params: { status } });
@@ -71,9 +53,6 @@ export const getSellerOrders = async (status: string = 'ALL'): Promise<any[]> =>
   }
 };
 
-/**
- * Seller-specific: Update status.
- */
 export const updateOrderStatus = async (orderId: string, status: string): Promise<any> => {
   try {
     const response = await api.put(`/orders/seller/update-status/${orderId}`, { status });
@@ -81,4 +60,25 @@ export const updateOrderStatus = async (orderId: string, status: string): Promis
   } catch (error: any) {
     throw new Error(extractError(error, "Cập nhật trạng thái thất bại."));
   }
+};
+
+// ==========================================
+// 🚀 NEW: API TRẢ HÀNG / HOÀN TIỀN
+// ==========================================
+export const requestReturnOrder = async (orderId: string, payload: { reason: string, description: string, images: string[] }): Promise<any> => {
+    try {
+      const response = await api.post(`/orders/${orderId}/return`, payload);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(extractError(error, "Yêu cầu trả hàng thất bại."));
+    }
+};
+  
+export const processReturnOrder = async (orderId: string, isApproved: boolean): Promise<any> => {
+    try {
+      const response = await api.put(`/orders/seller/${orderId}/return-process`, { isApproved });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(extractError(error, "Xử lý trả hàng thất bại."));
+    }
 };

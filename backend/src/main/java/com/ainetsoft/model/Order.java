@@ -26,20 +26,17 @@ public class Order {
     
     private double totalAmount; // Tổng tiền hàng gốc
     
-    // 🚀 BẢN VÁ: Chuyển từ appliedVoucherId sang appliedVoucherIds để lưu danh sách nhiều mã
     @Builder.Default
     private List<String> appliedVoucherIds = new ArrayList<>();
     
-    private double voucherDiscountAmount; // Tổng tiền giảm từ các Voucher
-    
-    private int usedCoins; // Số xu khách hàng đã thực tế sử dụng
-    private double coinDiscountAmount; // Tiền giảm tương ứng từ Xu
-    
-    private double finalTotalAmount; // Tiền cuối cùng khách phải trả
+    private double voucherDiscountAmount; 
+    private int usedCoins; 
+    private double coinDiscountAmount; 
+    private double finalTotalAmount; 
     
     private User.AddressInfo shippingAddress;
     private String paymentMethod;
-    private String status; // PENDING, SHIPPING, COMPLETED, CANCELLED
+    private String status; // PENDING, SHIPPING, RETURNING, RETURNED, COMPLETED, CANCELLED
     
     @Builder.Default
     private boolean isReviewed = false;
@@ -47,7 +44,21 @@ public class Order {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     
-    private String trackingCode;     // Mã vận đơn (VD: GHN-123456)
-    private String shippingProvider; // Đơn vị vận chuyển (VD: Giao Hàng Nhanh)
-    private String carrierStatus;    // Trạng thái từ ĐVVC: PICKED_UP, IN_TRANSIT, DELIVERED    
+    private String trackingCode;     
+    private String shippingProvider; 
+    private String carrierStatus;    
+
+    // ==========================================
+    // 🚀 TÍNH NĂNG TRẢ HÀNG / HOÀN TIỀN (Shopee Standard)
+    // ==========================================
+    @Builder.Default
+    private String returnStatus = "NONE"; // NONE, REQUESTED, APPROVED, REJECTED
+    
+    private String returnReason;      // Lý do trả: Hàng lỗi, Khác mô tả...
+    private String returnDescription; // Lời nhắn chi tiết từ người mua
+    
+    @Builder.Default
+    private List<String> returnImages = new ArrayList<>(); // Hình ảnh bằng chứng
+    
+    private LocalDateTime returnDeadline; // Hạn chót để bấm trả hàng (3 ngày sau khi giao)
 }

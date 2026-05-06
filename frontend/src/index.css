@@ -62,3 +62,9 @@ a {
 a:hover {
   color: var(--shopee-orange);
 }
+
+/* 🚀 ÉP ĐỒNG BỘ FONT CHỮ CHO TOÀN BỘ COMPONENT CHUẨN SHOPEE */
+button, input, select, textarea {
+  font-family: inherit;
+  color: inherit;
+}

@@ -3,6 +3,7 @@ package com.ainetsoft.controller;
 import com.ainetsoft.model.User;
 import com.ainetsoft.model.Voucher;
 import com.ainetsoft.repository.UserRepository;
+import com.ainetsoft.repository.VoucherRepository; // 🚀 BỔ SUNG: Import Repository
 import com.ainetsoft.service.VoucherService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +23,7 @@ public class VoucherController {
 
     private final VoucherService voucherService;
     private final UserRepository userRepository;
+    private final VoucherRepository voucherRepository; // 🚀 BỔ SUNG: Inject Repository để tìm kiếm mã
 
     private User getAuthenticatedUser(Principal principal) {
         if (principal == null) return null;
@@ -45,6 +47,32 @@ public class VoucherController {
     @GetMapping("/public/platform")
     public ResponseEntity<?> getPlatformActiveVouchers() {
         return ResponseEntity.ok(voucherService.getActivePlatformVouchers());
+    }
+
+    // 🚀 TÍNH NĂNG MỚI: TÌM KIẾM VOUCHER BẰNG MÃ NHẬP TAY (SHOPEE STYLE)
+    @GetMapping("/code/{code}")
+    public ResponseEntity<?> getVoucherByCode(@PathVariable String code) {
+        try {
+            // Lấy voucher từ database dựa trên code (Không phân biệt hoa thường)
+            Voucher voucher = voucherRepository.findAll().stream()
+                .filter(v -> v.getCode() != null && v.getCode().equalsIgnoreCase(code.trim()))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Mã Voucher không tồn tại!"));
+
+            // Kiểm tra tính hợp lệ (Active, Thời gian, Số lượt dùng)
+            if (!voucher.isActive() || 
+                java.time.LocalDateTime.now().isBefore(voucher.getValidFrom()) || 
+                java.time.LocalDateTime.now().isAfter(voucher.getValidUntil())) {
+                throw new RuntimeException("Mã Voucher đã hết hạn hoặc chưa có hiệu lực!");
+            }
+            if (voucher.getUsedCount() >= voucher.getUsageLimit()) {
+                throw new RuntimeException("Mã Voucher này đã hết lượt sử dụng!");
+            }
+
+            return ResponseEntity.ok(voucher);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
     }
 
     // ==========================================
