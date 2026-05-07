@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaBox, FaUser, FaPhoneAlt, FaClipboardList, FaTimes, FaExclamationTriangle, FaCheck, FaBan } from 'react-icons/fa';
+import { FaBox, FaUser, FaPhoneAlt, FaClipboardList, FaTimes, FaExclamationTriangle, FaCheck, FaBan, FaSync, FaPlay, FaChevronRight } from 'react-icons/fa';
 import api from '../../services/api'; 
 import { processReturnOrder } from '../../services/orderService';
 import ToastNotification from '../../components/Toast/ToastNotification';
@@ -18,8 +18,10 @@ const SellerOrders = () => {
   const [toastMessage, setToastMessage] = useState('');
   
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // 🚀 TÍNH NĂNG MỚI: State lưu trữ số lượng đơn hàng của từng Tab
+  const [previewMedia, setPreviewMedia] = useState<{ url: string, isVideo: boolean } | null>(null);
+
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({
     PENDING: 0, SHIPPING: 0, COMPLETED: 0, CANCELLED: 0, RETURNING: 0
   });
@@ -29,12 +31,12 @@ const SellerOrders = () => {
     { id: 'SHIPPING', label: 'Đang giao' },
     { id: 'COMPLETED', label: 'Hoàn thành' },
     { id: 'CANCELLED', label: 'Đã hủy' },
-    { id: 'RETURNING', label: 'Trả hàng/Hoàn tiền' } // 🚀 Tab Mới
+    { id: 'RETURNING', label: 'Trả hàng/Hoàn tiền' } 
   ];
 
   useEffect(() => {
     fetchOrders();
-    fetchTabCounts(); // 🚀 Gọi đếm số lượng mỗi khi chuyển Tab để dữ liệu luôn mới nhất
+    fetchTabCounts(); 
     document.title = "Quản lý đơn hàng | AiNetsoft Seller";
   }, [activeTab]);
 
@@ -66,11 +68,9 @@ const SellerOrders = () => {
     }
   };
 
-  // 🚀 TÍNH NĂNG MỚI: Hàm chạy ngầm đếm số lượng tất cả các Tab
   const fetchTabCounts = async () => {
     try {
       const statuses = ['PENDING', 'SHIPPING', 'COMPLETED', 'CANCELLED', 'RETURNING'];
-      // Gọi API song song cho tất cả các trạng thái để lấy độ dài (số lượng)
       const promises = statuses.map(status => api.get(`/orders/seller?status=${status}`));
       const results = await Promise.all(promises);
 
@@ -84,13 +84,19 @@ const SellerOrders = () => {
     }
   };
 
+  const handleRefresh = async () => {
+      setIsRefreshing(true);
+      await Promise.all([fetchOrders(), fetchTabCounts()]);
+      setTimeout(() => setIsRefreshing(false), 500); 
+  };
+
   const handleUpdateStatus = async (orderId: string, nextStatus: string) => {
     try {
       await api.put(`/orders/seller/update-status/${orderId}`, { status: nextStatus });
       setToastMessage(`Đã cập nhật trạng thái thành công!`);
       setShowToast(true);
       fetchOrders(); 
-      fetchTabCounts(); // 🚀 Cập nhật lại số lượng ngay khi thao tác duyệt đơn xong
+      fetchTabCounts(); 
     } catch (err: any) {
       const errMsg = err.response?.data?.message || "Lỗi khi cập nhật trạng thái.";
       setToastMessage(errMsg);
@@ -98,7 +104,6 @@ const SellerOrders = () => {
     }
   };
 
-  // 🚀 XỬ LÝ DUYỆT TRẢ HÀNG
   const handleProcessReturn = async (orderId: string, isApproved: boolean) => {
       if(!window.confirm(`Bạn có chắc muốn ${isApproved ? 'CHẤP NHẬN hoàn tiền' : 'TỪ CHỐI trả hàng'} cho đơn này?`)) return;
       try {
@@ -134,31 +139,96 @@ const SellerOrders = () => {
     return `${BASE_URL}${cleanPath}`;
   };
 
+  const isVideoFile = (url: string) => {
+      return url.toLowerCase().match(/\.(mp4|mov|webm|ogg)$/);
+  };
+
   return (
     <div className="seller-orders-supreme-layout">
       <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
 
+      {previewMedia && (
+          <div 
+              style={{
+                  position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                  backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 100000,
+                  display: 'flex', justifyContent: 'center', alignItems: 'center',
+                  backdropFilter: 'blur(5px)'
+              }}
+              onClick={() => setPreviewMedia(null)}
+          >
+              <button 
+                  onClick={() => setPreviewMedia(null)}
+                  style={{
+                      position: 'absolute', top: '25px', right: '35px',
+                      background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff',
+                      fontSize: '24px', cursor: 'pointer', borderRadius: '50%',
+                      width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.4)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)'}
+              >
+                  <FaTimes />
+              </button>
+              <div onClick={e => e.stopPropagation()} style={{ maxWidth: '90%', maxHeight: '90%', display: 'flex', justifyContent: 'center' }}>
+                  {previewMedia.isVideo ? (
+                      <video src={previewMedia.url} controls autoPlay style={{ maxWidth: '100%', maxHeight: '85vh', borderRadius: '8px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} />
+                  ) : (
+                      <img src={previewMedia.url} alt="Phóng to" style={{ maxWidth: '100%', maxHeight: '85vh', borderRadius: '8px', objectFit: 'contain', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} />
+                  )}
+              </div>
+          </div>
+      )}
+
       {selectedOrder && (
         <div className="admin-modal-overlay" onClick={() => setSelectedOrder(null)}>
           <div className="seller-review-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '90%', padding: '20px', borderRadius: '12px' }}>
-            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '15px', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, color: '#1e293b', fontSize: '18px' }}>Chi tiết đơn hàng #{selectedOrder.id.slice(-8).toUpperCase()}</h3>
-              <button onClick={() => setSelectedOrder(null)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#64748b' }}><FaTimes /></button>
+            
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'center', position: 'relative', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '15px', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, color: '#1e293b', fontSize: '18px', textAlign: 'center' }}>Chi tiết đơn hàng #{selectedOrder.id.slice(-8).toUpperCase()}</h3>
+              <button onClick={() => setSelectedOrder(null)} style={{ position: 'absolute', right: '0', background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#64748b' }}><FaTimes /></button>
             </div>
             
             <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: '5px' }}>
               
-              {/* 🚀 HIỂN THỊ BẰNG CHỨNG TRẢ HÀNG NẾU CÓ */}
               {(selectedOrder.status === 'RETURNING' || selectedOrder.status === 'RETURNED') && (
                   <div style={{ marginBottom: '20px', background: '#fff1f0', padding: '15px', borderRadius: '8px', border: '1px solid #ffccc7' }}>
                       <h4 style={{ margin: '0 0 10px 0', color: '#cf1322', display: 'flex', alignItems: 'center', gap: '8px' }}><FaExclamationTriangle/> Thông tin khiếu nại / Trả hàng</h4>
                       <p style={{ margin: '5px 0', fontSize: '14px' }}><strong>Lý do:</strong> {selectedOrder.returnReason}</p>
                       <p style={{ margin: '5px 0', fontSize: '14px', whiteSpace: 'pre-wrap' }}><strong>Mô tả:</strong> {selectedOrder.returnDescription}</p>
+                      <p style={{ margin: '5px 0', fontSize: '14px' }}><strong>Số tiền khách yêu cầu hoàn:</strong> <span style={{ color: '#ee4d2d', fontWeight: 'bold' }}>₫{selectedOrder.requestedRefundAmount?.toLocaleString() || selectedOrder.totalAmount?.toLocaleString()}</span></p>
+                      
                       {selectedOrder.returnImages && selectedOrder.returnImages.length > 0 && (
-                          <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
-                              {selectedOrder.returnImages.map((img: string, i: number) => (
-                                  <img key={i} src={formatMediaUrl(img)} alt="Bằng chứng" style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #ffa39e' }}/>
-                              ))}
+                          <div style={{ display: 'flex', gap: '10px', marginTop: '15px', flexWrap: 'wrap' }}>
+                              {selectedOrder.returnImages.map((img: string, i: number) => {
+                                  const fileUrl = formatMediaUrl(img);
+                                  const isVideo = isVideoFile(fileUrl);
+                                  
+                                  return (
+                                      <div 
+                                          key={i} 
+                                          onClick={() => setPreviewMedia({ url: fileUrl, isVideo })}
+                                          style={{ 
+                                              position: 'relative', width: '100px', height: '100px', 
+                                              borderRadius: '6px', border: '1px solid #ffa39e', 
+                                              overflow: 'hidden', cursor: 'pointer', backgroundColor: '#000' 
+                                          }}
+                                          title="Click để phóng to"
+                                      >
+                                          {isVideo ? (
+                                              <>
+                                                  <video src={fileUrl} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.8, pointerEvents: 'none' }} />
+                                                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '24px' }}>
+                                                      <FaPlay />
+                                                  </div>
+                                              </>
+                                          ) : (
+                                              <img src={fileUrl} alt="Bằng chứng" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                          )}
+                                      </div>
+                                  );
+                              })}
                           </div>
                       )}
                   </div>
@@ -174,7 +244,18 @@ const SellerOrders = () => {
               <div style={{ marginBottom: '20px' }}>
                 <h4 style={{ margin: '0 0 15px 0', fontSize: '15px', color: '#334155' }}>Sản phẩm đã đặt</h4>
                 {selectedOrder.items.map((item: any, idx: number) => (
-                  <div key={idx} style={{ display: 'flex', gap: '15px', padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
+                  <div 
+                      key={idx} 
+                      onClick={() => navigate(`/product/${item.productId}`)}
+                      style={{ 
+                          display: 'flex', gap: '15px', padding: '12px', 
+                          borderBottom: '1px solid #f1f5f9', cursor: 'pointer',
+                          transition: 'background 0.2s', borderRadius: '6px'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      title="Click để xem chi tiết sản phẩm"
+                  >
                     <img 
                       src={formatMediaUrl(item.productImage || item.imageUrl)} 
                       alt={item.productName} 
@@ -182,11 +263,12 @@ const SellerOrders = () => {
                       onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = bitnamilegacy; }}
                     />
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                      <p style={{ margin: '0 0 5px 0', fontWeight: '600', fontSize: '14px', color: '#1e293b' }}>{item.productName}</p>
+                      <p style={{ margin: '0 0 5px 0', fontWeight: '600', fontSize: '14px', color: '#0055aa' }}>{item.productName}</p>
                       <p style={{ margin: 0, color: '#64748b', fontSize: '13px' }}>Số lượng: x{item.quantity}</p>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', fontWeight: '600', color: '#ee4d2d', fontSize: '15px' }}>
-                      ₫{item.price?.toLocaleString()}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ fontWeight: '600', color: '#ee4d2d', fontSize: '15px' }}>₫{item.price?.toLocaleString()}</span>
+                      <FaChevronRight color="#cbd5e1" />
                     </div>
                   </div>
                 ))}
@@ -199,7 +281,6 @@ const SellerOrders = () => {
             </div>
             
             <div className="modal-footer" style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px', borderTop: '1px solid #e2e8f0', paddingTop: '15px' }}>
-               {/* 🚀 NÚT CHẤP NHẬN / TỪ CHỐI (Chỉ hiện khi đang Yêu cầu) */}
                {selectedOrder.status === 'RETURNING' && (
                    <>
                        <button onClick={() => handleProcessReturn(selectedOrder.id, false)} style={{ padding: '10px 20px', background: '#fff', border: '1px solid #d9d9d9', borderRadius: '4px', cursor: 'pointer', fontWeight: '600', color: '#cf1322', display: 'flex', alignItems: 'center', gap: '5px', transition: 'background 0.2s' }}><FaBan/> Từ chối</button>
@@ -213,9 +294,31 @@ const SellerOrders = () => {
       )}
 
       <main className="seller-main-content">
-        <div className="seller-header">
-          <h1><FaClipboardList style={{verticalAlign: 'middle', marginRight: '10px'}} /> Quản lý Đơn hàng</h1>
-          <p>Xử lý và vận chuyển các đơn hàng từ khách hàng của bạn.</p>
+        
+        <div className="seller-header" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
+          <div style={{ textAlign: 'center' }}>
+            <h1><FaClipboardList style={{verticalAlign: 'middle', marginRight: '10px'}} /> Quản lý Đơn hàng</h1>
+            <p>Xử lý và vận chuyển các đơn hàng từ khách hàng của bạn.</p>
+          </div>
+          <button 
+             onClick={handleRefresh}
+             disabled={isRefreshing}
+             style={{ 
+                 position: 'absolute', right: '0',
+                 display: 'flex', alignItems: 'center', gap: '8px', 
+                 padding: '8px 16px', background: '#fff', 
+                 border: '1px solid #e2e8f0', borderRadius: '6px', 
+                 cursor: isRefreshing ? 'wait' : 'pointer', 
+                 color: '#ee4d2d', fontWeight: '600',
+                 boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                 transition: 'all 0.2s'
+             }}
+             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fffaf9'}
+             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff'}
+          >
+             <FaSync style={{ transform: isRefreshing ? 'rotate(180deg)' : 'none', transition: 'transform 0.5s ease' }} />
+             {isRefreshing ? 'Đang tải...' : 'Làm mới dữ liệu'}
+          </button>
         </div>
 
         <div className="purchase-tabs-container">
@@ -226,8 +329,6 @@ const SellerOrders = () => {
               onClick={() => setActiveTab(tab.id)}
             >
               {tab.label}
-              
-              {/* 🚀 GIAO DIỆN HIỂN THỊ BADGE SỐ LƯỢNG */}
               <span style={{
                 marginLeft: '8px',
                 backgroundColor: tabCounts[tab.id] > 0 
@@ -271,17 +372,28 @@ const SellerOrders = () => {
 
                 <div className="order-product-list">
                   {order.items.map((item: any, idx: number) => (
-                    <div key={idx} className="prod-row">
+                    <div 
+                        key={idx} 
+                        className="prod-row"
+                        onClick={() => navigate(`/product/${item.productId}`)}
+                        style={{ cursor: 'pointer', transition: 'background 0.2s', padding: '10px', borderRadius: '6px' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        title="Click để xem chi tiết sản phẩm"
+                    >
                       <img 
                         src={formatMediaUrl(item.productImage || item.imageUrl)} 
                         alt={item.productName} 
                         onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = bitnamilegacy; }}
                       />
-                      <div className="prod-meta">
-                        <p className="name">{item.productName}</p>
+                      <div className="prod-meta" style={{ flex: 1 }}>
+                        <p className="name" style={{ color: '#0055aa' }}>{item.productName}</p>
                         <p className="qty">Số lượng: x{item.quantity}</p>
                       </div>
-                      <div className="revenue-total">₫{item.price.toLocaleString()}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        <div className="revenue-total">₫{item.price.toLocaleString()}</div>
+                        <FaChevronRight color="#cbd5e1" />
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -296,7 +408,6 @@ const SellerOrders = () => {
                         Xác nhận giao hàng
                       </button>
                     )}
-                    {/* 🚀 NÚT XỬ LÝ TRẢ HÀNG MÀU ĐỎ */}
                     {order.status === 'RETURNING' && (
                       <button className="confirm-btn-seller" style={{background: '#cf1322'}} onClick={() => setSelectedOrder(order)}>
                         Xử lý Trả Hàng

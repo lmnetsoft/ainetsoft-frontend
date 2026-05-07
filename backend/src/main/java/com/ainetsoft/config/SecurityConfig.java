@@ -73,6 +73,7 @@ public class SecurityConfig {
                     "/login/oauth2/**",
                     "/error",
                     "/api/uploads/**",
+                    "/uploads/**", // 🚀 ĐÃ FIX: Mở khóa thư mục vật lý chứa ảnh/video Trả hàng
                     "/api/chat/download/**",
                     "/api/chat/file/**",
                     "/ws/**",
@@ -82,7 +83,7 @@ public class SecurityConfig {
                     "/api/footer-menus/**",
                     "/api/footer-icons/**",
                     "/api/vouchers/public/**",
-                    "/api/orders/webhook/**" // 🚀 ĐÃ FIX: Mở khóa đúng endpoint Webhook mới
+                    "/api/orders/webhook/**" 
                 ).permitAll() 
 
                 .requestMatchers("/api/chat/history/**").permitAll()

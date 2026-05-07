@@ -377,16 +377,15 @@ const Checkout = () => {
                           >
                               <span className="help-text">Hỗ Trợ <FaQuestionCircle size={14}/></span>
                               
-                              {/* 🚀 NỘI DUNG HỖ TRỢ ĐÃ ĐƯỢC TỔNG HỢP VÀ KHÔI PHỤC */}
-                                  {showVoucherHelp && (
+                              {showVoucherHelp && (
                                   <div className="help-tooltip-content">
-                                      <h4>Cách Lưu/Sưu Tầm Voucher</h4>
+                                      <h4>1. Cách "Sưu Tầm" Mã Giảm Giá</h4>
                                       <p>Để các thẻ tự động xuất hiện tại đây, bạn hãy nhớ bấm nút <strong>"Lưu"</strong> khi nhìn thấy chúng trên trang Chủ hoặc trang Chi tiết sản phẩm nhé.</p>
                                       
-                                      <h4>Cách "Săn" Mã Khuyến Mãi Mới</h4>
+                                      <h4>2. Cách "Săn" Mã Khuyến Mãi Mới</h4>
                                       <p>Nếu bạn có một mã bí mật, hãy nhập ngay vào ô <strong>"Mã Voucher"</strong> và bấm <strong>"ÁP DỤNG"</strong>. Hệ thống sẽ lưu thẳng thẻ Voucher đó vào danh sách bên dưới cho bạn.</p>
                                       
-                                      <h4>Cách "Chốt Mã" Cho Đơn Hàng Này</h4>
+                                      <h4>3. Cách "Chốt Mã" Cho Đơn Hàng Này</h4>
                                       <p>Hãy đánh dấu tick (✅) vào các thẻ Voucher bạn muốn sử dụng (tối đa 3 mã). Sau đó bấm nút <strong>XÁC NHẬN</strong> màu cam ở dưới cùng để chốt mã và trừ thẳng vào tổng tiền thanh toán!</p>
                                       
                                       <h4>Mẹo Tối Ưu Chi Phí</h4>
@@ -439,7 +438,24 @@ const Checkout = () => {
                                       
                                       <div className="cv-right">
                                           <div className="cv-info">
-                                              <h4>{v.title}</h4>
+                                              {/* 🚀 ĐÃ BỔ SUNG: Hiển thị Code ngay cạnh Title một cách chuyên nghiệp */}
+                                              <h4 style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                                                  {v.title}
+                                                  {v.code && (
+                                                      <span style={{ 
+                                                          fontSize: '11px', 
+                                                          color: '#ee4d2d', 
+                                                          background: '#fff0ed', 
+                                                          border: '1px solid #ffc9c0', 
+                                                          padding: '2px 6px', 
+                                                          borderRadius: '2px', 
+                                                          fontWeight: 500,
+                                                          letterSpacing: '0.5px'
+                                                      }}>
+                                                          {v.code}
+                                                      </span>
+                                                  )}
+                                              </h4>
                                               <p>Đơn tối thiểu ₫{v.minOrderValue.toLocaleString()}</p>
                                           </div>
                                           <div className="cv-action">

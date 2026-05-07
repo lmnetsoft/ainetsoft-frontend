@@ -57,6 +57,10 @@ public class Order {
     private String returnReason;      // Lý do trả: Hàng lỗi, Khác mô tả...
     private String returnDescription; // Lời nhắn chi tiết từ người mua
     
+    // 🚀 BỔ SUNG: Các trường dữ liệu tài chính và liên hệ khiếu nại
+    private double requestedRefundAmount; // Số tiền khách hàng đề xuất hoàn lại (hỗ trợ hoàn một phần)
+    private String returnEmail;           // Email nhận thông báo tiến trình giải quyết
+    
     @Builder.Default
     private List<String> returnImages = new ArrayList<>(); // Hình ảnh bằng chứng
     

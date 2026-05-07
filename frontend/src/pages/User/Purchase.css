@@ -118,7 +118,7 @@
 
 /* --- 5. Empty State: THE HEIGHT FIX --- */
 .purchase-empty-state {
-    flex: 1; /* 🚀 Fills the remaining vertical space */
+    flex: 1; 
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -215,176 +215,195 @@
 }
 
 /* =========================================================
-   7. RETURN & REFUND MODALS (SHOPEE STYLE)
+   7. ENTERPRISE RETURN/REFUND DESIGN SYSTEM (SHOPEE STYLE)
 ========================================================= */
-.return-modal-overlay {
+
+/* Overlay phủ mờ toàn trang */
+.shopee-refund-overlay-supreme {
     position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.5);
-    z-index: 9999;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(3px);
+    z-index: 10000;
     display: flex;
     align-items: center;
     justify-content: center;
-    backdrop-filter: blur(2px);
+    padding: 20px;
 }
 
-.return-modal-card {
+.shopee-refund-overlay-supreme.scrollable-overlay {
+    overflow-y: auto;
+    align-items: flex-start;
+}
+
+/* Modal 1: Chọn Tình Huống */
+.shopee-situation-card {
     background: #fff;
-    width: 90%;
-    max-width: 500px;
+    width: 100%;
+    max-width: 580px;
     border-radius: 4px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-    animation: slideUp 0.3s ease-out;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    overflow: hidden;
 }
 
-.return-modal-card.large {
-    max-width: 650px;
-}
-
-.rm-header {
+.sit-header, .form-supreme-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 15px 20px;
+    padding: 16px 24px;
     border-bottom: 1px solid #f0f0f0;
-    background: #fafafa;
 }
 
-.rm-header h3 {
+.sit-header h3, .form-supreme-header h2 {
     margin: 0;
-    font-size: 1.1rem;
-    color: #333;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.rm-header button {
-    background: none;
-    border: none;
-    font-size: 1.2rem;
-    color: #999;
-    cursor: pointer;
-}
-
-.situation-list {
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.situation-card {
-    display: flex;
-    align-items: flex-start;
-    gap: 15px;
-    padding: 15px;
-    border: 1px solid #e0e0e0;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.situation-card:hover {
-    border-color: #ee4d2d;
-    background: #fffaf9;
-}
-
-.sit-icon {
-    font-size: 1.8rem;
-    color: #ee4d2d;
-    margin-top: 5px;
-}
-
-.situation-card strong {
-    display: block;
-    color: #333;
-    margin-bottom: 5px;
-}
-
-.situation-card p {
-    margin: 0;
-    font-size: 0.85rem;
-    color: #757575;
-}
-
-.form-body {
-    padding: 20px;
-    max-height: 70vh;
-    overflow-y: auto;
-}
-
-.form-group {
-    margin-bottom: 15px;
-}
-
-.form-group label {
-    display: block;
-    font-size: 0.9rem;
-    color: #555;
-    margin-bottom: 8px;
+    font-size: 17px;
     font-weight: 500;
-}
-
-.form-group select, .form-group textarea {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    outline: none;
-    font-family: inherit;
-}
-
-.form-group select:focus, .form-group textarea:focus {
-    border-color: #ee4d2d;
-}
-
-.upload-box {
-    border: 1px dashed #ee4d2d;
-    background: #fffaf9;
-    padding: 20px;
-    text-align: center;
-    border-radius: 4px;
-    cursor: pointer;
+    color: rgba(0, 0, 0, 0.87);
     display: flex;
-    flex-direction: column;
     align-items: center;
     gap: 8px;
-    color: #ee4d2d;
-    font-size: 0.85rem;
 }
 
-.refund-summary-box {
-    background: #f9f9f9;
-    padding: 15px;
-    border-radius: 4px;
-    margin-bottom: 20px;
-    font-size: 0.9rem;
-    color: #555;
+.close-btn-x {
+    background: none; border: none; font-size: 18px; color: #bbb; cursor: pointer; transition: color 0.2s;
 }
+.close-btn-x:hover { color: #666; }
 
-.refund-summary-box strong {
-    color: #ee4d2d;
-    font-size: 1.1rem;
-}
-
-.rm-footer {
+.sit-body {
+    padding: 20px 24px;
     display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    padding: 15px 20px;
-    border-top: 1px solid #f0f0f0;
+    flex-direction: column;
+    gap: 16px;
 }
 
-.btn-submit {
-    background: #ee4d2d;
-    color: white;
-    border: none;
-    padding: 8px 25px;
-    border-radius: 2px;
-    font-weight: 500;
+.sit-option-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 18px;
+    border: 1px solid #e8e8e8;
+    border-radius: 4px;
     cursor: pointer;
+    transition: all 0.2s ease-in-out;
 }
+
+.sit-option-row:hover {
+    border-color: #ee4d2d;
+    background: #fffbfa;
+}
+
+.sit-icon-wrapper {
+    width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 16px;
+}
+.sit-icon-wrapper.orange { background: #fff0ed; color: #ee4d2d; }
+.sit-icon-wrapper.red { background: #fff0f0; color: #ff424f; }
+
+.sit-text-meta strong { display: block; font-size: 14px; color: rgba(0,0,0,0.87); font-weight: 500; margin-bottom: 6px; line-height: 1.4; }
+.sit-text-meta p { margin: 0; font-size: 12px; color: rgba(0,0,0,0.54); line-height: 1.4; }
+
+/* Modal 2: Form chi tiết lớn */
+.shopee-full-form-card {
+    background: #fff;
+    width: 100%;
+    max-width: 680px;
+    border-radius: 4px;
+    margin-top: 40px;
+    margin-bottom: 40px;
+    box-shadow: 0 4px 25px rgba(0,0,0,0.18);
+}
+
+.form-supreme-content {
+    padding: 24px;
+    background: #fcfcfc;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Các khối Box Container bọc viền trắng */
+.shopee-box-container {
+    background: #fff;
+    border: 1px solid #e8e8e8;
+    padding: 20px;
+    border-radius: 3px;
+    display: flex;
+    flex-direction: column;
+}
+
+.shopee-box-container.bg-gray-soft { background: #f6f6f6; border: none; }
+.section-title-shopee { font-size: 14px; font-weight: 500; color: rgba(0,0,0,0.87); margin-bottom: 12px; display: block;}
+
+/* Row sản phẩm thu nhỏ */
+.product-mini-row-shopee {
+    display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f9f9f9;
+}
+.product-mini-row-shopee:last-child { border-bottom: none; }
+.product-mini-row-shopee img { width: 50px; height: 50px; object-fit: cover; border-radius: 2px; border: 1px solid #eee; }
+.product-mini-row-shopee .p-meta { flex: 1; }
+.product-mini-row-shopee h4 { margin: 0 0 4px 0; font-size: 14px; font-weight: 400; color: rgba(0,0,0,0.87); }
+.product-mini-row-shopee .p-shop-tag { margin: 0; font-size: 12px; color: rgba(0,0,0,0.54); display: flex; align-items: center; gap: 4px; }
+.product-mini-row-shopee .p-qty { font-size: 13px; color: rgba(0,0,0,0.54); }
+
+/* Input layout */
+.input-field-shopee { margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px; }
+.input-field-shopee:last-child { margin-bottom: 0; }
+.required-label::after { content: ' *'; color: #ee4d2d; font-weight: bold; }
+
+.input-field-shopee select {
+    width: 100%; padding: 10px 12px; border: 1px solid #d9d9d9; border-radius: 2px; background: #fff; outline: none; font-size: 14px;
+}
+.input-field-shopee select:focus { border-color: #ee4d2d; }
+
+.textarea-wrapper { position: relative; width: 100%; }
+.textarea-wrapper textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid #d9d9d9; border-radius: 2px; resize: none; font-size: 14px; outline: none; box-sizing: border-box;
+}
+.textarea-wrapper textarea:focus { border-color: #ee4d2d; }
+.char-counter { position: absolute; bottom: 8px; right: 12px; font-size: 11px; color: rgba(0,0,0,0.3); }
+
+/* Grid Tải Ảnh Thực Tế Chặn 5 Ảnh */
+.shopee-image-upload-grid {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 10px;
+}
+.shopee-image-preview-box {
+    position: relative; aspect-ratio: 1; border: 1px solid #d9d9d9; border-radius: 2px; overflow: hidden;
+}
+.shopee-image-preview-box img { width: 100%; height: 100%; object-fit: cover; }
+.remove-img-btn {
+    position: absolute; top: -4px; right: -4px; background: rgba(0,0,0,0.6); color: #fff; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+
+.shopee-upload-trigger-box {
+    aspect-ratio: 1; border: 1px dashed #ee4d2d; background: #fffbfa; border-radius: 2px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; cursor: pointer; color: #ee4d2d; font-size: 11px; text-align: center; padding: 5px; transition: background 0.2s;
+}
+.shopee-upload-trigger-box:hover { background: #fff0ed; }
+
+/* Thông tin breakdown tài chính */
+.refund-meta-row-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f6f6f6; }
+.refund-meta-row-item .lbl-left { font-size: 14px; color: rgba(0,0,0,0.54); }
+.refund-meta-row-item .val-right { font-size: 14px; color: rgba(0,0,0,0.87); text-align: right; }
+.val-right-edit { display: flex; align-items: center; gap: 12px; }
+.amount-shopee-bold { font-size: 16px; font-weight: 500; color: #ee4d2d; }
+.shopee-link-blue { background: none; border: none; color: #0055aa; font-size: 12px; font-weight: 500; cursor: pointer; text-transform: uppercase; }
+.shopee-link-blue:hover { text-decoration: underline; }
+
+.shopee-email-input-box {
+    width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 2px; font-size: 14px; outline: none; text-align: right; box-sizing: border-box;
+}
+.shopee-email-input-box:focus { border-color: #ee4d2d; }
+
+.shopee-price-breakdown-box { background: #fafafa; padding: 14px; border-radius: 2px; margin-top: 15px; }
+.b-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; color: rgba(0,0,0,0.54); }
+.b-row.final { margin-bottom: 0; margin-top: 8px; font-size: 14px; }
+.b-val-orange { font-size: 18px; font-weight: 500; color: #ee4d2d; }
+.dashed-hr { border: none; border-top: 1px dashed #ddd; margin: 10px 0; }
+
+.form-action-shopee-footer { display: flex; justify-content: flex-end; margin-top: 15px; gap: 10px;}
+.shopee-submit-btn-orange {
+    background: #ee4d2d; color: #fff; border: none; padding: 12px 40px; font-size: 14px; font-weight: 500; border-radius: 2px; cursor: pointer; transition: background 0.2s;
+}
+.shopee-submit-btn-orange:hover { background: #d73d1f; }
+.shopee-submit-btn-orange:disabled { background: #ffc4b6; cursor: not-allowed; }
 
 .btn-cancel {
     background: #fff;
@@ -395,7 +414,28 @@
     cursor: pointer;
 }
 
-@keyframes slideUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+/* Sub-modal sửa số tiền */
+.sub-modal-zindex { z-index: 10005 !important; }
+.shopee-sub-amount-card { background: #fff; width: 380px; border-radius: 3px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); overflow: hidden; }
+.sub-header { padding: 14px 20px; border-bottom: 1px solid #eee; }
+.sub-header h3 { margin: 0; font-size: 15px; font-weight: 500; }
+.sub-body { padding: 20px; }
+.sub-input-group { display: flex; align-items: center; border: 1px solid #ee4d2d; padding: 8px 12px; border-radius: 2px; margin-bottom: 6px; }
+.currency-symbol { font-size: 18px; color: #ee4d2d; font-weight: bold; margin-right: 8px; }
+.sub-input-group input { flex: 1; border: none; outline: none; font-size: 20px; font-weight: 600; color: #ee4d2d; width: 100%;}
+.sub-tip-max { margin: 0 0 16px 0; font-size: 12px; color: rgba(0,0,0,0.54); }
+.sub-breakdown-box { background: #f9f9f9; padding: 12px; border-radius: 2px; }
+.sub-b-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; color: #666; }
+.sub-b-row.bold { margin-bottom: 0; margin-top: 10px; font-weight: 500; color: #333; }
+.color-orange { color: #ee4d2d; }
+.sub-footer-actions { display: flex; justify-content: flex-end; gap: 12px; padding: 12px 20px; border-top: 1px solid #eee; background: #fafafa; }
+.btn-sub-action { padding: 8px 20px; border-radius: 2px; border: none; font-size: 13px; font-weight: 500; cursor: pointer; text-transform: uppercase; }
+.btn-sub-action.cancel { background: #fff; border: 1px solid #ccc; color: #555; }
+.btn-sub-action.confirm { background: #ee4d2d; color: #fff; }
+
+/* Animation hiệu ứng mượt */
+.animate-scale-up { animation: scaleUp 0.18s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+@keyframes scaleUp {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
 }

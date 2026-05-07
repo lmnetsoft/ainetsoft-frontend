@@ -5,11 +5,13 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.web.config.EnableSpringDataWebSupport; // 🚀 ADDED
 import org.springframework.data.web.config.EnableSpringDataWebSupport.PageSerializationMode; // 🚀 ADDED
+import org.springframework.scheduling.annotation.EnableScheduling; // 🚀 BỔ SUNG: Import thư viện chạy tiến trình ngầm
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import java.nio.file.Paths;
 
 @SpringBootApplication
+@EnableScheduling // 🚀 BỔ SUNG: Kích hoạt CronJob tự động quyết toán đơn hàng
 // 🚀 ADDED TO FIX THE PageImpl SERIALIZATION WARNING
 @EnableSpringDataWebSupport(pageSerializationMode = PageSerializationMode.VIA_DTO)
 public class AinetsoftApplication {

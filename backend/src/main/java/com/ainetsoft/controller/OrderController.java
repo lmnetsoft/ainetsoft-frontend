@@ -9,10 +9,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile; // 🚀 BỔ SUNG ĐỂ NHẬN FILE
+import org.springframework.util.StringUtils;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.security.Principal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @RestController
@@ -193,24 +201,53 @@ public class OrderController {
     }
 
     // ==========================================
-    // 🚀 NEW API: NGƯỜI MUA YÊU CẦU TRẢ HÀNG
+    // 🚀 ĐÃ SỬA: LƯU FILE VẬT LÝ VÀO THƯ MỤC UPLOADS (CHUẨN KIẾN TRÚC AINETSOFT)
     // ==========================================
     @PostMapping("/{orderId}/return")
     public ResponseEntity<?> requestReturn(
             @PathVariable String orderId,
-            @RequestBody Map<String, Object> payload,
+            @RequestParam("reason") String reason,
+            @RequestParam("description") String description,
+            @RequestParam("refundAmount") double refundAmount,
+            @RequestParam("email") String email,
+            @RequestParam(value = "images", required = false) MultipartFile[] images,
             Principal principal) {
         User user = getAuthenticatedUser(principal);
         if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
 
         try {
-            String reason = (String) payload.get("reason");
-            String description = (String) payload.get("description");
-            List<String> images = (List<String>) payload.get("images");
+            List<String> imageUrls = new ArrayList<>();
+            
+            // Nếu có ảnh, tiến hành lưu vào thư mục vật lý: uploads/returns/{orderId}/
+            if (images != null && images.length > 0) {
+                String uploadDir = "uploads/returns/" + orderId + "/";
+                Path uploadPath = Paths.get(uploadDir);
+                
+                if (!Files.exists(uploadPath)) {
+                    Files.createDirectories(uploadPath);
+                }
+                
+                for (MultipartFile file : images) {
+                    if (!file.isEmpty()) {
+                        String originalFilename = StringUtils.cleanPath(file.getOriginalFilename());
+                        // Tạo UUID chống trùng lặp tên file
+                        String fileName = UUID.randomUUID().toString() + "_" + originalFilename;
+                        Path filePath = uploadPath.resolve(fileName);
+                        
+                        // Lưu file vào ổ cứng
+                        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+                        
+                        // Lưu đường dẫn chuẩn Web vào DB (Dấu gạch chéo)
+                        imageUrls.add("/" + uploadDir.replace("\\", "/") + fileName); 
+                    }
+                }
+            }
 
-            Order updatedOrder = orderService.requestReturn(orderId, user.getId(), reason, description, images);
+            // Gọi Service với danh sách URL vật lý thay vì Base64
+            Order updatedOrder = orderService.requestReturn(orderId, user.getId(), reason, description, refundAmount, email, imageUrls);
             return ResponseEntity.ok(Map.of("message", "Đã gửi yêu cầu trả hàng thành công", "order", updatedOrder));
         } catch (Exception e) {
+            log.error("Lỗi upload file hoàn tiền: ", e);
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }

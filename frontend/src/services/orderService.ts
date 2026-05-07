@@ -63,11 +63,34 @@ export const updateOrderStatus = async (orderId: string, status: string): Promis
 };
 
 // ==========================================
-// 🚀 NEW: API TRẢ HÀNG / HOÀN TIỀN
+// 🚀 ĐÃ NÂNG CẤP: HỖ TRỢ RAW FILE (VIDEO + IMAGES)
 // ==========================================
-export const requestReturnOrder = async (orderId: string, payload: { reason: string, description: string, images: string[] }): Promise<any> => {
+export const requestReturnOrder = async (
+    orderId: string, 
+    payload: { reason: string, description: string, refundAmount: number, email: string, images: File[], video: File | null }
+): Promise<any> => {
     try {
-      const response = await api.post(`/orders/${orderId}/return`, payload);
+      const formData = new FormData();
+      formData.append('reason', payload.reason);
+      formData.append('description', payload.description);
+      formData.append('refundAmount', payload.refundAmount.toString());
+      formData.append('email', payload.email);
+
+      // Nhét toàn bộ Hình Ảnh vào mảng "images" của Spring Boot
+      if (payload.images && payload.images.length > 0) {
+          payload.images.forEach((file) => {
+              formData.append('images', file);
+          });
+      }
+
+      // Nhét luôn Video vào mảng "images" của Spring Boot (Spring Boot nhận tất cả dạng MultipartFile)
+      if (payload.video) {
+          formData.append('images', payload.video);
+      }
+
+      const response = await api.post(`/orders/${orderId}/return`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+      });
       return response.data;
     } catch (error: any) {
       throw new Error(extractError(error, "Yêu cầu trả hàng thất bại."));

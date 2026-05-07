@@ -138,7 +138,7 @@ public class DataSeeder implements CommandLineRunner {
 
         Voucher shopVoucherA = Voucher.builder()
                 .type(Voucher.VoucherType.SELLER)
-                .code("SHOP_A_10")
+                .code("HITECH10") // 🚀 Đã đổi Code
                 .sellerId(sellerA != null ? sellerA.getId() : null)
                 .shopName(sellerA != null ? sellerA.getShopProfile().getShopName() : "Hitech Center")
                 .title("MÃ SHOP: Giảm 10% (Tối đa 30k)")
@@ -157,7 +157,7 @@ public class DataSeeder implements CommandLineRunner {
                 
         Voucher shopVoucherB = Voucher.builder()
                 .type(Voucher.VoucherType.SELLER)
-                .code("SHOP_B_50")
+                .code("FASHION50") // 🚀 Đã đổi Code
                 .sellerId(sellerB != null ? sellerB.getId() : null)
                 .shopName(sellerB != null ? sellerB.getShopProfile().getShopName() : "Fashion World")
                 .title("MÃ SHOP: Giảm 50k")
@@ -176,7 +176,7 @@ public class DataSeeder implements CommandLineRunner {
 
         Voucher freeshipVoucher = Voucher.builder()
                 .type(Voucher.VoucherType.FREESHIP)
-                .code("FREESHIP15K")
+                .code("FREESHIP15K") // 🚀 Đã đổi Code
                 .shopName("AiNetsoft Express")
                 .title("MÃ VẬN CHUYỂN: Giảm 15k phí Ship")
                 .discountType("FIXED_AMOUNT")
@@ -191,8 +191,28 @@ public class DataSeeder implements CommandLineRunner {
                 .collectedUserIds(new HashSet<>(Arrays.asList(buyer.getId())))
                 .build();
 
-        List<Voucher> savedVouchers = voucherRepository.saveAll(Arrays.asList(platformVoucher, shopVoucherA, shopVoucherB, freeshipVoucher));
+        // 🚀 TÍNH NĂNG MỚI: TẠO MÃ BÍ MẬT ĐỂ TEST TÌM KIẾM
+        Voucher hiddenLivestreamVoucher = Voucher.builder()
+                .type(Voucher.VoucherType.SYSTEM)
+                .code("LIVESTREAM50K") 
+                .shopName("AiNetsoft Official")
+                .title("MÃ BÍ MẬT: Tặng ngay 50k")
+                .discountType("FIXED_AMOUNT")
+                .discountValue(50000.0)
+                .minOrderValue(100000.0)
+                .usageLimit(500)
+                .usedCount(0)
+                .validFrom(LocalDateTime.now().minusHours(1))
+                .validUntil(LocalDateTime.now().plusMonths(1))
+                .isActive(true)
+                .createdAt(LocalDateTime.now())
+                .collectedUserIds(new HashSet<>()) // 🚀 TRỐNG: Khách phải tự tìm mới có
+                .build();
 
+        // Lưu toàn bộ 5 Voucher vào Database
+        List<Voucher> savedVouchers = voucherRepository.saveAll(Arrays.asList(platformVoucher, shopVoucherA, shopVoucherB, freeshipVoucher, hiddenLivestreamVoucher));
+
+        // 🚀 CHỈ LƯU 4 MÃ ĐẦU TIÊN VÀO VÍ CỦA KHÁCH. (Bỏ qua hiddenLivestreamVoucher)
         List<String> savedIds = Arrays.asList(savedVouchers.get(0).getId(), savedVouchers.get(1).getId(), savedVouchers.get(2).getId(), savedVouchers.get(3).getId());
         
         Optional<Wallet> existingWallet = walletRepository.findByUserId(buyer.getId());
