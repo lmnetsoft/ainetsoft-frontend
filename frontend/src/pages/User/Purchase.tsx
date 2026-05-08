@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaStore, FaTruck, FaMapMarkerAlt, FaStar, FaCommentDots, FaCheckCircle, FaClipboardList, FaUndoAlt, FaBox, FaTimes, FaCamera, FaExclamationCircle, FaChevronRight, FaSync, FaPlay } from 'react-icons/fa';
-import { getMyOrders, cancelOrder, requestReturnOrder } from '../../services/orderService';
+import { FaStore, FaTruck, FaMapMarkerAlt, FaStar, FaCommentDots, FaCheckCircle, FaClipboardList, FaUndoAlt, FaBox, FaTimes, FaCamera, FaExclamationCircle, FaChevronRight, FaChevronLeft, FaSync, FaPlay, FaLink, FaCopy, FaRegCircle } from 'react-icons/fa';
+import { getMyOrders, requestReturnOrder } from '../../services/orderService';
 import { confirmOrderReceived } from '../../services/api';
 import api from '../../services/api';
 import ToastNotification from '../../components/Toast/ToastNotification';
@@ -27,7 +27,10 @@ const Purchase = () => {
 
   const [stepReturn, setStepReturn] = useState(0); 
   const [selectedReturnOrder, setSelectedReturnOrder] = useState<any>(null);
+  const [showReturnDetail, setShowReturnDetail] = useState(false);
   
+  const [showBankDetails, setShowBankDetails] = useState(false);
+
   const [returnReason, setReturnReason] = useState('');
   const [returnDesc, setReturnDesc] = useState('');
   
@@ -43,6 +46,11 @@ const Purchase = () => {
   const [customRefundAmount, setCustomRefundAmount] = useState(0); 
   const [inputAmount, setInputAmount] = useState(''); 
 
+  const [showPriceBreakdown, setShowPriceBreakdown] = useState(true);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [ordersPerPage, setOrdersPerPage] = useState(5); 
+
   const tabs = [
     { id: 'ALL', label: 'Tất cả' },
     { id: 'PENDING', label: 'Chờ xác nhận' },
@@ -53,7 +61,7 @@ const Purchase = () => {
   ];
 
   const bitnamilegacy = (url?: string) => {
-    if (!url || url === "/placeholder.png") return "/placeholder.png";
+    if (!url || url === "/placeholder.png") return url;
     return url.startsWith('http') ? url : `${BASE_URL}${url}`;
   };
 
@@ -107,12 +115,19 @@ const Purchase = () => {
   }, []);
 
   useEffect(() => {
+    setCurrentPage(1); 
+    const sortedOrders = [...allOrders].sort((a, b) => {
+        const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+        const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+        return timeB - timeA;
+    });
+
     if (activeTab === 'ALL') {
-      setDisplayedOrders(allOrders);
+      setDisplayedOrders(sortedOrders);
     } else if (activeTab === 'RETURN') {
-      setDisplayedOrders(allOrders.filter(order => ['RETURNING', 'RETURNED'].includes(order.status?.toString().trim().toUpperCase())));
+      setDisplayedOrders(sortedOrders.filter(order => ['RETURNING', 'RETURNED'].includes(order.status?.toString().trim().toUpperCase())));
     } else {
-      setDisplayedOrders(allOrders.filter(order => {
+      setDisplayedOrders(sortedOrders.filter(order => {
         const s = order.status ? order.status.toString().trim().toUpperCase() : '';
         return s === activeTab;
       }));
@@ -143,16 +158,6 @@ const Purchase = () => {
     }
   };
 
-  const getCarrierStatusText = (carrierStatus: string) => {
-    if (!carrierStatus) return "Đang cập nhật...";
-    switch(carrierStatus.toUpperCase()) {
-      case 'PICKED_UP': return "Đã lấy hàng";
-      case 'IN_TRANSIT': return "Đang trung chuyển";
-      case 'DELIVERED': return "Đã giao thành công";
-      default: return carrierStatus;
-    }
-  };
-
   const handleChatWithSeller = (sellerId: string) => {
     if (sellerId) {
       localStorage.setItem('currentChatRecipient', sellerId);
@@ -161,16 +166,16 @@ const Purchase = () => {
   };
 
   const handleCancelOrder = async (orderId: string) => {
-    if (!window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này không? Toàn bộ Xu và Voucher sẽ được hoàn trả.')) {
-      return;
-    }
+    const reason = window.prompt('Vui lòng nhập lý do hủy đơn hàng (hoặc để trống):');
+    if (reason === null) return; 
+
     try {
-      await cancelOrder(orderId);
-      setToastMessage("Hủy đơn hàng thành công! Xu và Voucher đã được hoàn trả.");
+      await api.put(`/orders/${orderId}/cancel`, { cancelReason: reason });
+      setToastMessage("Hủy đơn hàng thành công!");
       setShowToast(true);
       fetchAllOrders(); 
     } catch (err: any) {
-      setToastMessage(err.message || "Không thể hủy đơn hàng.");
+      setToastMessage(err.response?.data?.message || err.message || "Không thể hủy đơn hàng.");
       setShowToast(true);
     }
   };
@@ -198,6 +203,28 @@ const Purchase = () => {
       setReturnImages([]);
       setReturnVideo(null);
       setStepReturn(1); 
+  };
+
+  const handleOpenReturnDetail = (order: any) => {
+      setSelectedReturnOrder(order);
+      setShowReturnDetail(true);
+  };
+
+  // 🚀 KIỂM TRA TỒN KHO/TRẠNG THÁI SẢN PHẨM TRƯỚC KHI MUA LẠI
+  const handleBuyAgain = async (e: React.MouseEvent, productId: string) => {
+      if (e) e.stopPropagation();
+      try {
+          const res = await api.get(`/products/${productId}`);
+          if (res.data && res.data.stock > 0 && res.data.status !== 'INACTIVE') {
+              navigate(`/product/${productId}`);
+          } else {
+              setToastMessage("Xin lỗi, các sản phẩm của đơn hàng đã không còn bán/ hết hàng nên không thể mua lại.");
+              setShowToast(true);
+          }
+      } catch (err) {
+          setToastMessage("Xin lỗi, các sản phẩm của đơn hàng đã không còn bán/ hết hàng nên không thể mua lại.");
+          setShowToast(true);
+      }
   };
 
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -285,11 +312,65 @@ const Purchase = () => {
       }
   };
 
+  const isVideoUrl = (url: string) => url.toLowerCase().match(/\.(mp4|mov|webm|ogg)$/);
+
+  const indexOfLastOrder = currentPage * ordersPerPage;
+  const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
+  const currentOrdersList = displayedOrders.slice(indexOfFirstOrder, indexOfLastOrder);
+  const totalPages = Math.ceil(displayedOrders.length / ordersPerPage);
+
+  const handlePageChange = (pageNumber: number) => {
+      setCurrentPage(pageNumber);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleOrdersPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+      setOrdersPerPage(Number(e.target.value));
+      setCurrentPage(1); 
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <div className="user-page-supreme-layout">
       <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
 
-      {/* 🚀 MODAL XEM TRƯỚC ẢNH/VIDEO (LIGHTBOX) TRONG LÚC TẢI LÊN */}
+      {showBankDetails && userBank && (
+         <div className="shopee-refund-overlay-supreme sub-modal-zindex">
+            <div className="bank-detail-modal animate-scale-up">
+               <div className="bank-verified-header">
+                   <FaCheckCircle size={18} /> VERIFIED
+               </div>
+               <div className="bank-info-list">
+                   <div className="bank-info-item">
+                       <label>Số CMND/CCCD</label>
+                       <span>{userBank.identityNumber || 'Đã xác minh'}</span>
+                   </div>
+                   <div className="bank-info-item">
+                       <label>Tên ngân hàng</label>
+                       <span>{userBank.bankName}</span>
+                   </div>
+                   <div className="bank-info-item">
+                       <label>Tên chi nhánh ngân hàng</label>
+                       <span>{userBank.branchName || `CN ${userBank.bankName}`}</span>
+                   </div>
+                   <div className="bank-info-item">
+                       <label>Account Number</label>
+                       <span>{userBank.accountNumber ? `*********${userBank.accountNumber.slice(-4)}` : 'Đang cập nhật'}</span>
+                   </div>
+                   <div className="bank-info-item">
+                       <label>Tên chủ tài khoản</label>
+                       <span style={{ textTransform: 'uppercase' }}>
+                           {userBank.accountName || userBank.accountHolder || userBank.ownerName || 'ĐANG CẬP NHẬT'}
+                       </span>
+                   </div>
+               </div>
+               <div className="bank-modal-footer">
+                   <button onClick={() => setShowBankDetails(false)}>Trở lại</button>
+               </div>
+            </div>
+         </div>
+      )}
+
       {previewMedia && (
           <div 
               style={{
@@ -324,10 +405,146 @@ const Purchase = () => {
           </div>
       )}
 
-      {/* =========================================================
-         📸 MODAL 1: CHỌN TÌNH HUỐNG BẮT GẶP
-      ========================================================= */}
-      {stepReturn === 1 && (
+      {/* TRANG CHI TIẾT KHIẾU NẠI */}
+      {showReturnDetail && selectedReturnOrder && (
+         <div className="shopee-refund-overlay-supreme scrollable-overlay">
+            <div className="shopee-full-form-card animate-scale-up return-detail-page" style={{ maxWidth: '800px', margin: '20px auto' }}>
+               <div className="detail-header-shopee" style={{ display: 'flex', justifyContent: 'space-between', padding: '15px 24px', borderBottom: '1px solid #f0f0f0', alignItems: 'center' }}>
+                  <div className="request-id-shopee" style={{ fontSize: '13px', color: '#555', display: 'flex', gap: '15px', alignItems: 'center' }}>
+                      <span>Mã Yêu Cầu. {selectedReturnOrder.id.toUpperCase()}</span>
+                      <span style={{ color: '#ccc' }}>|</span>
+                      <span>Hoàn Tiền Vào: {new Date(selectedReturnOrder.updatedAt).toLocaleString('vi-VN')}</span>
+                  </div>
+                  <button className="close-btn-x" onClick={() => setShowReturnDetail(false)}><FaTimes/></button>
+               </div>
+
+               <div className="stepper-shopee-container" style={{ display: 'flex', justifyContent: 'space-around', padding: '30px 0', background: '#fff', borderBottom: '1px solid #f1f5f9' }}>
+                  <div className="step-item active">
+                      <div className="step-icon-wrapper"><FaCheckCircle /></div>
+                      <span>Trả hàng</span>
+                  </div>
+                  <div className={`step-item ${['APPROVED', 'REJECTED', 'RETURNED'].includes(selectedReturnOrder.returnStatus) ? 'active' : ''}`}>
+                      <div className="step-icon-wrapper">{['APPROVED', 'REJECTED', 'RETURNED'].includes(selectedReturnOrder.returnStatus) ? <FaCheckCircle /> : <FaRegCircle />}</div>
+                      <span>Kiểm tra hàng hoàn</span>
+                  </div>
+                  <div className={`step-item ${selectedReturnOrder.status === 'RETURNED' ? 'active' : ''}`}>
+                      <div className="step-icon-wrapper">{selectedReturnOrder.status === 'RETURNED' ? <FaCheckCircle /> : <FaRegCircle />}</div>
+                      <span>Hoàn tiền</span>
+                  </div>
+               </div>
+
+               <div className="refund-status-banner" style={{ padding: '24px', background: '#fffcf5', borderBottom: '1px solid #fdf2d9' }}>
+                  <h3 style={{ color: '#ee4d2d', margin: '0 0 8px 0', fontSize: '18px' }}>{selectedReturnOrder.status === 'RETURNED' ? 'Đã hoàn tiền' : 'Đang xử lý khiếu nại'}</h3>
+                  <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>
+                      Số tiền ₫{selectedReturnOrder.requestedRefundAmount?.toLocaleString()} sẽ được hoàn vào {userBank ? `Tài khoản ngân hàng của bạn` : 'Ví điện tử AiNetsoft'} trong vòng 5 ngày làm việc.
+                  </p>
+               </div>
+
+               <div className="shopee-box-container" style={{ padding: '0', border: 'none', borderBottom: '1px solid #f1f5f9' }}>
+                  <div style={{ padding: '20px 24px' }}>
+                      <div className="shop-info-row" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
+                         <FaStore color="#ee4d2d"/> 
+                         <strong>{selectedReturnOrder.items[0]?.shopName}</strong>
+                         <button className="shopee-btn-solid-orange-mini" onClick={(e) => { e.stopPropagation(); handleChatWithSeller(selectedReturnOrder.items[0]?.sellerId); }}><FaCommentDots /> Trao Đổi Thêm</button>
+                         <button className="shopee-btn-outline-mini" onClick={() => navigate(`/shop/${selectedReturnOrder.items[0]?.sellerId}`)}>Xem Shop</button>
+                      </div>
+                      
+                      {selectedReturnOrder.items.map((item: any, i: number) => (
+                         <div key={i} className="product-mini-row-shopee" style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '10px 0' }}>
+                            <img src={bitnamilegacy(item.imageUrl)} alt="p" style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '2px', border: '1px solid #eee' }} />
+                            <div className="p-meta" style={{ flex: 1 }}>
+                               <h4 style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: 400, color: 'rgba(0,0,0,0.87)', lineHeight: '1.4' }}>{item.productName}</h4>
+                               <p style={{ margin: 0, fontSize: '13px', color: 'rgba(0,0,0,0.54)' }}>x{item.quantity}</p>
+                            </div>
+                            <span className="p-price" style={{ color: 'rgba(0,0,0,0.87)', fontSize: '14px' }}>₫{item.price?.toLocaleString()}</span>
+                         </div>
+                      ))}
+                  </div>
+
+                  <div style={{ background: '#fafafa', padding: '20px 24px', borderTop: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column' }}>
+                      
+                      {showPriceBreakdown && (
+                          <div style={{ width: '100%', borderBottom: '1px dotted #ccc', paddingBottom: '15px', marginBottom: '15px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#888' }}>
+                                  <span>Số tiền đề xuất hoàn</span>
+                                  <span>₫{selectedReturnOrder.totalAmount?.toLocaleString()}</span>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#888' }}>
+                                  <span>Phí vận chuyển</span>
+                                  <span>₫0</span>
+                              </div>
+                          </div>
+                      )}
+                      
+                      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: '14px', color: '#555' }}>Số tiền hoàn nhận được</span>
+                              <strong style={{ color: '#ee4d2d', fontSize: '22px', fontWeight: 500 }}>₫{selectedReturnOrder.requestedRefundAmount?.toLocaleString()}</strong>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: '14px', color: '#555' }}>Hoàn tiền vào</span>
+                              <span 
+                                  className="shopee-link-text" 
+                                  style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ee4d2d', fontSize: '14px', cursor: 'pointer' }}
+                                  onClick={() => setShowBankDetails(true)}
+                              >
+                                  {userBank ? `${userBank.bankName} [**${userBank.accountNumber.slice(-4)}]` : 'Ví AiNetsoft'} <FaLink size={12}/>
+                              </span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: '14px', color: '#555' }}>Mã đơn hàng</span>
+                              <span 
+                                  className="shopee-link-text" 
+                                  style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ee4d2d', fontSize: '14px', cursor: 'pointer' }}
+                                  onClick={() => { setShowReturnDetail(false); navigate(`/user/order/${selectedReturnOrder.id}`); }}
+                              >
+                                  {selectedReturnOrder.id.toUpperCase()} <FaChevronRight size={12}/>
+                              </span>
+                          </div>
+                      </div>
+
+                      <div style={{ width: '100%', textAlign: 'center', marginTop: '25px' }}>
+                          <span 
+                             onClick={() => setShowPriceBreakdown(!showPriceBreakdown)} 
+                             style={{ color: '#888', fontSize: '13px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                          >
+                             {showPriceBreakdown ? 'Rút Gọn' : 'Xem Chi Tiết'} 
+                             <FaChevronRight style={{ transform: showPriceBreakdown ? 'rotate(-90deg)' : 'rotate(90deg)', fontSize: '10px', transition: 'transform 0.2s' }}/>
+                          </span>
+                      </div>
+                  </div>
+               </div>
+
+               <div className="shopee-box-container" style={{ padding: '24px', borderTop: 'none' }}>
+                  <span style={{ fontSize: '16px', fontWeight: 500, color: '#333', marginBottom: '15px', display: 'block' }}>Lý do: {selectedReturnOrder.returnReason}</span>
+                  <p style={{ fontSize: '14px', color: '#666', marginBottom: '20px', whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>{selectedReturnOrder.returnDescription}</p>
+                  
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                     {selectedReturnOrder.returnImages?.map((url: string, idx: number) => {
+                         const mediaUrl = bitnamilegacy(url);
+                         const isVid = isVideoUrl(mediaUrl);
+                         return (
+                             <div key={idx} style={{ position: 'relative', width: '80px', height: '80px', cursor: 'pointer', borderRadius: '2px', overflow: 'hidden', border: '1px solid #eee' }} onClick={() => setPreviewMedia({ url: mediaUrl, isVideo: !!isVid })}>
+                                 {isVid ? (
+                                     <>
+                                        <video src={mediaUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <FaPlay color="#fff" fontSize="18px" />
+                                        </div>
+                                     </>
+                                 ) : (
+                                     <img src={mediaUrl} alt="ev" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                 )}
+                             </div>
+                         )
+                     })}
+                  </div>
+               </div>
+            </div>
+         </div>
+      )}
+
+      {stepReturn === 1 && !showReturnDetail && (
          <div className="shopee-refund-overlay-supreme">
             <div className="shopee-situation-card animate-scale-up">
                <div className="sit-header" style={{ display: 'flex', justifyContent: 'center', position: 'relative', alignItems: 'center' }}>
@@ -354,10 +571,7 @@ const Purchase = () => {
          </div>
       )}
 
-      {/* =========================================================
-         📸 MODAL 2: FORM CHI TIẾT TRẢ HÀNG TOÀN DIỆN (CHUẨN SHOPEE)
-      ========================================================= */}
-      {stepReturn === 2 && selectedReturnOrder && (
+      {stepReturn === 2 && !showReturnDetail && selectedReturnOrder && (
          <div className="shopee-refund-overlay-supreme scrollable-overlay">
             <div className="shopee-full-form-card animate-scale-up">
                <div className="form-supreme-header" style={{ display: 'flex', justifyContent: 'center', position: 'relative', alignItems: 'center' }}>
@@ -437,7 +651,7 @@ const Purchase = () => {
                         )}
 
                         {returnImages.map((file, index) => (
-                           <div key={index} className="shopee-image-preview-box">
+                           <div className="shopee-image-preview-box" key={index}>
                               <img 
                                  src={URL.createObjectURL(file)} 
                                  alt="proof" 
@@ -515,10 +729,7 @@ const Purchase = () => {
          </div>
       )}
 
-      {/* =========================================================
-         📸 SUB-MODAL: CHỈNH SỬA SỐ TIỀN HOÀN LẠI
-      ========================================================= */}
-      {showEditAmountModal && selectedReturnOrder && (
+      {showEditAmountModal && !showReturnDetail && selectedReturnOrder && (
          <div className="shopee-refund-overlay-supreme sub-modal-zindex">
             <div className="shopee-sub-amount-card animate-scale-up">
                <div className="sub-header" style={{ display: 'flex', justifyContent: 'center', position: 'relative', alignItems: 'center' }}>
@@ -551,7 +762,6 @@ const Purchase = () => {
 
       <main className="purchase-main-view" style={{ width: '100%' }}>
         
-        {/* 🚀 ĐÃ FIX: CHỈNH FONT TIÊU ĐỀ CHUẨN UI VÀ CĂN GIỮA NHƯ TRANG SELLER */}
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', marginBottom: '20px', padding: '20px 20px 25px 20px', borderBottom: '1px solid #f1f5f9' }}>
             <div style={{ textAlign: 'center' }}>
                 <h1 style={{ 
@@ -623,34 +833,66 @@ const Purchase = () => {
             </div>
           ) : (
             <div className="order-cards-wrapper">
-              {displayedOrders.map(order => { 
+              {currentOrdersList.map(order => { 
                 const rawStatus = order.status ? order.status.toString().trim().toUpperCase() : '';
                 const canCancel = ['PENDING', 'CONFIRMED', 'PROCESSING', 'UNPAID', ''].includes(rawStatus);
                 const canReturn = (rawStatus === 'SHIPPING' && order.carrierStatus === 'DELIVERED') || rawStatus === 'COMPLETED';
+                const isReturnTab = activeTab === 'RETURN';
 
                 return (
-                  <div key={order.id} className="order-card-item" style={{ border: (rawStatus === 'RETURNING' || rawStatus === 'RETURNED') ? '1px solid #ffccc7' : '1px solid #e5e5e5', marginBottom: '15px', background: '#fff' }}>
-                    <div className="order-item-header" style={{ padding: '15px', borderBottom: '1px solid #f1f1f1', display: 'flex', justifyContent: 'space-between' }}>
+                  <div 
+                      key={order.id} 
+                      className={`order-card-item condensed`} 
+                      onClick={() => {
+                          if (isReturnTab) {
+                              handleOpenReturnDetail(order);
+                          } else {
+                              navigate(`/user/order/${order.id}`);
+                          }
+                      }}
+                      style={{ 
+                          border: (rawStatus === 'RETURNING' || rawStatus === 'RETURNED') ? '1px solid #ffccc7' : '1px solid #e5e5e5', 
+                          marginBottom: '15px', background: '#fff',
+                          cursor: 'pointer',
+                          padding: '12px 16px'
+                      }}
+                  >
+                    <div className="order-item-header" style={{ paddingBottom: '10px', borderBottom: '1px solid #f1f1f1', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div className="shop-name-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <FaStore className="icon-orange" color="#ee4d2d" />
                         <strong>{order.items?.[0]?.shopName || 'Cửa hàng AiNetsoft'}</strong>
+                        
+                        {(rawStatus === 'RETURNING' || rawStatus === 'RETURNED') && (
+                            <button 
+                                className="shopee-btn-solid-orange-mini" 
+                                style={{ marginLeft: '10px' }} 
+                                onClick={(e) => { e.stopPropagation(); handleChatWithSeller(order.items?.[0]?.sellerId); }}
+                            >
+                                <FaCommentDots /> Trao Đổi Thêm
+                            </button>
+                        )}
+                        
                         <button 
-                          className="chat-btn" 
-                          onClick={() => handleChatWithSeller(order.items?.[0]?.sellerId)}
-                          style={{ padding: '4px 8px', fontSize: '12px', background: 'none', color: '#ee4d2d', border: '1px solid #ee4d2d', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                            className="shopee-btn-outline-mini" 
+                            onClick={(e) => { e.stopPropagation(); navigate(`/shop/${order.items[0]?.sellerId}`); }}
                         >
-                          <FaCommentDots /> Chat
+                            Xem Shop
                         </button>
+
                       </div>
                       <div className="status-tag" style={{ color: '#ee4d2d', fontWeight: 'bold' }}>
-                        {rawStatus === 'RETURNED' || rawStatus === 'RETURNING' ? <FaExclamationCircle style={{ marginRight: '5px' }}/> : <FaTruck style={{ marginRight: '5px' }}/>} 
+                        {(rawStatus === 'RETURNED' || rawStatus === 'RETURNING') ? <FaExclamationCircle style={{ marginRight: '5px' }}/> : <FaTruck style={{ marginRight: '5px' }}/>} 
                         {getStatusText(rawStatus)}
                       </div>
                     </div>
 
-                    <div className="order-item-body" style={{ padding: '15px' }}>
+                    <div className="order-item-body" style={{ padding: '10px 0' }}>
                       {order.items?.map((item: any, idx: number) => (
-                        <div key={idx} className="item-row" onClick={() => navigate(`/product/${item.productId}`)} style={{ display: 'flex', marginBottom: '15px', cursor: 'pointer' }}>
+                        <div 
+                           key={idx} 
+                           className="item-row" 
+                           style={{ display: 'flex', padding: '8px 0', borderBottom: 'none' }}
+                        >
                            <img 
                               src={bitnamilegacy(item.imageUrl)} 
                               alt={item.productName} 
@@ -667,104 +909,140 @@ const Purchase = () => {
                            </div>
                         </div>
                       ))}
-
-                      {order.shippingAddress && (
-                        <div className="order-shipping-summary" style={{ background: '#fcfcfc', padding: '10px', marginTop: '10px', fontSize: '13px', color: '#555', borderLeft: '3px solid #ee4d2d' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
-                            <FaMapMarkerAlt color="#ee4d2d" />
-                            <strong>Giao đến: {order.shippingAddress.receiverName} ({order.shippingAddress.phone})</strong>
-                          </div>
-                          <p style={{ margin: '0 0 10px 24px' }}>{order.shippingAddress.detail}, {order.shippingAddress.ward}, {order.shippingAddress.province}</p>
-                          
-                          {(order.trackingCode || rawStatus === 'SHIPPING') && (
-                            <div style={{ borderTop: '1px dashed #ddd', paddingTop: '10px', marginTop: '10px' }}>
-                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#00bfa5', fontWeight: 'bold' }}>
-                                 <FaClipboardList /> Thông tin Vận chuyển:
-                               </div>
-                               <div style={{ marginLeft: '24px', marginTop: '4px' }}>
-                                 <span>Đơn vị: <strong>{order.shippingProvider || 'Đang cập nhật'}</strong></span><br/>
-                                 <span>Mã vận đơn: <strong>{order.trackingCode || 'Đang chờ điều phối'}</strong></span><br/>
-                                 <span>Trạng thái: <strong style={{ color: order.carrierStatus === 'DELIVERED' ? '#ee4d2d' : '#00bfa5' }}>{getCarrierStatusText(order.carrierStatus)}</strong></span>
-                               </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </div>
 
-                    <div className="order-item-footer" style={{ borderTop: '1px solid #f1f1f1', padding: '15px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    <div className="order-item-footer" style={{ borderTop: '1px dotted #eee', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '0' }}>
                         <div className="total-display" style={{ alignSelf: 'flex-end', fontSize: '18px' }}>
                           <span style={{ fontSize: '14px', color: '#555' }}>
-                              {rawStatus === 'RETURNED' ? 'Tổng tiền hoàn:' : 'Thành tiền:'} 
+                              {rawStatus === 'RETURNED' || isReturnTab ? 'Tổng tiền hoàn:' : 'Thành tiền:'} 
                           </span>
                           <span className="grand-total" style={{ color: '#ee4d2d', fontWeight: 'bold', fontSize: '20px' }}>₫{(order.finalTotalAmount || order.totalAmount)?.toLocaleString()}</span>
                         </div>
                         
-                        <div className="footer-actions purchase-action-buttons">
-                          {rawStatus === 'SHIPPING' && (
-                            <button 
-                                className={`purchase-btn btn-primary ${order.carrierStatus !== 'DELIVERED' ? 'disabled' : ''}`}
-                                disabled={order.carrierStatus !== 'DELIVERED'}
-                                onClick={() => handleConfirmReceipt(order.id)}
-                                title={order.carrierStatus !== 'DELIVERED' ? 'Chỉ có thể xác nhận khi đơn vị vận chuyển đã giao hàng' : ''}>
-                                <FaCheckCircle style={{ marginRight: '6px' }} /> Đã nhận được hàng
-                            </button>
-                          )}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: '5px' }}>
+                            <div className="cancel-info-left" style={{ fontSize: '13px', color: 'rgba(0,0,0,0.54)' }}>
+                                {rawStatus === 'CANCELLED' && (
+                                    <span>
+                                        {order.cancelledBy === 'SYSTEM' ? 'Đã hủy tự động bởi hệ thống AiNetsoft' : 
+                                         order.cancelledBy === 'SELLER' ? 'Đã hủy bởi Người bán' : 'Đã hủy bởi bạn'}
+                                    </span>
+                                )}
+                            </div>
 
-                          {canReturn && (
-                             <button 
-                                className="purchase-btn btn-outline" 
-                                onClick={() => handleOpenReturnModal(order)}
-                             >
-                                 <FaUndoAlt style={{ marginRight: '6px' }}/> Trả hàng/Hoàn tiền
-                             </button>
-                          )}
+                            <div className="footer-actions purchase-action-buttons">
+                              {rawStatus === 'CANCELLED' && (
+                                  <>
+                                      <button className="purchase-btn btn-primary" onClick={(e) => handleBuyAgain(e, order.items[0]?.productId)}>Mua Lại</button>
+                                      <button className="purchase-btn btn-secondary" onClick={(e) => { e.stopPropagation(); navigate(`/user/order/${order.id}?view=cancel_detail`); }}>Xem Chi Tiết Hủy Đơn</button>
+                                      <button className="purchase-btn btn-secondary" onClick={(e) => { e.stopPropagation(); handleChatWithSeller(order.items?.[0]?.sellerId); }}>Liên Hệ Người Bán</button>
+                                  </>
+                              )}
 
-                          {rawStatus === 'COMPLETED' ? (
-                            <>
-                              <button 
-                                onClick={() => navigate(`/product/${order.items[0]?.productId}?review=true&orderId=${order.id}`)}
-                                className="purchase-btn btn-outline"
-                              >
-                                <FaStar style={{ marginRight: '6px' }} /> Đánh giá sản phẩm
-                              </button>
-                              <button 
-                                className="purchase-btn btn-primary" 
-                                onClick={() => navigate(`/product/${order.items[0]?.productId}`)}
-                              >
-                                Mua lại
-                              </button>
-                            </>
-                          ) : (
-                            <button 
-                              className="purchase-btn btn-secondary" 
-                              onClick={() => handleChatWithSeller(order.items?.[0]?.sellerId)}
-                            >
-                               Liên hệ người bán
-                            </button>
-                          )}
-                          
-                          {canCancel && (
-                            <button 
-                              className="purchase-btn btn-secondary"
-                              onClick={() => handleCancelOrder(order.id)}
-                            >
-                              Hủy đơn
-                            </button>
-                          )}
+                              {rawStatus === 'SHIPPING' && (
+                                <button 
+                                    className={`purchase-btn btn-primary ${order.carrierStatus !== 'DELIVERED' ? 'disabled' : ''}`}
+                                    disabled={order.carrierStatus !== 'DELIVERED'}
+                                    onClick={(e) => { e.stopPropagation(); handleConfirmReceipt(order.id); }}
+                                    title={order.carrierStatus !== 'DELIVERED' ? 'Chỉ có thể xác nhận khi đơn vị vận chuyển đã giao hàng' : ''}>
+                                    <FaCheckCircle style={{ marginRight: '6px' }} /> Đã nhận được hàng
+                                </button>
+                              )}
 
-                          <button 
-                             className="purchase-btn btn-secondary" 
-                             onClick={() => navigate(`/user/order/${order.id}`)}
-                          >
-                              Xem chi tiết
-                          </button>
+                              {canReturn && (
+                                 <button 
+                                    className="purchase-btn btn-outline" 
+                                    onClick={(e) => { e.stopPropagation(); handleOpenReturnModal(order); }}
+                                 >
+                                     <FaUndoAlt style={{ marginRight: '6px' }}/> Yêu cầu Trả hàng/Hoàn tiền
+                                 </button>
+                              )}
+
+                              {rawStatus === 'COMPLETED' && (
+                                <>
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); navigate(`/product/${order.items[0]?.productId}?review=true&orderId=${order.id}`); }}
+                                    className="purchase-btn btn-outline"
+                                  >
+                                    <FaStar style={{ marginRight: '6px' }} /> Đánh giá
+                                  </button>
+                                  <button 
+                                    className="purchase-btn btn-primary" 
+                                    onClick={(e) => handleBuyAgain(e, order.items[0]?.productId)}
+                                  >
+                                    Mua lại
+                                  </button>
+                                </>
+                              )}
+
+                              {!['CANCELLED', 'COMPLETED', 'RETURNING', 'RETURNED'].includes(rawStatus) && (
+                                  <button 
+                                    className="purchase-btn btn-secondary" 
+                                    onClick={(e) => { e.stopPropagation(); handleChatWithSeller(order.items?.[0]?.sellerId); }}
+                                  >
+                                     Liên hệ người bán
+                                  </button>
+                              )}
+                              
+                              {canCancel && (
+                                <button 
+                                  className="purchase-btn btn-secondary"
+                                  onClick={(e) => { e.stopPropagation(); handleCancelOrder(order.id); }}
+                                >
+                                  Hủy đơn
+                                </button>
+                              )}
+                            </div>
                         </div>
                     </div>
                   </div>
                 );
               })}
             </div>
+          )}
+
+          {totalPages > 0 && (
+              <div className="shopee-pagination-wrapper" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '20px', padding: '20px 0', gap: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#555' }}>
+                      <span>Hiển thị:</span>
+                      <select 
+                          value={ordersPerPage} 
+                          onChange={handleOrdersPerPageChange}
+                          style={{ padding: '4px 8px', border: '1px solid #d9d9d9', borderRadius: '4px', outline: 'none', cursor: 'pointer' }}
+                      >
+                          <option value={5}>5</option>
+                          <option value={10}>10</option>
+                          <option value={30}>30</option>
+                          <option value={50}>50</option>
+                      </select>
+                      <span>/ trang</span>
+                  </div>
+
+                  <div className="shopee-pagination" style={{ margin: 0, padding: 0 }}>
+                      <button 
+                          className="shopee-page-btn" 
+                          disabled={currentPage === 1} 
+                          onClick={() => handlePageChange(currentPage - 1)}
+                      >
+                          <FaChevronLeft size={12}/>
+                      </button>
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                          <button 
+                              key={page} 
+                              className={`shopee-page-btn ${currentPage === page ? 'active' : ''}`}
+                              onClick={() => handlePageChange(page)}
+                          >
+                              {page}
+                          </button>
+                      ))}
+                      <button 
+                          className="shopee-page-btn" 
+                          disabled={currentPage === totalPages} 
+                          onClick={() => handlePageChange(currentPage + 1)}
+                      >
+                          <FaChevronRight size={12}/>
+                      </button>
+                  </div>
+              </div>
           )}
         </div>
       </main>

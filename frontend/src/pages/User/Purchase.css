@@ -30,8 +30,8 @@
     top: 0;
     z-index: 10;
     width: 100%;
-    border-bottom: 1px solid #e0e0e0; /* Solid line to ground the tabs */
-    box-shadow: 0 4px 10px -5px rgba(0,0,0,0.05); /* Subtle shadow for depth */
+    border-bottom: 1px solid #e0e0e0; 
+    box-shadow: 0 4px 10px -5px rgba(0,0,0,0.05); 
 }
 
 .purchase-tab-item {
@@ -42,14 +42,13 @@
     color: #555; 
     cursor: pointer;
     border-bottom: 2px solid transparent;
-    margin-bottom: -1px; /* 🚀 THE TRICK: Pulls the active border down to overlap the container's border */
+    margin-bottom: -1px; 
     transition: all 0.2s ease;
     white-space: nowrap;
     font-weight: 500; 
-    position: relative; /* Needed for vertical dividers */
+    position: relative; 
 }
 
-/* Subtle vertical dividers between tabs */
 .purchase-tab-item:not(:last-child)::after {
     content: '';
     position: absolute;
@@ -62,7 +61,7 @@
 
 .purchase-tab-item:hover { 
     color: #ee4d2d;
-    background-color: #fffaf9; /* Very soft orange background on hover */
+    background-color: #fffaf9; 
 }
 
 .purchase-tab-item.active {
@@ -80,7 +79,7 @@
     padding: 20px;
 }
 
-/* --- 4. Order Card (Refined Supreme Look) --- */
+/* --- 4. Order Card --- */
 .order-card-item {
     background: #fff;
     padding: 24px;
@@ -88,6 +87,15 @@
     box-shadow: 0 1px 2px rgba(0,0,0,0.03);
     border-radius: 8px;
     border: 1px solid #f1f5f9;
+}
+
+.order-card-item.condensed {
+    transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+.order-card-item.condensed:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+    border-color: #ffccc7;
 }
 
 .order-item-header {
@@ -98,14 +106,25 @@
     border-bottom: 1px solid #f8fafc;
 }
 
-.shop-name-group { display: flex; align-items: center; gap: 10px; }
-.shop-name-group strong { color: #002147; font-size: 0.95rem; }
+.shop-name-group { display: flex; align-items: center; gap: 8px; }
+.shop-name-group strong { color: #002147; font-size: 0.95rem; margin-right: 5px;}
 
-/* Status Colors */
+.shopee-btn-outline-mini {
+    background: #fff; border: 1px solid #d9d9d9; padding: 4px 10px; border-radius: 2px; font-size: 12px; cursor: pointer; color: #555;
+}
+.shopee-btn-outline-mini:hover { background: #f8f8f8; color: #ee4d2d; border-color: #ee4d2d; }
+
+.shopee-btn-solid-orange-mini {
+    background: #ee4d2d; border: 1px solid #ee4d2d; padding: 4px 10px; border-radius: 2px; font-size: 12px; cursor: pointer; color: #fff; display: flex; align-items: center; gap: 4px;
+}
+.shopee-btn-solid-orange-mini:hover { background: #d73d1f; }
+
+.shopee-link-text { color: #ee4d2d; display: inline-flex; align-items: center; gap: 6px; }
+.shopee-link-text:hover { text-decoration: underline; }
+
 .status-tag { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; color: #ee4d2d; }
 
-/* Product Rows */
-.item-row { display: flex; gap: 15px; padding: 15px 0; border-bottom: 1px solid #f8fafc; cursor: pointer; transition: background 0.2s; }
+.item-row { display: flex; gap: 15px; padding: 15px 0; border-bottom: 1px solid #f8fafc; transition: background 0.2s; }
 .item-row:hover { background: #fcfdfe; }
 .item-thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 4px; border: 1px solid #f1f5f9; }
 .item-info { flex: 1; }
@@ -113,10 +132,8 @@
 .item-count { font-size: 0.85rem; color: #94a3b8; }
 .current-price { color: #ee4d2d; font-weight: 600; }
 
-/* Shipping Box */
 .order-shipping-summary { display: flex; gap: 12px; background: #fffcf5; margin-top: 15px; padding: 15px; border-radius: 8px; border: 1px solid #fdf2d9; }
 
-/* --- 5. Empty State: THE HEIGHT FIX --- */
 .purchase-empty-state {
     flex: 1; 
     display: flex;
@@ -141,13 +158,9 @@
 }
 .go-shopping-btn:hover { background-color: #d73211; }
 
-/* Footer Actions */
 .order-item-footer { margin-top: 20px; display: flex; flex-direction: column; align-items: flex-end; gap: 15px; }
 .grand-total { font-size: 1.4rem; font-weight: 700; color: #ee4d2d; margin-left: 10px; }
 
-/* =========================================================
-   6. ACTION BUTTONS STYLING
-========================================================= */
 .purchase-action-buttons {
     display: flex;
     gap: 12px;
@@ -172,53 +185,20 @@
     box-sizing: border-box;
 }
 
-/* Nút Chính (Đã nhận hàng, Mua lại) */
-.purchase-btn.btn-primary {
-    background-color: #ee4d2d;
-    color: #fff;
-    border: 1px solid #ee4d2d;
-}
+.purchase-btn.btn-primary { background-color: #ee4d2d; color: #fff; border: 1px solid #ee4d2d; }
+.purchase-btn.btn-primary:hover:not(:disabled) { background-color: #d73d1f; }
+.purchase-btn.btn-primary:disabled { background-color: #f5f5f5; color: #ccc; border: 1px solid #ddd; cursor: not-allowed; }
 
-.purchase-btn.btn-primary:hover:not(:disabled) {
-    background-color: #d73d1f;
-}
+.purchase-btn.btn-outline { background-color: #fff; color: #ee4d2d; border: 1px solid #ee4d2d; }
+.purchase-btn.btn-outline:hover { background-color: #fffaf9; }
 
-/* Trạng thái Disable */
-.purchase-btn.btn-primary:disabled {
-    background-color: #f5f5f5;
-    color: #ccc;
-    border: 1px solid #ddd;
-    cursor: not-allowed;
-}
-
-/* Nút Đánh giá (Màu viền cam, chữ cam) */
-.purchase-btn.btn-outline {
-    background-color: #fff;
-    color: #ee4d2d;
-    border: 1px solid #ee4d2d;
-}
-
-.purchase-btn.btn-outline:hover {
-    background-color: #fffaf9;
-}
-
-/* Nút Phụ (Xem chi tiết, Liên hệ, Hủy đơn) */
-.purchase-btn.btn-secondary {
-    background-color: #fff;
-    color: #555;
-    border: 1px solid #e0e0e0;
-}
-
-.purchase-btn.btn-secondary:hover {
-    background-color: #f8f8f8;
-    border-color: #c6c6c6;
-}
+.purchase-btn.btn-secondary { background-color: #fff; color: #555; border: 1px solid #e0e0e0; }
+.purchase-btn.btn-secondary:hover { background-color: #f8f8f8; border-color: #c6c6c6; }
 
 /* =========================================================
-   7. ENTERPRISE RETURN/REFUND DESIGN SYSTEM (SHOPEE STYLE)
+   7. ENTERPRISE RETURN/REFUND DESIGN SYSTEM 
 ========================================================= */
 
-/* Overlay phủ mờ toàn trang */
 .shopee-refund-overlay-supreme {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
@@ -236,7 +216,6 @@
     align-items: flex-start;
 }
 
-/* Modal 1: Chọn Tình Huống */
 .shopee-situation-card {
     background: #fff;
     width: 100%;
@@ -301,7 +280,6 @@
 .sit-text-meta strong { display: block; font-size: 14px; color: rgba(0,0,0,0.87); font-weight: 500; margin-bottom: 6px; line-height: 1.4; }
 .sit-text-meta p { margin: 0; font-size: 12px; color: rgba(0,0,0,0.54); line-height: 1.4; }
 
-/* Modal 2: Form chi tiết lớn */
 .shopee-full-form-card {
     background: #fff;
     width: 100%;
@@ -320,7 +298,6 @@
     gap: 16px;
 }
 
-/* Các khối Box Container bọc viền trắng */
 .shopee-box-container {
     background: #fff;
     border: 1px solid #e8e8e8;
@@ -333,7 +310,6 @@
 .shopee-box-container.bg-gray-soft { background: #f6f6f6; border: none; }
 .section-title-shopee { font-size: 14px; font-weight: 500; color: rgba(0,0,0,0.87); margin-bottom: 12px; display: block;}
 
-/* Row sản phẩm thu nhỏ */
 .product-mini-row-shopee {
     display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f9f9f9;
 }
@@ -343,8 +319,8 @@
 .product-mini-row-shopee h4 { margin: 0 0 4px 0; font-size: 14px; font-weight: 400; color: rgba(0,0,0,0.87); }
 .product-mini-row-shopee .p-shop-tag { margin: 0; font-size: 12px; color: rgba(0,0,0,0.54); display: flex; align-items: center; gap: 4px; }
 .product-mini-row-shopee .p-qty { font-size: 13px; color: rgba(0,0,0,0.54); }
+.product-mini-row-shopee .p-price { font-size: 14px; color: rgba(0,0,0,0.87); }
 
-/* Input layout */
 .input-field-shopee { margin-bottom: 16px; display: flex; flex-direction: column; gap: 8px; }
 .input-field-shopee:last-child { margin-bottom: 0; }
 .required-label::after { content: ' *'; color: #ee4d2d; font-weight: bold; }
@@ -361,7 +337,6 @@
 .textarea-wrapper textarea:focus { border-color: #ee4d2d; }
 .char-counter { position: absolute; bottom: 8px; right: 12px; font-size: 11px; color: rgba(0,0,0,0.3); }
 
-/* Grid Tải Ảnh Thực Tế Chặn 5 Ảnh */
 .shopee-image-upload-grid {
     display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 10px;
 }
@@ -370,7 +345,7 @@
 }
 .shopee-image-preview-box img { width: 100%; height: 100%; object-fit: cover; }
 .remove-img-btn {
-    position: absolute; top: -4px; right: -4px; background: rgba(0,0,0,0.6); color: #fff; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    position: absolute; top: -4px; right: -4px; background: rgba(0,0,0,0.6); color: #fff; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10;
 }
 
 .shopee-upload-trigger-box {
@@ -378,7 +353,6 @@
 }
 .shopee-upload-trigger-box:hover { background: #fff0ed; }
 
-/* Thông tin breakdown tài chính */
 .refund-meta-row-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f6f6f6; }
 .refund-meta-row-item .lbl-left { font-size: 14px; color: rgba(0,0,0,0.54); }
 .refund-meta-row-item .val-right { font-size: 14px; color: rgba(0,0,0,0.87); text-align: right; }
@@ -414,7 +388,6 @@
     cursor: pointer;
 }
 
-/* Sub-modal sửa số tiền */
 .sub-modal-zindex { z-index: 10005 !important; }
 .shopee-sub-amount-card { background: #fff; width: 380px; border-radius: 3px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); overflow: hidden; }
 .sub-header { padding: 14px 20px; border-bottom: 1px solid #eee; }
@@ -433,9 +406,187 @@
 .btn-sub-action.cancel { background: #fff; border: 1px solid #ccc; color: #555; }
 .btn-sub-action.confirm { background: #ee4d2d; color: #fff; }
 
-/* Animation hiệu ứng mượt */
 .animate-scale-up { animation: scaleUp 0.18s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
 @keyframes scaleUp {
     from { opacity: 0; transform: scale(0.95); }
     to { opacity: 1; transform: scale(1); }
+}
+
+/* =========================================================
+   8. TRANG CHI TIẾT KHIẾU NẠI MỚI (SVG ICONS)
+========================================================= */
+.return-detail-page {
+    border-radius: 0; 
+    box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+}
+
+.stepper-shopee-container {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 30px 0;
+    position: relative;
+}
+
+.stepper-shopee-container::before {
+    content: '';
+    position: absolute;
+    top: 40px; 
+    left: 16%;
+    right: 16%;
+    height: 3px;
+    background: #e0e0e0;
+    z-index: 1;
+}
+
+.step-item {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    color: #ccc;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.step-icon-wrapper {
+    background: #fff;
+    position: relative;
+    z-index: 3;
+    font-size: 24px;
+    color: #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.step-item.active {
+    color: #10b981; 
+}
+
+.step-item.active .step-icon-wrapper {
+    color: #10b981; 
+}
+
+/* =========================================================
+   9. BẢNG THÔNG TIN NGÂN HÀNG VERIFIED
+========================================================= */
+.bank-detail-modal {
+    background: #fff;
+    width: 100%;
+    max-width: 400px;
+    border-radius: 4px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    overflow: hidden;
+}
+
+.bank-verified-header {
+    background: #26aa99;
+    color: #fff;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    font-size: 15px;
+}
+
+.bank-info-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.bank-info-item {
+    padding: 14px 20px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.bank-info-item:last-child {
+    border-bottom: none;
+}
+
+.bank-info-item label {
+    font-size: 14px;
+    color: #333;
+    font-weight: 400;
+}
+
+.bank-info-item span {
+    font-size: 15px;
+    color: #999;
+}
+
+.bank-modal-footer {
+    padding: 0;
+}
+
+.bank-modal-footer button {
+    width: 100%;
+    padding: 16px;
+    background: #ee4d2d;
+    color: #fff;
+    border: none;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.bank-modal-footer button:hover {
+    background: #d73d1f;
+}
+
+/* =========================================================
+   10. PHÂN TRANG (PAGINATION)
+========================================================= */
+.shopee-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-top: 20px;
+    padding: 20px 0;
+}
+
+.shopee-page-btn {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    color: #555;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+}
+
+.shopee-page-btn:hover:not(:disabled) {
+    border-color: #ee4d2d;
+    color: #ee4d2d;
+}
+
+.shopee-page-btn.active {
+    background: #ee4d2d;
+    color: #fff;
+    border-color: #ee4d2d;
+}
+
+.shopee-page-btn:disabled {
+    background: #f8fafc;
+    color: #cbd5e1;
+    cursor: not-allowed;
+    border-color: #f1f5f9;
+}
+
+/* Đảm bảo thẻ condensed thu gọn lề thật sát */
+.order-card-item.condensed {
+    padding: 12px 16px !important;
 }

@@ -334,7 +334,6 @@ public class OrderService {
             order.setTrackingCode(trackingCode);
             order.setShippingProvider("Giao Hàng Nhanh");
             order.setCarrierStatus("PICKED_UP"); 
-            // Nếu gửi hàng, gán luôn deadline 3 ngày kể từ bây giờ để tránh lỗi null
             order.setReturnDeadline(LocalDateTime.now().plusDays(3));
         }
 
@@ -356,7 +355,6 @@ public class OrderService {
                 notificationService.createNotification(order.getUserId(), "🎉 Chúc mừng bạn nhận được Xu!", "Bạn đã được cộng " + earnedCoins + " AiNetsoft Xu từ đơn hàng " + order.getId(), "WALLET", null);
             }
             
-            // Nếu khách tự bấm Đã nhận hàng khi hàng chưa đến nơi (hoặc API thiếu deadline), gán deadline 3 ngày từ lúc này.
             if (order.getReturnDeadline() == null) {
                 order.setReturnDeadline(LocalDateTime.now().plusDays(3));
             }
@@ -397,9 +395,6 @@ public class OrderService {
         notificationService.createNotification(order.getUserId(), "Cập nhật Vận chuyển 📦", message, "SHIPPING", order.getId());
     }
 
-    // ==========================================
-    // 🚀 BẢN VÁ: CHO PHÉP TRẢ HÀNG KỂ CẢ KHI ĐÃ COMPLETED (CHUẨN MỚI)
-    // ==========================================
     @Transactional
     public Order requestReturn(String orderId, String userId, String reason, String description, double refundAmount, String email, List<String> images) {
         Order order = orderRepository.findById(orderId)
@@ -409,7 +404,6 @@ public class OrderService {
             throw new RuntimeException("Bạn không có quyền thực hiện thao tác này!");
         }
 
-        // 🚀 CHỈ CHẶN ĐƠN HỦY. CÒN ĐƠN COMPLETED VẪN ĐƯỢC TRẢ HÀNG!
         if ("CANCELLED".equals(order.getStatus())) {
             throw new RuntimeException("Đơn hàng đã bị hủy, không thể yêu cầu trả hàng.");
         }
@@ -436,9 +430,6 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
-    // ==========================================
-    // 🚀 BẢN VÁ: SELLER DUYỆT TRẢ HÀNG VÀ THU HỒI XU NẾU ĐƠN ĐÃ COMPLETED
-    // ==========================================
     @Transactional
     public Order processReturn(String orderId, String sellerId, boolean isApproved) {
         Order order = orderRepository.findById(orderId)
@@ -462,8 +453,13 @@ public class OrderService {
                     productRepository.save(p);
                 });
             }
+
+            walletRepository.findByUserId(order.getUserId()).ifPresent(wallet -> {
+                double currentBalance = wallet.getBalance() != null ? wallet.getBalance() : 0.0;
+                wallet.setBalance(currentBalance + order.getRequestedRefundAmount());
+                walletRepository.save(wallet);
+            });
             
-            // Khách lấy lại Xu đã dùng mua đơn hàng này
             if (order.getUsedCoins() > 0) {
                  walletRepository.findByUserId(order.getUserId()).ifPresent(wallet -> {
                      double refundRatio = order.getRequestedRefundAmount() / order.getFinalTotalAmount();
@@ -476,7 +472,6 @@ public class OrderService {
                  });
             }
             
-            // 🚀 BẢO MẬT: THU HỒI LẠI XU CASHBACK KHÁCH ĐÃ NHẬN TRƯỚC ĐÓ ĐỂ CHỐNG GIAN LẬN
             PlatformConfig config = platformConfigRepository.findAll().stream().findFirst().orElse(new PlatformConfig());
             int expectedCashback = (int) (order.getFinalTotalAmount() * config.getCashbackRate());
             if (expectedCashback > config.getMaxCoinsPerOrder()) {
@@ -486,7 +481,6 @@ public class OrderService {
             if (expectedCashback > 0) {
                 final int coinsToRevoke = expectedCashback;
                 walletRepository.findByUserId(order.getUserId()).ifPresent(wallet -> {
-                    // Trừ số xu cashback đã cộng lầm (đảm bảo không bị âm ví)
                     wallet.setCoinBalance(Math.max(0, wallet.getCoinBalance() - coinsToRevoke));
                     walletRepository.save(wallet);
                 });
@@ -516,7 +510,6 @@ public class OrderService {
             order.setStatus("COMPLETED"); 
             order.setReturnStatus("REJECTED");
             
-            // Nếu từ chối trả hàng -> Ép đơn hàng Hoàn thành. Nếu khách chưa được cộng xu trước đó thì cộng luôn.
             PlatformConfig config = platformConfigRepository.findAll().stream().findFirst().orElse(new PlatformConfig());
             int earnedCoins = (int) (order.getFinalTotalAmount() * config.getCashbackRate());
             if (earnedCoins > config.getMaxCoinsPerOrder()) earnedCoins = config.getMaxCoinsPerOrder();
@@ -537,8 +530,9 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
+    // 🚀 ĐÃ SỬA: Hàm Hủy Đơn nhận thêm biến String cancelReason và cập nhật vào Database
     @Transactional
-    public void cancelOrder(String orderId, String userId) {
+    public void cancelOrder(String orderId, String userId, String cancelReason) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Đơn hàng không tồn tại!"));
 
@@ -585,9 +579,18 @@ public class OrderService {
             }
         }
 
+        // Cập nhật các trường hủy đơn mới
         order.setStatus("CANCELLED");
         order.setUpdatedAt(LocalDateTime.now());
         order.setReviewed(false); 
+        
+        if (cancelReason != null && !cancelReason.trim().isEmpty()) {
+            order.setCancelReason(cancelReason);
+        } else {
+            order.setCancelReason("Người mua thay đổi ý định");
+        }
+        order.setCancelledBy("USER"); // Do endpoint này là API của Buyer gọi lên
+
         orderRepository.save(order);
     }
 
@@ -627,7 +630,7 @@ public class OrderService {
                 .collect(Collectors.toList());
     }
 
-    @org.springframework.scheduling.annotation.Scheduled(cron = "0 0 * * * *") // Chạy mỗi giờ
+    @org.springframework.scheduling.annotation.Scheduled(cron = "0 0 * * * *") 
     @Transactional
     public void autoProcessExpiredReturns() {
         log.info("Chạy tiến trình tự động quyết toán đơn hàng quá hạn...");

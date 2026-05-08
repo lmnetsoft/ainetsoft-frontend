@@ -11,7 +11,7 @@ const bitnamilegacy = '/logo.svg';
 
 const SellerOrders = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('PENDING');
+  const [activeTab, setActiveTab] = useState('ALL'); // 🚀 ĐÃ SỬA: Mặc định mở Tab Tất Cả
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showToast, setShowToast] = useState(false);
@@ -22,11 +22,14 @@ const SellerOrders = () => {
 
   const [previewMedia, setPreviewMedia] = useState<{ url: string, isVideo: boolean } | null>(null);
 
+  // 🚀 ĐÃ BỔ SUNG KEY "ALL"
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({
-    PENDING: 0, SHIPPING: 0, COMPLETED: 0, CANCELLED: 0, RETURNING: 0
+    ALL: 0, PENDING: 0, SHIPPING: 0, COMPLETED: 0, CANCELLED: 0, RETURNING: 0
   });
 
+  // 🚀 ĐÃ BỔ SUNG TAB "TẤT CẢ"
   const tabs = [
+    { id: 'ALL', label: 'Tất cả' },
     { id: 'PENDING', label: 'Chờ xác nhận' },
     { id: 'SHIPPING', label: 'Đang giao' },
     { id: 'COMPLETED', label: 'Hoàn thành' },
@@ -43,7 +46,7 @@ const SellerOrders = () => {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const res = await api.get(`/orders/seller?status=${activeTab === 'RETURNING' ? 'ALL' : activeTab}`);
+      const res = await api.get(`/orders/seller?status=${(activeTab === 'RETURNING' || activeTab === 'ALL') ? 'ALL' : activeTab}`);
       let filtered = res.data;
       if (activeTab === 'RETURNING') {
           filtered = res.data.filter((o: any) => o.status === 'RETURNING' || o.status === 'RETURNED');
@@ -68,17 +71,20 @@ const SellerOrders = () => {
     }
   };
 
+  // 🚀 ĐÃ TỐI ƯU HIỆU NĂNG: Chỉ gọi 1 API ALL và tự đếm số lượng cho các tab
   const fetchTabCounts = async () => {
     try {
-      const statuses = ['PENDING', 'SHIPPING', 'COMPLETED', 'CANCELLED', 'RETURNING'];
-      const promises = statuses.map(status => api.get(`/orders/seller?status=${status}`));
-      const results = await Promise.all(promises);
+      const res = await api.get(`/orders/seller?status=ALL`);
+      const allData = res.data || [];
 
-      const newCounts: Record<string, number> = {};
-      statuses.forEach((status, index) => {
-        newCounts[status] = results[index].data.length;
+      setTabCounts({
+        ALL: allData.length,
+        PENDING: allData.filter((o: any) => o.status === 'PENDING').length,
+        SHIPPING: allData.filter((o: any) => o.status === 'SHIPPING').length,
+        COMPLETED: allData.filter((o: any) => o.status === 'COMPLETED').length,
+        CANCELLED: allData.filter((o: any) => o.status === 'CANCELLED').length,
+        RETURNING: allData.filter((o: any) => o.status === 'RETURNING' || o.status === 'RETURNED').length
       });
-      setTabCounts(newCounts);
     } catch (err) {
       console.warn("Không thể lấy số lượng tóm tắt cho các tab", err);
     }
@@ -332,7 +338,7 @@ const SellerOrders = () => {
               <span style={{
                 marginLeft: '8px',
                 backgroundColor: tabCounts[tab.id] > 0 
-                  ? (['PENDING', 'RETURNING'].includes(tab.id) ? '#ee4d2d' : '#3b82f6') 
+                  ? (['PENDING', 'RETURNING'].includes(tab.id) ? '#ee4d2d' : (tab.id === 'ALL' ? '#64748b' : '#3b82f6')) 
                   : '#e2e8f0',
                 color: tabCounts[tab.id] > 0 ? '#ffffff' : '#64748b',
                 padding: '2px 8px',

@@ -24,7 +24,7 @@ public class Order {
     @Builder.Default
     private List<OrderItem> items = new ArrayList<>();
     
-    private double totalAmount; // Tổng tiền hàng gốc
+    private double totalAmount; 
     
     @Builder.Default
     private List<String> appliedVoucherIds = new ArrayList<>();
@@ -36,7 +36,7 @@ public class Order {
     
     private User.AddressInfo shippingAddress;
     private String paymentMethod;
-    private String status; // PENDING, SHIPPING, RETURNING, RETURNED, COMPLETED, CANCELLED
+    private String status; 
     
     @Builder.Default
     private boolean isReviewed = false;
@@ -49,20 +49,25 @@ public class Order {
     private String carrierStatus;    
 
     // ==========================================
-    // 🚀 TÍNH NĂNG TRẢ HÀNG / HOÀN TIỀN (Shopee Standard)
+    // TÍNH NĂNG TRẢ HÀNG / HOÀN TIỀN
     // ==========================================
     @Builder.Default
-    private String returnStatus = "NONE"; // NONE, REQUESTED, APPROVED, REJECTED
+    private String returnStatus = "NONE"; 
     
-    private String returnReason;      // Lý do trả: Hàng lỗi, Khác mô tả...
-    private String returnDescription; // Lời nhắn chi tiết từ người mua
+    private String returnReason;      
+    private String returnDescription; 
     
-    // 🚀 BỔ SUNG: Các trường dữ liệu tài chính và liên hệ khiếu nại
-    private double requestedRefundAmount; // Số tiền khách hàng đề xuất hoàn lại (hỗ trợ hoàn một phần)
-    private String returnEmail;           // Email nhận thông báo tiến trình giải quyết
+    private double requestedRefundAmount; 
+    private String returnEmail;           
     
     @Builder.Default
-    private List<String> returnImages = new ArrayList<>(); // Hình ảnh bằng chứng
+    private List<String> returnImages = new ArrayList<>(); 
     
-    private LocalDateTime returnDeadline; // Hạn chót để bấm trả hàng (3 ngày sau khi giao)
+    private LocalDateTime returnDeadline; 
+
+    // ==========================================
+    // 🚀 BỔ SUNG: TÍNH NĂNG HỦY ĐƠN
+    // ==========================================
+    private String cancelReason; // Lưu lý do khách hàng nhập
+    private String cancelledBy;  // Lưu người thực hiện hủy: "USER", "SELLER", "SYSTEM"
 }
