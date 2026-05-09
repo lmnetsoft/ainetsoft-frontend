@@ -22,6 +22,10 @@ public class Wallet {
     
     private String userId; // Liên kết với bảng User
     
+    // 💰 Số dư tiền mặt (Real Money/VNĐ) - Dùng cho việc Rút tiền và Hoàn tiền
+    @Builder.Default
+    private Double balance = 0.0; 
+    
     // 🪙 AiNetsoft Xu (Platform Coins)
     @Builder.Default
     private double coinBalance = 0.0; 

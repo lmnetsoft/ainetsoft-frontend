@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FaStore, FaStar, FaBox, FaMapMarkerAlt, FaCommentDots, FaTicketAlt } from 'react-icons/fa';
-import { toast } from 'react-hot-toast';
 import api from '../../services/api';
+import ToastNotification from '../../components/Toast/ToastNotification';
 import './PublicShop.css';
 
 import logoWithoutText from '../../assets/images/logo_without_text.png';
@@ -18,15 +18,14 @@ const PublicShop = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const API_BASE_URL = "http://localhost:8080";
+  const [toastMessage, setToastMessage] = useState('');
+  const [showToast, setShowToast] = useState(false);
 
-  // 🚀 FIXED: Helper logic to resolve image paths correctly including blobs
+  const API_BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:8080";
+
   const bitnamilegacy = (path: string | null | undefined) => {
     if (!path || path === "DEFAULT_LOGO" || path.trim() === "") return logoWithoutText; 
-    
-    // Bypass for external URLs, base64 strings, and local blob previews
     if (path.startsWith('data:image') || path.startsWith('http') || path.startsWith('blob:')) return path;
-    
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
     return `${API_BASE_URL}${cleanPath}`;
   };
@@ -56,7 +55,6 @@ const PublicShop = () => {
         setProducts(products || []);
         document.title = `${info.shopName || info.fullName || 'Cửa hàng'} | AiNetsoft`;
 
-        // 🚀 FETCH VOUCHERS CHO SHOP NÀY
         if (info.id) {
           api.get(`/vouchers/public/shop/${info.id}`)
              .then(vRes => setShopVouchers(vRes.data || []))
@@ -64,7 +62,6 @@ const PublicShop = () => {
         }
 
       } catch (err: any) {
-        console.error("Lỗi khi tải dữ liệu cửa hàng:", err);
         if (err.response?.status === 404) {
             setError("Cửa hàng không tồn tại hoặc đã đổi địa chỉ truy cập.");
         } else {
@@ -79,20 +76,23 @@ const PublicShop = () => {
     window.scrollTo(0, 0);
   }, [identifier, shopSlug]);
 
-  // 🚀 LƯU VOUCHER VÀO VÍ TRỰC TIẾP TỪ TRANG SHOP
   const handleSaveVoucher = async (voucherId: string) => {
     if (!localStorage.getItem('isAuthenticated')) {
-       toast.error("Vui lòng đăng nhập để lưu mã giảm giá!");
+       setToastMessage("Vui lòng đăng nhập để lưu mã giảm giá!");
+       setShowToast(true);
        setTimeout(() => navigate('/login'), 1500);
        return;
     }
     try {
        setSavingVoucherId(voucherId);
        await api.post(`/vouchers/save/${voucherId}`);
-       toast.success("Đã lưu mã giảm giá vào Kho Voucher!");
+       setToastMessage("🎉 Đã lưu mã giảm giá vào Kho Voucher!");
+       setShowToast(true);
+       
        setShopVouchers(prev => prev.filter(v => v.id !== voucherId)); 
     } catch (e: any) {
-       toast.error(e.response?.data?.message || "Lỗi khi lưu mã giảm giá.");
+       setToastMessage(e.response?.data?.message || "Lỗi khi lưu mã giảm giá.");
+       setShowToast(true);
     } finally {
        setSavingVoucherId(null);
     }
@@ -112,8 +112,15 @@ const PublicShop = () => {
     </div>
   );
 
+  // 🚀 LOGIC QUAN TRỌNG: Chỉ kích hoạt cuộn ngang (Marquee) khi có TỪ 4 VOUCHER trở lên
+  const isMarquee = shopVouchers.length >= 4;
+  // Để tạo hiệu ứng cuộn mượt mà vô tận, ta phải nhân đôi mảng dữ liệu
+  const displayVouchers = isMarquee ? [...shopVouchers, ...shopVouchers] : shopVouchers;
+
   return (
     <div className="public-shop-wrapper">
+      <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
+
       <div className="shop-header-banner">
         <div className="container shop-header-container">
           <div className="shop-profile-card">
@@ -153,29 +160,36 @@ const PublicShop = () => {
 
       <div className="container shop-content-section">
         
-        {/* 🚀 HIỂN THỊ DANH SÁCH MÃ GIẢM GIÁ CỦA SHOP */}
         {shopVouchers.length > 0 && (
-          <div className="shop-vouchers-container" style={{ marginBottom: '30px', background: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ fontSize: '18px', color: '#ee4d2d', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div className="shop-vouchers-container">
+            <h3 className="shop-vouchers-header">
               <FaTicketAlt /> Ưu Đãi Của Cửa Hàng
             </h3>
-            <div style={{ display: 'flex', gap: '15px', overflowX: 'auto', paddingBottom: '10px' }}>
-              {shopVouchers.map(v => (
-                <div key={v.id} style={{ minWidth: '280px', border: '1px solid #f8d0d3', borderRadius: '4px', display: 'flex', background: '#fffafb' }}>
-                  <div style={{ padding: '15px', flex: 1, borderRight: '1px dashed #f8d0d3' }}>
-                    <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#ee4d2d' }}>
-                      {v.discountType === 'PERCENTAGE' ? `Giảm ${v.discountValue}%` : `Giảm ${(v.discountValue / 1000)}k`}
+            {/* Vùng Viewport cắt những phần thừa */}
+            <div className="shop-vouchers-marquee-viewport">
+                {/* Thanh Track chứa nội dung, áp dụng class marquee-active nếu có nhiều voucher */}
+                <div className={`shop-vouchers-track ${isMarquee ? 'marquee-active' : ''}`}>
+                  {displayVouchers.map((v, index) => (
+                    // Cần cộng thêm index vào key vì mảng bị nhân đôi
+                    <div key={`${v.id}-${index}`} className="shopee-ticket-wrapper">
+                      <div className="ticket-left-section">
+                        <div className="ticket-title">
+                          {v.discountType === 'PERCENTAGE' ? `Giảm ${v.discountValue}%` : `Giảm ${(v.discountValue / 1000)}k`}
+                        </div>
+                        <div className="ticket-desc">Đơn tối thiểu {(v.minOrderValue / 1000)}k</div>
+                      </div>
+                      <div className="ticket-right-section">
+                         <button 
+                            className="ticket-save-btn"
+                            onClick={() => handleSaveVoucher(v.id)}
+                            disabled={savingVoucherId === v.id}
+                         >
+                            {savingVoucherId === v.id ? 'Đang lưu' : 'Lưu Mã'}
+                         </button>
+                      </div>
                     </div>
-                    <div style={{ fontSize: '12px', color: '#757575', marginTop: '4px' }}>Đơn tối thiểu {(v.minOrderValue / 1000)}k</div>
-                  </div>
-                  <div 
-                    onClick={() => handleSaveVoucher(v.id)}
-                    style={{ padding: '0 15px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', background: '#ee4d2d', fontWeight: 'bold', fontSize: '14px' }}
-                  >
-                    {savingVoucherId === v.id ? '...' : 'Lưu Mã'}
-                  </div>
+                  ))}
                 </div>
-              ))}
             </div>
           </div>
         )}

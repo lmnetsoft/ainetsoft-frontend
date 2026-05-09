@@ -14,7 +14,7 @@
 }
 
 .shop-header-container {
-  max-width: 1400px; /* Matching your wide-screen standard */
+  max-width: 1400px;
   margin: 0 auto;
 }
 
@@ -150,11 +150,160 @@
   padding-top: 10px;
 }
 
-/* --- 3. Utilities --- */
 .loading-shop, .empty-shop-state {
   text-align: center;
   padding: 100px 0;
   color: #999;
 }
-
 .empty-icon { font-size: 4rem; opacity: 0.1; margin-bottom: 20px; }
+
+/* ========================================================================= */
+/* 🚀 4. VOUCHER MARQUEE (BĂNG CHUYỀN CHẠY TỰ ĐỘNG & BONG BÓNG) */
+/* ========================================================================= */
+
+.shop-vouchers-container {
+    margin-bottom: 30px;
+    background: #fff;
+    padding: 20px 24px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.shop-vouchers-header {
+    font-size: 18px;
+    color: #ee4d2d;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+}
+
+/* Khung nhìn ẩn đi những phần bị tràn ra ngoài để làm hiệu ứng băng chuyền */
+.shop-vouchers-marquee-viewport {
+    overflow: hidden;
+    width: 100%;
+    position: relative;
+    padding: 10px 0 15px 0;
+    /* Làm mờ (fade) mượt mà 2 cạnh viền trái phải để trông đẹp hơn */
+    -webkit-mask-image: linear-gradient(to right, transparent, black 3%, black 97%, transparent);
+    mask-image: linear-gradient(to right, transparent, black 3%, black 97%, transparent);
+}
+
+/* Đường ray chứa danh sách Voucher (Auto-Scroll) */
+.shop-vouchers-track {
+    display: flex;
+    gap: 16px;
+    width: max-content;
+}
+
+/* 🚀 CHỈ KÍCH HOẠT HIỆU ỨNG CHẠY KHI ĐƯỢC GẮN CLASS NÀY TỪ REACT */
+.marquee-active {
+    animation: scroll-left 40s linear infinite;
+}
+
+/* Dừng ngay băng chuyền khi người dùng rê chuột vào để bấm Lưu */
+.shop-vouchers-track:hover {
+    animation-play-state: paused;
+}
+
+@keyframes scroll-left {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(calc(-50% - 8px)); } /* Di chuyển chính xác bằng 1 nửa độ dài để loop mượt */
+}
+
+/* Giao diện Thẻ Voucher Vibrant Bubble (Bong bóng xịn xò) */
+.shopee-ticket-wrapper {
+    display: flex;
+    min-width: 260px;
+    height: 76px;
+    background: #fff;
+    border-radius: 8px;
+    flex-shrink: 0;
+    position: relative;
+    border: 1px solid #f8d0d3;
+    overflow: hidden;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(238, 77, 45, 0.15);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.shopee-ticket-wrapper:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 10px 20px rgba(238, 77, 45, 0.2);
+}
+
+.ticket-left-section {
+    flex: 1;
+    padding: 10px 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background: linear-gradient(135deg, #ff7337 0%, #ee4d2d 100%); /* Nền Gradient đỏ rực hút mắt */
+    color: white;
+    position: relative;
+}
+
+/* Đường răng cưa cắt ở giữa */
+.ticket-left-section::after {
+    content: '';
+    position: absolute;
+    right: -5px;
+    top: 0;
+    bottom: 0;
+    width: 10px;
+    background-image: radial-gradient(circle at 5px 6px, #fff 5px, transparent 6px);
+    background-size: 10px 12px;
+    background-position: center;
+    z-index: 2;
+}
+
+.ticket-title {
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.15);
+}
+
+.ticket-desc {
+    font-size: 12px;
+    margin-top: 4px;
+    opacity: 0.9;
+    color: #fff;
+}
+
+.ticket-right-section {
+    width: 90px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    position: relative;
+    z-index: 1;
+}
+
+.ticket-save-btn {
+    background-color: #ee4d2d;
+    color: white;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 20px; /* Bong bóng bo tròn */
+    font-size: 12px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: 0.3s;
+    box-shadow: 0 2px 4px rgba(238, 77, 45, 0.3);
+}
+
+.ticket-save-btn:hover {
+    background-color: #d73d1f;
+    transform: scale(1.05); /* To lên 1 xíu khi hover */
+}
+
+.ticket-save-btn:disabled {
+    background-color: #f6aca1;
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none;
+}

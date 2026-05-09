@@ -89,15 +89,15 @@ const Checkout = () => {
 
   let voucherDiscount = 0;
   selectedVouchers.forEach(v => {
-      if (subtotal >= v.minOrderValue) {
+      if (subtotal >= (v?.minOrderValue || 0)) {
           let currentDiscount = 0;
           if (v.discountType === 'PERCENTAGE') {
-              currentDiscount = subtotal * (v.discountValue / 100);
+              currentDiscount = subtotal * ((v.discountValue || 0) / 100);
               if (v.maxDiscountAmount > 0 && currentDiscount > v.maxDiscountAmount) {
                   currentDiscount = v.maxDiscountAmount;
               }
           } else {
-              currentDiscount = v.discountValue;
+              currentDiscount = v.discountValue || 0;
           }
           voucherDiscount += currentDiscount;
       }
@@ -419,64 +419,59 @@ const Checkout = () => {
                           <div className="empty-vouchers" style={{ textAlign: 'center', padding: '40px 0', color: '#999' }}>Bạn chưa có voucher nào.</div>
                       ) : (
                           savedVouchers.map(v => {
-                              const isExhausted = v.usedCount >= v.usageLimit;
+                              // Chống vỡ UI nếu data bị hỏng
+                              if (typeof v !== 'object' || !v.id) return null;
+
+                              const isExhausted = (v.usedCount || 0) >= (v.usageLimit || 1);
                               const isExpired = new Date() > new Date(v.validUntil);
-                              const isSubtotalValid = subtotal >= v.minOrderValue;
+                              const isSubtotalValid = subtotal >= (v.minOrderValue || 0);
                               const isDisabled = !isSubtotalValid || isExhausted || isExpired;
                               
                               const isSelected = selectedVouchers.some(sv => sv.id === v.id);
 
                               return (
                                   <div key={v.id} 
-                                       className={`checkout-voucher-card ${isDisabled ? 'disabled' : ''} ${isSelected ? 'selected' : ''}`} 
+                                       className={`checkout-ticket ${isDisabled ? 'disabled' : ''} ${isSelected ? 'selected' : ''}`} 
                                        onClick={() => { if(!isDisabled) handleToggleVoucher(v); }}>
                                       
-                                      <div className="cv-left">
-                                          <FaTicketAlt size={24} />
-                                          <span style={{fontSize: '11px', marginTop: '5px', textAlign: 'center', fontWeight: 500}}>{v.shopName || 'AiNetsoft'}</span>
-                                      </div>
-                                      
-                                      <div className="cv-right">
-                                          <div className="cv-info">
-                                              {/* 🚀 ĐÃ BỔ SUNG: Hiển thị Code ngay cạnh Title một cách chuyên nghiệp */}
-                                              <h4 style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                                                  {v.title}
-                                                  {v.code && (
-                                                      <span style={{ 
-                                                          fontSize: '11px', 
-                                                          color: '#ee4d2d', 
-                                                          background: '#fff0ed', 
-                                                          border: '1px solid #ffc9c0', 
-                                                          padding: '2px 6px', 
-                                                          borderRadius: '2px', 
-                                                          fontWeight: 500,
-                                                          letterSpacing: '0.5px'
-                                                      }}>
-                                                          {v.code}
-                                                      </span>
-                                                  )}
-                                              </h4>
-                                              <p>Đơn tối thiểu ₫{v.minOrderValue.toLocaleString()}</p>
+                                      <div className="ticket-left-section">
+                                          <div className="ticket-val">
+                                              {v.discountType === 'PERCENTAGE' ? `${v.discountValue}%` : `₫${((v.discountValue||0) / 1000)}k`}
                                           </div>
-                                          <div className="cv-action">
-                                              {isSelected ? <FaCheckSquare color="#ee4d2d" size={22}/> : <FaSquare color={isDisabled ? "#e2e8f0" : "#cbd5e1"} size={22}/>}
+                                          <div className="ticket-type">
+                                              {v.type === 'FREESHIP' ? 'Phí Vận Chuyển' : 'Giảm Giá'}
                                           </div>
                                       </div>
                                       
-                                      {isDisabled && (
-                                          <div className="cv-reason">
-                                              {isExhausted ? 'Đã hết lượt sử dụng' 
-                                                  : isExpired ? 'Voucher đã hết hạn' 
-                                                  : 'Chưa đạt giá trị đơn tối thiểu'}
+                                      <div className="ticket-right-wrapper">
+                                          <div className="ticket-right-section-checkout">
+                                              <div className="cv-info">
+                                                  <h4>
+                                                      {v.title || 'Voucher'}
+                                                      {v.code && <span className="cv-code-badge">{v.code}</span>}
+                                                  </h4>
+                                                  <p className="cv-min-order">Đơn tối thiểu ₫{(v.minOrderValue||0).toLocaleString()}</p>
+                                              </div>
+                                              <div className="cv-action">
+                                                  {isSelected ? <FaCheckSquare color="#ee4d2d" size={22}/> : <FaSquare color={isDisabled ? "#e2e8f0" : "#cbd5e1"} size={22}/>}
+                                              </div>
                                           </div>
-                                      )}
+                                          
+                                          {isDisabled && (
+                                              <div className="cv-reason">
+                                                  {isExhausted ? 'Đã hết lượt sử dụng' 
+                                                      : isExpired ? 'Voucher đã hết hạn' 
+                                                      : `Mua thêm ₫${((v.minOrderValue||0) - subtotal).toLocaleString()} để sử dụng`}
+                                              </div>
+                                          )}
+                                      </div>
                                   </div>
                               );
                           })
                       )}
                   </div>
                   <div className="modal-footer">
-                      <span style={{marginRight: 'auto', alignSelf: 'center', fontSize: '13px', color: 'rgba(0,0,0,0.54)'}}>Đã chọn {selectedVouchers.length}/3</span>
+                      <span style={{marginRight: 'auto', alignSelf: 'center', fontSize: '13px', color: '#64748b'}}>Đã chọn {selectedVouchers.length}/3</span>
                       <button className="btn-cancel" onClick={() => setShowVoucherModal(false)}>TRỞ LẠI</button>
                       <button className="btn-confirm" onClick={() => setShowVoucherModal(false)}>XÁC NHẬN</button>
                   </div>

@@ -66,6 +66,23 @@ const OrderDetail = () => {
         }
     };
 
+    // 🚀 HÀM MUA LẠI: KIỂM TRA TỒN KHO TRƯỚC KHI CHUYỂN TRANG
+    const handleBuyAgain = async (e: React.MouseEvent, productId: string) => {
+        if (e) e.stopPropagation();
+        try {
+            const res = await api.get(`/products/${productId}`);
+            if (res.data && res.data.stock > 0 && res.data.status !== 'INACTIVE') {
+                navigate(`/product/${productId}`);
+            } else {
+                setToastMessage("Xin lỗi, các sản phẩm của đơn hàng đã không còn bán/ hết hàng nên không thể mua lại.");
+                setShowToast(true);
+            }
+        } catch (err) {
+            setToastMessage("Xin lỗi, các sản phẩm của đơn hàng đã không còn bán/ hết hàng nên không thể mua lại.");
+            setShowToast(true);
+        }
+    };
+
     if (loading) return <div style={{ padding: '50px', textAlign: 'center' }}><div className="loading-spinner"></div></div>;
     if (!order) return <div style={{ padding: '50px', textAlign: 'center' }}>Không tìm thấy đơn hàng!</div>;
 
@@ -174,7 +191,7 @@ const OrderDetail = () => {
                 </div>
             </div>
 
-            {/* 🚀 STEPPER MỚI: Truyền data-steps để CSS tính toán đường kẻ */}
+            {/* STEPPER MỚI: Truyền data-steps để CSS tính toán đường kẻ */}
             <div className="od-stepper-box" data-steps={rawStatus === 'CANCELLED' ? "3" : "5"}>
                 <div className="od-step-item active">
                     <div className="od-step-icon"><FaReceipt/></div>
@@ -232,7 +249,7 @@ const OrderDetail = () => {
                     )}
 
                     {['COMPLETED', 'CANCELLED', 'RETURNED'].includes(rawStatus) && (
-                        <button className="od-btn od-btn-primary" onClick={() => navigate(`/product/${order.items[0]?.productId}`)}>Mua Lại</button>
+                        <button className="od-btn od-btn-primary" onClick={(e) => handleBuyAgain(e, order.items[0]?.productId)}>Mua Lại</button>
                     )}
 
                     {rawStatus === 'CANCELLED' && (

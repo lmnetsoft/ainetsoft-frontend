@@ -12,16 +12,18 @@ mvn spring-boot:run -Dspring-boot.run.arguments="--app.seed.mock-data=false"
 mvn clean compile -DskipTests && \
 mvn spring-boot:run -Dspring-boot.run.arguments="--app.seed.mock-data=false --admin.setup.password=RealStrongPass123! --ainetsoft.jwt.secret=HighlySecureRandomString64Chars"
 
+docker network create ainetsoft-network
 docker run -d \
   --name ainetsoft-mongodb \
   --network ainetsoft-network \
-  --restart always \
-  -p 27017:27017 \
+  --restart unless-stopped \
+  -p 127.0.0.1:27017:27017 \
   -v ainetsoft_db_data:/data/db \
   -e MONGO_INITDB_ROOT_USERNAME=admin \
   -e MONGO_INITDB_ROOT_PASSWORD='Changeme!' \
   mongo:8.0
 
+  
 mongosh "mongodb://admin:Changeme%21@localhost:27017/ainetsoft?authSource=admin"
 
 use ainetsoft
