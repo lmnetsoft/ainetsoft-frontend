@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import api from '../../services/api';
 import ToastNotification from '../../components/Toast/ToastNotification';
 import { 
-    FaCheck, FaTimes, FaFilter, FaClock, FaStore, FaMoneyBillWave, FaSync, FaUniversity, FaChevronDown, FaExclamationTriangle 
+    FaCheck, FaTimes, FaFilter, FaClock, FaStore, FaMoneyBillWave, FaSync, FaUniversity, FaChevronDown, FaExclamationTriangle, FaUser 
 } from 'react-icons/fa';
 import './AdminWithdrawals.css';
 
@@ -99,7 +99,7 @@ const AdminWithdrawals = () => {
             
             <div className="admin-page-header">
                 <h1>QUẢN LÝ RÚT TIỀN</h1>
-                <p>Hệ thống đối soát và giải ngân tiền doanh thu cho Người bán</p>
+                <p>Hệ thống đối soát và giải ngân tiền cho Người dùng và Người bán</p>
                 <div className="header-stats">
                     <FaMoneyBillWave className="icon-money" /> Tổng yêu cầu: <strong>{requests.length}</strong>
                     <button className={`btn-refresh-elite ${refreshing ? 'is-syncing' : ''}`} onClick={fetchRequests} disabled={refreshing}>
@@ -132,7 +132,7 @@ const AdminWithdrawals = () => {
                 <table className="elite-admin-table">
                     <thead>
                         <tr>
-                            <th style={{width: '25%'}}>Người bán / Cửa hàng</th>
+                            <th style={{width: '25%'}}>Người yêu cầu</th>
                             <th style={{width: '15%'}}>Số tiền</th>
                             <th style={{width: '25%'}}>Chi tiết Ngân hàng</th>
                             <th style={{width: '12%'}}>Thời gian</th>
@@ -146,10 +146,25 @@ const AdminWithdrawals = () => {
                                 <tr key={req.id}>
                                     <td>
                                         <div className="elite-shop-flex">
-                                            <div className="shop-icon-circle"><FaStore /></div>
+                                            <div 
+                                                className="shop-icon-circle" 
+                                                style={{ 
+                                                    background: req.targetType === 'BUYER' ? '#e6f7ff' : '#fff1f0', 
+                                                    color: req.targetType === 'BUYER' ? '#1890ff' : '#ff4d4f' 
+                                                }}
+                                            >
+                                                {req.targetType === 'BUYER' ? <FaUser /> : <FaStore />}
+                                            </div>
                                             <div className="shop-text-info">
-                                                <div className="shop-name-bold">{req.shopName || "Unknown Shop"}</div>
-                                                <div className="seller-name-muted">{req.sellerFullName || "Seller"}</div>
+                                                <div className="shop-name-bold">
+                                                    {req.shopName || "Unknown"}
+                                                </div>
+                                                <div className="seller-name-muted">{req.sellerFullName || "User"}</div>
+                                                {req.targetType === 'BUYER' ? (
+                                                    <span style={{fontSize: '11px', background: '#e6f7ff', color: '#1890ff', padding: '2px 6px', borderRadius: '4px', display: 'inline-block', marginTop: '4px', fontWeight: 'bold'}}>NGƯỜI MUA</span>
+                                                ) : (
+                                                    <span style={{fontSize: '11px', background: '#fff1f0', color: '#f5222d', padding: '2px 6px', borderRadius: '4px', display: 'inline-block', marginTop: '4px', fontWeight: 'bold'}}>CỬA HÀNG</span>
+                                                )}
                                             </div>
                                         </div>
                                     </td>

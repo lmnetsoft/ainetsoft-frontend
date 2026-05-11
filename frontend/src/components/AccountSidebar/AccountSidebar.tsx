@@ -84,7 +84,6 @@ const AccountSidebar = () => {
           src={userAvatar ? userAvatar : defaultLogo} 
           alt="User Avatar" 
           className="sidebar-avatar" 
-          // 🚀 Updated error handling fallback to system standard
           onError={(e) => { e.currentTarget.src = "bitnamilegacy"; }}
         />
         <div className="sidebar-user-info">
@@ -132,6 +131,11 @@ const AccountSidebar = () => {
         <NavLink to="/user/purchase" className={({isActive}) => isActive ? "nav-single-item active" : "nav-single-item"}>
           <FaClipboardList className="menu-icon" style={{ color: '#096dd9' }} />
           <span>Đơn Mua</span>
+        </NavLink>
+
+        <NavLink to="/user/wallet" className={({isActive}) => isActive ? "nav-single-item active" : "nav-single-item"}>
+          <FaWallet className="menu-icon" style={{ color: '#eb2f96' }} />
+          <span>Ví Của Tôi</span>
         </NavLink>
 
         <NavLink to="/user/vouchers" className={({isActive}) => isActive ? "nav-single-item active" : "nav-single-item"}>

@@ -32,6 +32,10 @@ public class Order {
     private double voucherDiscountAmount; 
     private int usedCoins; 
     private double coinDiscountAmount; 
+    
+    // 🚀 BỔ SUNG: Lưu số tiền Ví AiNetsoft dùng để cấn trừ (Deduction)
+    private double usedWalletBalance; 
+    
     private double finalTotalAmount; 
     
     private User.AddressInfo shippingAddress;
@@ -58,7 +62,7 @@ public class Order {
     private String returnDescription; 
     
     private double requestedRefundAmount; 
-    private String returnEmail;           
+    private String returnEmail;            
     
     @Builder.Default
     private List<String> returnImages = new ArrayList<>(); 
@@ -66,8 +70,8 @@ public class Order {
     private LocalDateTime returnDeadline; 
 
     // ==========================================
-    // 🚀 BỔ SUNG: TÍNH NĂNG HỦY ĐƠN
+    // TÍNH NĂNG HỦY ĐƠN
     // ==========================================
-    private String cancelReason; // Lưu lý do khách hàng nhập
-    private String cancelledBy;  // Lưu người thực hiện hủy: "USER", "SELLER", "SYSTEM"
+    private String cancelReason; 
+    private String cancelledBy;  
 }

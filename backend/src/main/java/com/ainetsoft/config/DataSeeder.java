@@ -116,12 +116,10 @@ public class DataSeeder implements CommandLineRunner {
         User sellerA = userRepository.findByEmail("seller_a@ainetsoft.com").orElse(null);
         User sellerB = userRepository.findByEmail("seller_b@ainetsoft.com").orElse(null);
         User buyer = userRepository.findByEmail("user@ainetsoft.com").orElse(null);
+        User noBankUser = userRepository.findByEmail("nobank@ainetsoft.com").orElse(null);
 
         if (buyer == null) return;
 
-        // ==============================================================
-        // KHỐI CODE GỐC: GIỮ NGUYÊN 100% CÁC BIẾN VÀ GIÁ TRỊ CỦA BẠN
-        // ==============================================================
         Voucher platformVoucher = Voucher.builder()
                 .type(Voucher.VoucherType.SYSTEM)
                 .code("SYSTEM20K")
@@ -211,14 +209,10 @@ public class DataSeeder implements CommandLineRunner {
                 .collectedUserIds(new HashSet<>()) 
                 .build();
 
-        // ==============================================================
-        // 🚀 APPEND THÊM VOUCHERS (10 MÃ CHO MỖI SHOP ĐỂ TEST ANIMATION)
-        // ==============================================================
         List<Voucher> allVouchersToSave = new ArrayList<>(Arrays.asList(
             platformVoucher, shopVoucherA, shopVoucherB, freeshipVoucher, hiddenLivestreamVoucher
         ));
 
-        // 10 Vouchers cho Shop A
         for (int i = 1; i <= 10; i++) {
             allVouchersToSave.add(Voucher.builder()
                     .type(Voucher.VoucherType.SELLER)
@@ -237,7 +231,6 @@ public class DataSeeder implements CommandLineRunner {
                     .build());
         }
 
-        // 10 Vouchers cho Shop B
         for (int i = 1; i <= 10; i++) {
             allVouchersToSave.add(Voucher.builder()
                     .type(Voucher.VoucherType.SELLER)
@@ -255,19 +248,17 @@ public class DataSeeder implements CommandLineRunner {
                     .build());
         }
 
-        // Lưu toàn bộ vào Database
         List<Voucher> savedVouchers = voucherRepository.saveAll(allVouchersToSave);
 
-        // ==============================================================
-        // KHỐI CODE GỐC: LOGIC VÍ TIỀN GIỮ NGUYÊN 100% CỦA BẠN
-        // ==============================================================
         List<String> savedIds = Arrays.asList(savedVouchers.get(0).getId(), savedVouchers.get(1).getId(), savedVouchers.get(2).getId(), savedVouchers.get(3).getId());
         
+        // 🚀 WALLET CHO TEST CONSUMER (CÓ BANK)
         Optional<Wallet> existingWallet = walletRepository.findByUserId(buyer.getId());
         if (existingWallet.isEmpty()) {
             Wallet wallet = Wallet.builder()
                     .userId(buyer.getId())
                     .coinBalance(100000) 
+                    .balance(500000.0)
                     .savedVoucherIds(new ArrayList<>(savedIds))
                     .updatedAt(LocalDateTime.now())
                     .build();
@@ -275,6 +266,7 @@ public class DataSeeder implements CommandLineRunner {
         } else {
              Wallet w = existingWallet.get();
              w.setCoinBalance(100000);
+             w.setBalance(500000.0);
              w.setSavedVoucherIds(new ArrayList<>(savedIds));
              walletRepository.save(w);
         }
@@ -282,6 +274,28 @@ public class DataSeeder implements CommandLineRunner {
         buyer.setCoinBalance(100000);
         buyer.setSavedVoucherIds(new HashSet<>(savedIds));
         userRepository.save(buyer);
+
+        // 🚀 WALLET CHO NOBANK CONSUMER (KHÔNG CÓ BANK NHƯNG CÓ TIỀN)
+        if (noBankUser != null) {
+            Optional<Wallet> noBankWallet = walletRepository.findByUserId(noBankUser.getId());
+            if (noBankWallet.isEmpty()) {
+                Wallet wallet = Wallet.builder()
+                        .userId(noBankUser.getId())
+                        .coinBalance(50000) 
+                        .balance(300000.0) // 300k VNĐ để test báo lỗi không có Bank
+                        .savedVoucherIds(new ArrayList<>())
+                        .updatedAt(LocalDateTime.now())
+                        .build();
+                walletRepository.save(wallet);
+            } else {
+                Wallet w = noBankWallet.get();
+                w.setCoinBalance(50000);
+                w.setBalance(300000.0);
+                walletRepository.save(w);
+            }
+            noBankUser.setCoinBalance(50000);
+            userRepository.save(noBankUser);
+        }
     }
     
     private void seedIfMissing(String slug, String title, String content) {
@@ -341,7 +355,7 @@ public class DataSeeder implements CommandLineRunner {
         ContentNode cat2 = new ContentNode(); cat2.setTitle("Vận Chuyển & Giao Nhận"); cat2.setSlug("shipping-policy"); cat2.setType("CATEGORY"); cat2.setDisplayOrder(2); cat2 = helpNodeRepository.save(cat2);
         ContentNode cat2_s1 = new ContentNode(); cat2_s1.setTitle("Thông tin chung"); cat2_s1.setSlug("shipping-policy"); cat2_s1.setType("ARTICLE"); cat2_s1.setParentId(cat2.getId()); cat2_s1.setDisplayOrder(1); helpNodeRepository.save(cat2_s1);
         ContentNode cat2_s2 = new ContentNode(); cat2_s2.setTitle("Chi phí vận chuyển"); cat2_s2.setSlug("phi-van-chuyen"); cat2_s2.setType("ARTICLE"); cat2_s2.setParentId(cat2.getId()); cat2_s2.setDisplayOrder(2); helpNodeRepository.save(cat2_s2);
-        ContentNode cat2_s3 = new ContentNode(); cat2_s3.setTitle("Thời gian giao hàng"); cat2_s3.setSlug("thoi-gian-giao-hang"); cat2_s3.setType("ARTICLE"); cat2_s3.setParentId(cat2.getId()); cat2_s3.setDisplayOrder(3); helpNodeRepository.save(cat2_s3);
+        ContentNode cat2_s3 = new ContentNode(); cat2_s3.setTitle("Thời gian giao hàng"); cat2_s3.setSlug("thoi-gian-giao-hang"); cat2_s3.setType("ARTICLE"); cat2_s2.setParentId(cat2.getId()); cat2_s3.setDisplayOrder(3); helpNodeRepository.save(cat2_s3);
 
         ContentNode cat3 = new ContentNode(); cat3.setTitle("Trả Hàng & Hoàn Tiền"); cat3.setSlug("return-policy"); cat3.setType("CATEGORY"); cat3.setDisplayOrder(3); cat3 = helpNodeRepository.save(cat3);
         ContentNode cat3_s1 = new ContentNode(); cat3_s1.setTitle("Quy định chung"); cat3_s1.setSlug("return-policy"); cat3_s1.setType("ARTICLE"); cat3_s1.setParentId(cat3.getId()); cat3_s1.setDisplayOrder(1); helpNodeRepository.save(cat3_s1);
@@ -568,6 +582,28 @@ public class DataSeeder implements CommandLineRunner {
             
             userRepository.save(u);
         }
+        
+        // 🚀 THÊM USER MỚI: NOBANK CONSUMER (KHÔNG TẠO BANK ACCOUNT CHO USER NÀY)
+        if (!userRepository.existsByEmail("nobank@ainetsoft.com")) {
+            User u2 = new User(); u2.setEmail("nobank@ainetsoft.com"); u2.setFullName("NoBank Consumer");
+            u2.setPassword(passwordEncoder.encode(adminPassword)); u2.setRoles(new HashSet<>(Arrays.asList("USER")));
+            u2.setAccountStatus("ACTIVE"); 
+            u2.setEmailVerified(true); 
+            u2.setEnabled(true);
+            
+            // 🚀 BỔ SUNG ĐỊA CHỈ GIAO HÀNG CHO NOBANK CONSUMER
+            User.AddressInfo nobankAddress = User.AddressInfo.builder()
+                .receiverName("NoBank Consumer")
+                .phone("0999888777")
+                .province("Hà Nội")
+                .ward("Quận Cầu Giấy")
+                .detail("Số 1 Phạm Văn Đồng, Phường Mai Dịch")
+                .isDefault(true)
+                .build();
+            u2.setAddresses(new ArrayList<>(Arrays.asList(nobankAddress)));
+            
+            userRepository.save(u2);
+        }
     }
 
     private void seedPendingModeration(List<Category> savedCats, List<ShippingMethod> globalMethods) {
@@ -583,77 +619,110 @@ public class DataSeeder implements CommandLineRunner {
 
     private void seedBankAccounts() {
         User sellerA = userRepository.findByEmail("seller_a@ainetsoft.com").orElse(null);
-        if (sellerA == null || bankAccountRepository.existsByUserId(sellerA.getId())) return;
+        User buyer = userRepository.findByEmail("user@ainetsoft.com").orElse(null);
 
-        BankAccount bank = BankAccount.builder().userId(sellerA.getId()).bankName("ACB").accountNumber("0322222222")
-                .accountHolder("CAC THI CHO").isDefault(true).createdAt(LocalDateTime.now()).build();
-        bankAccountRepository.save(bank);
+        if (sellerA != null && !bankAccountRepository.existsByUserId(sellerA.getId())) {
+            BankAccount bankSeller = BankAccount.builder().userId(sellerA.getId()).bankName("ACB").accountNumber("0322222222")
+                    .accountHolder("CAC THI CHO").isDefault(true).createdAt(LocalDateTime.now()).build();
+            bankAccountRepository.save(bankSeller);
+        }
+
+        if (buyer != null && !bankAccountRepository.existsByUserId(buyer.getId())) {
+            BankAccount bankBuyer = BankAccount.builder().userId(buyer.getId()).bankName("Vietcombank").accountNumber("0123456789")
+                    .accountHolder("TEST CONSUMER").isDefault(true).createdAt(LocalDateTime.now()).build();
+            bankAccountRepository.save(bankBuyer);
+        }
+        
+        // LƯU Ý: Tuyệt đối không gọi lệnh tạo BankAccount cho nobank@ainetsoft.com ở đây!
     }
 
     private void seedWithdrawalTestData() {
         User sellerA = userRepository.findByEmail("seller_a@ainetsoft.com").orElse(null);
         User buyer = userRepository.findByEmail("user@ainetsoft.com").orElse(null);
-        if (sellerA == null || buyer == null || withdrawalRepository.countBySellerId(sellerA.getId()) > 0) return;
+        
+        // 1. CHỈ KIỂM TRA LỊCH SỬ CỦA SELLER A (Nếu chưa có thì tạo)
+        if (sellerA != null && withdrawalRepository.countBySellerId(sellerA.getId()) == 0) {
+            Product validProduct = productRepository.findAll().stream()
+                    .filter(p -> p.getSellerId().equals(sellerA.getId()))
+                    .findFirst().orElse(null);
+            String safeProductId = validProduct != null ? validProduct.getId() : "69ee23e7841d823d3e14e424";
 
-        Product validProduct = productRepository.findAll().stream()
-                .filter(p -> p.getSellerId().equals(sellerA.getId()))
-                .findFirst().orElse(null);
-        String safeProductId = validProduct != null ? validProduct.getId() : "69ee23e7841d823d3e14e424";
-
-        User.AddressInfo dummyAddress = User.AddressInfo.builder()
-            .receiverName(buyer.getFullName())
-            .phone("0987654321")
-            .province("Hồ Chí Minh")
-            .ward("Quận 12")
-            .detail("A2.804 Chung cư Hưng Ngân")
-            .isDefault(true)
-            .build();
-
-        Order order1 = Order.builder()
-            .userId(buyer.getId())
-            .status("COMPLETED")
-            .totalAmount(500000.0)
-            .finalTotalAmount(500000.0)
-            .paymentMethod("COD")
-            .shippingAddress(dummyAddress)
-            .trackingCode("GHN-SEED-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase())
-            .shippingProvider("Giao Hàng Nhanh")
-            .carrierStatus("DELIVERED")
-            .items(Arrays.asList(OrderItem.builder().productId(safeProductId).sellerId(sellerA.getId()).shopName(sellerA.getShopProfile().getShopName()).productName("Bàn phím cơ Test").imageUrl("https://picsum.photos/200").price(500000.0).quantity(1).build()))
-            .createdAt(LocalDateTime.now().minusDays(3))
-            .updatedAt(LocalDateTime.now().minusDays(1))
-            .build();
-
-        Order order2 = Order.builder()
-            .userId(buyer.getId())
-            .status("SHIPPING")
-            .totalAmount(150000.0)
-            .finalTotalAmount(150000.0)
-            .paymentMethod("COD")
-            .shippingAddress(dummyAddress)
-            .trackingCode("GHN-SEED-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase())
-            .shippingProvider("Giao Hàng Nhanh")
-            .carrierStatus("IN_TRANSIT")
-            .items(Arrays.asList(OrderItem.builder().productId(safeProductId).sellerId(sellerA.getId()).shopName(sellerA.getShopProfile().getShopName()).productName("Chuột không dây Test").imageUrl("https://picsum.photos/200").price(150000.0).quantity(1).build()))
-            .createdAt(LocalDateTime.now().minusDays(1))
-            .updatedAt(LocalDateTime.now())
-            .build();
-
-        orderRepository.saveAll(Arrays.asList(order1, order2));
-
-        WithdrawalRequest oldReq = WithdrawalRequest.builder()
-                .sellerId(sellerA.getId()).shopName(sellerA.getShopProfile().getShopName())
-                .sellerFullName(sellerA.getFullName()).amount(100000.0).status("COMPLETED")
-                .bankName("ACB").accountNumber("0322222222").accountHolder("CAC THI CHO")
-                .createdAt(LocalDateTime.now().minusDays(10)).processedAt(LocalDateTime.now().minusDays(9))
+            User.AddressInfo dummyAddress = User.AddressInfo.builder()
+                .receiverName("Test Address")
+                .phone("0987654321")
+                .province("Hồ Chí Minh")
+                .ward("Quận 12")
+                .detail("A2.804 Chung cư Hưng Ngân")
+                .isDefault(true)
                 .build();
 
-        WithdrawalRequest pendingReq = WithdrawalRequest.builder()
-                .sellerId(sellerA.getId()).shopName(sellerA.getShopProfile().getShopName())
-                .sellerFullName(sellerA.getFullName()).amount(50000.0).status("PENDING")
-                .bankName("ACB").accountNumber("0322222222").accountHolder("CAC THI CHO")
-                .createdAt(LocalDateTime.now().minusMinutes(30)).build();
+            Order order1 = Order.builder()
+                .userId(buyer != null ? buyer.getId() : "dummyUserId")
+                .status("COMPLETED")
+                .totalAmount(500000.0)
+                .finalTotalAmount(500000.0)
+                .paymentMethod("COD")
+                .shippingAddress(dummyAddress)
+                .trackingCode("GHN-SEED-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase())
+                .shippingProvider("Giao Hàng Nhanh")
+                .carrierStatus("DELIVERED")
+                .items(Arrays.asList(OrderItem.builder().productId(safeProductId).sellerId(sellerA.getId()).shopName(sellerA.getShopProfile().getShopName()).productName("Bàn phím cơ Test").imageUrl("https://picsum.photos/200").price(500000.0).quantity(1).build()))
+                .createdAt(LocalDateTime.now().minusDays(3))
+                .updatedAt(LocalDateTime.now().minusDays(1))
+                .build();
 
-        withdrawalRepository.saveAll(Arrays.asList(oldReq, pendingReq));
+            Order order2 = Order.builder()
+                .userId(buyer != null ? buyer.getId() : "dummyUserId")
+                .status("SHIPPING")
+                .totalAmount(150000.0)
+                .finalTotalAmount(150000.0)
+                .paymentMethod("COD")
+                .shippingAddress(dummyAddress)
+                .trackingCode("GHN-SEED-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase())
+                .shippingProvider("Giao Hàng Nhanh")
+                .carrierStatus("IN_TRANSIT")
+                .items(Arrays.asList(OrderItem.builder().productId(safeProductId).sellerId(sellerA.getId()).shopName(sellerA.getShopProfile().getShopName()).productName("Chuột không dây Test").imageUrl("https://picsum.photos/200").price(150000.0).quantity(1).build()))
+                .createdAt(LocalDateTime.now().minusDays(1))
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+            orderRepository.saveAll(Arrays.asList(order1, order2));
+
+            WithdrawalRequest oldReq = WithdrawalRequest.builder()
+                    .targetType("SELLER")
+                    .sellerId(sellerA.getId()).shopName(sellerA.getShopProfile().getShopName())
+                    .sellerFullName(sellerA.getFullName()).amount(100000.0).status("COMPLETED")
+                    .bankName("ACB").accountNumber("0322222222").accountHolder("CAC THI CHO")
+                    .createdAt(LocalDateTime.now().minusDays(10)).processedAt(LocalDateTime.now().minusDays(9))
+                    .build();
+
+            WithdrawalRequest pendingReq = WithdrawalRequest.builder()
+                    .targetType("SELLER")
+                    .sellerId(sellerA.getId()).shopName(sellerA.getShopProfile().getShopName())
+                    .sellerFullName(sellerA.getFullName()).amount(50000.0).status("PENDING")
+                    .bankName("ACB").accountNumber("0322222222").accountHolder("CAC THI CHO")
+                    .createdAt(LocalDateTime.now().minusMinutes(30)).build();
+                    
+            withdrawalRepository.saveAll(Arrays.asList(oldReq, pendingReq));
+        }
+
+        // 2. CHỈ KIỂM TRA LỊCH SỬ CỦA BUYER (Tách biệt hoàn toàn với Seller)
+        if (buyer != null && withdrawalRepository.findByUserIdOrderByCreatedAtDesc(buyer.getId()).isEmpty()) {
+            WithdrawalRequest buyerReq = WithdrawalRequest.builder()
+                    .targetType("BUYER")
+                    .userId(buyer.getId())
+                    .shopName(buyer.getFullName()) 
+                    .sellerFullName(buyer.getFullName())
+                    .amount(150000.0)
+                    .status("COMPLETED")
+                    .bankName("Vietcombank")
+                    .accountNumber("0123456789")
+                    .accountHolder("TEST CONSUMER")
+                    .createdAt(LocalDateTime.now().minusDays(2))
+                    .processedAt(LocalDateTime.now().minusDays(1))
+                    .build();
+
+            withdrawalRepository.save(buyerReq);
+        }
     }
 }

@@ -22,7 +22,10 @@ public class WithdrawalRequest {
     @Version
     private Long version;
     
-    private String sellerId;
+    // 🚀 PHÂN LOẠI REQUEST: Hỗ trợ cả Seller và Buyer
+    private String targetType; // "SELLER" hoặc "BUYER"
+    private String userId;     // Dành cho Buyer
+    private String sellerId;   // Dành cho Seller
     
     // Snapshots for Admin readability
     private String shopName;      

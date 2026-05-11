@@ -32,6 +32,11 @@ public class WithdrawalController {
         return null;
     }
 
+    private User getAuthenticatedUser(Principal principal) {
+        if (principal == null) return null;
+        return userRepository.findByIdentifier(principal.getName()).orElse(null);
+    }
+
     private User getAuthenticatedAdmin(Principal principal) {
         if (principal == null) return null;
         User user = userRepository.findByIdentifier(principal.getName()).orElse(null);
@@ -41,45 +46,27 @@ public class WithdrawalController {
         return null;
     }
 
+    // ==============================
+    // ENDPOINTS CHO SELLER
+    // ==============================
     @GetMapping("/balance")
     public ResponseEntity<?> getBalance(Principal principal) {
         User seller = getAuthenticatedSeller(principal);
-        if (seller == null) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("message", "Yêu cầu quyền Người bán để xem số dư."));
-        }
-
-        double balance = withdrawalService.getSellerBalance(seller.getId());
-        return ResponseEntity.ok(Map.of("balance", balance));
-    }
-
-    @GetMapping("/admin/pending-count")
-    public ResponseEntity<?> getPendingCount(Principal principal) {
-        User admin = getAuthenticatedAdmin(principal);
-        if (admin == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        long count = withdrawalService.countPendingRequests();
-        return ResponseEntity.ok(count);
+        if (seller == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Từ chối truy cập."));
+        return ResponseEntity.ok(Map.of("balance", withdrawalService.getSellerBalance(seller.getId())));
     }
 
     @PostMapping("/request")
     public ResponseEntity<?> requestWithdrawal(@RequestBody Map<String, Object> payload, Principal principal) {
         User seller = getAuthenticatedSeller(principal);
-        if (seller == null) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Hành động bị từ chối."));
-        }
+        if (seller == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Hành động bị từ chối."));
 
-        // 🚀 BUG FIX: Tránh lỗi ClassCastException khi JSON gởi số nguyên (50000) thay vì số thập phân (50000.0)
         Number rawAmount = (Number) payload.get("amount");
-        if (rawAmount == null || rawAmount.doubleValue() <= 0) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Số tiền không hợp lệ."));
-        }
-        double amount = rawAmount.doubleValue();
+        if (rawAmount == null || rawAmount.doubleValue() <= 0) return ResponseEntity.badRequest().body(Map.of("message", "Số tiền không hợp lệ."));
 
         try {
-            WithdrawalRequest request = withdrawalService.createWithdrawalRequest(seller.getId(), amount);
-            return ResponseEntity.ok(request);
+            return ResponseEntity.ok(withdrawalService.createWithdrawalRequest(seller.getId(), rawAmount.doubleValue()));
         } catch (Exception e) {
-            log.error("Withdrawal error for seller {}: {}", seller.getId(), e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
@@ -88,34 +75,60 @@ public class WithdrawalController {
     public ResponseEntity<?> getHistory(Principal principal) {
         User seller = getAuthenticatedSeller(principal);
         if (seller == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        List<WithdrawalRequest> history = withdrawalService.getSellerHistory(seller.getId());
-        return ResponseEntity.ok(history);
+        return ResponseEntity.ok(withdrawalService.getSellerHistory(seller.getId()));
+    }
+
+    // ==============================
+    // 🚀 ENDPOINTS CHO BUYER (USER)
+    // ==============================
+    @PostMapping("/user/request")
+    public ResponseEntity<?> requestUserWithdrawal(@RequestBody Map<String, Object> payload, Principal principal) {
+        User user = getAuthenticatedUser(principal);
+        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
+        Number rawAmount = (Number) payload.get("amount");
+        if (rawAmount == null || rawAmount.doubleValue() <= 0) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Số tiền không hợp lệ."));
+        }
+
+        try {
+            return ResponseEntity.ok(withdrawalService.createUserWithdrawalRequest(user.getId(), rawAmount.doubleValue()));
+        } catch (Exception e) {
+            log.error("User Withdrawal error: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/user/history")
+    public ResponseEntity<?> getUserHistory(Principal principal) {
+        User user = getAuthenticatedUser(principal);
+        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        return ResponseEntity.ok(withdrawalService.getUserHistory(user.getId()));
+    }
+
+    // ==============================
+    // ENDPOINTS CHO ADMIN
+    // ==============================
+    @GetMapping("/admin/pending-count")
+    public ResponseEntity<?> getPendingCount(Principal principal) {
+        User admin = getAuthenticatedAdmin(principal);
+        if (admin == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        return ResponseEntity.ok(withdrawalService.countPendingRequests());
     }
 
     @GetMapping("/admin/all")
     public ResponseEntity<?> getAllRequests(Principal principal) {
         User admin = getAuthenticatedAdmin(principal);
-        if (admin == null) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Yêu cầu quyền Quản trị viên."));
-        }
+        if (admin == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         return ResponseEntity.ok(withdrawalService.getAllRequests());
     }
 
     @PutMapping("/admin/process/{requestId}")
-    public ResponseEntity<?> processRequest(
-            @PathVariable String requestId,
-            @RequestBody Map<String, String> payload,
-            Principal principal) {
-        
+    public ResponseEntity<?> processRequest(@PathVariable String requestId, @RequestBody Map<String, String> payload, Principal principal) {
         User admin = getAuthenticatedAdmin(principal);
         if (admin == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-
-        String status = payload.get("status"); 
-        String adminNote = payload.get("adminNote");
-
         try {
-            WithdrawalRequest updated = withdrawalService.processRequest(requestId, status, adminNote);
-            return ResponseEntity.ok(updated);
+            return ResponseEntity.ok(withdrawalService.processRequest(requestId, payload.get("status"), payload.get("adminNote")));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }

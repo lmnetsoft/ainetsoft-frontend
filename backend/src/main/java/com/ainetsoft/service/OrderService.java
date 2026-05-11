@@ -112,6 +112,7 @@ public class OrderService {
         double voucherDiscount = 0;
         double coinDiscount = 0;
 
+        // 1. Trừ Voucher
         if (orderRequest.getAppliedVoucherIds() != null && !orderRequest.getAppliedVoucherIds().isEmpty()) {
             List<Order> pastOrders = orderRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
 
@@ -169,6 +170,7 @@ public class OrderService {
             }
         }
 
+        // 2. Trừ Xu
         if (orderRequest.getUsedCoins() > 0) {
             Wallet wallet = walletRepository.findByUserId(user.getId())
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy Ví AiNetsoft của người dùng!"));
@@ -194,12 +196,46 @@ public class OrderService {
             orderRequest.setUsedCoins((int)coinDiscount);
         }
 
+        // 3. 🚀 BỔ SUNG: Trừ Ví AiNetsoft (Cấn trừ)
+        double walletDiscount = 0;
+        if (orderRequest.getUsedWalletBalance() > 0) {
+            Wallet wallet = walletRepository.findByUserId(user.getId())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy Ví AiNetsoft!"));
+            
+            double currentBalance = wallet.getBalance() != null ? wallet.getBalance() : 0.0;
+            double requestedWallet = orderRequest.getUsedWalletBalance();
+            
+            if (currentBalance < requestedWallet) {
+                throw new RuntimeException("Số dư Ví AiNetsoft không đủ!");
+            }
+            
+            // Không cho phép cấn trừ lố số tiền cần thanh toán
+            if (requestedWallet > finalTotalAmount) {
+                requestedWallet = finalTotalAmount;
+            }
+            
+            walletDiscount = requestedWallet;
+            finalTotalAmount -= walletDiscount;
+            
+            // Trừ tiền trong ví
+            wallet.setBalance(currentBalance - walletDiscount);
+            wallet.setUpdatedAt(LocalDateTime.now());
+            walletRepository.save(wallet);
+            
+            orderRequest.setUsedWalletBalance(walletDiscount); // Lưu lại mức đã dùng thực tế
+        }
+
         orderRequest.setItems(orderItems);
         orderRequest.setTotalAmount(baseTotalAmount);
         orderRequest.setVoucherDiscountAmount(voucherDiscount);
         orderRequest.setCoinDiscountAmount(coinDiscount);
         orderRequest.setFinalTotalAmount(finalTotalAmount);
         
+        // Nếu cấn trừ xong mà FinalTotalAmount = 0 thì tự động gán Payment Method thành "WALLET_PAID" cho rõ ràng
+        if (finalTotalAmount == 0 && orderRequest.getUsedWalletBalance() > 0) {
+            orderRequest.setPaymentMethod("WALLET_PAID");
+        }
+
         orderRequest.setStatus("PENDING");
         orderRequest.setReturnStatus("NONE"); 
         orderRequest.setCreatedAt(LocalDateTime.now());
@@ -530,7 +566,6 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
-    // 🚀 ĐÃ SỬA: Hàm Hủy Đơn nhận thêm biến String cancelReason và cập nhật vào Database
     @Transactional
     public void cancelOrder(String orderId, String userId, String cancelReason) {
         Order order = orderRepository.findById(orderId)
@@ -579,7 +614,26 @@ public class OrderService {
             }
         }
 
-        // Cập nhật các trường hủy đơn mới
+        // 🚀 BỔ SUNG: HOÀN TRẢ LẠI TIỀN CẤN TRỪ (VNĐ) KHI HỦY ĐƠN
+        if (order.getUsedWalletBalance() > 0) {
+            walletRepository.findByUserId(userId).ifPresent(wallet -> {
+                double currentBalance = wallet.getBalance() != null ? wallet.getBalance() : 0.0;
+                wallet.setBalance(currentBalance + order.getUsedWalletBalance());
+                wallet.setUpdatedAt(LocalDateTime.now());
+                walletRepository.save(wallet);
+            });
+        }
+
+        // Giữ Fallback cũ: Nếu đơn cũ đã đặt bằng "WALLET" mà usedWalletBalance chưa cập nhật
+        if ("WALLET".equalsIgnoreCase(order.getPaymentMethod()) && order.getUsedWalletBalance() == 0) {
+            walletRepository.findByUserId(userId).ifPresent(wallet -> {
+                double currentBalance = wallet.getBalance() != null ? wallet.getBalance() : 0.0;
+                wallet.setBalance(currentBalance + order.getFinalTotalAmount());
+                wallet.setUpdatedAt(LocalDateTime.now());
+                walletRepository.save(wallet);
+            });
+        }
+
         order.setStatus("CANCELLED");
         order.setUpdatedAt(LocalDateTime.now());
         order.setReviewed(false); 
@@ -589,7 +643,7 @@ public class OrderService {
         } else {
             order.setCancelReason("Người mua thay đổi ý định");
         }
-        order.setCancelledBy("USER"); // Do endpoint này là API của Buyer gọi lên
+        order.setCancelledBy("USER"); 
 
         orderRepository.save(order);
     }

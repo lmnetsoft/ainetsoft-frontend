@@ -73,7 +73,7 @@ public class SecurityConfig {
                     "/login/oauth2/**",
                     "/error",
                     "/api/uploads/**",
-                    "/uploads/**", // 🚀 ĐÃ FIX: Mở khóa thư mục vật lý chứa ảnh/video Trả hàng
+                    "/uploads/**",
                     "/api/chat/download/**",
                     "/api/chat/file/**",
                     "/ws/**",
@@ -102,6 +102,10 @@ public class SecurityConfig {
 
                 // --- 3. AUTHENTICATED USER ---
                 .requestMatchers("/api/withdrawals/admin/**").hasRole("ADMIN")
+                
+                // 🚀 BỔ SUNG QUYỀN CHO NGƯỜI MUA: Cần đặt TRƯỚC rule của SELLER
+                .requestMatchers("/api/withdrawals/user/**").authenticated() 
+                
                 .requestMatchers("/api/withdrawals/**").hasRole("SELLER")
 
                 .requestMatchers(

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaMapMarkerAlt, FaRegCreditCard, FaMoneyBillWave, FaUniversity, FaTicketAlt, FaCoins, FaTimes, FaCheckSquare, FaSquare, FaQuestionCircle } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaRegCreditCard, FaMoneyBillWave, FaUniversity, FaTicketAlt, FaCoins, FaTimes, FaCheckSquare, FaSquare, FaQuestionCircle, FaWallet } from 'react-icons/fa';
 import { getUserProfile } from '../../services/authService';
 import { placeOrder } from '../../services/orderService'; 
 import api from '../../services/api'; 
@@ -20,12 +20,16 @@ const Checkout = () => {
   const [paymentMethod, setPaymentMethod] = useState('COD');
   const [userBank, setUserBank] = useState<any>(null);
 
-  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [walletBalance, setWalletBalance] = useState<number>(0); // Xu
+  const [walletMoneyBalance, setWalletMoneyBalance] = useState<number>(0); // Số dư VNĐ
   const [savedVouchers, setSavedVouchers] = useState<any[]>([]);
   
   const [selectedVouchers, setSelectedVouchers] = useState<any[]>([]);
   const [showVoucherModal, setShowVoucherModal] = useState(false);
+  
+  // Các Toggle Cấn trừ
   const [useCoins, setUseCoins] = useState(false);
+  const [useWallet, setUseWallet] = useState(false); // 🚀 Thêm state bật/tắt Ví
 
   const [voucherCodeInput, setVoucherCodeInput] = useState('');
   const [isApplyingCode, setIsApplyingCode] = useState(false);
@@ -66,6 +70,7 @@ const Checkout = () => {
         try {
             const walletData = await getMyWallet();
             setWalletBalance(walletData?.coinBalance || 0);
+            setWalletMoneyBalance(walletData?.balance || 0); 
             const vouchersData = await getMySavedVouchers();
             setSavedVouchers(vouchersData || []);
         } catch (e) {
@@ -87,6 +92,7 @@ const Checkout = () => {
   const subtotal = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   const shippingFee = 30000; 
 
+  // 1. Tính Giảm giá Voucher
   let voucherDiscount = 0;
   selectedVouchers.forEach(v => {
       if (subtotal >= (v?.minOrderValue || 0)) {
@@ -107,13 +113,23 @@ const Checkout = () => {
 
   let totalAfterVoucher = subtotal + shippingFee - voucherDiscount;
 
+  // 2. Tính Giảm giá Xu
   let coinDiscount = 0;
   if (useCoins && walletBalance > 0) {
       const maxCoinUsage = totalAfterVoucher * 0.5; 
       coinDiscount = Math.min(walletBalance, maxCoinUsage);
   }
 
-  const finalTotal = totalAfterVoucher - coinDiscount;
+  let totalAfterCoins = totalAfterVoucher - coinDiscount;
+
+  // 3. Tính số tiền Ví dùng để cấn trừ
+  let walletDiscount = 0;
+  if (useWallet && walletMoneyBalance > 0) {
+      walletDiscount = Math.min(walletMoneyBalance, totalAfterCoins);
+  }
+
+  // TỔNG CUỐI CÙNG
+  const finalTotal = totalAfterCoins - walletDiscount;
 
   const handleToggleVoucher = (voucher: any) => {
       const isSelected = selectedVouchers.some(v => v.id === voucher.id);
@@ -163,7 +179,7 @@ const Checkout = () => {
       return;
     }
 
-    if (paymentMethod === 'BANK' && !userBank) {
+    if (finalTotal > 0 && paymentMethod === 'BANK' && !userBank) {
         setToastMessage("Vui lòng cập nhật thông tin Ngân hàng trong hồ sơ trước khi chọn phương thức này!");
         setShowToast(true);
         return;
@@ -173,11 +189,12 @@ const Checkout = () => {
       setIsSubmitting(true);
 
       const checkoutData = {
-        paymentMethod: paymentMethod,
+        paymentMethod: paymentMethod, // Nếu finalTotal == 0, Backend sẽ tự đè thành "WALLET_PAID"
         shippingAddress: selectedAddress,
         totalAmount: subtotal, 
         appliedVoucherIds: selectedVouchers.map(v => v.id), 
-        usedCoins: Math.floor(coinDiscount)
+        usedCoins: Math.floor(coinDiscount),
+        usedWalletBalance: walletDiscount // Truyền số tiền Ví cấn trừ lên Backend
       };
 
       await placeOrder(checkoutData);
@@ -279,7 +296,8 @@ const Checkout = () => {
                 <div className="marketing-left">
                     <FaCoins size={20} color="#f59e0b" />
                     <span>AiNetsoft Xu</span>
-                    <span className="coin-balance-text">Bạn đang có {walletBalance.toLocaleString()} Xu</span>
+                    {/* 🚀 ĐÃ SỬA: Hiển thị ĐỘNG số Xu còn lại */}
+                    <span className="coin-balance-text">Còn lại: {(walletBalance - (useCoins ? Math.floor(coinDiscount) : 0)).toLocaleString()} Xu</span>
                 </div>
                 <div className="marketing-right">
                     {walletBalance > 0 ? (
@@ -297,37 +315,74 @@ const Checkout = () => {
                     )}
                 </div>
             </div>
+
+            <hr style={{borderTop: '1px dashed #e2e8f0', margin: '15px 0'}} />
+
+            <div className="marketing-row">
+                <div className="marketing-left">
+                    <FaWallet size={20} color="#0ea5e9" />
+                    <span>Số dư Ví AiNetsoft</span>
+                    {/* 🚀 ĐÃ SỬA: Hiển thị ĐỘNG số tiền VNĐ còn lại trong Ví */}
+                    <span className="coin-balance-text">Còn lại: ₫{(walletMoneyBalance - (useWallet ? walletDiscount : 0)).toLocaleString()}</span>
+                </div>
+                <div className="marketing-right">
+                    {walletMoneyBalance > 0 ? (
+                        <span className="coin-toggle-wrapper">
+                            <span style={{marginRight: '10px', color: useWallet ? '#16a34a' : '#64748b'}}>
+                                {useWallet ? `- ₫${Math.floor(walletDiscount).toLocaleString()}` : "Không sử dụng"}
+                            </span>
+                            <label className="switch">
+                                <input type="checkbox" checked={useWallet} onChange={() => setUseWallet(!useWallet)} />
+                                <span className="slider round"></span>
+                            </label>
+                        </span>
+                    ) : (
+                        <span style={{color: '#94a3b8', fontSize: '14px'}}>Ví trống</span>
+                    )}
+                </div>
+            </div>
+
         </div>
 
         <div className="checkout-bottom-grid">
           <div className="checkout-section payment-method">
             <h3>Phương thức thanh toán</h3>
-            <div className="method-options">
-              <label className={`method-card ${paymentMethod === 'COD' ? 'active' : ''}`}>
-                <input type="radio" name="payment" value="COD" checked={paymentMethod === 'COD'} onChange={(e) => setPaymentMethod(e.target.value)} />
-                <FaMoneyBillWave /> Thanh toán khi nhận hàng (COD)
-              </label>
-              <label className={`method-card ${paymentMethod === 'BANK' ? 'active' : ''}`}>
-                <input type="radio" name="payment" value="BANK" checked={paymentMethod === 'BANK'} onChange={(e) => setPaymentMethod(e.target.value)} />
-                <FaRegCreditCard /> Chuyển khoản ngân hàng
-              </label>
-            </div>
+            
+            {/* 🚀 UX ĐỈNH CAO: Ẩn các nút thanh toán nếu tổng tiền = 0 */}
+            {finalTotal > 0 ? (
+                <div className="method-options">
+                  <label className={`method-card ${paymentMethod === 'COD' ? 'active' : ''}`}>
+                    <input type="radio" name="payment" value="COD" checked={paymentMethod === 'COD'} onChange={(e) => setPaymentMethod(e.target.value)} />
+                    <FaMoneyBillWave /> Thanh toán khi nhận hàng (COD)
+                  </label>
+                  
+                  <label className={`method-card ${paymentMethod === 'BANK' ? 'active' : ''}`}>
+                    <input type="radio" name="payment" value="BANK" checked={paymentMethod === 'BANK'} onChange={(e) => setPaymentMethod(e.target.value)} />
+                    <FaRegCreditCard /> Chuyển khoản ngân hàng
+                  </label>
 
-            {paymentMethod === 'BANK' && (
-                <div className="bank-preview-box">
-                    {userBank ? (
-                        <div className="bank-info-mini">
-                            <FaUniversity className="bank-icon" />
-                            <div>
-                                <p><strong>{userBank.bankName}</strong></p>
-                                <p>{userBank.accountNumber} - {userBank.accountHolder}</p>
-                            </div>
-                        </div>
-                    ) : (
-                        <p className="bank-warning">⚠️ Bạn chưa lưu tài khoản ngân hàng nào. <span onClick={() => navigate('/user/bank')} style={{color: '#ee4d2d', cursor: 'pointer', textDecoration: 'underline'}}>Thêm ngay</span></p>
-                    )}
+                  {paymentMethod === 'BANK' && (
+                      <div className="bank-preview-box">
+                          {userBank ? (
+                              <div className="bank-info-mini">
+                                  <FaUniversity className="bank-icon" />
+                                  <div>
+                                      <p><strong>{userBank.bankName}</strong></p>
+                                      <p>{userBank.accountNumber} - {userBank.accountHolder}</p>
+                                  </div>
+                              </div>
+                          ) : (
+                              <p className="bank-warning">⚠️ Bạn chưa lưu tài khoản ngân hàng nào. <span onClick={() => navigate('/user/bank')} style={{color: '#ee4d2d', cursor: 'pointer', textDecoration: 'underline'}}>Thêm ngay</span></p>
+                          )}
+                      </div>
+                  )}
+                </div>
+            ) : (
+                <div style={{marginTop: '15px', padding: '15px', background: '#f0fdf4', color: '#16a34a', borderRadius: '4px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid #bbf7d0'}}>
+                    <FaCheckSquare size={18} /> Đơn hàng đã được thanh toán toàn bộ qua Số dư.
                 </div>
             )}
+            
           </div>
 
           <div className="checkout-section summary-card">
@@ -351,6 +406,13 @@ const Checkout = () => {
                   <span>- ₫{Math.floor(coinDiscount).toLocaleString()}</span>
                 </div>
             )}
+            {walletDiscount > 0 && (
+                <div className="summary-row discount-row">
+                  <span>Dùng Ví AiNetsoft:</span>
+                  <span>- ₫{Math.floor(walletDiscount).toLocaleString()}</span>
+                </div>
+            )}
+
             <div className="summary-row total">
               <span>Tổng thanh toán:</span>
               <span className="grand-total">₫{finalTotal.toLocaleString()}</span>

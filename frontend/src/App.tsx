@@ -38,6 +38,7 @@ import SellerRegister from './pages/User/SellerRegister';
 import NotificationPage from './pages/User/NotificationPage';
 
 // WALLET PAGES
+import WalletPage from './pages/User/WalletPage';
 import VoucherWallet from './pages/User/VoucherWallet';
 import CoinWallet from './pages/User/CoinWallet';
 
@@ -76,7 +77,7 @@ import SellerModeration from './pages/Admin/SellerModeration';
 import ProductModeration from './pages/Admin/ProductModeration';
 import AdminAuditLogs from './pages/Admin/AdminAuditLogs';
 import AdminVouchers from './pages/Admin/AdminVouchers'; 
-import AdminCoins from './pages/Admin/AdminCoins'; // 🚀 IMPORT ADMIN COINS
+import AdminCoins from './pages/Admin/AdminCoins';
 
 import './App.css';
 
@@ -155,6 +156,7 @@ function App() {
                   <Route path="/seller/register" element={<SellerRegister />} />
                   
                   {/* WALLET ROUTES */}
+                  <Route path="/user/wallet" element={<FinancialSecurityGate><WalletPage /></FinancialSecurityGate>} />
                   <Route path="/user/vouchers" element={<VoucherWallet />} />
                   <Route path="/user/coins" element={<CoinWallet />} />
 
@@ -179,7 +181,7 @@ function App() {
                   <Route path="/admin/stores" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminStoreManager /></ProtectedRoute>} />
                   <Route path="/admin/moderation" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminModeration /></ProtectedRoute>} />
                   
-                  {/* 🚀 ADMIN MARKETING & FINANCE ROUTES */}
+                  {/* ADMIN MARKETING & FINANCE ROUTES */}
                   <Route path="/admin/vouchers" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminVouchers /></ProtectedRoute>} />
                   <Route path="/admin/coins" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminCoins /></ProtectedRoute>} />
 
