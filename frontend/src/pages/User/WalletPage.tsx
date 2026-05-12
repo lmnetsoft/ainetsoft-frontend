@@ -169,7 +169,10 @@ const WalletPage = () => {
                                 <div className="date">{new Date(item.createdAt).toLocaleString('vi-VN')}</div>
                             </div>
                             <div className={`history-status ${item.status.toLowerCase()}`}>
-                                {item.status === 'COMPLETED' ? 'Thành công' : item.status === 'PENDING' ? 'Chờ duyệt' : 'Từ chối'}
+                                {item.status === 'COMPLETED' ? 'Thành công' : 
+                                 item.status === 'PENDING' ? 'Chờ duyệt' : 
+                                 item.status === 'PROCESSING' ? 'Đang xử lý' : 
+                                 item.status === 'FAILED' ? 'Lỗi giao dịch' : 'Từ chối'}
                             </div>
                         </div>
                     )) : (

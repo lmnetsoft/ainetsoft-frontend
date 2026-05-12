@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import ToastNotification from '../../components/Toast/ToastNotification';
-import { FaWallet, FaHistory, FaCheckCircle, FaClock, FaTimesCircle, FaExclamationCircle, FaSync, FaUniversity } from 'react-icons/fa';
+import { FaWallet, FaHistory, FaCheckCircle, FaClock, FaTimesCircle, FaExclamationCircle, FaSync, FaUniversity, FaSpinner } from 'react-icons/fa';
 import './Withdrawal.css';
 
 const Withdrawal = () => {
@@ -10,13 +10,13 @@ const Withdrawal = () => {
     const [balance, setBalance] = useState(0);
     const [history, setHistory] = useState<any[]>([]);
     const [displayAmount, setDisplayAmount] = useState(''); 
-    const [rawAmount, setRawAmount] = useState('');       
+    const [rawAmount, setRawAmount] = useState('');        
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false); 
     const [submitting, setSubmitting] = useState(false);
     const [showToast, setShowToast] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
-    const [missingBank, setMissingBank] = useState(false); // 🚀 Thêm state báo thiếu ngân hàng
+    const [missingBank, setMissingBank] = useState(false);
 
     useEffect(() => {
         fetchWithdrawalData();
@@ -78,7 +78,6 @@ const Withdrawal = () => {
             const errorMsg = err.response?.data?.message || "Lỗi hệ thống.";
             setToastMessage(errorMsg);
             setShowToast(true);
-            // 🚀 Bắt chính xác lỗi từ Backend để hướng dẫn User
             if (errorMsg.includes("chưa thêm tài khoản ngân hàng")) {
                 setMissingBank(true);
             }
@@ -155,8 +154,17 @@ const Withdrawal = () => {
                                         <div className="log-date">{new Date(item.createdAt).toLocaleDateString('vi-VN')}</div>
                                     </div>
                                     <div className={`log-status-badge ${item.status.toLowerCase()}`}>
-                                        {item.status === 'COMPLETED' ? <FaCheckCircle /> : item.status === 'PENDING' ? <FaClock /> : <FaTimesCircle />}
-                                        <span>{item.status === 'COMPLETED' ? 'Thành công' : item.status === 'PENDING' ? 'Chờ duyệt' : 'Từ chối'}</span>
+                                        {item.status === 'COMPLETED' ? <FaCheckCircle /> : 
+                                         item.status === 'PENDING' ? <FaClock /> : 
+                                         item.status === 'PROCESSING' ? <FaSpinner className="fa-spin" /> : 
+                                         <FaTimesCircle />}
+                                        
+                                        <span style={{marginLeft: '5px'}}>
+                                            {item.status === 'COMPLETED' ? 'Thành công' : 
+                                             item.status === 'PENDING' ? 'Chờ duyệt' : 
+                                             item.status === 'PROCESSING' ? 'Đang xử lý' : 
+                                             item.status === 'FAILED' ? 'Lỗi giao dịch' : 'Từ chối'}
+                                        </span>
                                     </div>
                                 </div>
                             ))
