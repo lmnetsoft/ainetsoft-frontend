@@ -3,7 +3,8 @@ import api from '../../services/api';
 import ToastNotification from '../../components/Toast/ToastNotification';
 import { 
     FaCheck, FaTimes, FaFilter, FaClock, FaStore, FaMoneyBillWave, FaSync, 
-    FaUniversity, FaChevronDown, FaExclamationTriangle, FaUser, FaShieldAlt, FaIdCard, FaSearch, FaEdit
+    FaUniversity, FaChevronDown, FaExclamationTriangle, FaUser, FaShieldAlt, FaIdCard, FaSearch, FaEdit,
+    FaEnvelope, FaPhone, FaCalendarAlt
 } from 'react-icons/fa';
 import './AdminWithdrawals.css';
 
@@ -30,6 +31,9 @@ const AdminWithdrawals = () => {
     // Modal States
     const [processingId, setProcessingId] = useState<string | null>(null);
     const [adminNote, setAdminNote] = useState('');
+    
+    // KYC State
+    const [kycLoading, setKycLoading] = useState(false);
     const [kycData, setKycData] = useState<any | null>(null);
 
     const filterOptions = [
@@ -100,6 +104,19 @@ const AdminWithdrawals = () => {
         setFilterStatus(newStatus);
         setIsOpen(false);
         fetchRequests(0, newStatus, pageSize);
+    };
+
+    const handleOpenKyc = async (requestId: string) => {
+        setKycLoading(true);
+        try {
+            const res = await api.get(`/withdrawals/admin/kyc/${requestId}`);
+            setKycData(res.data);
+        } catch (err: any) {
+            setToastMessage("Không thể lấy hồ sơ KYC để đối soát.");
+            setShowToast(true);
+        } finally {
+            setKycLoading(false);
+        }
     };
 
     const handleProcess = async (id: string, status: 'APPROVED' | 'COMPLETED' | 'REJECTED') => {
@@ -181,12 +198,13 @@ const AdminWithdrawals = () => {
                 <table className="elite-admin-table">
                     <thead>
                         <tr>
-                            <th style={{width: '25%'}}>Người yêu cầu</th>
-                            <th style={{width: '15%'}}>Số tiền</th>
-                            <th style={{width: '25%'}}>Chi tiết Ngân hàng</th>
-                            <th style={{width: '10%'}}>Thời gian</th>
-                            <th style={{width: '10%'}}>Trạng thái</th>
-                            <th style={{width: '15%'}} className="text-center">Hành động</th>
+                            <th style={{width: '22%'}}>Người yêu cầu</th>
+                            <th style={{width: '13%'}}>Số tiền</th>
+                            <th style={{width: '22%'}}>Chi tiết Ngân hàng</th>
+                            <th style={{width: '11%'}}>Thời gian</th>
+                            {/* 🚀 ĐÃ SỬA: CĂN GIỮA ĐỂ TẠO SỰ CÂN BẰNG */}
+                            <th style={{width: '14%', textAlign: 'center'}}>Trạng thái</th>
+                            <th style={{width: '18%', textAlign: 'center'}}>Hành động</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -218,15 +236,17 @@ const AdminWithdrawals = () => {
                                         </div>
                                     </td>
                                     <td><div className="timestamp-info"><span>{new Date(req.createdAt).toLocaleDateString('vi-VN')}</span></div></td>
-                                    <td>
+                                    
+                                    {/* 🚀 ĐÃ SỬA: CĂN GIỮA DỮ LIỆU */}
+                                    <td style={{textAlign: 'center'}}>
                                         <span className={`badge-pill ${req.status?.toLowerCase()}`}>
                                             {req.status === 'COMPLETED' ? 'Thành công' : req.status === 'PENDING' ? 'Chờ duyệt' : req.status === 'PROCESSING' ? 'Chờ CK tay' : req.status === 'FAILED' ? 'Lỗi GD' : 'Từ chối'}
                                         </span>
                                     </td>
-                                    <td className="text-center">
+                                    <td style={{textAlign: 'center'}}>
                                         <div className="action-buttons-group">
-                                            <button className="btn-kyc-check" onClick={() => setKycData(req)} title="Kiểm tra Danh tính & Rủi ro">
-                                                <FaSearch />
+                                            <button className="btn-kyc-check" onClick={() => handleOpenKyc(req.id)} title="Kiểm tra Danh tính & Rủi ro" disabled={kycLoading}>
+                                                {kycLoading ? <FaSync className="sync-icon is-syncing" /> : <FaSearch />}
                                             </button>
 
                                             {req.status === 'PENDING' ? (
@@ -283,21 +303,41 @@ const AdminWithdrawals = () => {
                             <div className="kyc-grid-layout">
                                 <div className="kyc-card">
                                     <h4><FaUser /> Thông tin Hệ thống</h4>
-                                    <p><strong>Tài khoản:</strong> {kycData.shopName}</p>
-                                    <p><strong>Loại User:</strong> {kycData.targetType === 'BUYER' ? 'Người Mua' : 'Cửa Hàng'}</p>
-                                    <p><strong>Ngày tạo lệnh:</strong> {new Date(kycData.createdAt).toLocaleString('vi-VN')}</p>
-                                    <p><strong>Mức độ rủi ro:</strong> <span style={{color: '#10b981', fontWeight: 'bold'}}>An Toàn</span></p>
+                                    <p><strong>Họ tên thật:</strong> <span style={{fontWeight: 'bold', color: '#0f172a'}}>{kycData.sysFullName}</span></p>
+                                    <p><strong>Loại tài khoản:</strong> {kycData.targetType === 'BUYER' ? 'Người Mua' : 'Cửa Hàng'}</p>
+                                    <p><strong>SĐT:</strong> {kycData.sysPhone || "Chưa cập nhật"}</p>
+                                    <p><strong>Email:</strong> {kycData.sysEmail || "Chưa cập nhật"}</p>
+                                    <p><strong>Số CCCD:</strong> {kycData.idNumber}</p>
+                                    <p><strong>Ngày tham gia:</strong> {kycData.joinedDate ? new Date(kycData.joinedDate).toLocaleDateString('vi-VN') : ""}</p>
+                                    <p>
+                                        <strong>Trạng thái:</strong> 
+                                        <span style={{ color: kycData.accountStatus === 'ACTIVE' ? '#10b981' : '#ef4444', fontWeight: 'bold', marginLeft: '5px' }}>
+                                            {kycData.accountStatus === 'ACTIVE' ? 'Đang hoạt động' : 'Bị khóa'}
+                                        </span>
+                                    </p>
                                 </div>
                                 <div className="kyc-card">
                                     <h4><FaIdCard /> Thông tin Thụ hưởng</h4>
                                     <p><strong>Ngân hàng:</strong> {kycData.bankName}</p>
-                                    <p><strong>Số tài khoản:</strong> <code style={{background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px'}}>{kycData.accountNumber}</code></p>
-                                    <p><strong>Tên chủ thẻ:</strong> <span style={{textTransform: 'uppercase', color: '#eab308', fontWeight: 'bold'}}>{kycData.accountHolder}</span></p>
+                                    <p><strong>Số tài khoản:</strong> <code style={{background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px'}}>{kycData.bankAccount}</code></p>
+                                    <p><strong>Tên chủ thẻ:</strong> <span style={{textTransform: 'uppercase', color: kycData.isRisk ? '#ef4444' : '#eab308', fontWeight: 'bold'}}>{kycData.bankHolder}</span></p>
+                                    
+                                    <div style={{ marginTop: '15px', padding: '10px', borderRadius: '6px', background: kycData.isRisk ? '#fef2f2' : '#f0fdf4', border: `1px solid ${kycData.isRisk ? '#fecaca' : '#bbf7d0'}` }}>
+                                        <p style={{ margin: 0, color: kycData.isRisk ? '#dc2626' : '#16a34a', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                            {kycData.isRisk ? <FaExclamationTriangle /> : <FaCheck />}
+                                            Mức độ rủi ro: {kycData.riskLevel}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="kyc-alert-box">
-                                <FaExclamationTriangle className="icon-warn"/>
-                                <span>Vui lòng đảm bảo <b>Tên chủ thẻ ngân hàng ({kycData.accountHolder})</b> khớp với tên đăng ký trên hệ thống để phòng chống rửa tiền.</span>
+                            
+                            <div className="kyc-alert-box" style={{ 
+                                background: kycData.isRisk ? '#fef2f2' : '#f0fdf4', 
+                                borderColor: kycData.isRisk ? '#fecaca' : '#bbf7d0', 
+                                color: kycData.isRisk ? '#dc2626' : '#16a34a' 
+                            }}>
+                                {kycData.isRisk ? <FaExclamationTriangle className="icon-warn"/> : <FaShieldAlt className="icon-warn"/>}
+                                <span>{kycData.riskMessage}</span>
                             </div>
                         </div>
                     </div>
@@ -333,7 +373,6 @@ const AdminWithdrawals = () => {
                                 </div>
                             )}
                             
-                            {/* 🚀 ĐÃ SỬA: KHU VỰC NHẬP LIỆU ĐƯỢC THIẾT KẾ LẠI */}
                             <div className="form-group-elite">
                                 <label className="elite-label">
                                     <FaEdit className="label-icon" /> Ghi chú đối soát (Mã GD / Lý do từ chối)

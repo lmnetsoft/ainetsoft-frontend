@@ -22,7 +22,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -50,6 +52,53 @@ public class WithdrawalService {
         config.setUpdatedAt(LocalDateTime.now());
         configRepository.save(config);
         return status;
+    }
+
+    // ==========================================
+    // 🚀 MỚI: API LẤY THÔNG TIN KYC VÀ ĐỐI SOÁT RỦI RO
+    // ==========================================
+    public Map<String, Object> getWithdrawalKycDetails(String requestId) {
+        WithdrawalRequest request = withdrawalRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Yêu cầu không tồn tại!"));
+
+        String userId = "BUYER".equals(request.getTargetType()) ? request.getUserId() : request.getSellerId();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin người dùng trên hệ thống!"));
+
+        Map<String, Object> kyc = new HashMap<>();
+        
+        // 1. Thông tin lệnh rút
+        kyc.put("requestId", request.getId());
+        kyc.put("amount", request.getAmount());
+        kyc.put("createdAt", request.getCreatedAt());
+        kyc.put("bankName", request.getBankName());
+        kyc.put("bankAccount", request.getAccountNumber());
+        kyc.put("bankHolder", request.getAccountHolder());
+        kyc.put("targetType", request.getTargetType());
+
+        // 2. Thông tin đối soát từ hồ sơ User thực tế
+        kyc.put("sysFullName", user.getFullName());
+        kyc.put("sysEmail", user.getEmail());
+        kyc.put("sysPhone", user.getPhone());
+        kyc.put("joinedDate", user.getCreatedAt());
+        kyc.put("accountStatus", user.getAccountStatus());
+        
+        // Lấy số CCCD từ identityInfo nếu có
+        String idNumber = (user.getIdentityInfo() != null && user.getIdentityInfo().getCccdNumber() != null) 
+                ? user.getIdentityInfo().getCccdNumber() : "Chưa cập nhật";
+        kyc.put("idNumber", idNumber);
+
+        // 3. Thuật toán kiểm tra rủi ro (Risk Engine)
+        String sysNameNormalized = (user.getFullName() != null) ? user.getFullName().trim().toUpperCase() : "";
+        String bankHolderNormalized = (request.getAccountHolder() != null) ? request.getAccountHolder().trim().toUpperCase() : "";
+        
+        boolean nameMatch = !sysNameNormalized.isEmpty() && sysNameNormalized.equals(bankHolderNormalized);
+
+        kyc.put("isRisk", !nameMatch);
+        kyc.put("riskLevel", nameMatch ? "LOW" : "HIGH");
+        kyc.put("riskMessage", nameMatch ? "Họ tên khớp 100% với tài khoản hệ thống." : "CẢNH BÁO: Tên chủ thẻ ngân hàng KHÔNG khớp với tên đăng ký hệ thống!");
+
+        return kyc;
     }
 
     // ==========================================
@@ -191,7 +240,6 @@ public class WithdrawalService {
         return withdrawalRepository.countByStatus("PENDING");
     }
 
-    // 🚀 BỔ SUNG: Phân trang và Lọc từ Database
     public Page<WithdrawalRequest> getAllRequests(int page, int size, String status) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         

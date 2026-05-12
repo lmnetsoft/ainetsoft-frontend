@@ -116,7 +116,7 @@ public class WithdrawalController {
         return ResponseEntity.ok(withdrawalService.countPendingRequests());
     }
 
-    // 🚀 BỔ SUNG: Nhận tham số page, size, status để phân trang
+    // Phân trang và Lọc
     @GetMapping("/admin/all")
     public ResponseEntity<?> getAllRequests(
             @RequestParam(defaultValue = "0") int page,
@@ -126,8 +126,20 @@ public class WithdrawalController {
         User admin = getAuthenticatedAdmin(principal);
         if (admin == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         
-        // Trả về đối tượng Page<?> chuẩn của Spring Data
         return ResponseEntity.ok(withdrawalService.getAllRequests(page, size, status));
+    }
+
+    // 🚀 BỔ SUNG: API Lấy Chi tiết KYC và Đối soát Rủi ro
+    @GetMapping("/admin/kyc/{requestId}")
+    public ResponseEntity<?> getKycDetails(@PathVariable String requestId, Principal principal) {
+        User admin = getAuthenticatedAdmin(principal);
+        if (admin == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        
+        try {
+            return ResponseEntity.ok(withdrawalService.getWithdrawalKycDetails(requestId));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
     }
 
     @PutMapping("/admin/process/{requestId}")
@@ -141,7 +153,7 @@ public class WithdrawalController {
         }
     }
 
-    // 🚀 API ĐỔI TRẠNG THÁI TỰ ĐỘNG CHUYỂN TIỀN
+    // API ĐỔI TRẠNG THÁI TỰ ĐỘNG CHUYỂN TIỀN
     @GetMapping("/admin/config/auto-payout")
     public ResponseEntity<?> getAutoPayoutConfig(Principal principal) {
         if (getAuthenticatedAdmin(principal) == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
