@@ -2,15 +2,22 @@ package com.ainetsoft.service;
 
 import com.ainetsoft.model.BankAccount;
 import com.ainetsoft.model.Order;
+import com.ainetsoft.model.PlatformConfig;
 import com.ainetsoft.model.User;
 import com.ainetsoft.model.Wallet;
 import com.ainetsoft.model.WithdrawalRequest;
 import com.ainetsoft.repository.OrderRepository;
+import com.ainetsoft.repository.PlatformConfigRepository;
 import com.ainetsoft.repository.UserRepository;
 import com.ainetsoft.repository.WalletRepository;
 import com.ainetsoft.repository.WithdrawalRepository;
+import com.ainetsoft.service.bank.BankTransferProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,12 +32,28 @@ public class WithdrawalService {
     private final WithdrawalRepository withdrawalRepository;
     private final OrderRepository orderRepository;
     private final UserRepository userRepository; 
-    private final WalletRepository walletRepository; // 🚀 Inject Wallet để xử lý tiền Buyer
+    private final WalletRepository walletRepository; 
     private final BankAccountService bankAccountService;
     private final NotificationService notificationService;
+    private final BankTransferProvider bankTransferProvider;
+    private final PlatformConfigRepository configRepository;
+
+    public boolean getAutoPayoutStatus() {
+        return configRepository.findAll().stream().findFirst()
+                .map(PlatformConfig::isAutoPayoutEnabled).orElse(false);
+    }
+
+    @Transactional
+    public boolean toggleAutoPayout(boolean status) {
+        PlatformConfig config = configRepository.findAll().stream().findFirst().orElse(new PlatformConfig());
+        config.setAutoPayoutEnabled(status);
+        config.setUpdatedAt(LocalDateTime.now());
+        configRepository.save(config);
+        return status;
+    }
 
     // ==========================================
-    // LOGIC DÀNH CHO SELLER (Giữ nguyên)
+    // LOGIC DÀNH CHO SELLER
     // ==========================================
     public double getSellerBalance(String sellerId) {
         List<Order> completedOrders = orderRepository.findByItemsSellerIdAndStatus(sellerId, "COMPLETED");
@@ -43,7 +66,7 @@ public class WithdrawalService {
 
         List<WithdrawalRequest> requests = withdrawalRepository.findBySellerIdOrderByCreatedAtDesc(sellerId);
         double totalDeducted = requests.stream()
-                .filter(r -> !"REJECTED".equals(r.getStatus()))
+                .filter(r -> !"REJECTED".equals(r.getStatus()) && !"FAILED".equals(r.getStatus()))
                 .mapToDouble(WithdrawalRequest::getAmount)
                 .sum();
 
@@ -102,7 +125,7 @@ public class WithdrawalService {
     }
 
     // ==========================================
-    // 🚀 LOGIC DÀNH CHO BUYER (USER)
+    // LOGIC DÀNH CHO BUYER (USER)
     // ==========================================
     @Transactional
     public WithdrawalRequest createUserWithdrawalRequest(String userId, double amount) {
@@ -137,14 +160,13 @@ public class WithdrawalService {
                 .findFirst()
                 .orElse(banks.get(0));
 
-        // 🚀 Trừ tiền ngay lập tức trong ví để tránh rút lố
         wallet.setBalance(currentBalance - amount);
         walletRepository.save(wallet);
 
         WithdrawalRequest request = WithdrawalRequest.builder()
                 .targetType("BUYER")
                 .userId(userId)
-                .shopName(user.getFullName()) // Admin dashboard sẽ hiển thị tên User
+                .shopName(user.getFullName()) 
                 .sellerFullName(user.getFullName())
                 .amount(amount)
                 .bankName(defaultBank.getBankName())
@@ -163,14 +185,20 @@ public class WithdrawalService {
     }
 
     // ==========================================
-    // LOGIC CHUNG (ADMIN XỬ LÝ)
+    // 🚀 LOGIC CHUNG (ADMIN XỬ LÝ)
     // ==========================================
     public long countPendingRequests() {
         return withdrawalRepository.countByStatus("PENDING");
     }
 
-    public List<WithdrawalRequest> getAllRequests() {
-        return withdrawalRepository.findAll();
+    // 🚀 BỔ SUNG: Phân trang và Lọc từ Database
+    public Page<WithdrawalRequest> getAllRequests(int page, int size, String status) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        
+        if (status != null && !status.equalsIgnoreCase("ALL")) {
+            return withdrawalRepository.findByStatus(status.toUpperCase(), pageable);
+        }
+        return withdrawalRepository.findAll(pageable);
     }
 
     @Transactional
@@ -178,44 +206,71 @@ public class WithdrawalService {
         WithdrawalRequest request = withdrawalRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Yêu cầu không tồn tại!"));
 
-        if (!"PENDING".equals(request.getStatus())) {
-            throw new RuntimeException("Yêu cầu này đã được xử lý trước đó. Vui lòng tải lại trang.");
+        if (!"PENDING".equals(request.getStatus()) && !"PROCESSING".equals(request.getStatus())) {
+            throw new RuntimeException("Yêu cầu này đã được xử lý xong. Vui lòng tải lại trang.");
         }
 
-        request.setStatus(status.toUpperCase());
-        request.setAdminNote(adminNote != null ? adminNote : "");
+        String targetStatus = status.toUpperCase();
+        String finalNote = adminNote != null ? adminNote : "";
+        boolean autoPayoutEnabled = getAutoPayoutStatus();
+
+        if ("APPROVED".equals(targetStatus) || "COMPLETED".equals(targetStatus)) {
+            if (autoPayoutEnabled && "PENDING".equals(request.getStatus())) {
+                String transferDesc = "AINETSOFT PAYOUT " + request.getId().substring(request.getId().length() - 6).toUpperCase();
+                BankTransferProvider.TransferResult result = bankTransferProvider.sendMoney(
+                        request.getAccountNumber(), request.getBankName(), request.getAccountHolder(), request.getAmount(), transferDesc
+                );
+                if (result.success()) {
+                    targetStatus = "COMPLETED";
+                    finalNote = finalNote + " | [AUTO-PAYOUT] " + result.message() + " - TXN: " + result.transactionId();
+                } else {
+                    targetStatus = "FAILED";
+                    finalNote = finalNote + " | [AUTO-PAYOUT LỖI] " + result.message();
+                }
+            } else if (!autoPayoutEnabled && "APPROVED".equals(targetStatus) && "PENDING".equals(request.getStatus())) {
+                targetStatus = "PROCESSING";
+                finalNote = finalNote + " | [MANUAL] Đang chờ Admin chuyển khoản thủ công.";
+            } else if ("COMPLETED".equals(targetStatus) && "PROCESSING".equals(request.getStatus())) {
+                targetStatus = "COMPLETED";
+                finalNote = finalNote + " | [MANUAL] Admin đã xác nhận chuyển khoản thủ công thành công.";
+            }
+        }
+
+        request.setStatus(targetStatus);
+        request.setAdminNote(finalNote);
         request.setProcessedAt(LocalDateTime.now());
 
-        // 🚀 NẾU LÀ BUYER VÀ BỊ TỪ CHỐI -> HOÀN LẠI TIỀN VÀO VÍ
-        if ("REJECTED".equals(status.toUpperCase()) && "BUYER".equals(request.getTargetType())) {
+        if (("REJECTED".equals(targetStatus) || "FAILED".equals(targetStatus)) && "BUYER".equals(request.getTargetType())) {
             Wallet wallet = walletRepository.findByUserId(request.getUserId())
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy ví người dùng để hoàn tiền!"));
             double current = wallet.getBalance() != null ? wallet.getBalance() : 0.0;
             wallet.setBalance(current + request.getAmount());
             walletRepository.save(wallet);
-            log.info("Refunded {} to User Wallet {}", request.getAmount(), request.getUserId());
+            log.info("Refunded {} to User Wallet {} due to status: {}", request.getAmount(), request.getUserId(), targetStatus);
         }
 
         WithdrawalRequest saved = withdrawalRepository.save(request);
 
-        String message = status.equalsIgnoreCase("COMPLETED") 
-            ? "Yêu cầu rút tiền " + String.format("%,.0f", request.getAmount()) + "₫ đã được chuyển khoản thành công!" 
-            : "Yêu cầu rút tiền bị từ chối. Lý do: " + adminNote;
+        String message = "";
+        if (targetStatus.equals("COMPLETED")) {
+            message = "Yêu cầu rút tiền " + String.format("%,.0f", request.getAmount()) + "₫ đã được chuyển khoản thành công!";
+        } else if (targetStatus.equals("PROCESSING")) {
+            message = "Yêu cầu rút tiền " + String.format("%,.0f", request.getAmount()) + "₫ đã được duyệt. Tiền sẽ về tài khoản trong 24h.";
+        } else if (targetStatus.equals("FAILED")) {
+            message = "Giao dịch rút tiền thất bại do lỗi hệ thống ngân hàng. Hệ thống đã hoàn tiền, vui lòng thử lại sau.";
+        } else if (targetStatus.equals("REJECTED")) {
+            message = "Yêu cầu rút tiền bị từ chối. Lý do: " + adminNote;
+        }
 
-        String notifyId = "BUYER".equals(request.getTargetType()) ? request.getUserId() : request.getSellerId();
-        
-        try {
-            if (notifyId != null) {
-                notificationService.createNotification(
-                        notifyId, 
-                        "Cập nhật tài chính", 
-                        message, 
-                        "SYSTEM", 
-                        null
-                );
+        if (!message.isEmpty()) {
+            String notifyId = "BUYER".equals(request.getTargetType()) ? request.getUserId() : request.getSellerId();
+            try {
+                if (notifyId != null) {
+                    notificationService.createNotification(notifyId, "Cập nhật tài chính", message, "SYSTEM", null);
+                }
+            } catch (Exception e) {
+                log.warn("Không thể gửi thông báo cho tài khoản {}", notifyId);
             }
-        } catch (Exception e) {
-            log.warn("Không thể gửi thông báo cho tài khoản {}", notifyId);
         }
 
         return saved;

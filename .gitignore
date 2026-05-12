@@ -9,12 +9,18 @@ lerna-debug.log*
 
 # Node
 node_modules
+frontend/node_modules
 dist
 dist-ssr
 *.local
 
+# Vite cache
+.vite/
+frontend/.vite/
+
 # Java / Maven
 target/
+backend/target/
 *.class
 *.jar
 *.war

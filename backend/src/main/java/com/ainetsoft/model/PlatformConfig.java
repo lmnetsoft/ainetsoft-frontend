@@ -12,5 +12,9 @@ public class PlatformConfig {
     private String id;
     private double cashbackRate = 0.01; 
     private int maxCoinsPerOrder = 50000; 
+    
+    // 🚀 BỔ SUNG: Cờ bật/tắt Tự động giải ngân
+    private boolean autoPayoutEnabled = false; 
+    
     private LocalDateTime updatedAt;
 }

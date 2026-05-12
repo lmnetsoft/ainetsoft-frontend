@@ -116,11 +116,18 @@ public class WithdrawalController {
         return ResponseEntity.ok(withdrawalService.countPendingRequests());
     }
 
+    // 🚀 BỔ SUNG: Nhận tham số page, size, status để phân trang
     @GetMapping("/admin/all")
-    public ResponseEntity<?> getAllRequests(Principal principal) {
+    public ResponseEntity<?> getAllRequests(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "ALL") String status,
+            Principal principal) {
         User admin = getAuthenticatedAdmin(principal);
         if (admin == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        return ResponseEntity.ok(withdrawalService.getAllRequests());
+        
+        // Trả về đối tượng Page<?> chuẩn của Spring Data
+        return ResponseEntity.ok(withdrawalService.getAllRequests(page, size, status));
     }
 
     @PutMapping("/admin/process/{requestId}")
@@ -132,5 +139,20 @@ public class WithdrawalController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
+    }
+
+    // 🚀 API ĐỔI TRẠNG THÁI TỰ ĐỘNG CHUYỂN TIỀN
+    @GetMapping("/admin/config/auto-payout")
+    public ResponseEntity<?> getAutoPayoutConfig(Principal principal) {
+        if (getAuthenticatedAdmin(principal) == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        return ResponseEntity.ok(Map.of("autoPayoutEnabled", withdrawalService.getAutoPayoutStatus()));
+    }
+
+    @PutMapping("/admin/config/auto-payout")
+    public ResponseEntity<?> toggleAutoPayout(@RequestBody Map<String, Boolean> payload, Principal principal) {
+        if (getAuthenticatedAdmin(principal) == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        boolean status = payload.getOrDefault("enabled", false);
+        withdrawalService.toggleAutoPayout(status);
+        return ResponseEntity.ok(Map.of("autoPayoutEnabled", status));
     }
 }
