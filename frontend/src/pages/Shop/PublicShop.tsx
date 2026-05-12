@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FaStore, FaStar, FaBox, FaMapMarkerAlt, FaCommentDots, FaTicketAlt } from 'react-icons/fa';
+import { FaStore, FaStar, FaBox, FaMapMarkerAlt, FaCommentDots, FaTicketAlt, FaExclamationTriangle, FaArrowLeft } from 'react-icons/fa';
 import api from '../../services/api';
 import ToastNotification from '../../components/Toast/ToastNotification';
 import './PublicShop.css';
@@ -104,17 +104,24 @@ const PublicShop = () => {
     </div>
   );
 
+  // 🚀 UX ĐỈNH CAO: Giao diện 404 / Lỗi được thiết kế lại
   if (error) return (
-    <div className="container" style={{padding: '100px 0', textAlign: 'center'}}>
-        <h2>Rất tiếc!</h2>
-        <p style={{color: 'var(--text-muted)', margin: '15px 0'}}>{error}</p>
-        <button onClick={() => navigate('/')} className="save-btn" style={{marginTop: '20px'}}>Quay lại trang chủ</button>
+    <div className="shop-error-wrapper">
+        <div className="shop-error-container">
+            <div className="shop-error-icon-box">
+                <FaStore className="shop-error-icon-bg" />
+                <FaExclamationTriangle className="shop-error-icon-fg" />
+            </div>
+            <h2>Rất tiếc!</h2>
+            <p>{error}</p>
+            <button onClick={() => navigate('/')} className="shop-error-home-btn">
+                <FaArrowLeft /> Quay lại trang chủ
+            </button>
+        </div>
     </div>
   );
 
-  // 🚀 LOGIC QUAN TRỌNG: Chỉ kích hoạt cuộn ngang (Marquee) khi có TỪ 4 VOUCHER trở lên
   const isMarquee = shopVouchers.length >= 4;
-  // Để tạo hiệu ứng cuộn mượt mà vô tận, ta phải nhân đôi mảng dữ liệu
   const displayVouchers = isMarquee ? [...shopVouchers, ...shopVouchers] : shopVouchers;
 
   return (
@@ -165,12 +172,9 @@ const PublicShop = () => {
             <h3 className="shop-vouchers-header">
               <FaTicketAlt /> Ưu Đãi Của Cửa Hàng
             </h3>
-            {/* Vùng Viewport cắt những phần thừa */}
             <div className="shop-vouchers-marquee-viewport">
-                {/* Thanh Track chứa nội dung, áp dụng class marquee-active nếu có nhiều voucher */}
                 <div className={`shop-vouchers-track ${isMarquee ? 'marquee-active' : ''}`}>
                   {displayVouchers.map((v, index) => (
-                    // Cần cộng thêm index vào key vì mảng bị nhân đôi
                     <div key={`${v.id}-${index}`} className="shopee-ticket-wrapper">
                       <div className="ticket-left-section">
                         <div className="ticket-title">

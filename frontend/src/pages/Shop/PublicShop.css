@@ -179,40 +179,34 @@
     font-weight: 600;
 }
 
-/* Khung nhìn ẩn đi những phần bị tràn ra ngoài để làm hiệu ứng băng chuyền */
 .shop-vouchers-marquee-viewport {
     overflow: hidden;
     width: 100%;
     position: relative;
     padding: 10px 0 15px 0;
-    /* Làm mờ (fade) mượt mà 2 cạnh viền trái phải để trông đẹp hơn */
     -webkit-mask-image: linear-gradient(to right, transparent, black 3%, black 97%, transparent);
     mask-image: linear-gradient(to right, transparent, black 3%, black 97%, transparent);
 }
 
-/* Đường ray chứa danh sách Voucher (Auto-Scroll) */
 .shop-vouchers-track {
     display: flex;
     gap: 16px;
     width: max-content;
 }
 
-/* 🚀 CHỈ KÍCH HOẠT HIỆU ỨNG CHẠY KHI ĐƯỢC GẮN CLASS NÀY TỪ REACT */
 .marquee-active {
     animation: scroll-left 40s linear infinite;
 }
 
-/* Dừng ngay băng chuyền khi người dùng rê chuột vào để bấm Lưu */
 .shop-vouchers-track:hover {
     animation-play-state: paused;
 }
 
 @keyframes scroll-left {
     0% { transform: translateX(0); }
-    100% { transform: translateX(calc(-50% - 8px)); } /* Di chuyển chính xác bằng 1 nửa độ dài để loop mượt */
+    100% { transform: translateX(calc(-50% - 8px)); } 
 }
 
-/* Giao diện Thẻ Voucher Vibrant Bubble (Bong bóng xịn xò) */
 .shopee-ticket-wrapper {
     display: flex;
     min-width: 260px;
@@ -239,12 +233,11 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    background: linear-gradient(135deg, #ff7337 0%, #ee4d2d 100%); /* Nền Gradient đỏ rực hút mắt */
+    background: linear-gradient(135deg, #ff7337 0%, #ee4d2d 100%); 
     color: white;
     position: relative;
 }
 
-/* Đường răng cưa cắt ở giữa */
 .ticket-left-section::after {
     content: '';
     position: absolute;
@@ -288,7 +281,7 @@
     color: white;
     border: none;
     padding: 6px 16px;
-    border-radius: 20px; /* Bong bóng bo tròn */
+    border-radius: 20px; 
     font-size: 12px;
     cursor: pointer;
     font-weight: 600;
@@ -298,7 +291,7 @@
 
 .ticket-save-btn:hover {
     background-color: #d73d1f;
-    transform: scale(1.05); /* To lên 1 xíu khi hover */
+    transform: scale(1.05); 
 }
 
 .ticket-save-btn:disabled {
@@ -306,4 +299,92 @@
     box-shadow: none;
     cursor: not-allowed;
     transform: none;
+}
+
+/* ========================================================================= */
+/* 🚀 5. LỖI / 404 CỬA HÀNG (EMPTY STATE ĐỈNH CAO) */
+/* ========================================================================= */
+.shop-error-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 75vh;
+    background-color: #f8f9fa;
+    padding: 40px 20px;
+}
+
+.shop-error-container {
+    background: #ffffff;
+    max-width: 480px;
+    width: 100%;
+    padding: 50px 40px;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    text-align: center;
+    border-top: 5px solid #ee4d2d;
+}
+
+.shop-error-icon-box {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.shop-error-icon-bg {
+    font-size: 90px;
+    color: #f1f5f9;
+}
+
+.shop-error-icon-fg {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    font-size: 35px;
+    color: #ee4d2d;
+    background: #fff;
+    border-radius: 50%;
+    padding: 4px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.shop-error-container h2 {
+    font-size: 26px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 12px;
+}
+
+.shop-error-container p {
+    font-size: 15px;
+    color: #64748b;
+    line-height: 1.6;
+    margin-bottom: 35px;
+    padding: 0 10px;
+}
+
+.shop-error-home-btn {
+    background: linear-gradient(135deg, #ff7337 0%, #ee4d2d 100%);
+    color: white;
+    border: none;
+    padding: 14px 30px;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 30px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(238, 77, 45, 0.3);
+    width: 100%;
+}
+
+.shop-error-home-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(238, 77, 45, 0.4);
 }
