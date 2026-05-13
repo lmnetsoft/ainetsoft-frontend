@@ -196,7 +196,7 @@ public class OrderService {
             orderRequest.setUsedCoins((int)coinDiscount);
         }
 
-        // 3. 🚀 BỔ SUNG: Trừ Ví AiNetsoft (Cấn trừ)
+        // 3. Trừ Ví AiNetsoft (Cấn trừ)
         double walletDiscount = 0;
         if (orderRequest.getUsedWalletBalance() > 0) {
             Wallet wallet = walletRepository.findByUserId(user.getId())
@@ -209,7 +209,6 @@ public class OrderService {
                 throw new RuntimeException("Số dư Ví AiNetsoft không đủ!");
             }
             
-            // Không cho phép cấn trừ lố số tiền cần thanh toán
             if (requestedWallet > finalTotalAmount) {
                 requestedWallet = finalTotalAmount;
             }
@@ -217,12 +216,11 @@ public class OrderService {
             walletDiscount = requestedWallet;
             finalTotalAmount -= walletDiscount;
             
-            // Trừ tiền trong ví
             wallet.setBalance(currentBalance - walletDiscount);
             wallet.setUpdatedAt(LocalDateTime.now());
             walletRepository.save(wallet);
             
-            orderRequest.setUsedWalletBalance(walletDiscount); // Lưu lại mức đã dùng thực tế
+            orderRequest.setUsedWalletBalance(walletDiscount);
         }
 
         orderRequest.setItems(orderItems);
@@ -231,24 +229,70 @@ public class OrderService {
         orderRequest.setCoinDiscountAmount(coinDiscount);
         orderRequest.setFinalTotalAmount(finalTotalAmount);
         
-        // Nếu cấn trừ xong mà FinalTotalAmount = 0 thì tự động gán Payment Method thành "WALLET_PAID" cho rõ ràng
         if (finalTotalAmount == 0 && orderRequest.getUsedWalletBalance() > 0) {
             orderRequest.setPaymentMethod("WALLET_PAID");
         }
 
-        orderRequest.setStatus("PENDING");
+        String pm = orderRequest.getPaymentMethod() != null ? orderRequest.getPaymentMethod().toUpperCase() : "COD";
+        if ("COD".equals(pm) || "WALLET_PAID".equals(pm)) {
+            orderRequest.setStatus("PENDING"); 
+        } else {
+            orderRequest.setStatus("PENDING_PAYMENT"); 
+        }
+
         orderRequest.setReturnStatus("NONE"); 
         orderRequest.setCreatedAt(LocalDateTime.now());
         orderRequest.setUpdatedAt(LocalDateTime.now());
 
         Order savedOrder = orderRepository.save(orderRequest);
 
-        notificationService.createNotification(user.getId(), "Đặt hàng thành công", "Mã đơn: " + savedOrder.getId(), "ORDER", savedOrder.getId());
+        if ("PENDING".equals(savedOrder.getStatus())) {
+            notificationService.createNotification(user.getId(), "Đặt hàng thành công", "Mã đơn: " + savedOrder.getId(), "ORDER", savedOrder.getId());
+        }
         
         user.setCart(new ArrayList<>());
         userRepository.save(user);
 
         return savedOrder;
+    }
+
+    // 🚀 BỔ SUNG: Hàm xử lý Callback sau khi khách trả tiền ở Mock Gateway
+    @Transactional
+    public Order processPaymentCallback(String orderId, String responseCode, String transactionNo) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Đơn hàng không tồn tại!"));
+
+        // Chỉ xử lý nếu đơn đang ở trạng thái chờ thanh toán để chống request lặp
+        if ("PENDING_PAYMENT".equals(order.getStatus())) {
+            if ("00".equals(responseCode)) {
+                order.setStatus("PENDING"); // Tiền đã vào, chuyển trạng thái cho Shop chuẩn bị hàng
+                order.setUpdatedAt(LocalDateTime.now());
+                
+                // Báo cho người mua
+                notificationService.createNotification(
+                    order.getUserId(),
+                    "Thanh toán thành công 🎉",
+                    "Đơn hàng #" + orderId.substring(orderId.length() - 8).toUpperCase() + " đã thanh toán. Người bán đang chuẩn bị hàng!",
+                    "ORDER",
+                    orderId
+                );
+                
+                // Báo cho người bán
+                notificationService.createNotification(
+                    order.getItems().get(0).getSellerId(),
+                    "Đơn hàng mới đã thanh toán 💰",
+                    "Đơn hàng #" + orderId.substring(orderId.length() - 8).toUpperCase() + " đã được thanh toán qua Thẻ/VNPay. Hãy chuẩn bị hàng nhé!",
+                    "ORDER",
+                    orderId
+                );
+            } else {
+                order.setStatus("CANCELLED");
+                order.setCancelReason("Thanh toán thất bại hoặc người dùng hủy giao dịch từ Cổng thanh toán");
+                order.setUpdatedAt(LocalDateTime.now());
+            }
+            return orderRepository.save(order);
+        }
+        return order;
     }
 
     public Map<String, Object> checkReviewEligibility(String productId, String userId) {
@@ -322,14 +366,17 @@ public class OrderService {
                 .findFirst()
                 .orElse(user.getAddresses().get(0));
 
+        String pm = paymentMethod != null ? paymentMethod.toUpperCase() : "COD";
+        String orderStatus = ("COD".equals(pm) || "WALLET_PAID".equals(pm)) ? "PENDING" : "PENDING_PAYMENT";
+
         Order newOrder = Order.builder()
                 .userId(user.getId())
                 .items(orderItems)
                 .totalAmount(totalAmount)
                 .finalTotalAmount(totalAmount) 
                 .shippingAddress(shippingAddr)
-                .paymentMethod(paymentMethod)
-                .status("PENDING")
+                .paymentMethod(pm)
+                .status(orderStatus)
                 .returnStatus("NONE")
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -337,13 +384,15 @@ public class OrderService {
 
         Order savedOrder = orderRepository.save(newOrder);
 
-        notificationService.createNotification(
-            user.getId(),
-            "Đặt hàng thành công",
-            "Đơn hàng của bạn đã được tiếp nhận và đang chờ Người bán xác nhận.",
-            "ORDER",
-            savedOrder.getId()
-        );
+        if ("PENDING".equals(savedOrder.getStatus())) {
+            notificationService.createNotification(
+                user.getId(),
+                "Đặt hàng thành công",
+                "Đơn hàng của bạn đã được tiếp nhận và đang chờ Người bán xác nhận.",
+                "ORDER",
+                savedOrder.getId()
+            );
+        }
 
         user.setCart(new ArrayList<>());
         user.setUpdatedAt(LocalDateTime.now());
@@ -614,7 +663,6 @@ public class OrderService {
             }
         }
 
-        // 🚀 BỔ SUNG: HOÀN TRẢ LẠI TIỀN CẤN TRỪ (VNĐ) KHI HỦY ĐƠN
         if (order.getUsedWalletBalance() > 0) {
             walletRepository.findByUserId(userId).ifPresent(wallet -> {
                 double currentBalance = wallet.getBalance() != null ? wallet.getBalance() : 0.0;
@@ -624,7 +672,6 @@ public class OrderService {
             });
         }
 
-        // Giữ Fallback cũ: Nếu đơn cũ đã đặt bằng "WALLET" mà usedWalletBalance chưa cập nhật
         if ("WALLET".equalsIgnoreCase(order.getPaymentMethod()) && order.getUsedWalletBalance() == 0) {
             walletRepository.findByUserId(userId).ifPresent(wallet -> {
                 double currentBalance = wallet.getBalance() != null ? wallet.getBalance() : 0.0;

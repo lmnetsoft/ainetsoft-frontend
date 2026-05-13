@@ -384,3 +384,70 @@
 .product-detail-wrapper .mvt-min { color: #ee4d2d; font-size: 0.7rem; opacity: 0.9; }
 .product-detail-wrapper .mvt-right { background: #fff0eb; color: #ee4d2d; font-size: 0.85rem; font-weight: 600; padding: 0 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
 .product-detail-wrapper .mvt-right:hover { background: #ffe4db; }
+/* =========================================================
+   🚀 PHASE 3: REVIEW & RATING MODAL STYLES (SHOPEE STYLE)
+========================================================= */
+
+.reviews-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 10px;
+}
+
+.reviews-header-row .section-title {
+    margin-bottom: 0;
+    border-bottom: none;
+    background: transparent;
+    padding: 0;
+}
+
+.btn-write-review {
+    background: #ee4d2d;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.2s, transform 0.1s;
+    box-shadow: 0 2px 4px rgba(238, 77, 45, 0.2);
+}
+
+.btn-write-review:hover {
+    background: #d73d1f;
+    transform: translateY(-1px);
+}
+
+.star-rating-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    background: #fffaf9;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px dashed #ffccc7;
+}
+
+.star-clickable {
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.star-clickable:hover {
+    transform: scale(1.2) rotate(-5deg);
+}
+
+.rating-text-hint {
+    margin-left: 15px;
+    font-weight: 700;
+    color: #ee4d2d;
+    font-size: 16px;
+    text-transform: uppercase;
+}

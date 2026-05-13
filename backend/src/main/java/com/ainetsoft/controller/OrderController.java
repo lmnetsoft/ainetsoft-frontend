@@ -97,9 +97,40 @@ public class OrderController {
         try {
             orderRequest.setUserId(user.getId());
             Order createdOrder = orderService.createOrder(orderRequest);
-            return ResponseEntity.status(HttpStatus.CREATED).body(createdOrder);
+
+            if ("PENDING_PAYMENT".equals(createdOrder.getStatus())) {
+                String paymentUrl = "/payment/sandbox?amount=" + (long) createdOrder.getFinalTotalAmount() 
+                                  + "&orderId=" + createdOrder.getId() 
+                                  + "&returnUrl=/user/purchase";
+                
+                return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                    "message", "Đơn hàng đang chờ thanh toán",
+                    "order", createdOrder,
+                    "paymentUrl", paymentUrl
+                ));
+            }
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                "message", "Đặt hàng thành công",
+                "order", createdOrder
+            ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", "Lỗi đặt hàng: " + e.getMessage()));
+        }
+    }
+
+    // 🚀 BỔ SUNG: Endpoint Webhook / Callback xử lý dữ liệu từ VNPay trả về
+    @PostMapping("/payment-callback")
+    public ResponseEntity<?> handlePaymentCallback(@RequestBody Map<String, String> payload) {
+        String orderId = payload.get("orderId");
+        String responseCode = payload.get("responseCode");
+        String transactionNo = payload.get("transactionNo");
+
+        try {
+            Order order = orderService.processPaymentCallback(orderId, responseCode, transactionNo);
+            return ResponseEntity.ok(Map.of("message", "Xử lý Callback thanh toán thành công", "order", order));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
 
@@ -144,7 +175,6 @@ public class OrderController {
         return ResponseEntity.ok(orderService.checkReviewEligibility(productId, user.getId()));
     }
 
-    // 🚀 ĐÃ SỬA: Chuyển thành PUT và nhận JSON payload chứa "cancelReason"
     @PutMapping("/{orderId}/cancel")
     public ResponseEntity<?> cancelOrder(@PathVariable String orderId, @RequestBody(required = false) Map<String, String> payload, Principal principal) {
         User user = getAuthenticatedUser(principal);

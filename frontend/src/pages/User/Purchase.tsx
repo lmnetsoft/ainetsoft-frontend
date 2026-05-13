@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FaStore, FaTruck, FaMapMarkerAlt, FaStar, FaCommentDots, FaCheckCircle, FaClipboardList, FaUndoAlt, FaBox, FaTimes, FaCamera, FaExclamationCircle, FaChevronRight, FaChevronLeft, FaSync, FaPlay, FaLink, FaCopy, FaRegCircle } from 'react-icons/fa';
 import { getMyOrders, requestReturnOrder } from '../../services/orderService';
 import { confirmOrderReceived } from '../../services/api';
@@ -13,6 +13,7 @@ const BASE_URL = import.meta.env.VITE_BASE_URL || 'http://localhost:8080';
 
 const Purchase = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams(); // 🚀 Dùng để lấy param từ URL
   const [activeTab, setActiveTab] = useState('ALL');
   const [allOrders, setAllOrders] = useState<any[]>([]); 
   const [displayedOrders, setDisplayedOrders] = useState<any[]>([]); 
@@ -114,6 +115,47 @@ const Purchase = () => {
     document.title = "Đơn mua của tôi | AiNetsoft";
   }, []);
 
+  // 🚀 LOGIC XỬ LÝ PAYMENT CALLBACK (WEBHOOK TỪ VNPAY)
+  useEffect(() => {
+      const responseCode = searchParams.get('vnp_ResponseCode');
+      const orderId = searchParams.get('vnp_TxnRef');
+      const transactionNo = searchParams.get('vnp_TransactionNo');
+
+      if (responseCode && orderId) {
+          const processPaymentCallback = async () => {
+              try {
+                  // Gọi API báo Backend cập nhật trạng thái đơn hàng
+                  await api.post('/orders/payment-callback', {
+                      orderId: orderId,
+                      responseCode: responseCode,
+                      transactionNo: transactionNo || ''
+                  });
+
+                  if (responseCode === '00') {
+                      setToastMessage("🎉 Thanh toán thành công! Người bán đang chuẩn bị hàng cho bạn.");
+                  } else {
+                      setToastMessage("❌ Thanh toán thất bại hoặc đã bị hủy.");
+                  }
+                  setShowToast(true);
+
+                  // Dọn dẹp URL sạch sẽ để chống F5 lặp lại request
+                  const paramsToRemove = ['vnp_ResponseCode', 'vnp_TxnRef', 'vnp_TransactionNo', 'vnp_Amount', 'vnp_BankCode', 'vnp_OrderInfo', 'vnp_PayDate', 'vnp_TmnCode'];
+                  paramsToRemove.forEach(param => searchParams.delete(param));
+                  setSearchParams(searchParams, { replace: true });
+
+                  // Làm mới danh sách đơn hàng để thấy trạng thái PENDING
+                  fetchAllOrders();
+
+              } catch (err: any) {
+                  setToastMessage(err.response?.data?.message || "Lỗi cập nhật giao dịch.");
+                  setShowToast(true);
+              }
+          };
+
+          processPaymentCallback();
+      }
+  }, []); // Chỉ chạy 1 lần khi load component
+
   useEffect(() => {
     setCurrentPage(1); 
     const sortedOrders = [...allOrders].sort((a, b) => {
@@ -146,6 +188,7 @@ const Purchase = () => {
   const getStatusText = (status: string) => {
     const s = status ? status.toString().trim().toUpperCase() : '';
     switch (s) {
+      case 'PENDING_PAYMENT': return 'CHỜ THANH TOÁN';
       case 'PENDING': return 'CHỜ XÁC NHẬN';
       case 'CONFIRMED': return 'ĐÃ XÁC NHẬN';
       case 'PROCESSING': return 'ĐANG XỬ LÝ';
@@ -210,7 +253,6 @@ const Purchase = () => {
       setShowReturnDetail(true);
   };
 
-  // 🚀 KIỂM TRA TỒN KHO/TRẠNG THÁI SẢN PHẨM TRƯỚC KHI MUA LẠI
   const handleBuyAgain = async (e: React.MouseEvent, productId: string) => {
       if (e) e.stopPropagation();
       try {
@@ -405,7 +447,6 @@ const Purchase = () => {
           </div>
       )}
 
-      {/* TRANG CHI TIẾT KHIẾU NẠI */}
       {showReturnDetail && selectedReturnOrder && (
          <div className="shopee-refund-overlay-supreme scrollable-overlay">
             <div className="shopee-full-form-card animate-scale-up return-detail-page" style={{ maxWidth: '800px', margin: '20px auto' }}>
@@ -835,7 +876,7 @@ const Purchase = () => {
             <div className="order-cards-wrapper">
               {currentOrdersList.map(order => { 
                 const rawStatus = order.status ? order.status.toString().trim().toUpperCase() : '';
-                const canCancel = ['PENDING', 'CONFIRMED', 'PROCESSING', 'UNPAID', ''].includes(rawStatus);
+                const canCancel = ['PENDING_PAYMENT', 'PENDING', 'CONFIRMED', 'PROCESSING', 'UNPAID', ''].includes(rawStatus);
                 const canReturn = (rawStatus === 'SHIPPING' && order.carrierStatus === 'DELIVERED') || rawStatus === 'COMPLETED';
                 const isReturnTab = activeTab === 'RETURN';
 

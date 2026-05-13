@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaBox, FaUser, FaPhoneAlt, FaClipboardList, FaTimes, FaExclamationTriangle, FaCheck, FaBan, FaSync, FaPlay, FaChevronRight } from 'react-icons/fa';
+import { FaBox, FaUser, FaPhoneAlt, FaClipboardList, FaTimes, FaExclamationTriangle, FaCheck, FaBan, FaSync, FaPlay, FaChevronRight, FaTruckLoading, FaBarcode } from 'react-icons/fa';
 import api from '../../services/api'; 
 import { processReturnOrder } from '../../services/orderService';
 import ToastNotification from '../../components/Toast/ToastNotification';
@@ -11,7 +11,7 @@ const bitnamilegacy = '/logo.svg';
 
 const SellerOrders = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('ALL'); // 🚀 ĐÃ SỬA: Mặc định mở Tab Tất Cả
+  const [activeTab, setActiveTab] = useState('ALL'); 
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showToast, setShowToast] = useState(false);
@@ -22,12 +22,10 @@ const SellerOrders = () => {
 
   const [previewMedia, setPreviewMedia] = useState<{ url: string, isVideo: boolean } | null>(null);
 
-  // 🚀 ĐÃ BỔ SUNG KEY "ALL"
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({
     ALL: 0, PENDING: 0, SHIPPING: 0, COMPLETED: 0, CANCELLED: 0, RETURNING: 0
   });
 
-  // 🚀 ĐÃ BỔ SUNG TAB "TẤT CẢ"
   const tabs = [
     { id: 'ALL', label: 'Tất cả' },
     { id: 'PENDING', label: 'Chờ xác nhận' },
@@ -71,7 +69,6 @@ const SellerOrders = () => {
     }
   };
 
-  // 🚀 ĐÃ TỐI ƯU HIỆU NĂNG: Chỉ gọi 1 API ALL và tự đếm số lượng cho các tab
   const fetchTabCounts = async () => {
     try {
       const res = await api.get(`/orders/seller?status=ALL`);
@@ -103,6 +100,10 @@ const SellerOrders = () => {
       setShowToast(true);
       fetchOrders(); 
       fetchTabCounts(); 
+      // Cập nhật luôn selectedOrder nếu đang mở Modal
+      if (selectedOrder && selectedOrder.id === orderId) {
+          setSelectedOrder({ ...selectedOrder, status: nextStatus });
+      }
     } catch (err: any) {
       const errMsg = err.response?.data?.message || "Lỗi khi cập nhật trạng thái.";
       setToastMessage(errMsg);
@@ -147,6 +148,20 @@ const SellerOrders = () => {
 
   const isVideoFile = (url: string) => {
       return url.toLowerCase().match(/\.(mp4|mov|webm|ogg)$/);
+  };
+
+  // 🚀 Hàm dịch thuật trạng thái siêu chuẩn
+  const getStatusLabel = (status: string) => {
+      switch(status) {
+          case 'PENDING_PAYMENT': return 'Chờ khách thanh toán';
+          case 'PENDING': return 'Chờ xác nhận';
+          case 'SHIPPING': return 'Đang giao hàng';
+          case 'COMPLETED': return 'Hoàn thành';
+          case 'CANCELLED': return 'Đã hủy';
+          case 'RETURNING': return 'Đang Y/C Trả hàng';
+          case 'RETURNED': return 'Đã Hoàn Tiền';
+          default: return status;
+      }
   };
 
   return (
@@ -198,6 +213,7 @@ const SellerOrders = () => {
             
             <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: '5px' }}>
               
+              {/* Cảnh báo Trả hàng */}
               {(selectedOrder.status === 'RETURNING' || selectedOrder.status === 'RETURNED') && (
                   <div style={{ marginBottom: '20px', background: '#fff1f0', padding: '15px', borderRadius: '8px', border: '1px solid #ffccc7' }}>
                       <h4 style={{ margin: '0 0 10px 0', color: '#cf1322', display: 'flex', alignItems: 'center', gap: '8px' }}><FaExclamationTriangle/> Thông tin khiếu nại / Trả hàng</h4>
@@ -240,8 +256,22 @@ const SellerOrders = () => {
                   </div>
               )}
 
+              {/* 🚀 THÔNG TIN VẬN CHUYỂN (Chỉ hiện khi đã có mã) */}
+              {selectedOrder.trackingCode && (
+                  <div style={{ marginBottom: '20px', background: '#f0fdf4', padding: '15px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+                    <h4 style={{ margin: '0 0 10px 0', fontSize: '15px', color: '#166534', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <FaBarcode /> Thông tin Vận chuyển
+                    </h4>
+                    <p style={{ margin: '5px 0', fontSize: '14px', color: '#15803d' }}><strong>Đơn vị vận chuyển:</strong> {selectedOrder.shippingProvider}</p>
+                    <p style={{ margin: '5px 0', fontSize: '14px', color: '#15803d' }}>
+                        <strong>Mã vận đơn:</strong> <span style={{ background: '#dcfce7', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>{selectedOrder.trackingCode}</span>
+                    </p>
+                    <p style={{ margin: '5px 0', fontSize: '14px', color: '#15803d' }}><strong>Trạng thái giao:</strong> {selectedOrder.carrierStatus || 'Đang chờ lấy hàng'}</p>
+                  </div>
+              )}
+
               <div style={{ marginBottom: '20px', background: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <h4 style={{ margin: '0 0 10px 0', fontSize: '15px', color: '#334155' }}>Thông tin giao hàng</h4>
+                <h4 style={{ margin: '0 0 10px 0', fontSize: '15px', color: '#334155' }}>Thông tin khách hàng</h4>
                 <p style={{ margin: '5px 0', fontSize: '14px', color: '#475569' }}><strong>Người nhận:</strong> {selectedOrder.shippingAddress?.receiverName}</p>
                 <p style={{ margin: '5px 0', fontSize: '14px', color: '#475569' }}><strong>Số điện thoại:</strong> {selectedOrder.shippingAddress?.phone}</p>
                 <p style={{ margin: '5px 0', fontSize: '14px', color: '#475569', lineHeight: '1.5' }}><strong>Địa chỉ:</strong> {selectedOrder.shippingAddress?.detail}, {selectedOrder.shippingAddress?.ward}, {selectedOrder.shippingAddress?.province}</p>
@@ -366,8 +396,10 @@ const SellerOrders = () => {
               <div key={order.id} className="seller-order-item-card" style={{ border: order.status === 'RETURNING' ? '1px solid #ffa39e' : '' }}>
                 <div className="order-item-header">
                   <span className="order-id">Mã đơn: #{order.id.slice(-8).toUpperCase()}</span>
+                  
+                  {/* 🚀 Đã áp dụng hàm dịch trạng thái */}
                   <span className={`status-pill ${order.status.toLowerCase()}`}>
-                     {order.status === 'PENDING' ? 'Chờ xác nhận' : order.status === 'RETURNING' ? 'Đang Y/C Trả hàng' : order.status === 'RETURNED' ? 'Đã Hoàn Tiền' : order.status}
+                     {getStatusLabel(order.status)}
                   </span>
                 </div>
 
@@ -409,11 +441,18 @@ const SellerOrders = () => {
                      {order.status === 'RETURNED' ? 'Đã Hoàn trả:' : 'Tổng thu:'} <span>₫{order.totalAmount.toLocaleString()}</span>
                   </div>
                   <div className="action-buttons">
+                    
+                    {/* 🚀 Nút CHUẨN BỊ HÀNG cực xịn */}
                     {order.status === 'PENDING' && (
-                      <button className="confirm-btn-seller" onClick={() => handleUpdateStatus(order.id, 'SHIPPING')}>
-                        Xác nhận giao hàng
+                      <button 
+                        className="confirm-btn-seller" 
+                        style={{ background: '#ee4d2d', display: 'flex', alignItems: 'center', gap: '8px' }}
+                        onClick={() => handleUpdateStatus(order.id, 'SHIPPING')}
+                      >
+                        <FaTruckLoading /> Chuẩn bị hàng & Giao vận
                       </button>
                     )}
+                    
                     {order.status === 'RETURNING' && (
                       <button className="confirm-btn-seller" style={{background: '#cf1322'}} onClick={() => setSelectedOrder(order)}>
                         Xử lý Trả Hàng

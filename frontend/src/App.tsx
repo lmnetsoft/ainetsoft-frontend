@@ -45,6 +45,7 @@ import CoinWallet from './pages/User/CoinWallet';
 // Shop Components
 import Cart from './pages/Cart/Cart';
 import Checkout from './pages/Checkout/Checkout';
+import MockPaymentGateway from './pages/Checkout/MockPaymentGateway'; // 🚀 ĐÃ THÊM IMPORT CỔNG THANH TOÁN
 import ProductDetail from './pages/Product/ProductDetail';
 import PublicShop from './pages/Shop/PublicShop';
 import ChatPage from './pages/Chat/ChatPage'; 
@@ -145,6 +146,9 @@ function App() {
                 <Route path="/my-shop" element={<PublicShop />} />
 
                 <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+                
+                {/* 🚀 ĐÃ THÊM ROUTE CỔNG THANH TOÁN GIẢ LẬP VÀO ĐÂY */}
+                <Route path="/payment/sandbox" element={<MockPaymentGateway />} />
 
                 <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
                   <Route path="/user/notifications" element={<NotificationPage />} />

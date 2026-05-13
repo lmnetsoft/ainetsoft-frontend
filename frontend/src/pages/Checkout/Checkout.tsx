@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaMapMarkerAlt, FaRegCreditCard, FaMoneyBillWave, FaUniversity, FaTicketAlt, FaCoins, FaTimes, FaCheckSquare, FaSquare, FaQuestionCircle, FaWallet } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaRegCreditCard, FaMoneyBillWave, FaUniversity, FaTicketAlt, FaCoins, FaTimes, FaCheckSquare, FaSquare, FaQuestionCircle, FaWallet, FaCheck } from 'react-icons/fa';
 import { getUserProfile } from '../../services/authService';
-import { placeOrder } from '../../services/orderService'; 
 import api from '../../services/api'; 
 import { getMyWallet, getMySavedVouchers } from '../../services/walletService'; 
 import ToastNotification from '../../components/Toast/ToastNotification';
@@ -17,19 +16,22 @@ const Checkout = () => {
   
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<any>(null);
+  
+  // 🚀 State mới cho UI Chọn Thanh Toán
   const [paymentMethod, setPaymentMethod] = useState('COD');
+  const [isEditingPayment, setIsEditingPayment] = useState(false); 
+
   const [userBank, setUserBank] = useState<any>(null);
 
-  const [walletBalance, setWalletBalance] = useState<number>(0); // Xu
-  const [walletMoneyBalance, setWalletMoneyBalance] = useState<number>(0); // Số dư VNĐ
+  const [walletBalance, setWalletBalance] = useState<number>(0); 
+  const [walletMoneyBalance, setWalletMoneyBalance] = useState<number>(0); 
   const [savedVouchers, setSavedVouchers] = useState<any[]>([]);
   
   const [selectedVouchers, setSelectedVouchers] = useState<any[]>([]);
   const [showVoucherModal, setShowVoucherModal] = useState(false);
   
-  // Các Toggle Cấn trừ
   const [useCoins, setUseCoins] = useState(false);
-  const [useWallet, setUseWallet] = useState(false); // 🚀 Thêm state bật/tắt Ví
+  const [useWallet, setUseWallet] = useState(false); 
 
   const [voucherCodeInput, setVoucherCodeInput] = useState('');
   const [isApplyingCode, setIsApplyingCode] = useState(false);
@@ -92,7 +94,6 @@ const Checkout = () => {
   const subtotal = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   const shippingFee = 30000; 
 
-  // 1. Tính Giảm giá Voucher
   let voucherDiscount = 0;
   selectedVouchers.forEach(v => {
       if (subtotal >= (v?.minOrderValue || 0)) {
@@ -113,7 +114,6 @@ const Checkout = () => {
 
   let totalAfterVoucher = subtotal + shippingFee - voucherDiscount;
 
-  // 2. Tính Giảm giá Xu
   let coinDiscount = 0;
   if (useCoins && walletBalance > 0) {
       const maxCoinUsage = totalAfterVoucher * 0.5; 
@@ -122,14 +122,20 @@ const Checkout = () => {
 
   let totalAfterCoins = totalAfterVoucher - coinDiscount;
 
-  // 3. Tính số tiền Ví dùng để cấn trừ
   let walletDiscount = 0;
   if (useWallet && walletMoneyBalance > 0) {
       walletDiscount = Math.min(walletMoneyBalance, totalAfterCoins);
   }
 
-  // TỔNG CUỐI CÙNG
   const finalTotal = totalAfterCoins - walletDiscount;
+
+  const paymentOptions = [
+      { id: 'COD', label: 'Thanh toán khi nhận hàng', icon: <FaMoneyBillWave color="#10b981" /> },
+      { id: 'VNPAY', label: 'Thẻ Quốc Tế / ATM (VNPay Sandbox)', icon: <FaRegCreditCard color="#3b82f6" /> },
+      { id: 'BANK', label: 'Chuyển khoản thủ công', icon: <FaUniversity color="#f59e0b" /> }
+  ];
+
+  const selectedPaymentInfo = paymentOptions.find(opt => opt.id === paymentMethod);
 
   const handleToggleVoucher = (voucher: any) => {
       const isSelected = selectedVouchers.some(v => v.id === voucher.id);
@@ -172,6 +178,7 @@ const Checkout = () => {
     }
   };
 
+  // 🚀 ĐÃ SỬA: Thay thế placeOrder bằng gọi API trực tiếp để hứng Redirect URL
   const handlePlaceOrder = async () => {
     if (!selectedAddress) {
       setToastMessage("Vui lòng thêm địa chỉ giao hàng trước khi đặt hàng!");
@@ -189,26 +196,34 @@ const Checkout = () => {
       setIsSubmitting(true);
 
       const checkoutData = {
-        paymentMethod: paymentMethod, // Nếu finalTotal == 0, Backend sẽ tự đè thành "WALLET_PAID"
+        paymentMethod: paymentMethod, 
         shippingAddress: selectedAddress,
         totalAmount: subtotal, 
         appliedVoucherIds: selectedVouchers.map(v => v.id), 
         usedCoins: Math.floor(coinDiscount),
-        usedWalletBalance: walletDiscount // Truyền số tiền Ví cấn trừ lên Backend
+        usedWalletBalance: walletDiscount 
       };
 
-      await placeOrder(checkoutData);
+      const res = await api.post('/orders/checkout', checkoutData);
       
-      setToastMessage("Đặt hàng thành công!");
-      setShowToast(true);
-      
-      setTimeout(() => navigate('/user/purchase'), 2000);
+      // Kiểm tra xem Backend có trả về Link thanh toán không
+      if (res.data.paymentUrl) {
+          setToastMessage("Đang chuyển hướng sang Cổng thanh toán...");
+          setShowToast(true);
+          setTimeout(() => {
+              window.location.href = res.data.paymentUrl;
+          }, 1000);
+      } else {
+          setToastMessage("Đặt hàng thành công!");
+          setShowToast(true);
+          setTimeout(() => navigate('/user/purchase'), 2000);
+      }
+
     } catch (err: any) {
-      setToastMessage(err.message || "Có lỗi xảy ra khi đặt hàng.");
+      setToastMessage(err.response?.data?.message || "Có lỗi xảy ra khi đặt hàng.");
       setShowToast(true);
-    } finally {
-      setIsSubmitting(false);
-    }
+      setIsSubmitting(false); // Phải tắt loading nếu lỗi
+    } 
   };
 
   if (loading) return (
@@ -296,7 +311,6 @@ const Checkout = () => {
                 <div className="marketing-left">
                     <FaCoins size={20} color="#f59e0b" />
                     <span>AiNetsoft Xu</span>
-                    {/* 🚀 ĐÃ SỬA: Hiển thị ĐỘNG số Xu còn lại */}
                     <span className="coin-balance-text">Còn lại: {(walletBalance - (useCoins ? Math.floor(coinDiscount) : 0)).toLocaleString()} Xu</span>
                 </div>
                 <div className="marketing-right">
@@ -322,7 +336,6 @@ const Checkout = () => {
                 <div className="marketing-left">
                     <FaWallet size={20} color="#0ea5e9" />
                     <span>Số dư Ví AiNetsoft</span>
-                    {/* 🚀 ĐÃ SỬA: Hiển thị ĐỘNG số tiền VNĐ còn lại trong Ví */}
                     <span className="coin-balance-text">Còn lại: ₫{(walletMoneyBalance - (useWallet ? walletDiscount : 0)).toLocaleString()}</span>
                 </div>
                 <div className="marketing-right">
@@ -341,48 +354,68 @@ const Checkout = () => {
                     )}
                 </div>
             </div>
-
         </div>
 
         <div className="checkout-bottom-grid">
-          <div className="checkout-section payment-method">
-            <h3>Phương thức thanh toán</h3>
-            
-            {/* 🚀 UX ĐỈNH CAO: Ẩn các nút thanh toán nếu tổng tiền = 0 */}
-            {finalTotal > 0 ? (
-                <div className="method-options">
-                  <label className={`method-card ${paymentMethod === 'COD' ? 'active' : ''}`}>
-                    <input type="radio" name="payment" value="COD" checked={paymentMethod === 'COD'} onChange={(e) => setPaymentMethod(e.target.value)} />
-                    <FaMoneyBillWave /> Thanh toán khi nhận hàng (COD)
-                  </label>
-                  
-                  <label className={`method-card ${paymentMethod === 'BANK' ? 'active' : ''}`}>
-                    <input type="radio" name="payment" value="BANK" checked={paymentMethod === 'BANK'} onChange={(e) => setPaymentMethod(e.target.value)} />
-                    <FaRegCreditCard /> Chuyển khoản ngân hàng
-                  </label>
-
-                  {paymentMethod === 'BANK' && (
-                      <div className="bank-preview-box">
-                          {userBank ? (
-                              <div className="bank-info-mini">
-                                  <FaUniversity className="bank-icon" />
-                                  <div>
-                                      <p><strong>{userBank.bankName}</strong></p>
-                                      <p>{userBank.accountNumber} - {userBank.accountHolder}</p>
-                                  </div>
-                              </div>
-                          ) : (
-                              <p className="bank-warning">⚠️ Bạn chưa lưu tài khoản ngân hàng nào. <span onClick={() => navigate('/user/bank')} style={{color: '#ee4d2d', cursor: 'pointer', textDecoration: 'underline'}}>Thêm ngay</span></p>
-                          )}
-                      </div>
-                  )}
-                </div>
-            ) : (
-                <div style={{marginTop: '15px', padding: '15px', background: '#f0fdf4', color: '#16a34a', borderRadius: '4px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid #bbf7d0'}}>
+          
+          {/* 🚀 ĐÃ THAY BẰNG UI SHOPEE-STYLE */}
+          <div className="checkout-section payment-method-elite">
+            {finalTotal === 0 ? (
+                <div className="zero-amount-alert">
                     <FaCheckSquare size={18} /> Đơn hàng đã được thanh toán toàn bộ qua Số dư.
                 </div>
+            ) : !isEditingPayment ? (
+                /* COLLAPSED VIEW */
+                <div className="payment-summary-view">
+                    <h3 className="section-title-inline">Phương thức thanh toán</h3>
+                    <div className="payment-summary-right">
+                        <span className="selected-method-text">{selectedPaymentInfo?.label}</span>
+                        <button className="btn-change-payment" onClick={() => setIsEditingPayment(true)}>
+                            THAY ĐỔI
+                        </button>
+                    </div>
+                </div>
+            ) : (
+                /* EXPANDED VIEW */
+                <div className="payment-expanded-view">
+                    <h3 className="section-title-inline">Phương thức thanh toán</h3>
+                    <div className="payment-methods-grid">
+                        {paymentOptions.map((opt) => (
+                            <div 
+                                key={opt.id}
+                                className={`payment-method-box ${paymentMethod === opt.id ? 'active' : ''}`}
+                                onClick={() => setPaymentMethod(opt.id)}
+                            >
+                                <div className="method-box-content">
+                                    {opt.icon}
+                                    <span>{opt.label}</span>
+                                </div>
+                                {paymentMethod === opt.id && (
+                                    <div className="active-tick-mark">
+                                        <FaCheck className="tick-icon" />
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+
+                    {paymentMethod === 'BANK' && (
+                        <div className="bank-preview-box">
+                            {userBank ? (
+                                <div className="bank-info-mini">
+                                    <FaUniversity className="bank-icon" />
+                                    <div>
+                                        <p><strong>{userBank.bankName}</strong></p>
+                                        <p>{userBank.accountNumber} - {userBank.accountHolder}</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <p className="bank-warning">⚠️ Bạn chưa lưu tài khoản ngân hàng nào. <span onClick={() => navigate('/user/bank')} style={{color: '#ee4d2d', cursor: 'pointer', textDecoration: 'underline'}}>Thêm ngay</span></p>
+                            )}
+                        </div>
+                    )}
+                </div>
             )}
-            
           </div>
 
           <div className="checkout-section summary-card">
@@ -424,6 +457,7 @@ const Checkout = () => {
         </div>
       </div>
 
+      {/* VOUCHER MODAL GIỮ NGUYÊN BÊN DƯỚI ... */}
       {showVoucherModal && (
           <div className="voucher-modal-overlay">
               <div className="voucher-modal">
@@ -481,7 +515,6 @@ const Checkout = () => {
                           <div className="empty-vouchers" style={{ textAlign: 'center', padding: '40px 0', color: '#999' }}>Bạn chưa có voucher nào.</div>
                       ) : (
                           savedVouchers.map(v => {
-                              // Chống vỡ UI nếu data bị hỏng
                               if (typeof v !== 'object' || !v.id) return null;
 
                               const isExhausted = (v.usedCount || 0) >= (v.usageLimit || 1);

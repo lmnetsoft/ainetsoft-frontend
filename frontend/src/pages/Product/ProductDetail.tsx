@@ -111,7 +111,9 @@ const ProductDetail = () => {
   const [reviewVideo, setReviewVideo] = useState<File | null>(null);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   
+  // 🚀 BIẾN QUAN TRỌNG: Check xem người dùng có quyền đánh giá không
   const [validOrderId, setValidOrderId] = useState<string | null>(null);
+  
   const [shopVouchers, setShopVouchers] = useState<any[]>([]);
 
   const bitnamilegacy = (url?: string) => {
@@ -142,6 +144,7 @@ const ProductDetail = () => {
   };
 
   useEffect(() => {
+    // Gọi API check quyền đánh giá khi load trang
     const checkPurchase = async () => {
       if (localStorage.getItem('isAuthenticated') && id) {
         try {
@@ -258,17 +261,6 @@ const ProductDetail = () => {
   };
 
   const handleOpenReviewModal = () => {
-    if (!localStorage.getItem('isAuthenticated')) {
-      setToastMessage("Vui lòng đăng nhập để gửi đánh giá!");
-      setShowToast(true);
-      setTimeout(() => navigate('/login'), 1500);
-      return;
-    }
-    if (!validOrderId) {
-      setToastMessage("Bạn cần mua và hoàn thành đơn hàng để đánh giá sản phẩm này.");
-      setShowToast(true);
-      return;
-    }
     setShowReviewModal(true);
   };
 
@@ -288,14 +280,18 @@ const ProductDetail = () => {
 
       await submitReview(formData);
       
-      setToastMessage("Đánh giá của bạn đã được ghi nhận!");
+      setToastMessage("Đánh giá của bạn đã được ghi nhận! Cảm ơn bạn.");
       setShowToast(true);
       setShowReviewModal(false);
       setReviewComment("");
       setReviewImages([]);
       setReviewVideo(null);
+      setValidOrderId(null); // Tắt nút Đánh giá sau khi submit
       
+      // Xóa params URL
       window.history.replaceState({}, '', window.location.pathname);
+      
+      // Refresh list đánh giá
       const [statsRes, revRes] = await Promise.all([getReviewStats(id), getProductReviews(id)]);
       setReviewStats(statsRes.data);
       setReviews(revRes.data);
@@ -511,6 +507,7 @@ const ProductDetail = () => {
         </div>
       )}
 
+      {/* 🚀 MODAL ĐÁNH GIÁ ĐÃ ĐƯỢC CHUẨN HÓA SHOPEE STYLE */}
       {showReviewModal && (
         <div className="report-modal-overlay" onClick={() => setShowReviewModal(false)}>
           <div className="report-modal-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px' }}>
@@ -524,7 +521,7 @@ const ProductDetail = () => {
                 <div className="star-rating-selector">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <FaStar 
-                      key={star} size={32} className="star-clickable"
+                      key={star} size={38} className="star-clickable"
                       color={(hoverRating || userRating) >= star ? "#ee4d2d" : "#e4e5e9"}
                       onMouseEnter={() => setHoverRating(star)}
                       onMouseLeave={() => setHoverRating(0)}
@@ -532,24 +529,24 @@ const ProductDetail = () => {
                     />
                   ))}
                   <span className="rating-text-hint">
-                    {userRating === 5 ? "Tuyệt vời" : userRating === 4 ? "Tốt" : userRating === 3 ? "Bình thường" : userRating === 2 ? "Không hài lòng" : "Rất tệ"}
+                    {userRating === 5 ? "Tuyệt vời 😍" : userRating === 4 ? "Tốt 😃" : userRating === 3 ? "Bình thường 😐" : userRating === 2 ? "Không hài lòng 😞" : "Rất tệ 😡"}
                   </span>
                 </div>
                 <label>Bình luận</label>
                 <textarea 
-                  placeholder="Hãy chia sẻ cảm nhận của bạn..." 
+                  placeholder="Hãy chia sẻ cảm nhận của bạn về sản phẩm này nhé (tối thiểu 10 ký tự)..." 
                   value={reviewComment} onChange={e => setReviewComment(e.target.value)} 
-                  rows={4} required 
-                  style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ddd', marginBottom: '15px' }}
+                  rows={5} required minLength={10}
+                  style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #ddd', marginBottom: '15px', fontSize: '15px' }}
                 />
 
-                <label>Thêm hình ảnh / Video</label>
+                <label>Thêm hình ảnh / Video thực tế</label>
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '10px 15px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', color: '#475569', fontWeight: 'bold' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 15px', background: '#fff', border: '1px dashed #ee4d2d', borderRadius: '4px', cursor: 'pointer', color: '#ee4d2d', fontWeight: 'bold' }}>
                     <FaCamera size={18} /> Thêm Hình Ảnh
                     <input type="file" multiple accept="image/*" hidden onChange={handleImageSelect} />
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '10px 15px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', color: '#475569', fontWeight: 'bold' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 15px', background: '#fff', border: '1px dashed #0055aa', borderRadius: '4px', cursor: 'pointer', color: '#0055aa', fontWeight: 'bold' }}>
                     <FaVideo size={18} /> Thêm Video
                     <input type="file" accept="video/*" hidden onChange={handleVideoSelect} />
                   </label>
@@ -559,23 +556,23 @@ const ProductDetail = () => {
                   {reviewImages.map((file, idx) => (
                     <div key={idx} style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '4px', overflow: 'hidden', border: '1px solid #eee' }}>
                       <img src={URL.createObjectURL(file)} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      <button type="button" onClick={() => removeImage(idx)} style={{ position: 'absolute', top: 0, right: 0, background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', padding: '4px', cursor: 'pointer' }}><FaTimes size={10} /></button>
+                      <button type="button" onClick={() => removeImage(idx)} style={{ position: 'absolute', top: 0, right: 0, background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', padding: '4px', cursor: 'pointer' }}><FaTimes size={10} /></button>
                     </div>
                   ))}
                   {reviewVideo && (
                     <div style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '4px', overflow: 'hidden', border: '1px solid #eee', background: '#000' }}>
                       <video src={URL.createObjectURL(reviewVideo)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#fff' }}><FaPlay /></div>
-                      <button type="button" onClick={() => setReviewVideo(null)} style={{ position: 'absolute', top: 0, right: 0, background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', padding: '4px', cursor: 'pointer' }}><FaTimes size={10} /></button>
+                      <button type="button" onClick={() => setReviewVideo(null)} style={{ position: 'absolute', top: 0, right: 0, background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', padding: '4px', cursor: 'pointer' }}><FaTimes size={10} /></button>
                     </div>
                   )}
                 </div>
 
               </div>
-              <div className="report-footer" style={{ marginTop: '20px' }}>
+              <div className="report-footer" style={{ marginTop: '10px' }}>
                 <button type="button" className="btn-cancel" onClick={() => setShowReviewModal(false)}>Hủy</button>
                 <button type="submit" className="btn-confirm-report" disabled={isSubmittingReview}>
-                  {isSubmittingReview ? "Đang xử lý tải lên..." : "Hoàn thành Đánh giá"}
+                  {isSubmittingReview ? "Đang gửi..." : "Hoàn thành Đánh giá"}
                 </button>
               </div>
             </form>
@@ -811,9 +808,12 @@ const ProductDetail = () => {
         <div className="reviews-section">
           <div className="reviews-header-row">
             <h3 className="section-title">ĐÁNH GIÁ SẢN PHẨM</h3>
-            <button className="btn-write-review" onClick={handleOpenReviewModal}>
-              <FaEdit /> Viết đánh giá
-            </button>
+            {/* 🚀 CHỈ HIỆN NÚT KHI validOrderId = true */}
+            {validOrderId && (
+                <button className="btn-write-review" onClick={handleOpenReviewModal}>
+                  <FaEdit /> Viết đánh giá
+                </button>
+            )}
           </div>
           
           <div className="review-filter-box">
@@ -830,41 +830,45 @@ const ProductDetail = () => {
           </div>
 
           <div className="reviews-list">
-            {reviews.map(review => (
-              <div key={review.id} className="review-card-item">
-                <div className="rev-user-avatar">
-                  <img 
-                    src={review.userAvatar ? bitnamilegacy(review.userAvatar) : "https://ui-avatars.com/api/?name=" + encodeURIComponent(review.userName || "U") + "&background=random"} 
-                    alt="avatar" 
-                    onError={(e) => { e.currentTarget.src = "https://ui-avatars.com/api/?name=" + encodeURIComponent(review.userName || "U") + "&background=random"; }}
-                    style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }}
-                  />
-                </div>
-                <div className="rev-content-side">
-                  <div className="rev-username">{review.userName}</div>
-                  <div className="rev-stars">{[...Array(5)].map((_, i) => <FaStar key={i} size={12} color={i < review.rating ? "#ee4d2d" : "#e4e5e9"} />)}</div>
-                  <div className="rev-meta-line">{new Date(review.createdAt).toLocaleString('vi-VN')}</div>
-                  <div className="rev-comment-text">{review.comment}</div>
-                  
-                  {(review.imageUrls?.length || review.videoUrl) && (
-                    <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
-                      {review.imageUrls?.map((img, idx) => (
-                        <div key={idx} onClick={() => setZoomedReviewMedia({ url: bitnamilegacy(img), type: 'image' })} style={{ width: '70px', height: '70px', borderRadius: '4px', overflow: 'hidden', border: '1px solid #e2e8f0', cursor: 'pointer' }}>
-                          <img src={bitnamilegacy(img)} alt="review media" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        </div>
-                      ))}
-                      {review.videoUrl && (
-                        <div onClick={() => setZoomedReviewMedia({ url: bitnamilegacy(review.videoUrl), type: 'video' })} style={{ position: 'relative', width: '70px', height: '70px', borderRadius: '4px', overflow: 'hidden', border: '1px solid #e2e8f0', background: '#000', cursor: 'pointer' }}>
-                          <video src={bitnamilegacy(review.videoUrl)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#fff', fontSize: '20px' }}><FaPlay /></div>
+            {reviews.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: '#999' }}>Chưa có đánh giá nào cho sản phẩm này.</div>
+            ) : (
+                reviews.map(review => (
+                  <div key={review.id} className="review-card-item">
+                    <div className="rev-user-avatar">
+                      <img 
+                        src={review.userAvatar ? bitnamilegacy(review.userAvatar) : "https://ui-avatars.com/api/?name=" + encodeURIComponent(review.userName || "U") + "&background=random"} 
+                        alt="avatar" 
+                        onError={(e) => { e.currentTarget.src = "https://ui-avatars.com/api/?name=" + encodeURIComponent(review.userName || "U") + "&background=random"; }}
+                        style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }}
+                      />
+                    </div>
+                    <div className="rev-content-side">
+                      <div className="rev-username">{review.userName}</div>
+                      <div className="rev-stars">{[...Array(5)].map((_, i) => <FaStar key={i} size={12} color={i < review.rating ? "#ee4d2d" : "#e4e5e9"} />)}</div>
+                      <div className="rev-meta-line">{new Date(review.createdAt).toLocaleString('vi-VN')}</div>
+                      <div className="rev-comment-text">{review.comment}</div>
+                      
+                      {(review.imageUrls?.length || review.videoUrl) && (
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
+                          {review.imageUrls?.map((img, idx) => (
+                            <div key={idx} onClick={() => setZoomedReviewMedia({ url: bitnamilegacy(img), type: 'image' })} style={{ width: '70px', height: '70px', borderRadius: '4px', overflow: 'hidden', border: '1px solid #e2e8f0', cursor: 'pointer' }}>
+                              <img src={bitnamilegacy(img)} alt="review media" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            </div>
+                          ))}
+                          {review.videoUrl && (
+                            <div onClick={() => setZoomedReviewMedia({ url: bitnamilegacy(review.videoUrl), type: 'video' })} style={{ position: 'relative', width: '70px', height: '70px', borderRadius: '4px', overflow: 'hidden', border: '1px solid #e2e8f0', background: '#000', cursor: 'pointer' }}>
+                              <video src={bitnamilegacy(review.videoUrl)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#fff', fontSize: '20px' }}><FaPlay /></div>
+                            </div>
+                          )}
                         </div>
                       )}
+                      {review.sellerReply && <div className="seller-reply-container"><div className="reply-text">{review.sellerReply}</div></div>}
                     </div>
-                  )}
-                  {review.sellerReply && <div className="seller-reply-container"><div className="reply-text">{review.sellerReply}</div></div>}
-                </div>
-              </div>
-            ))}
+                  </div>
+                ))
+            )}
           </div>
         </div>
       </div>
