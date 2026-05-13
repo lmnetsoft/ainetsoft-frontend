@@ -152,8 +152,11 @@ export const adminService = {
   // 🚀 --- COIN & FINANCE MANAGEMENT ---
   getCoinStats: () => api.get('/admin/coins/stats').then(res => res.data),
   updatePlatformConfig: (config: any) => api.post('/admin/coins/config', config).then(res => res.data),
-  adjustUserCoins: (data: { userId: string, amount: number, reason: string }) => api.post('/admin/coins/adjust', data).then(res => res.data)
+  adjustUserCoins: (data: { userId: string, amount: number, reason: string }) => api.post('/admin/coins/adjust', data).then(res => res.data),
   
+  // 🚀 GIAI ĐOẠN 1: API XUẤT BÁO CÁO EXCEL
+  exportWithdrawals: (status: string = 'ALL') => 
+    api.get('/withdrawals/admin/export', { params: { status }, responseType: 'blob' }).then(res => res.data)
 };
 
 export default adminService;

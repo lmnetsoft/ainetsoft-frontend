@@ -4,7 +4,8 @@ import ToastNotification from '../../components/Toast/ToastNotification';
 import { 
     FaCheck, FaTimes, FaFilter, FaClock, FaStore, FaMoneyBillWave, FaSync, 
     FaUniversity, FaChevronDown, FaExclamationTriangle, FaUser, FaShieldAlt, FaIdCard, FaSearch, FaEdit,
-    FaEnvelope, FaPhone, FaCalendarAlt
+    FaEnvelope, FaPhone, FaCalendarAlt,
+    FaFileExcel // 🚀 GIAI ĐOẠN 1: THÊM ICON
 } from 'react-icons/fa';
 import './AdminWithdrawals.css';
 
@@ -35,6 +36,8 @@ const AdminWithdrawals = () => {
     // KYC State
     const [kycLoading, setKycLoading] = useState(false);
     const [kycData, setKycData] = useState<any | null>(null);
+
+    const [exporting, setExporting] = useState(false); // 🚀 GIAI ĐOẠN 1: TRẠNG THÁI TẢI FILE EXCEL
 
     const filterOptions = [
         { value: 'ALL', label: 'Tất cả yêu cầu' },
@@ -119,6 +122,31 @@ const AdminWithdrawals = () => {
         }
     };
 
+    // 🚀 GIAI ĐOẠN 1: HÀM XUẤT EXCEL
+    const handleExportExcel = async () => {
+        try {
+            setExporting(true);
+            const res = await api.get(`/withdrawals/admin/export?status=${filterStatus}`, { responseType: 'blob' });
+            
+            // Xử lý tạo link tải file ẩn
+            const url = window.URL.createObjectURL(new Blob([res.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `DS_RutTien_${filterStatus}_${new Date().getTime()}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            
+            setToastMessage("Đã xuất báo cáo Excel thành công!");
+            setShowToast(true);
+        } catch (err) {
+            setToastMessage("Không thể xuất file. Vui lòng thử lại.");
+            setShowToast(true);
+        } finally {
+            setExporting(false);
+        }
+    };
+
     const handleProcess = async (id: string, status: 'APPROVED' | 'COMPLETED' | 'REJECTED') => {
         if (status === 'REJECTED' && !adminNote.trim()) {
             setToastMessage("Vui lòng nhập lý do từ chối vào ô Ghi chú.");
@@ -189,9 +217,21 @@ const AdminWithdrawals = () => {
                     <span className="total-records-badge">Tổng: {totalElements} lệnh</span>
                 </div>
                 
-                <button className={`btn-refresh-pro ${refreshing ? 'is-syncing' : ''}`} onClick={() => fetchRequests(page, filterStatus, pageSize)} disabled={refreshing}>
-                    <FaSync className="sync-icon" /> {refreshing ? 'Đang tải...' : 'Làm mới'}
-                </button>
+                {/* 🚀 GIAI ĐOẠN 1: BỌC LẠI ĐỂ CHỨA NÚT EXCEL */}
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    <button 
+                        className={`btn-refresh-pro ${exporting ? 'is-syncing' : ''}`} 
+                        style={{ background: '#10b981', color: 'white', borderColor: '#059669' }} 
+                        onClick={handleExportExcel} 
+                        disabled={exporting}
+                    >
+                        <FaFileExcel className="sync-icon" /> {exporting ? 'Đang xuất...' : 'Xuất Báo Cáo'}
+                    </button>
+
+                    <button className={`btn-refresh-pro ${refreshing ? 'is-syncing' : ''}`} onClick={() => fetchRequests(page, filterStatus, pageSize)} disabled={refreshing}>
+                        <FaSync className="sync-icon" /> {refreshing ? 'Đang tải...' : 'Làm mới'}
+                    </button>
+                </div>
             </div>
 
             <div className="table-stable-wrapper">
@@ -202,7 +242,6 @@ const AdminWithdrawals = () => {
                             <th style={{width: '13%'}}>Số tiền</th>
                             <th style={{width: '22%'}}>Chi tiết Ngân hàng</th>
                             <th style={{width: '11%'}}>Thời gian</th>
-                            {/* 🚀 ĐÃ SỬA: CĂN GIỮA ĐỂ TẠO SỰ CÂN BẰNG */}
                             <th style={{width: '14%', textAlign: 'center'}}>Trạng thái</th>
                             <th style={{width: '18%', textAlign: 'center'}}>Hành động</th>
                         </tr>
@@ -236,8 +275,6 @@ const AdminWithdrawals = () => {
                                         </div>
                                     </td>
                                     <td><div className="timestamp-info"><span>{new Date(req.createdAt).toLocaleDateString('vi-VN')}</span></div></td>
-                                    
-                                    {/* 🚀 ĐÃ SỬA: CĂN GIỮA DỮ LIỆU */}
                                     <td style={{textAlign: 'center'}}>
                                         <span className={`badge-pill ${req.status?.toLowerCase()}`}>
                                             {req.status === 'COMPLETED' ? 'Thành công' : req.status === 'PENDING' ? 'Chờ duyệt' : req.status === 'PROCESSING' ? 'Chờ CK tay' : req.status === 'FAILED' ? 'Lỗi GD' : 'Từ chối'}

@@ -21,6 +21,12 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+// 🚀 GIAI ĐOẠN 1: Thư viện xuất Excel
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -40,6 +46,16 @@ public class WithdrawalService {
     private final BankTransferProvider bankTransferProvider;
     private final PlatformConfigRepository configRepository;
 
+    // ==========================================
+    // 🚀 GIAI ĐOẠN 1: Logic tính phí
+    // ==========================================
+    private double calculateFee(double amount) {
+        return (amount * 0.01) + 3300; // 1% phí sàn + 3.300đ phí chuyển khoản
+    }
+
+    // ==========================================
+    // 🚀 ĐÃ KHÔI PHỤC TỪ LỖI XÓA NHẦM: AUTO-PAYOUT CONFIG
+    // ==========================================
     public boolean getAutoPayoutStatus() {
         return configRepository.findAll().stream().findFirst()
                 .map(PlatformConfig::isAutoPayoutEnabled).orElse(false);
@@ -55,7 +71,7 @@ public class WithdrawalService {
     }
 
     // ==========================================
-    // 🚀 MỚI: API LẤY THÔNG TIN KYC VÀ ĐỐI SOÁT RỦI RO
+    // 🚀 ĐÃ KHÔI PHỤC: API LẤY THÔNG TIN KYC VÀ ĐỐI SOÁT RỦI RO
     // ==========================================
     public Map<String, Object> getWithdrawalKycDetails(String requestId) {
         WithdrawalRequest request = withdrawalRepository.findById(requestId)
@@ -152,12 +168,18 @@ public class WithdrawalService {
                 .findFirst()
                 .orElse(banks.get(0));
 
+        // 🚀 GIAI ĐOẠN 1: Tính toán phí và thực nhận
+        double fee = calculateFee(amount);
+        double netAmount = amount - fee;
+
         WithdrawalRequest request = WithdrawalRequest.builder()
                 .targetType("SELLER")
                 .sellerId(sellerId)
                 .shopName(seller.getShopProfile() != null ? seller.getShopProfile().getShopName() : seller.getFullName())
                 .sellerFullName(seller.getFullName())
                 .amount(amount)
+                .fee(fee)             // 🚀 Thêm phí
+                .netAmount(netAmount) // 🚀 Thực nhận
                 .bankName(defaultBank.getBankName())
                 .accountNumber(defaultBank.getAccountNumber())
                 .accountHolder(defaultBank.getAccountHolder())
@@ -209,6 +231,10 @@ public class WithdrawalService {
                 .findFirst()
                 .orElse(banks.get(0));
 
+        // 🚀 GIAI ĐOẠN 1: Tính toán phí và thực nhận
+        double fee = calculateFee(amount);
+        double netAmount = amount - fee;
+
         wallet.setBalance(currentBalance - amount);
         walletRepository.save(wallet);
 
@@ -218,6 +244,8 @@ public class WithdrawalService {
                 .shopName(user.getFullName()) 
                 .sellerFullName(user.getFullName())
                 .amount(amount)
+                .fee(fee)             // 🚀 Thêm phí
+                .netAmount(netAmount) // 🚀 Thực nhận
                 .bankName(defaultBank.getBankName())
                 .accountNumber(defaultBank.getAccountNumber())
                 .accountHolder(defaultBank.getAccountHolder())
@@ -265,8 +293,12 @@ public class WithdrawalService {
         if ("APPROVED".equals(targetStatus) || "COMPLETED".equals(targetStatus)) {
             if (autoPayoutEnabled && "PENDING".equals(request.getStatus())) {
                 String transferDesc = "AINETSOFT PAYOUT " + request.getId().substring(request.getId().length() - 6).toUpperCase();
+                
+                // 🚀 GIAI ĐOẠN 1: Chuyển khoản số tiền THỰC NHẬN (netAmount) thay vì số tiền yêu cầu
+                double amountToSend = request.getNetAmount() > 0 ? request.getNetAmount() : request.getAmount();
+
                 BankTransferProvider.TransferResult result = bankTransferProvider.sendMoney(
-                        request.getAccountNumber(), request.getBankName(), request.getAccountHolder(), request.getAmount(), transferDesc
+                        request.getAccountNumber(), request.getBankName(), request.getAccountHolder(), amountToSend, transferDesc
                 );
                 if (result.success()) {
                     targetStatus = "COMPLETED";
@@ -322,6 +354,39 @@ public class WithdrawalService {
         }
 
         return saved;
+    }
+
+    // ==========================================
+    // 🚀 GIAI ĐOẠN 1: HÀM XUẤT EXCEL CHO KẾ TOÁN 
+    // ==========================================
+    public byte[] exportToExcel(String status) throws IOException {
+        List<WithdrawalRequest> list = (status == null || "ALL".equalsIgnoreCase(status)) 
+                ? withdrawalRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"))
+                : withdrawalRepository.findByStatus(status.toUpperCase(), Pageable.unpaged()).getContent();
+
+        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("Withdrawals");
+            String[] headers = {"Mã GD", "Loại", "Người yêu cầu", "Số tiền yêu cầu", "Phí", "Thực chi", "Ngân hàng", "STK", "Trạng thái", "Ngày tạo"};
+            Row hRow = sheet.createRow(0);
+            for(int i=0; i<headers.length; i++) hRow.createCell(i).setCellValue(headers[i]);
+
+            int rowIdx = 1;
+            for (WithdrawalRequest req : list) {
+                Row row = sheet.createRow(rowIdx++);
+                row.createCell(0).setCellValue(req.getId() != null ? req.getId() : "");
+                row.createCell(1).setCellValue(req.getTargetType() != null ? req.getTargetType() : "");
+                row.createCell(2).setCellValue(req.getShopName() != null ? req.getShopName() : "");
+                row.createCell(3).setCellValue(req.getAmount());
+                row.createCell(4).setCellValue(req.getFee());
+                row.createCell(5).setCellValue(req.getNetAmount());
+                row.createCell(6).setCellValue(req.getBankName() != null ? req.getBankName() : "");
+                row.createCell(7).setCellValue(req.getAccountNumber() != null ? req.getAccountNumber() : "");
+                row.createCell(8).setCellValue(req.getStatus() != null ? req.getStatus() : "");
+                row.createCell(9).setCellValue(req.getCreatedAt() != null ? req.getCreatedAt().toString() : "");
+            }
+            workbook.write(out);
+            return out.toByteArray();
+        }
     }
 
     private WithdrawalRequest saveAndNotifyAdmins(WithdrawalRequest request) {

@@ -18,26 +18,25 @@ public class WithdrawalRequest {
     @Id
     private String id;
     
-    // 🚀 BẢO MẬT GIAO DỊCH: Ngăn chặn 2 Admin cùng duyệt 1 phiếu cùng lúc
     @Version
     private Long version;
     
-    // 🚀 PHÂN LOẠI REQUEST: Hỗ trợ cả Seller và Buyer
-    private String targetType; // "SELLER" hoặc "BUYER"
-    private String userId;     // Dành cho Buyer
-    private String sellerId;   // Dành cho Seller
+    private String targetType; 
+    private String userId;     
+    private String sellerId;   
     
-    // Snapshots for Admin readability
     private String shopName;      
     private String sellerFullName; 
 
-    private double amount;
+    private double amount;     // Số tiền yêu cầu
+    private double fee;        // 🚀 MỚI: Phí giao dịch
+    private double netAmount;   // 🚀 MỚI: Số tiền thực nhận (Lương thực chi)
     
     private String bankName;
     private String accountNumber;
     private String accountHolder;
     
-    private String status; // PENDING, COMPLETED, REJECTED
+    private String status; 
     private String adminNote;
     
     private LocalDateTime createdAt;

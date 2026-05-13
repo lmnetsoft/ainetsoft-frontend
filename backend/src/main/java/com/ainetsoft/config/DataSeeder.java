@@ -636,7 +636,7 @@ public class DataSeeder implements CommandLineRunner {
         // LƯU Ý: Tuyệt đối không gọi lệnh tạo BankAccount cho nobank@ainetsoft.com ở đây!
     }
 
-    private void seedWithdrawalTestData() {
+   private void seedWithdrawalTestData() {
         User sellerA = userRepository.findByEmail("seller_a@ainetsoft.com").orElse(null);
         User buyer = userRepository.findByEmail("user@ainetsoft.com").orElse(null);
         
@@ -656,17 +656,18 @@ public class DataSeeder implements CommandLineRunner {
                 .isDefault(true)
                 .build();
 
+            // 🚀 ĐÃ SỬA: Tăng giá trị đơn hàng lên 2.500.000đ để Seller A có dư tiền rút 1 triệu
             Order order1 = Order.builder()
                 .userId(buyer != null ? buyer.getId() : "dummyUserId")
                 .status("COMPLETED")
-                .totalAmount(500000.0)
-                .finalTotalAmount(500000.0)
+                .totalAmount(2500000.0) 
+                .finalTotalAmount(2500000.0)
                 .paymentMethod("COD")
                 .shippingAddress(dummyAddress)
                 .trackingCode("GHN-SEED-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase())
                 .shippingProvider("Giao Hàng Nhanh")
                 .carrierStatus("DELIVERED")
-                .items(Arrays.asList(OrderItem.builder().productId(safeProductId).sellerId(sellerA.getId()).shopName(sellerA.getShopProfile().getShopName()).productName("Bàn phím cơ Test").imageUrl("https://picsum.photos/200").price(500000.0).quantity(1).build()))
+                .items(Arrays.asList(OrderItem.builder().productId(safeProductId).sellerId(sellerA.getId()).shopName(sellerA.getShopProfile().getShopName()).productName("Bàn phím cơ Test").imageUrl("https://picsum.photos/200").price(2500000.0).quantity(1).build()))
                 .createdAt(LocalDateTime.now().minusDays(3))
                 .updatedAt(LocalDateTime.now().minusDays(1))
                 .build();
@@ -688,22 +689,26 @@ public class DataSeeder implements CommandLineRunner {
 
             orderRepository.saveAll(Arrays.asList(order1, order2));
 
+            // 🚀 ĐÃ SỬA: Đổi cả 2 lệnh cũ thành COMPLETED để giải phóng "hasPending" cho Seller A
             WithdrawalRequest oldReq = WithdrawalRequest.builder()
                     .targetType("SELLER")
                     .sellerId(sellerA.getId()).shopName(sellerA.getShopProfile().getShopName())
                     .sellerFullName(sellerA.getFullName()).amount(100000.0).status("COMPLETED")
                     .bankName("ACB").accountNumber("0322222222").accountHolder("CAC THI CHO")
+                    .fee(4300.0).netAmount(95700.0) // Chèn thêm fee ảo cho file cũ
                     .createdAt(LocalDateTime.now().minusDays(10)).processedAt(LocalDateTime.now().minusDays(9))
                     .build();
 
-            WithdrawalRequest pendingReq = WithdrawalRequest.builder()
+            WithdrawalRequest oldReq2 = WithdrawalRequest.builder()
                     .targetType("SELLER")
                     .sellerId(sellerA.getId()).shopName(sellerA.getShopProfile().getShopName())
-                    .sellerFullName(sellerA.getFullName()).amount(50000.0).status("PENDING")
+                    .sellerFullName(sellerA.getFullName()).amount(50000.0).status("COMPLETED")
                     .bankName("ACB").accountNumber("0322222222").accountHolder("CAC THI CHO")
-                    .createdAt(LocalDateTime.now().minusMinutes(30)).build();
+                    .fee(3800.0).netAmount(46200.0) // Chèn thêm fee ảo cho file cũ
+                    .createdAt(LocalDateTime.now().minusDays(2)).processedAt(LocalDateTime.now().minusDays(1))
+                    .build();
                     
-            withdrawalRepository.saveAll(Arrays.asList(oldReq, pendingReq));
+            withdrawalRepository.saveAll(Arrays.asList(oldReq, oldReq2));
         }
 
         // 2. CHỈ KIỂM TRA LỊCH SỬ CỦA BUYER (Tách biệt hoàn toàn với Seller)
@@ -714,6 +719,7 @@ public class DataSeeder implements CommandLineRunner {
                     .shopName(buyer.getFullName()) 
                     .sellerFullName(buyer.getFullName())
                     .amount(150000.0)
+                    .fee(4800.0).netAmount(145200.0)
                     .status("COMPLETED")
                     .bankName("Vietcombank")
                     .accountNumber("0123456789")
