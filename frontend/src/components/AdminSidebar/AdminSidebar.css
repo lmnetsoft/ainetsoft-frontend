@@ -3,21 +3,35 @@
 .back-to-home { display: flex; align-items: center; gap: 8px; color: #64748b; font-size: 13px; cursor: pointer; margin-bottom: 15px; transition: color 0.2s; font-weight: 500; }
 .back-to-home:hover { color: #002147; }
 .admin-logo-area { display: flex; align-items: center; gap: 10px; }
-.admin-master-icon { font-size: 24px; color: #002147; }
-.admin-logo-area h2 { font-size: 18px; color: #002147; margin: 0; font-weight: 800; }
+.admin-master-icon { font-size: 24px; color: #ee4d2d; }
+.admin-logo-area h2 { font-size: 18px; color: #1e293b; margin: 0; font-weight: 800; }
 .admin-nav-menu { display: flex; flex-direction: column; }
 .admin-sidebar-divider { border: none; border-top: 1px solid #f1f5f9; margin: 5px 0 10px 0; }
-.admin-single-item { display: flex; align-items: center; padding: 12px 20px; text-decoration: none; color: #1e293b; font-weight: 700; font-size: 14.5px; transition: background 0.2s; border-left: 4px solid transparent; }
-.admin-single-item:hover { background: #f8fafc; color: #002147; }
-.admin-single-item.active { background: #f0f5ff !important; color: #002147 !important; border-left: 4px solid #002147; }
+
+/* 🚀 FIX: Thêm gap: 12px để icon và chữ cân đối */
+.admin-single-item { 
+    display: flex; 
+    align-items: center; 
+    gap: 12px; 
+    padding: 12px 20px; 
+    text-decoration: none; 
+    color: #1e293b; 
+    font-weight: 700; 
+    font-size: 14.5px; 
+    transition: background 0.2s; 
+    border-left: 4px solid transparent; 
+}
+
+.admin-single-item:hover { background: #f8fafc; color: #ee4d2d; }
+.admin-single-item.active { background: #fff5f2 !important; color: #ee4d2d !important; border-left: 4px solid #ee4d2d; }
 .admin-nav-group { margin-bottom: 5px; }
 .admin-group-title { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; cursor: pointer; color: #1e293b; font-weight: 600; font-size: 14.5px; transition: background 0.2s; }
-.admin-group-title:hover { color: #002147; }
+.admin-group-title:hover { color: #ee4d2d; }
 .title-left { display: flex; align-items: center; gap: 12px; }
 .admin-icon { font-size: 16px; flex-shrink: 0; }
 .chevron { font-size: 12px; color: #94a3b8; }
 .admin-sub-menu { display: none; flex-direction: column; margin-bottom: 5px; }
 .admin-sub-menu.open { display: flex; }
 .admin-sub-menu .sub-item { padding: 8px 20px 8px 48px; text-decoration: none; color: #64748b; font-size: 13.5px; transition: all 0.2s ease; border-left: 4px solid transparent; }
-.admin-sub-menu .sub-item:hover { color: #002147; }
-.admin-sub-menu .sub-item.active { background: #f0f5ff !important; color: #002147 !important; border-left: 4px solid #002147; font-weight: 600; }
+.admin-sub-menu .sub-item:hover { color: #ee4d2d; background: #fff5f2; }
+.admin-sub-menu .sub-item.active { background: #fff5f2 !important; color: #ee4d2d !important; border-left: 4px solid #ee4d2d; font-weight: 600; }

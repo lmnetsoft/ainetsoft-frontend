@@ -1,0 +1,165 @@
+/* frontend/src/pages/Admin/AdminCoins.css */
+
+.admin-coins-container {
+    padding: 30px;
+    background-color: #f8f9fa;
+    min-height: 100vh;
+}
+
+/* 🚀 TIÊU ĐỀ CHUẨN: CĂN GIỮA, IN HOA, MÀU ĐỎ */
+.admin-coins-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.admin-coins-header h2 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #ee4d2d;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.admin-coins-header p {
+    color: #64748b;
+    font-size: 15px;
+}
+
+/* BOX THỐNG KÊ */
+.coins-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.coin-stat-card {
+    background: #fff;
+    padding: 25px;
+    borderRadius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+}
+
+.stat-label {
+    color: #64748b;
+    font-size: 14px;
+    font-weight: bold;
+    display: block;
+    text-transform: uppercase;
+}
+
+.stat-value {
+    font-size: 32px;
+    margin: 10px 0;
+    color: #1e293b;
+    font-weight: 700;
+}
+
+.stat-value small {
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.stat-hint {
+    font-size: 12px;
+    color: #94a3b8;
+}
+
+/* CÁC PHẦN CẤU HÌNH & CÔNG CỤ */
+.coin-management-card {
+    background: #fff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 30px;
+}
+
+.card-title {
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+    font-weight: 600;
+    color: #334155;
+}
+
+.config-flex {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.input-group-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    font-size: 14px;
+    color: #475569;
+}
+
+.coin-input-large {
+    padding: 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    width: 120px;
+    font-size: 16px;
+    outline: none;
+}
+
+.coin-input-large:focus {
+    border-color: #3498db;
+}
+
+/* FORM TẶNG XU */
+.adjust-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 0.5fr;
+    gap: 15px;
+}
+
+.adjust-input {
+    padding: 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+}
+
+.adjust-input:focus {
+    border-color: #ee4d2d;
+}
+
+/* BUTTONS */
+.btn-update-coin {
+    padding: 12px 30px;
+    background: #3498db;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: 0.2s;
+}
+
+.btn-update-coin:hover {
+    background: #2980b9;
+}
+
+.btn-adjust-coin {
+    background: #1e293b;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.btn-adjust-coin:hover {
+    background: #0f172a;
+}

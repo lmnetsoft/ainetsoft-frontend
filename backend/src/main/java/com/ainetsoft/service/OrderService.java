@@ -34,7 +34,13 @@ public class OrderService {
     private final WalletRepository walletRepository;   
     private final PlatformConfigRepository platformConfigRepository; 
 
+    // Lấy config động
+    private PlatformConfig getConfig() {
+        return platformConfigRepository.findAll().stream().findFirst().orElse(new PlatformConfig());
+    }
+
     public Map<String, Object> getSellerStats(String sellerId) {
+        PlatformConfig config = getConfig();
         List<Order> allOrders = orderRepository.findAll();
         
         List<Order> sellerOrders = allOrders.stream()
@@ -43,11 +49,12 @@ public class OrderService {
 
         long totalOrders = sellerOrders.size();
         
+        // Đã cập nhật: Trừ % hoa hồng sàn
         double totalRevenue = sellerOrders.stream()
                 .filter(o -> "COMPLETED".equals(o.getStatus()))
                 .flatMap(o -> o.getItems().stream())
                 .filter(i -> sellerId.equals(i.getSellerId()))
-                .mapToDouble(i -> i.getPrice() * i.getQuantity())
+                .mapToDouble(i -> (i.getPrice() * i.getQuantity()) * (1 - config.getCommissionRate()))
                 .sum();
 
         long pendingOrders = sellerOrders.stream()
@@ -256,7 +263,6 @@ public class OrderService {
         return savedOrder;
     }
 
-    // 🚀 BỔ SUNG: Hàm xử lý Callback sau khi khách trả tiền ở Mock Gateway
     @Transactional
     public Order processPaymentCallback(String orderId, String responseCode, String transactionNo) {
         Order order = orderRepository.findById(orderId)
@@ -410,6 +416,7 @@ public class OrderService {
             throw new RuntimeException("Đơn hàng đang có khiếu nại Trả hàng/Hoàn tiền, không thể thay đổi trạng thái!");
         }
 
+        PlatformConfig config = getConfig();
         String oldStatus = order.getStatus() != null ? order.getStatus().toUpperCase() : "";
         order.setStatus(newStatus.toUpperCase());
         order.setUpdatedAt(LocalDateTime.now());
@@ -419,11 +426,11 @@ public class OrderService {
             order.setTrackingCode(trackingCode);
             order.setShippingProvider("Giao Hàng Nhanh");
             order.setCarrierStatus("PICKED_UP"); 
-            order.setReturnDeadline(LocalDateTime.now().plusDays(3));
+            // Cập nhật cấu hình động
+            order.setReturnDeadline(LocalDateTime.now().plusDays(config.getEscrowWindowDays()));
         }
 
         if ("COMPLETED".equals(newStatus.toUpperCase()) && !"COMPLETED".equals(oldStatus)) {
-            PlatformConfig config = platformConfigRepository.findAll().stream().findFirst().orElse(new PlatformConfig());
             int earnedCoins = (int) (order.getFinalTotalAmount() * config.getCashbackRate());
             
             if (earnedCoins > config.getMaxCoinsPerOrder()) {
@@ -441,7 +448,8 @@ public class OrderService {
             }
             
             if (order.getReturnDeadline() == null) {
-                order.setReturnDeadline(LocalDateTime.now().plusDays(3));
+                // Cập nhật cấu hình động
+                order.setReturnDeadline(LocalDateTime.now().plusDays(config.getEscrowWindowDays()));
             }
         }
 
@@ -464,14 +472,16 @@ public class OrderService {
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng với mã vận đơn: " + trackingCode));
 
+        PlatformConfig config = getConfig();
         order.setCarrierStatus(carrierStatus.toUpperCase());
         order.setUpdatedAt(LocalDateTime.now());
         
         String message = "Kiện hàng " + trackingCode + " đang được cập nhật: " + carrierStatus;
         
         if ("DELIVERED".equalsIgnoreCase(carrierStatus)) {
-            order.setReturnDeadline(LocalDateTime.now().plusDays(3)); 
-            message = "🎉 Gói hàng đã giao thành công. Bạn có 3 ngày để kiểm tra và Yêu cầu Trả hàng nếu có lỗi!";
+            // Cập nhật cấu hình động
+            order.setReturnDeadline(LocalDateTime.now().plusDays(config.getEscrowWindowDays())); 
+            message = "🎉 Gói hàng đã giao thành công. Bạn có " + config.getEscrowWindowDays() + " ngày để kiểm tra và Yêu cầu Trả hàng nếu có lỗi!";
         } else if ("IN_TRANSIT".equalsIgnoreCase(carrierStatus)) {
             message = "🚚 Gói hàng của bạn đang trên đường vận chuyển tới kho đích.";
         }
@@ -493,8 +503,10 @@ public class OrderService {
             throw new RuntimeException("Đơn hàng đã bị hủy, không thể yêu cầu trả hàng.");
         }
 
+        PlatformConfig config = getConfig();
         if (order.getReturnDeadline() != null && LocalDateTime.now().isAfter(order.getReturnDeadline())) {
-            throw new RuntimeException("Đã quá hạn 3 ngày để yêu cầu trả hàng/hoàn tiền theo quy định.");
+            // Cập nhật cấu hình động
+            throw new RuntimeException("Đã quá hạn " + config.getEscrowWindowDays() + " ngày để yêu cầu trả hàng/hoàn tiền theo quy định.");
         }
 
         if (refundAmount > order.getFinalTotalAmount()) {
@@ -636,6 +648,7 @@ public class OrderService {
             });
         }
         
+        // 🚀 CÁC ĐOẠN CODE HOÀN VÍ, XU, VOUCHER ĐÃ ĐƯỢC GIỮ NGUYÊN 100%
         if (order.getUsedCoins() > 0) {
              walletRepository.findByUserId(userId).ifPresent(wallet -> {
                  wallet.setCoinBalance(wallet.getCoinBalance() + order.getUsedCoins());
@@ -736,6 +749,7 @@ public class OrderService {
     public void autoProcessExpiredReturns() {
         log.info("Chạy tiến trình tự động quyết toán đơn hàng quá hạn...");
         LocalDateTime now = LocalDateTime.now();
+        PlatformConfig config = getConfig();
         
         List<Order> expiredOrders = orderRepository.findAll().stream()
                 .filter(o -> "SHIPPING".equals(o.getStatus()))
@@ -747,7 +761,6 @@ public class OrderService {
             order.setStatus("COMPLETED");
             order.setUpdatedAt(now);
             
-            PlatformConfig config = platformConfigRepository.findAll().stream().findFirst().orElse(new PlatformConfig());
             int earnedCoins = (int) (order.getFinalTotalAmount() * config.getCashbackRate());
             
             if (earnedCoins > config.getMaxCoinsPerOrder()) {
@@ -765,7 +778,8 @@ public class OrderService {
             
             orderRepository.save(order);
             
-            notificationService.createNotification(order.getUserId(), "Đơn hàng tự động hoàn thành", "Đã hết 3 ngày khiếu nại. Đơn hàng #" + order.getId().substring(order.getId().length() - 8).toUpperCase() + " đã hoàn tất. Bạn nhận được " + earnedCoins + " Xu.", "ORDER", order.getId());
+            // Cập nhật cấu hình động
+            notificationService.createNotification(order.getUserId(), "Đơn hàng tự động hoàn thành", "Đã hết " + config.getEscrowWindowDays() + " ngày khiếu nại. Đơn hàng #" + order.getId().substring(order.getId().length() - 8).toUpperCase() + " đã hoàn tất. Bạn nhận được " + earnedCoins + " Xu.", "ORDER", order.getId());
             notificationService.createNotification(order.getItems().get(0).getSellerId(), "Tiền đã vào ví", "Đơn hàng #" + order.getId().substring(order.getId().length() - 8).toUpperCase() + " đã tự động hoàn tất. Doanh thu đã được ghi nhận.", "ORDER", order.getId());
         }
         if (!expiredOrders.isEmpty()) {

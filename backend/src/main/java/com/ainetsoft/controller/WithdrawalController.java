@@ -1,5 +1,6 @@
 package com.ainetsoft.controller;
 
+import com.ainetsoft.model.PlatformConfig;
 import com.ainetsoft.model.User;
 import com.ainetsoft.model.WithdrawalRequest;
 import com.ainetsoft.repository.UserRepository;
@@ -79,7 +80,7 @@ public class WithdrawalController {
     }
 
     // ==============================
-    // 🚀 ENDPOINTS CHO BUYER (USER)
+    // ENDPOINTS CHO BUYER (USER)
     // ==============================
     @PostMapping("/user/request")
     public ResponseEntity<?> requestUserWithdrawal(@RequestBody Map<String, Object> payload, Principal principal) {
@@ -116,7 +117,6 @@ public class WithdrawalController {
         return ResponseEntity.ok(withdrawalService.countPendingRequests());
     }
 
-    // 🚀 BỔ SUNG: Nhận tham số page, size, status để phân trang
     @GetMapping("/admin/all")
     public ResponseEntity<?> getAllRequests(
             @RequestParam(defaultValue = "0") int page,
@@ -125,22 +125,7 @@ public class WithdrawalController {
             Principal principal) {
         User admin = getAuthenticatedAdmin(principal);
         if (admin == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        
-        // Trả về đối tượng Page<?> chuẩn của Spring Data
         return ResponseEntity.ok(withdrawalService.getAllRequests(page, size, status));
-    }
-
-    // 🚀 ĐÃ KHÔI PHỤC: API Lấy Chi tiết KYC và Đối soát Rủi ro
-    @GetMapping("/admin/kyc/{requestId}")
-    public ResponseEntity<?> getKycDetails(@PathVariable String requestId, Principal principal) {
-        User admin = getAuthenticatedAdmin(principal);
-        if (admin == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        
-        try {
-            return ResponseEntity.ok(withdrawalService.getWithdrawalKycDetails(requestId));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
-        }
     }
 
     @PutMapping("/admin/process/{requestId}")
@@ -154,7 +139,6 @@ public class WithdrawalController {
         }
     }
 
-    // 🚀 API ĐỔI TRẠNG THÁI TỰ ĐỘNG CHUYỂN TIỀN
     @GetMapping("/admin/config/auto-payout")
     public ResponseEntity<?> getAutoPayoutConfig(Principal principal) {
         if (getAuthenticatedAdmin(principal) == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -169,7 +153,17 @@ public class WithdrawalController {
         return ResponseEntity.ok(Map.of("autoPayoutEnabled", status));
     }
 
-    // 🚀 GIAI ĐOẠN 1: ENDPOINT XUẤT EXCEL CHO KẾ TOÁN
+    @GetMapping("/admin/kyc/{requestId}")
+    public ResponseEntity<?> getKycDetails(@PathVariable String requestId, Principal principal) {
+        User admin = getAuthenticatedAdmin(principal);
+        if (admin == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        try {
+            return ResponseEntity.ok(withdrawalService.getWithdrawalKycDetails(requestId));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
     @GetMapping("/admin/export")
     public ResponseEntity<byte[]> exportWithdrawals(@RequestParam(defaultValue = "ALL") String status, Principal principal) {
         if (getAuthenticatedAdmin(principal) == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -181,6 +175,22 @@ public class WithdrawalController {
                     .body(excelData);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/admin/config/finance")
+    public ResponseEntity<?> getFullConfig(Principal principal) {
+        if (getAuthenticatedAdmin(principal) == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        return ResponseEntity.ok(withdrawalService.getConfig());
+    }
+
+    @PutMapping("/admin/config/finance")
+    public ResponseEntity<?> updateFullConfig(@RequestBody PlatformConfig newConfig, Principal principal) {
+        if (getAuthenticatedAdmin(principal) == null) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        try {
+            return ResponseEntity.ok(withdrawalService.updateFullConfig(newConfig));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
 }

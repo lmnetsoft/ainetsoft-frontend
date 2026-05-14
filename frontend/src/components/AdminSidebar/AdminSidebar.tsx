@@ -21,7 +21,7 @@ const AdminSidebar = () => {
     content: path.includes('/admin/article') || path.includes('/admin/help-hierarchy') || path.includes('/admin/content'),
     marketing: path.includes('/admin/vouchers'), 
     config: path.includes('/admin/footer-menus') || path.includes('/admin/shipping'),
-    finance: path.includes('/admin/withdrawals') || path.includes('/admin/coins'), // 🚀 Cập nhật trạng thái mở
+    finance: path.includes('/admin/withdrawals') || path.includes('/admin/coins') || path.includes('/admin/finance'), // 🚀 Đã thêm /admin/finance
     interaction: path.includes('/admin/chat'),
     system: path.includes('/admin/audit-logs')
   });
@@ -135,8 +135,9 @@ const AdminSidebar = () => {
           </div>
           <div className={`admin-sub-menu ${openGroups.finance ? 'open' : ''}`}>
             <NavLink to="/admin/withdrawals" className={({isActive}) => isActive ? "sub-item active" : "sub-item"}>Lệnh Rút Tiền</NavLink>
-            {/* 🚀 ĐÃ THÊM: Menu Quản lý Xu */}
             <NavLink to="/admin/coins" className={({isActive}) => isActive ? "sub-item active" : "sub-item"}>Quản lý AiNetsoft Xu</NavLink>
+            {/* 🚀 BỔ SUNG: Nút Cấu hình Tài chính */}
+            <NavLink to="/admin/finance" className={({isActive}) => isActive ? "sub-item active" : "sub-item"}>Cấu hình Tài chính</NavLink>
           </div>
         </div>
 

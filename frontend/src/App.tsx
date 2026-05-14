@@ -79,6 +79,7 @@ import ProductModeration from './pages/Admin/ProductModeration';
 import AdminAuditLogs from './pages/Admin/AdminAuditLogs';
 import AdminVouchers from './pages/Admin/AdminVouchers'; 
 import AdminCoins from './pages/Admin/AdminCoins';
+import AdminFinanceSettings from './pages/Admin/AdminFinanceSettings'; // 🚀 ĐÃ THÊM IMPORT CẤU HÌNH TÀI CHÍNH
 
 import './App.css';
 
@@ -188,6 +189,7 @@ function App() {
                   {/* ADMIN MARKETING & FINANCE ROUTES */}
                   <Route path="/admin/vouchers" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminVouchers /></ProtectedRoute>} />
                   <Route path="/admin/coins" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminCoins /></ProtectedRoute>} />
+                  <Route path="/admin/finance" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminFinanceSettings /></ProtectedRoute>} /> {/* 🚀 ROUTE CẤU HÌNH TÀI CHÍNH */}
 
                   {/* Specific Admin Standalone Pages */}
                   <Route path="/admin/audit-logs" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminAuditLogs /></ProtectedRoute>} />

@@ -21,12 +21,12 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// 🚀 GIAI ĐOẠN 1: Thư viện xuất Excel
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -47,23 +47,44 @@ public class WithdrawalService {
     private final PlatformConfigRepository configRepository;
 
     // ==========================================
-    // 🚀 GIAI ĐOẠN 1: Logic tính phí
+    // 🚀 LẤY VÀ CẬP NHẬT CẤU HÌNH ĐỘNG TỪ DATABASE
     // ==========================================
-    private double calculateFee(double amount) {
-        return (amount * 0.01) + 3300; // 1% phí sàn + 3.300đ phí chuyển khoản
+    public PlatformConfig getConfig() {
+        return configRepository.findAll().stream().findFirst()
+                .orElseGet(() -> {
+                    PlatformConfig defaultBtn = new PlatformConfig();
+                    defaultBtn.setUpdatedAt(LocalDateTime.now());
+                    return configRepository.save(defaultBtn);
+                });
     }
 
-    // ==========================================
-    // 🚀 ĐÃ KHÔI PHỤC TỪ LỖI XÓA NHẦM: AUTO-PAYOUT CONFIG
-    // ==========================================
+    @Transactional
+    public PlatformConfig updateFullConfig(PlatformConfig newConfig) {
+        PlatformConfig current = getConfig();
+        current.setCommissionRate(newConfig.getCommissionRate());
+        current.setFlatWithdrawalFee(newConfig.getFlatWithdrawalFee());
+        current.setMinWithdrawalAmount(newConfig.getMinWithdrawalAmount());
+        current.setAutoPayoutMaxLimit(newConfig.getAutoPayoutMaxLimit());
+        current.setMaxDailyWithdrawalsPerShop(newConfig.getMaxDailyWithdrawalsPerShop());
+        current.setEscrowWindowDays(newConfig.getEscrowWindowDays());
+        current.setTaxWithholdingRate(newConfig.getTaxWithholdingRate());
+        current.setCashbackRate(newConfig.getCashbackRate());
+        current.setMaxCoinsPerOrder(newConfig.getMaxCoinsPerOrder());
+        
+        // 🚀 ĐÃ THÊM: Đồng bộ trạng thái Auto-Payout từ trang Cấu hình
+        current.setAutoPayoutEnabled(newConfig.isAutoPayoutEnabled());
+        
+        current.setUpdatedAt(LocalDateTime.now());
+        return configRepository.save(current);
+    }
+
     public boolean getAutoPayoutStatus() {
-        return configRepository.findAll().stream().findFirst()
-                .map(PlatformConfig::isAutoPayoutEnabled).orElse(false);
+        return getConfig().isAutoPayoutEnabled();
     }
 
     @Transactional
     public boolean toggleAutoPayout(boolean status) {
-        PlatformConfig config = configRepository.findAll().stream().findFirst().orElse(new PlatformConfig());
+        PlatformConfig config = getConfig();
         config.setAutoPayoutEnabled(status);
         config.setUpdatedAt(LocalDateTime.now());
         configRepository.save(config);
@@ -71,7 +92,7 @@ public class WithdrawalService {
     }
 
     // ==========================================
-    // 🚀 ĐÃ KHÔI PHỤC: API LẤY THÔNG TIN KYC VÀ ĐỐI SOÁT RỦI RO
+    // API LẤY THÔNG TIN KYC VÀ ĐỐI SOÁT RỦI RO
     // ==========================================
     public Map<String, Object> getWithdrawalKycDetails(String requestId) {
         WithdrawalRequest request = withdrawalRepository.findById(requestId)
@@ -83,7 +104,6 @@ public class WithdrawalService {
 
         Map<String, Object> kyc = new HashMap<>();
         
-        // 1. Thông tin lệnh rút
         kyc.put("requestId", request.getId());
         kyc.put("amount", request.getAmount());
         kyc.put("createdAt", request.getCreatedAt());
@@ -92,19 +112,16 @@ public class WithdrawalService {
         kyc.put("bankHolder", request.getAccountHolder());
         kyc.put("targetType", request.getTargetType());
 
-        // 2. Thông tin đối soát từ hồ sơ User thực tế
         kyc.put("sysFullName", user.getFullName());
         kyc.put("sysEmail", user.getEmail());
         kyc.put("sysPhone", user.getPhone());
         kyc.put("joinedDate", user.getCreatedAt());
         kyc.put("accountStatus", user.getAccountStatus());
         
-        // Lấy số CCCD từ identityInfo nếu có
         String idNumber = (user.getIdentityInfo() != null && user.getIdentityInfo().getCccdNumber() != null) 
                 ? user.getIdentityInfo().getCccdNumber() : "Chưa cập nhật";
         kyc.put("idNumber", idNumber);
 
-        // 3. Thuật toán kiểm tra rủi ro (Risk Engine)
         String sysNameNormalized = (user.getFullName() != null) ? user.getFullName().trim().toUpperCase() : "";
         String bankHolderNormalized = (request.getAccountHolder() != null) ? request.getAccountHolder().trim().toUpperCase() : "";
         
@@ -121,12 +138,13 @@ public class WithdrawalService {
     // LOGIC DÀNH CHO SELLER
     // ==========================================
     public double getSellerBalance(String sellerId) {
+        PlatformConfig config = getConfig();
         List<Order> completedOrders = orderRepository.findByItemsSellerIdAndStatus(sellerId, "COMPLETED");
         
         double totalRevenue = completedOrders.stream()
                 .flatMap(o -> o.getItems().stream())
                 .filter(item -> sellerId.equals(item.getSellerId()))
-                .mapToDouble(item -> item.getPrice() * item.getQuantity())
+                .mapToDouble(item -> (item.getPrice() * item.getQuantity()) * (1 - config.getCommissionRate()))
                 .sum();
 
         List<WithdrawalRequest> requests = withdrawalRepository.findBySellerIdOrderByCreatedAtDesc(sellerId);
@@ -140,13 +158,24 @@ public class WithdrawalService {
 
     @Transactional
     public WithdrawalRequest createWithdrawalRequest(String sellerId, double amount) {
-        if (amount < 50000) {
-            throw new RuntimeException("Số tiền rút tối thiểu là 50.000₫");
+        PlatformConfig config = getConfig();
+
+        if (amount < config.getMinWithdrawalAmount()) {
+            throw new RuntimeException("Số tiền rút tối thiểu là " + String.format("%,.0f", config.getMinWithdrawalAmount()) + "₫");
         }
 
         double currentBalance = getSellerBalance(sellerId);
         if (amount > currentBalance) {
             throw new RuntimeException("Số dư không đủ để thực hiện yêu cầu này!");
+        }
+
+        long todayCount = withdrawalRepository.findBySellerIdOrderByCreatedAtDesc(sellerId).stream()
+                .filter(r -> r.getCreatedAt().toLocalDate().equals(LocalDate.now()))
+                .filter(r -> !"REJECTED".equals(r.getStatus()))
+                .count();
+
+        if (todayCount >= config.getMaxDailyWithdrawalsPerShop()) {
+            throw new RuntimeException("Bạn đã đạt giới hạn rút tiền " + config.getMaxDailyWithdrawalsPerShop() + " lần/ngày. Vui lòng thử lại vào ngày mai.");
         }
 
         boolean hasPending = withdrawalRepository.findBySellerIdOrderByCreatedAtDesc(sellerId).stream()
@@ -168,8 +197,7 @@ public class WithdrawalService {
                 .findFirst()
                 .orElse(banks.get(0));
 
-        // 🚀 GIAI ĐOẠN 1: Tính toán phí và thực nhận
-        double fee = calculateFee(amount);
+        double fee = config.getFlatWithdrawalFee();
         double netAmount = amount - fee;
 
         WithdrawalRequest request = WithdrawalRequest.builder()
@@ -178,8 +206,8 @@ public class WithdrawalService {
                 .shopName(seller.getShopProfile() != null ? seller.getShopProfile().getShopName() : seller.getFullName())
                 .sellerFullName(seller.getFullName())
                 .amount(amount)
-                .fee(fee)             // 🚀 Thêm phí
-                .netAmount(netAmount) // 🚀 Thực nhận
+                .fee(fee)             
+                .netAmount(netAmount) 
                 .bankName(defaultBank.getBankName())
                 .accountNumber(defaultBank.getAccountNumber())
                 .accountHolder(defaultBank.getAccountHolder())
@@ -200,8 +228,10 @@ public class WithdrawalService {
     // ==========================================
     @Transactional
     public WithdrawalRequest createUserWithdrawalRequest(String userId, double amount) {
-        if (amount < 50000) {
-            throw new RuntimeException("Số tiền rút tối thiểu là 50.000₫");
+        PlatformConfig config = getConfig();
+
+        if (amount < config.getMinWithdrawalAmount()) {
+            throw new RuntimeException("Số tiền rút tối thiểu là " + String.format("%,.0f", config.getMinWithdrawalAmount()) + "₫");
         }
 
         Wallet wallet = walletRepository.findByUserId(userId)
@@ -210,6 +240,15 @@ public class WithdrawalService {
         double currentBalance = wallet.getBalance() != null ? wallet.getBalance() : 0.0;
         if (amount > currentBalance) {
             throw new RuntimeException("Số dư khả dụng trong ví không đủ!");
+        }
+
+        long todayCount = withdrawalRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+                .filter(r -> r.getCreatedAt().toLocalDate().equals(LocalDate.now()))
+                .filter(r -> !"REJECTED".equals(r.getStatus()))
+                .count();
+
+        if (todayCount >= config.getMaxDailyWithdrawalsPerShop()) {
+            throw new RuntimeException("Bạn đã đạt giới hạn rút tiền " + config.getMaxDailyWithdrawalsPerShop() + " lần/ngày.");
         }
 
         boolean hasPending = withdrawalRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
@@ -231,8 +270,7 @@ public class WithdrawalService {
                 .findFirst()
                 .orElse(banks.get(0));
 
-        // 🚀 GIAI ĐOẠN 1: Tính toán phí và thực nhận
-        double fee = calculateFee(amount);
+        double fee = config.getFlatWithdrawalFee();
         double netAmount = amount - fee;
 
         wallet.setBalance(currentBalance - amount);
@@ -244,8 +282,8 @@ public class WithdrawalService {
                 .shopName(user.getFullName()) 
                 .sellerFullName(user.getFullName())
                 .amount(amount)
-                .fee(fee)             // 🚀 Thêm phí
-                .netAmount(netAmount) // 🚀 Thực nhận
+                .fee(fee)             
+                .netAmount(netAmount) 
                 .bankName(defaultBank.getBankName())
                 .accountNumber(defaultBank.getAccountNumber())
                 .accountHolder(defaultBank.getAccountHolder())
@@ -262,7 +300,7 @@ public class WithdrawalService {
     }
 
     // ==========================================
-    // 🚀 LOGIC CHUNG (ADMIN XỬ LÝ)
+    // LOGIC CHUNG (ADMIN XỬ LÝ)
     // ==========================================
     public long countPendingRequests() {
         return withdrawalRepository.countByStatus("PENDING");
@@ -286,15 +324,18 @@ public class WithdrawalService {
             throw new RuntimeException("Yêu cầu này đã được xử lý xong. Vui lòng tải lại trang.");
         }
 
+        PlatformConfig config = getConfig();
         String targetStatus = status.toUpperCase();
         String finalNote = adminNote != null ? adminNote : "";
-        boolean autoPayoutEnabled = getAutoPayoutStatus();
+        boolean autoPayoutEnabled = config.isAutoPayoutEnabled();
 
         if ("APPROVED".equals(targetStatus) || "COMPLETED".equals(targetStatus)) {
-            if (autoPayoutEnabled && "PENDING".equals(request.getStatus())) {
+            if (autoPayoutEnabled && request.getAmount() > config.getAutoPayoutMaxLimit()) {
+                targetStatus = "PROCESSING";
+                finalNote = finalNote + " | [NGƯỠNG AN TOÀN] Số tiền vượt hạn mức tự động. Vui lòng chuyển khoản thủ công.";
+            } else if (autoPayoutEnabled && "PENDING".equals(request.getStatus())) {
                 String transferDesc = "AINETSOFT PAYOUT " + request.getId().substring(request.getId().length() - 6).toUpperCase();
                 
-                // 🚀 GIAI ĐOẠN 1: Chuyển khoản số tiền THỰC NHẬN (netAmount) thay vì số tiền yêu cầu
                 double amountToSend = request.getNetAmount() > 0 ? request.getNetAmount() : request.getAmount();
 
                 BankTransferProvider.TransferResult result = bankTransferProvider.sendMoney(
@@ -356,9 +397,6 @@ public class WithdrawalService {
         return saved;
     }
 
-    // ==========================================
-    // 🚀 GIAI ĐOẠN 1: HÀM XUẤT EXCEL CHO KẾ TOÁN 
-    // ==========================================
     public byte[] exportToExcel(String status) throws IOException {
         List<WithdrawalRequest> list = (status == null || "ALL".equalsIgnoreCase(status)) 
                 ? withdrawalRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"))
