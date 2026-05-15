@@ -23,13 +23,15 @@ public class WalletService {
 
     private final WalletRepository walletRepository;
     private final VoucherRepository voucherRepository;
-    private final NotificationService notificationService; // 🚀 BỔ SUNG: Để gửi thông báo khi Admin tặng Xu
+    private final NotificationService notificationService;
 
     // --- Lấy Ví của User (Tự động tạo nếu chưa có) ---
     public Wallet getOrCreateWallet(String userId) {
         return walletRepository.findByUserId(userId).orElseGet(() -> {
             Wallet newWallet = Wallet.builder()
                     .userId(userId)
+                    .balance(0.0) // 🚀 THÊM SỐ DƯ VND KHẢ DỤNG
+                    .escrowBalance(0.0) // 🚀 THÊM SỐ DƯ TẠM GIỮ (ESCROW)
                     .coinBalance(0.0)
                     .savedVoucherIds(new ArrayList<>())
                     .updatedAt(LocalDateTime.now())
@@ -43,7 +45,6 @@ public class WalletService {
     public Wallet saveVoucherToWallet(String userId, String voucherId) {
         Wallet wallet = getOrCreateWallet(userId);
         
-        // Kiểm tra xem voucher có tồn tại không
         voucherRepository.findById(voucherId)
                 .orElseThrow(() -> new RuntimeException("Voucher không tồn tại!"));
 
@@ -62,7 +63,6 @@ public class WalletService {
         return wallet;
     }
 
-    // --- Lấy danh sách chi tiết Voucher trong Kho ---
     public List<Voucher> getSavedVouchersDetailed(String userId) {
         Wallet wallet = getOrCreateWallet(userId);
         List<String> voucherIds = wallet.getSavedVoucherIds();
@@ -71,7 +71,6 @@ public class WalletService {
             return new ArrayList<>();
         }
 
-        // Lấy thông tin chi tiết của từng voucher từ DB
         return voucherIds.stream()
                 .map(voucherRepository::findById)
                 .filter(opt -> opt.isPresent())
@@ -79,7 +78,6 @@ public class WalletService {
                 .collect(Collectors.toList());
     }
 
-    // --- Xóa Voucher khỏi Kho ---
     @Transactional
     public Wallet removeVoucherFromWallet(String userId, String voucherId) {
         Wallet wallet = getOrCreateWallet(userId);
@@ -91,7 +89,6 @@ public class WalletService {
         return wallet;
     }
 
-    // --- Thưởng / Trừ AiNetsoft Xu ---
     @Transactional
     public Wallet addCoins(String userId, double amount) {
         Wallet wallet = getOrCreateWallet(userId);
@@ -111,9 +108,6 @@ public class WalletService {
         return walletRepository.save(wallet);
     }
 
-    // ==========================================
-    // 👑 ADMIN: THỐNG KÊ VÀ QUẢN LÝ XU TOÀN SÀN
-    // ==========================================
     public Map<String, Object> getSystemCoinStats() {
         double totalBalance = walletRepository.findAll().stream()
                 .mapToDouble(Wallet::getCoinBalance)
@@ -134,8 +128,32 @@ public class WalletService {
         wallet.setUpdatedAt(LocalDateTime.now());
         walletRepository.save(wallet);
 
-        // Bắn thông báo ngay cho người dùng
         String title = amount > 0 ? "🎉 Bạn nhận được Xu từ hệ thống" : "Tài khoản Xu bị điều chỉnh";
         notificationService.createNotification(userId, title, reason, "WALLET", null);
+    }
+
+    // 🚀 THÊM MỚI: QUẢN LÝ TIỀN VND THẬT (ESCROW VÀ SỐ DƯ)
+
+    @Transactional
+    public void addEscrow(String userId, double amount) {
+        Wallet wallet = getOrCreateWallet(userId);
+        double currentEscrow = wallet.getEscrowBalance() != null ? wallet.getEscrowBalance() : 0.0;
+        wallet.setEscrowBalance(currentEscrow + amount);
+        walletRepository.save(wallet);
+    }
+
+    @Transactional
+    public void releaseEscrowToBalance(String userId, double amount) {
+        Wallet wallet = getOrCreateWallet(userId);
+        double currentEscrow = wallet.getEscrowBalance() != null ? wallet.getEscrowBalance() : 0.0;
+        double currentBalance = wallet.getBalance() != null ? wallet.getBalance() : 0.0;
+        
+        if (currentEscrow >= amount) {
+            wallet.setEscrowBalance(currentEscrow - amount);
+            wallet.setBalance(currentBalance + amount);
+            walletRepository.save(wallet);
+        } else {
+            log.error("Lỗi giải tỏa quỹ: Số dư tạm giữ ({}) nhỏ hơn số tiền yêu cầu ({})", currentEscrow, amount);
+        }
     }
 }

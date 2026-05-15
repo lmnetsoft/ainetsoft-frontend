@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
@@ -25,6 +26,10 @@ public class Wallet {
     // 💰 Số dư tiền mặt (Real Money/VNĐ) - Dùng cho việc Rút tiền và Hoàn tiền
     @Builder.Default
     private Double balance = 0.0; 
+
+    // 🚀 BỔ SUNG: Số dư tạm giữ (Đang chờ qua thời gian đối trả)
+    @Builder.Default
+    private Double escrowBalance = 0.0;
     
     // 🪙 AiNetsoft Xu (Platform Coins)
     @Builder.Default
@@ -33,6 +38,10 @@ public class Wallet {
     // 🎫 Kho Voucher (Lưu ID của các Voucher mà người dùng đã bấm "Lưu")
     @Builder.Default
     private List<String> savedVoucherIds = new ArrayList<>();
+    
+    // 🛡️ KHIÊN BẢO VỆ: Optimistic Locking chống lỗi Double-Spending (Tiêu tiền 2 lần)
+    @Version
+    private Long version;
     
     private LocalDateTime updatedAt;
 }

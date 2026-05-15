@@ -57,3 +57,34 @@
   from { width: 100%; }
   to { width: 0%; }
 }
+
+/* =========================================
+   📱 RESPONSIVE CHO MOBILE (Chuẩn UX Hiện đại)
+   ========================================= */
+@media (max-width: 768px) {
+  .toast-container {
+    /* Đẩy ra giữa màn hình trên Mobile */
+    top: 20px;
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    
+    /* Thu hẹp lại một chút để không chạm sát viền điện thoại */
+    width: 90%;
+    min-width: unset;
+    
+    /* Đổi hiệu ứng trượt từ trên xuống thay vì từ phải sang */
+    animation: slideInDownMobile 0.3s ease-out forwards;
+  }
+
+  @keyframes slideInDownMobile {
+    from {
+      transform: translate(-50%, -20px);
+      opacity: 0;
+    }
+    to {
+      transform: translate(-50%, 0);
+      opacity: 1;
+    }
+  }
+}

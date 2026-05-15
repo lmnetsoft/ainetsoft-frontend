@@ -235,3 +235,28 @@ input:checked + .slider:before {
   opacity: 0.7;
   cursor: not-allowed;
 }
+
+/* Style cho ô nhập tiền đã format */
+.money-input {
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  width: 100%;
+  transition: border-color 0.2s;
+  font-family: 'Courier New', Courier, monospace; /* Giúp con số thẳng hàng, dễ đọc */
+  font-weight: bold;
+  color: #111827;
+}
+
+.money-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.money-input:disabled {
+  background-color: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}

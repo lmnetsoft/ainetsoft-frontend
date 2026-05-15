@@ -29,10 +29,6 @@ public interface UserRepository extends MongoRepository<User, String> {
     Boolean existsByEmail(String email);
     Boolean existsByPhone(String phone);
 
-    /**
-     * 🛡️ NEW: Find a user by their unique email verification token.
-     * This is critical for activating accounts after the user clicks the verification link.
-     */
     Optional<User> findByVerificationToken(String verificationToken);
 
     Boolean existsByShopProfile_ShopSlug(String shopSlug);
@@ -49,7 +45,6 @@ public interface UserRepository extends MongoRepository<User, String> {
     List<User> findBySellerVerificationOrAccountStatus(String verification, String status);
     long countBySellerVerificationOrAccountStatus(String verification, String status);
 
-    // --- 🚀 NEW: PENDING UPDATE QUEUE ---
     List<User> findByHasPendingUpdateTrue();
     long countByHasPendingUpdateTrue();
 
@@ -61,4 +56,7 @@ public interface UserRepository extends MongoRepository<User, String> {
 
     Optional<User> findByPhone(String phone);
     Optional<User> findByProviderId(String providerId);
+
+    // --- 🚀 NEW: QUICK SEARCH FOR DROPDOWNS ---
+    List<User> findTop10ByFullNameContainingIgnoreCaseOrEmailContainingIgnoreCase(String fullName, String email);
 }

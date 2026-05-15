@@ -39,14 +39,32 @@ const AdminFinanceSettings: React.FC = () => {
     }
   };
 
+  // Hàm định dạng số có dấu chấm hàng nghìn (Ví dụ: 1000000 -> 1.000.000)
+  const formatNumber = (num: number | string) => {
+    if (num === undefined || num === null || num === '') return '';
+    const value = num.toString().replace(/\D/g, '');
+    return value.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  };
+
+  // Hàm chuyển chuỗi định dạng về số nguyên để lưu DB (Ví dụ: 1.000.000 -> 1000000)
+  const parseNumber = (str: string) => {
+    return Number(str.replace(/\./g, ''));
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!config) return;
     const { name, value, type, checked } = e.target;
     
-    setConfig({
-      ...config,
-      [name]: type === 'checkbox' ? checked : Number(value),
-    });
+    // Nếu là các ô nhập số tiền (cần format dấu chấm)
+    const moneyFields = ['flatWithdrawalFee', 'minWithdrawalAmount', 'autoPayoutMaxLimit', 'maxCoinsPerOrder'];
+    
+    if (type === 'checkbox') {
+      setConfig({ ...config, [name]: checked });
+    } else if (moneyFields.includes(name)) {
+      setConfig({ ...config, [name]: parseNumber(value) });
+    } else {
+      setConfig({ ...config, [name]: value === '' ? 0 : Number(value) });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -59,8 +77,6 @@ const AdminFinanceSettings: React.FC = () => {
       const response = await api.put('/withdrawals/admin/config/finance', config);
       setConfig(response.data);
       setMessage({ type: 'success', text: 'Cập nhật cấu hình tài chính thành công!' });
-      
-      // Tự động ẩn thông báo sau 3 giây
       setTimeout(() => setMessage(null), 3000);
     } catch (error: any) {
       setMessage({ type: 'error', text: 'Cập nhật thất bại: ' + (error.response?.data?.message || error.message) });
@@ -92,7 +108,6 @@ const AdminFinanceSettings: React.FC = () => {
 
       <form onSubmit={handleSubmit} className="finance-form">
         
-        {/* SECTION 1: DOANH THU & HOA HỒNG */}
         <div className="finance-card">
           <h3>1. Doanh thu & Thuế</h3>
           <div className="form-grid">
@@ -142,17 +157,17 @@ const AdminFinanceSettings: React.FC = () => {
           </div>
         </div>
 
-        {/* SECTION 2: RÚT TIỀN */}
         <div className="finance-card">
           <h3>2. Quy định Rút tiền</h3>
           <div className="form-grid">
             <div className="form-group">
               <label>Phí Rút Tiền Cố định (VNĐ)</label>
               <input
-                type="number"
+                type="text"
                 name="flatWithdrawalFee"
-                value={config.flatWithdrawalFee}
+                value={formatNumber(config.flatWithdrawalFee)}
                 onChange={handleInputChange}
+                className="money-input"
                 required
               />
             </div>
@@ -160,10 +175,11 @@ const AdminFinanceSettings: React.FC = () => {
             <div className="form-group">
               <label>Số Tiền Rút Tối thiểu (VNĐ)</label>
               <input
-                type="number"
+                type="text"
                 name="minWithdrawalAmount"
-                value={config.minWithdrawalAmount}
+                value={formatNumber(config.minWithdrawalAmount)}
                 onChange={handleInputChange}
+                className="money-input"
                 required
               />
             </div>
@@ -184,7 +200,6 @@ const AdminFinanceSettings: React.FC = () => {
           </div>
         </div>
 
-        {/* SECTION 3: TỰ ĐỘNG GIẢI NGÂN (AUTO-PAYOUT) */}
         <div className="finance-card">
           <h3>3. Tự động Giải ngân (Vietcombank API)</h3>
           
@@ -207,17 +222,17 @@ const AdminFinanceSettings: React.FC = () => {
             <label>Ngưỡng an toàn tối đa cho Auto-Payout (VNĐ)</label>
             <p className="field-hint">Nếu số tiền rút vượt quá ngưỡng này, hệ thống sẽ yêu cầu duyệt thủ công.</p>
             <input
-              type="number"
+              type="text"
               name="autoPayoutMaxLimit"
-              value={config.autoPayoutMaxLimit}
+              value={formatNumber(config.autoPayoutMaxLimit)}
               onChange={handleInputChange}
               required
               disabled={!config.autoPayoutEnabled}
+              className="money-input"
             />
           </div>
         </div>
 
-        {/* SECTION 4: THƯỞNG XU & CASHBACK */}
         <div className="finance-card">
           <h3>4. Thưởng Xu (Cashback)</h3>
           <div className="form-grid">
@@ -240,11 +255,12 @@ const AdminFinanceSettings: React.FC = () => {
               <label>Giới hạn Xu Tối đa/Đơn</label>
               <div className="input-with-suffix">
                 <input
-                  type="number"
+                  type="text"
                   name="maxCoinsPerOrder"
-                  value={config.maxCoinsPerOrder}
+                  value={formatNumber(config.maxCoinsPerOrder)}
                   onChange={handleInputChange}
                   required
+                  className="money-input"
                 />
                 <span className="suffix">Xu</span>
               </div>

@@ -66,7 +66,6 @@ const OrderDetail = () => {
         }
     };
 
-    // 🚀 HÀM MUA LẠI: KIỂM TRA TỒN KHO TRƯỚC KHI CHUYỂN TRANG
     const handleBuyAgain = async (e: React.MouseEvent, productId: string) => {
         if (e) e.stopPropagation();
         try {
@@ -89,7 +88,6 @@ const OrderDetail = () => {
     const rawStatus = (order.status || '').toUpperCase();
     const carrierStatus = (order.carrierStatus || '').toUpperCase();
     
-    // --- Xác định Stepper logic ---
     const isStep2 = !['PENDING', 'CANCELLED'].includes(rawStatus) || (rawStatus === 'CANCELLED' && order.paymentMethod !== 'COD');
     const isStep3 = ['SHIPPING', 'COMPLETED', 'RETURNING', 'RETURNED'].includes(rawStatus) || ['PICKED_UP', 'IN_TRANSIT', 'DELIVERED'].includes(carrierStatus);
     const isStep4 = ['COMPLETED', 'RETURNING', 'RETURNED'].includes(rawStatus) || carrierStatus === 'DELIVERED';
@@ -191,7 +189,7 @@ const OrderDetail = () => {
                 </div>
             </div>
 
-            {/* STEPPER MỚI: Truyền data-steps để CSS tính toán đường kẻ */}
+            {/* STEPPER */}
             <div className="od-stepper-box" data-steps={rawStatus === 'CANCELLED' ? "3" : "5"}>
                 <div className="od-step-item active">
                     <div className="od-step-icon"><FaReceipt/></div>
@@ -199,7 +197,6 @@ const OrderDetail = () => {
                 </div>
 
                 {rawStatus === 'CANCELLED' ? (
-                    // Nếu hủy, chỉ hiện 3 bước và ép màu xanh nối tiếp màu đỏ
                     <>
                         <div className="od-step-item active">
                             <div className="od-step-icon"><FaCreditCard/></div>
@@ -211,7 +208,6 @@ const OrderDetail = () => {
                         </div>
                     </>
                 ) : (
-                    // Logic giao hàng bình thường 5 bước
                     <>
                         <div className={`od-step-item ${isStep2 ? 'active' : ''}`}>
                             <div className="od-step-icon"><FaCreditCard/></div>
@@ -347,6 +343,7 @@ const OrderDetail = () => {
                     </div>
                 ))}
 
+                {/* 🚀 ĐÃ KHÔI PHỤC: BẢNG LÝ DO HỦY ĐƠN Ở GIAO DIỆN CHÍNH */}
                 {rawStatus === 'CANCELLED' && (
                     <div className="od-cancelled-reason-box" style={{ background: '#fafafa', marginTop: '15px', borderTop: '1px solid #eee' }}>
                         <div style={{ padding: '15px 24px', display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px', color: '#555' }}>
@@ -386,18 +383,27 @@ const OrderDetail = () => {
                             <span className="lbl">Phí vận chuyển</span>
                             <span className="val">₫0</span>
                         </div>
+                        
+                        {/* 🚀 Các trường giảm giá (Chỉ hiện khi lớn hơn 0) */}
                         {(order.voucherDiscountAmount > 0) && (
                             <div className="od-sum-row">
-                                <span className="lbl">Voucher từ Shop</span>
+                                <span className="lbl">Voucher giảm giá</span>
                                 <span className="val">-₫{order.voucherDiscountAmount.toLocaleString()}</span>
                             </div>
                         )}
                         {(order.coinDiscountAmount > 0) && (
                             <div className="od-sum-row">
-                                <span className="lbl">AiNetsoft Xu</span>
+                                <span className="lbl">AiNetsoft Xu đã dùng</span>
                                 <span className="val">-₫{order.coinDiscountAmount.toLocaleString()}</span>
                             </div>
                         )}
+                        {(order.usedWalletBalance > 0) && (
+                            <div className="od-sum-row">
+                                <span className="lbl">Số dư Ví đã dùng</span>
+                                <span className="val">-₫{order.usedWalletBalance.toLocaleString()}</span>
+                            </div>
+                        )}
+
                         <div className="od-sum-row total">
                             <span className="lbl">Thành tiền</span>
                             <span className="val">₫{order.finalTotalAmount?.toLocaleString()}</span>

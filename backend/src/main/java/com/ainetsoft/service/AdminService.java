@@ -35,6 +35,25 @@ public class AdminService {
     private final BankAccountRepository bankAccountRepository;
     private final EncryptionService encryptionService;
 
+    // --- 🚀 NEW: QUICK SEARCH FOR ADMIN SEARCH-AND-PICK ---
+    public List<Map<String, Object>> searchUsersQuick(String query) {
+        if (query == null || query.trim().length() < 2) {
+            return Collections.emptyList();
+        }
+        
+        return userRepository.findTop10ByFullNameContainingIgnoreCaseOrEmailContainingIgnoreCase(query, query)
+                .stream()
+                .map(user -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("id", user.getId());
+                    map.put("fullName", user.getFullName());
+                    map.put("email", user.getEmail());
+                    map.put("avatarUrl", user.getAvatarUrl() != null ? user.getAvatarUrl() : "DEFAULT_LOGO");
+                    return map;
+                })
+                .collect(Collectors.toList());
+    }
+
     private void recordAudit(User admin, String type, String targetId, String targetName, String details) {
         if (admin == null) return;
         AuditLog logEntry = AuditLog.builder()

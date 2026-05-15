@@ -83,7 +83,8 @@ public class SecurityConfig {
                     "/api/footer-menus/**",
                     "/api/footer-icons/**",
                     "/api/vouchers/public/**",
-                    "/api/orders/webhook/**" 
+                    "/api/orders/webhook/**",
+                    "/api/shipping/webhook/**" // 🚀 BỔ SUNG ĐƯỜNG DẪN MỚI CHO GHN/GHTK WEBHOOK
                 ).permitAll() 
 
                 .requestMatchers("/api/chat/history/**").permitAll()

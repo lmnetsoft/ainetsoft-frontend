@@ -1,12 +1,12 @@
 /* frontend/src/pages/Admin/AdminCoins.css */
 
-.admin-coins-container {
+.admin-coins-wrapper {
     padding: 30px;
     background-color: #f8f9fa;
     min-height: 100vh;
 }
 
-/* 🚀 TIÊU ĐỀ CHUẨN: CĂN GIỮA, IN HOA, MÀU ĐỎ */
+/* 🚀 TIÊU ĐỀ */
 .admin-coins-header {
     text-align: center;
     margin-bottom: 40px;
@@ -15,7 +15,7 @@
 .admin-coins-header h2 {
     font-size: 28px;
     font-weight: 700;
-    color: #ee4d2d;
+    color: #ee4d2d; 
     text-transform: uppercase;
     margin-bottom: 10px;
     display: flex;
@@ -37,14 +37,15 @@
     margin-bottom: 30px;
 }
 
-.coin-stat-card {
+.stat-card {
     background: #fff;
     padding: 25px;
-    borderRadius: 12px;
-    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    border: 1px solid #edf2f7;
 }
 
-.stat-label {
+.stat-info span {
     color: #64748b;
     font-size: 14px;
     font-weight: bold;
@@ -52,105 +53,158 @@
     text-transform: uppercase;
 }
 
-.stat-value {
+.stat-info h3 {
     font-size: 32px;
     margin: 10px 0;
     color: #1e293b;
     font-weight: 700;
 }
 
-.stat-value small {
+.stat-info h3 small {
     font-size: 16px;
-    font-weight: 500;
+    color: #64748b;
 }
 
-.stat-hint {
-    font-size: 12px;
+.stat-info p {
+    font-size: 13px;
     color: #94a3b8;
 }
 
-/* CÁC PHẦN CẤU HÌNH & CÔNG CỤ */
-.coin-management-card {
+/* CARD HÀNH ĐỘNG (TẶNG XU) */
+.coins-action-card {
     background: #fff;
-    padding: 30px;
+    padding: 0;
     border-radius: 12px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    margin-bottom: 30px;
+    /* 🛠️ QUAN TRỌNG: Để dropdown hiển thị tràn ra ngoài */
+    overflow: visible; 
+    border: 1px solid #edf2f7;
+    position: relative;
+    z-index: 10;
 }
 
-.card-title {
-    margin-bottom: 20px;
+.coins-action-card .card-header {
+    background: #fcfcfc;
+    padding: 15px 25px;
+    border-bottom: 1px solid #eee;
     display: flex;
     align-items: center;
     gap: 10px;
-    font-size: 18px;
     font-weight: 600;
-    color: #334155;
+    color: #ee4d2d;
 }
 
-.config-flex {
+.coins-action-card .card-body {
+    padding: 25px;
+}
+
+.helper-text {
+    font-size: 14px;
+    color: #64748b;
+    margin-bottom: 20px;
+}
+
+/* 🚀 FORM TẶNG XU */
+.coins-adjust-form {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1.5fr 100px;
+    gap: 15px;
+    align-items: flex-start;
+}
+
+.coins-adjust-form input {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.coins-adjust-form input:focus {
+    border-color: #ee4d2d;
+    box-shadow: 0 0 0 3px rgba(238, 77, 45, 0.1);
+}
+
+/* 🔍 SEARCH COMPONENT - FIX KINH LUP */
+.search-user-container {
+    position: relative;
+}
+
+.search-input-wrapper {
+    position: relative;
     display: flex;
     align-items: center;
-    gap: 20px;
 }
 
-.input-group-label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: bold;
-    font-size: 14px;
-    color: #475569;
-}
-
-.coin-input-large {
-    padding: 12px;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    width: 120px;
+.search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    pointer-events: none;
+    z-index: 5; /* Nằm trên input */
     font-size: 16px;
-    outline: none;
 }
 
-.coin-input-large:focus {
-    border-color: #3498db;
+/* 🛠️ FIX: Đẩy chữ sang phải để không bị Kính lúp đè lên */
+.search-input-wrapper input {
+    padding-left: 40px !important; 
 }
 
-/* FORM TẶNG XU */
-.adjust-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr 0.5fr;
-    gap: 15px;
+.user-suggestions-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.2); 
+    z-index: 9999;
+    max-height: 280px;
+    overflow-y: auto;
 }
 
-.adjust-input {
-    padding: 12px;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    font-size: 14px;
-    outline: none;
-}
-
-.adjust-input:focus {
-    border-color: #ee4d2d;
-}
-
-/* BUTTONS */
-.btn-update-coin {
-    padding: 12px 30px;
-    background: #3498db;
-    color: #fff;
-    border: none;
-    border-radius: 6px;
+.suggestion-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
     cursor: pointer;
-    font-weight: bold;
-    transition: 0.2s;
+    transition: background 0.2s;
+    border-bottom: 1px solid #f8fafc;
 }
 
-.btn-update-coin:hover {
-    background: #2980b9;
+.suggestion-item:hover {
+    background: #fff5f2;
 }
 
-.btn-adjust-coin {
+.suggestion-item img {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    margin-right: 12px;
+    border: 1px solid #f1f5f9;
+    object-fit: cover;
+}
+
+.suggest-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: #1e293b;
+    display: block;
+}
+
+.suggest-email {
+    font-size: 12px;
+    color: #64748b;
+}
+
+/* BUTTON THỰC HIỆN */
+.btn-execute {
+    padding: 12px;
     background: #1e293b;
     color: #fff;
     border: none;
@@ -158,8 +212,38 @@
     font-weight: bold;
     cursor: pointer;
     transition: 0.2s;
+    height: 46px;
 }
 
-.btn-adjust-coin:hover {
+.btn-execute:hover {
     background: #0f172a;
+}
+
+/* SPINNER TÌM KIẾM */
+.searching-spinner {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #ee4d2d;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: translateY(-50%) rotate(0deg); }
+    100% { transform: translateY(-50%) rotate(360deg); }
+}
+
+/* RESPONSIVE */
+@media (max-width: 1024px) {
+    .coins-adjust-form {
+        grid-template-columns: 1fr 1fr;
+    }
+    .btn-execute {
+        grid-column: span 2;
+    }
 }

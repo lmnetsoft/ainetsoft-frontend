@@ -44,6 +44,12 @@ public class AdminController {
 
     // --- USER MANAGEMENT ---
 
+    // 🚀 NEW: QUICK SEARCH FOR DROPDOWNS (AUTOCOMPLETE)
+    @GetMapping("/users/search")
+    public ResponseEntity<?> searchUsers(@RequestParam String query) {
+        return ResponseEntity.ok(adminService.searchUsersQuick(query));
+    }
+
     @GetMapping("/users/all")
     public ResponseEntity<?> getAllUsers(
             @RequestParam(required = false) String search,
@@ -56,10 +62,6 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getAllUsersFiltered(search, role, status, pageable));
     }
 
-    /**
-     * 🚀 FIXED: Now calls getUserFullProfile instead of getUserById.
-     * This ensures the User Detail modal gets decrypted bank accounts and pending drafts.
-     */
     @GetMapping("/users/detail/{userId}")
     public ResponseEntity<?> getUserDetails(@PathVariable String userId) {
         return ResponseEntity.ok(adminService.getUserFullProfile(userId));
@@ -104,9 +106,6 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getPendingSellers());
     }
 
-    /**
-     * Fetches details for the Moderation/Approval screen.
-     */
     @GetMapping("/sellers/review/{userId}")
     public ResponseEntity<?> getSellerVerificationDetails(@PathVariable String userId) {
         return ResponseEntity.ok(adminService.getSellerVerificationDetails(userId));
@@ -119,10 +118,6 @@ public class AdminController {
         return ResponseEntity.ok(adminService.processSellerApproval(userId, request, getCurrentAdmin()));
     }
 
-    /**
-     * 🛠️ SYNCED: Uses @RequestParam to match the frontend axios call structure.
-     * Receives the 'reason' string passed from the Admin Dashboard prompt.
-     */
     @PostMapping("/sellers/revoke/{userId}")
     public ResponseEntity<?> revokeSellerRights(
             @PathVariable String userId, 

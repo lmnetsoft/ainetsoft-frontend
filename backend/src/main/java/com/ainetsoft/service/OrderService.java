@@ -49,23 +49,19 @@ public class OrderService {
 
         long totalOrders = sellerOrders.size();
         
-        // Đã cập nhật: Trừ % hoa hồng sàn
-        double totalRevenue = sellerOrders.stream()
-                .filter(o -> "COMPLETED".equals(o.getStatus()))
-                .flatMap(o -> o.getItems().stream())
-                .filter(i -> sellerId.equals(i.getSellerId()))
-                .mapToDouble(i -> (i.getPrice() * i.getQuantity()) * (1 - config.getCommissionRate()))
-                .sum();
-
         long pendingOrders = sellerOrders.stream()
                 .filter(o -> "PENDING".equals(o.getStatus()))
                 .count();
 
         boolean hasBankAccount = !bankAccountRepository.findByUserId(sellerId).isEmpty();
 
+        // 🚀 ĐỒNG BỘ NGUỒN CHÂN LÝ: Đọc Doanh thu trực tiếp từ bảng Wallets để khớp 100% với trang Rút tiền
+        Wallet wallet = walletRepository.findByUserId(sellerId).orElse(new Wallet());
+        double availableRevenue = wallet.getBalance() != null ? wallet.getBalance() : 0.0;
+
         Map<String, Object> stats = new HashMap<>();
         stats.put("totalOrders", totalOrders);
-        stats.put("totalRevenue", totalRevenue);
+        stats.put("totalRevenue", availableRevenue); // Giờ đây Dashboard sẽ hiển thị số dư thực tế có thể rút
         stats.put("pendingOrders", pendingOrders);
         stats.put("isWithdrawalReady", hasBankAccount); 
         return stats;
@@ -426,7 +422,6 @@ public class OrderService {
             order.setTrackingCode(trackingCode);
             order.setShippingProvider("Giao Hàng Nhanh");
             order.setCarrierStatus("PICKED_UP"); 
-            // Cập nhật cấu hình động
             order.setReturnDeadline(LocalDateTime.now().plusDays(config.getEscrowWindowDays()));
         }
 
@@ -447,8 +442,26 @@ public class OrderService {
                 notificationService.createNotification(order.getUserId(), "🎉 Chúc mừng bạn nhận được Xu!", "Bạn đã được cộng " + earnedCoins + " AiNetsoft Xu từ đơn hàng " + order.getId(), "WALLET", null);
             }
             
+            // 🚀 BƠM TIỀN VÀO ESCROW CHO SELLER (Ngay khi đơn chuyển sang COMPLETED)
+            double netRevenue = order.getFinalTotalAmount() * (1 - config.getCommissionRate());
+            walletRepository.findByUserId(order.getItems().get(0).getSellerId()).ifPresentOrElse(wallet -> {
+                double currentEscrow = wallet.getEscrowBalance() != null ? wallet.getEscrowBalance() : 0.0;
+                wallet.setEscrowBalance(currentEscrow + netRevenue);
+                wallet.setUpdatedAt(LocalDateTime.now());
+                walletRepository.save(wallet);
+            }, () -> {
+                Wallet newWallet = Wallet.builder()
+                        .userId(order.getItems().get(0).getSellerId())
+                        .balance(0.0)
+                        .escrowBalance(netRevenue)
+                        .coinBalance(0.0)
+                        .savedVoucherIds(new ArrayList<>())
+                        .updatedAt(LocalDateTime.now())
+                        .build();
+                walletRepository.save(newWallet);
+            });
+
             if (order.getReturnDeadline() == null) {
-                // Cập nhật cấu hình động
                 order.setReturnDeadline(LocalDateTime.now().plusDays(config.getEscrowWindowDays()));
             }
         }
@@ -478,8 +491,8 @@ public class OrderService {
         
         String message = "Kiện hàng " + trackingCode + " đang được cập nhật: " + carrierStatus;
         
-        if ("DELIVERED".equalsIgnoreCase(carrierStatus)) {
-            // Cập nhật cấu hình động
+        // 🚀 CATCH LUÔN TRƯỜNG HỢP POSTMAN BẮN "COMPLETED" HOẶC "DELIVERED"
+        if ("DELIVERED".equalsIgnoreCase(carrierStatus) || "COMPLETED".equalsIgnoreCase(carrierStatus)) {
             order.setReturnDeadline(LocalDateTime.now().plusDays(config.getEscrowWindowDays())); 
             message = "🎉 Gói hàng đã giao thành công. Bạn có " + config.getEscrowWindowDays() + " ngày để kiểm tra và Yêu cầu Trả hàng nếu có lỗi!";
         } else if ("IN_TRANSIT".equalsIgnoreCase(carrierStatus)) {
@@ -505,7 +518,6 @@ public class OrderService {
 
         PlatformConfig config = getConfig();
         if (order.getReturnDeadline() != null && LocalDateTime.now().isAfter(order.getReturnDeadline())) {
-            // Cập nhật cấu hình động
             throw new RuntimeException("Đã quá hạn " + config.getEscrowWindowDays() + " ngày để yêu cầu trả hàng/hoàn tiền theo quy định.");
         }
 
@@ -602,6 +614,16 @@ public class OrderService {
                 }
             }
             
+            // 🚀 BỔ SUNG QUAN TRỌNG: TRỪ TIỀN KHỎI ESCROW CỦA SELLER VÌ ĐÃ HOÀN TIỀN CHO KHÁCH
+            double netRevenue = order.getFinalTotalAmount() * (1 - config.getCommissionRate());
+            walletRepository.findByUserId(order.getItems().get(0).getSellerId()).ifPresent(wallet -> {
+                double currentEscrow = wallet.getEscrowBalance() != null ? wallet.getEscrowBalance() : 0.0;
+                wallet.setEscrowBalance(Math.max(0, currentEscrow - netRevenue));
+                wallet.setUpdatedAt(LocalDateTime.now());
+                walletRepository.save(wallet);
+            });
+            order.setReturnDeadline(null); // Xóa lịch để CronJob không xử lý đơn này nữa
+            
             notificationService.createNotification(order.getUserId(), "✅ Trả hàng thành công", "Người bán đã chấp nhận hoàn tiền cho đơn #" + orderId.substring(orderId.length() - 8).toUpperCase(), "RETURN", orderId);
         } else {
             order.setStatus("COMPLETED"); 
@@ -648,7 +670,6 @@ public class OrderService {
             });
         }
         
-        // 🚀 CÁC ĐOẠN CODE HOÀN VÍ, XU, VOUCHER ĐÃ ĐƯỢC GIỮ NGUYÊN 100%
         if (order.getUsedCoins() > 0) {
              walletRepository.findByUserId(userId).ifPresent(wallet -> {
                  wallet.setCoinBalance(wallet.getCoinBalance() + order.getUsedCoins());
@@ -744,43 +765,69 @@ public class OrderService {
                 .collect(Collectors.toList());
     }
 
-    @org.springframework.scheduling.annotation.Scheduled(cron = "0 0 * * * *") 
+    // 🚀 LẤY CẤU HÌNH TỪ FILE PROPERTIES
+    @org.springframework.scheduling.annotation.Scheduled(cron = "${app.cron.auto-payout}") 
     @Transactional
     public void autoProcessExpiredReturns() {
         log.info("Chạy tiến trình tự động quyết toán đơn hàng quá hạn...");
         LocalDateTime now = LocalDateTime.now();
         PlatformConfig config = getConfig();
         
+        // 🚀 CẬP NHẬT: Quét cả đơn SHIPPING (chờ Auto-Complete) VÀ COMPLETED (chờ nhả tiền Escrow)
         List<Order> expiredOrders = orderRepository.findAll().stream()
-                .filter(o -> "SHIPPING".equals(o.getStatus()))
-                .filter(o -> "DELIVERED".equals(o.getCarrierStatus()))
                 .filter(o -> o.getReturnDeadline() != null && now.isAfter(o.getReturnDeadline()))
+                .filter(o -> "COMPLETED".equals(o.getStatus()) || ("SHIPPING".equals(o.getStatus()) && ("DELIVERED".equals(o.getCarrierStatus()) || "COMPLETED".equals(o.getCarrierStatus()))))
                 .collect(Collectors.toList());
 
         for (Order order : expiredOrders) {
-            order.setStatus("COMPLETED");
-            order.setUpdatedAt(now);
+            boolean wasShipping = "SHIPPING".equals(order.getStatus());
             
-            int earnedCoins = (int) (order.getFinalTotalAmount() * config.getCashbackRate());
-            
-            if (earnedCoins > config.getMaxCoinsPerOrder()) {
-                earnedCoins = config.getMaxCoinsPerOrder();
+            if (wasShipping) {
+                order.setStatus("COMPLETED");
+                order.setUpdatedAt(now);
+                
+                int earnedCoins = (int) (order.getFinalTotalAmount() * config.getCashbackRate());
+                if (earnedCoins > config.getMaxCoinsPerOrder()) {
+                    earnedCoins = config.getMaxCoinsPerOrder();
+                }
+                if (earnedCoins > 0) {
+                    final int finalEarnedCoins = earnedCoins;
+                    walletRepository.findByUserId(order.getUserId()).ifPresent(wallet -> {
+                        wallet.setCoinBalance(wallet.getCoinBalance() + finalEarnedCoins);
+                        wallet.setUpdatedAt(now);
+                        walletRepository.save(wallet);
+                    });
+                }
+                notificationService.createNotification(order.getUserId(), "Đơn hàng tự động hoàn thành", "Đã hết " + config.getEscrowWindowDays() + " ngày khiếu nại. Đơn hàng #" + order.getId().substring(order.getId().length() - 8).toUpperCase() + " đã hoàn tất.", "ORDER", order.getId());
             }
-            
-            if (earnedCoins > 0) {
-                final int finalEarnedCoins = earnedCoins;
-                walletRepository.findByUserId(order.getUserId()).ifPresent(wallet -> {
-                    wallet.setCoinBalance(wallet.getCoinBalance() + finalEarnedCoins);
-                    wallet.setUpdatedAt(now);
-                    walletRepository.save(wallet);
-                });
-            }
-            
+
+            // 🚀 BƯỚC QUYẾT ĐỊNH: RÚT TIỀN TỪ ESCROW -> CHUYỂN VÀO BALANCE KHẢ DỤNG CHO SELLER
+            double netRevenue = order.getFinalTotalAmount() * (1 - config.getCommissionRate());
+            walletRepository.findByUserId(order.getItems().get(0).getSellerId()).ifPresentOrElse(wallet -> {
+                double currentEscrow = wallet.getEscrowBalance() != null ? wallet.getEscrowBalance() : 0.0;
+                double currentBalance = wallet.getBalance() != null ? wallet.getBalance() : 0.0;
+                
+                wallet.setEscrowBalance(Math.max(0, currentEscrow - netRevenue)); // Trừ Tạm giữ
+                wallet.setBalance(currentBalance + netRevenue); // CỘNG KHẢ DỤNG!
+                wallet.setUpdatedAt(now);
+                walletRepository.save(wallet);
+            }, () -> {
+                Wallet newWallet = Wallet.builder()
+                        .userId(order.getItems().get(0).getSellerId())
+                        .balance(netRevenue)
+                        .escrowBalance(0.0)
+                        .coinBalance(0.0)
+                        .savedVoucherIds(new ArrayList<>())
+                        .updatedAt(now)
+                        .build();
+                walletRepository.save(newWallet);
+            });
+
+            // Xóa deadline để tránh CronJob quét đi quét lại đơn này vào ngày mai
+            order.setReturnDeadline(null); 
             orderRepository.save(order);
             
-            // Cập nhật cấu hình động
-            notificationService.createNotification(order.getUserId(), "Đơn hàng tự động hoàn thành", "Đã hết " + config.getEscrowWindowDays() + " ngày khiếu nại. Đơn hàng #" + order.getId().substring(order.getId().length() - 8).toUpperCase() + " đã hoàn tất. Bạn nhận được " + earnedCoins + " Xu.", "ORDER", order.getId());
-            notificationService.createNotification(order.getItems().get(0).getSellerId(), "Tiền đã vào ví", "Đơn hàng #" + order.getId().substring(order.getId().length() - 8).toUpperCase() + " đã tự động hoàn tất. Doanh thu đã được ghi nhận.", "ORDER", order.getId());
+            notificationService.createNotification(order.getItems().get(0).getSellerId(), "💰 Tiền đã vào ví", "Doanh thu " + String.format("%,.0f", netRevenue) + "đ từ đơn #" + order.getId().substring(order.getId().length() - 8).toUpperCase() + " đã được giải tỏa.", "WALLET", order.getId());
         }
         if (!expiredOrders.isEmpty()) {
             log.info("Đã xử lý quyết toán thành công {} đơn hàng.", expiredOrders.size());
