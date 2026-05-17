@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import ToastNotification from '../../components/Toast/ToastNotification';
 import { getUserProfile, updateShopSettings } from '../../services/authService';
+import { getProvinces, getDistricts, getWards } from '../../services/shippingService';
 import { 
     FaStore, FaMapMarkerAlt, FaShieldAlt, FaInfoCircle, 
     FaExternalLinkAlt, FaPhoneAlt, FaUserEdit, FaMap, FaHourglassHalf,
-    FaBriefcase, FaImage, FaHistory, FaCloudUploadAlt 
+    FaBriefcase, FaImage, FaHistory, FaCloudUploadAlt, FaTimes
 } from 'react-icons/fa';
 import './SellerSettings.css';
 
@@ -29,6 +30,8 @@ const formatMSTDisplay = (val: string) => {
     const s = val.replace(/\D/g, '');
     return s.replace(/(\d{3})(?=\d)/g, '$1 ').trim();
 };
+
+const VN_PHONE_REGEX = /^0(3[2-9]|5[2689]|7[06-9]|8[1-9]|9[0-46-9])\d{7}$/;
 
 const SellerSettings = () => {
     const [shopData, setShopData] = useState<any>({
@@ -58,6 +61,21 @@ const SellerSettings = () => {
     const [logoPreview, setLogoPreview] = useState<string>('');
     const [newLicenseFile, setNewLicenseFile] = useState<File | null>(null);
     const [daysUntilChange, setDaysUntilChange] = useState(0);
+
+    // 🚀 LOGISTICS DROPDOWN STATES
+    const [showAddressModal, setShowAddressModal] = useState(false);
+    const [editingAddressIndex, setEditingAddressIndex] = useState<number | null>(null);
+    const [ghnProvinces, setGhnProvinces] = useState<any[]>([]);
+    const [ghnDistricts, setGhnDistricts] = useState<any[]>([]);
+    const [ghnWards, setGhnWards] = useState<any[]>([]);
+    const [selectedProvId, setSelectedProvId] = useState<number>(0);
+    const [addressErrors, setAddressErrors] = useState<Record<string, string>>({});
+    
+    const [addressForm, setAddressForm] = useState({
+        receiverName: '', phone: '', province: '', district: '', ward: '', hamlet: '',
+        detail: '', latitude: '', longitude: '', isDefault: true,
+        districtId: 0, wardCode: ''
+    });
 
     const API_BASE_URL = "http://localhost:8080";
 
@@ -97,7 +115,13 @@ const SellerSettings = () => {
         const fetchShopInfo = async () => {
             try {
                 setLoading(true);
-                const data = await getUserProfile();
+                const [data, provs] = await Promise.all([
+                    getUserProfile(),
+                    getProvinces()
+                ]);
+                
+                setGhnProvinces(provs || []);
+
                 if (data.shopProfile) {
                     const profile = { 
                         ...data.shopProfile, 
@@ -131,11 +155,73 @@ const SellerSettings = () => {
         document.title = "Thiết lập Shop | AiNetsoft";
     }, []);
 
+    // Fetch Districts
+    useEffect(() => {
+        if (selectedProvId > 0) {
+            getDistricts(selectedProvId).then(res => setGhnDistricts(res || []));
+        } else {
+            setGhnDistricts([]);
+            setGhnWards([]);
+        }
+    }, [selectedProvId]);
+
+    // Fetch Wards
+    useEffect(() => {
+        if (addressForm.districtId > 0) {
+            getWards(addressForm.districtId).then(res => setGhnWards(res || []));
+        } else {
+            setGhnWards([]);
+        }
+    }, [addressForm.districtId]);
+
     const handleAddressUpdate = (index: number, field: string, value: string) => {
         const updated = [...addresses];
         const cleanValue = (field === 'phone') ? value.replace(/\s/g, '') : value;
         updated[index] = { ...updated[index], [field]: cleanValue };
         setAddresses(updated);
+    };
+
+    const openAddressModal = async (index: number) => {
+        setEditingAddressIndex(index);
+        const addr = addresses[index];
+        setAddressForm({
+            receiverName: addr.receiverName || '', phone: addr.phone || '',
+            province: addr.province || '', district: addr.district || '',
+            ward: addr.ward || '', hamlet: addr.hamlet || '',
+            detail: addr.detail || '', latitude: addr.latitude || '',
+            longitude: addr.longitude || '', isDefault: addr.isDefault || false,
+            districtId: addr.districtId || 0, wardCode: addr.wardCode || ''
+        });
+        
+        // Match Province ID by Name to set initial dropdown
+        if (addr.province && ghnProvinces.length > 0) {
+            const prov = ghnProvinces.find((p: any) => p.ProvinceName === addr.province);
+            if (prov) setSelectedProvId(prov.ProvinceID);
+        } else {
+            setSelectedProvId(0);
+        }
+        
+        setShowAddressModal(true);
+    };
+
+    const saveAddressModal = () => {
+        const errors: Record<string, string> = {};
+        if (!addressForm.receiverName.trim()) errors.receiverName = "Vui lòng nhập họ và tên";
+        const phone = addressForm.phone.replace(/\D/g, '');
+        if (!phone || !VN_PHONE_REGEX.test(phone)) errors.phone = "SĐT không đúng định dạng";
+        if (!addressForm.province || !addressForm.districtId || !addressForm.wardCode) errors.province = "Vui lòng chọn đầy đủ Tỉnh/Quận/Phường";
+        if (!addressForm.detail.trim()) errors.detail = "Vui lòng nhập số nhà, tên đường";
+        
+        if (Object.keys(errors).length > 0) { setAddressErrors(errors); return; }
+
+        if (editingAddressIndex !== null) {
+            const updated = [...addresses];
+            updated[editingAddressIndex] = { ...addressForm, phone: phone };
+            setAddresses(updated);
+        }
+        
+        setShowAddressModal(false);
+        setAddressErrors({});
     };
 
     const handleSave = async () => {
@@ -155,16 +241,20 @@ const SellerSettings = () => {
                 businessType: shopData.businessType,
                 lowStockThreshold: shopData.lowStockThreshold,
                 holidayMode: shopData.holidayMode,
+                // 🚀 BẮT ĐÚNG FORMAT MASTER DATA CHO BACKEND
                 stockAddresses: addresses.map(addr => ({
                     fullName: addr.receiverName,
                     phoneNumber: addr.phone,
                     province: addr.province,
+                    district: addr.district,
                     ward: addr.ward,
                     hamlet: addr.hamlet,
                     detailAddress: addr.detail,
                     latitude: addr.latitude,
                     longitude: addr.longitude,
-                    isDefault: addr.isDefault 
+                    isDefault: addr.isDefault,
+                    districtId: addr.districtId, 
+                    wardCode: addr.wardCode      
                 }))
             };
             
@@ -303,15 +393,21 @@ const SellerSettings = () => {
                                             <FaPhoneAlt className="mini-icon" />
                                             <input value={formatPhoneDisplay(addr.phone)} disabled={shopData.hasPendingUpdate} onChange={(e) => handleAddressUpdate(idx, 'phone', e.target.value)} placeholder="Số điện thoại" />
                                         </div>
-                                        <div className="input-group-mini area-group">
+                                        <div 
+                                            className="input-group-mini area-group" 
+                                            style={{ cursor: shopData.hasPendingUpdate ? 'not-allowed' : 'pointer' }}
+                                            onClick={() => !shopData.hasPendingUpdate && openAddressModal(idx)}
+                                        >
                                             <FaMap className="mini-icon" />
-                                            <textarea value={addr.detail} disabled={shopData.hasPendingUpdate} onChange={(e) => handleAddressUpdate(idx, 'detail', e.target.value)} placeholder="Địa chỉ chi tiết" />
+                                            <div style={{ padding: '8px', fontSize: '13px', color: '#555', background: '#f9f9f9', border: '1px dashed #ddd', borderRadius: '4px', flex: 1, minHeight: '40px' }}>
+                                                {addr.detail ? `${addr.detail}, ${addr.ward}, ${addr.district}, ${addr.province}` : 'Nhấn để thiết lập Tỉnh/Quận/Phường...'}
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="card-side-qr">
                                         {/* 🚀 FIXED: Đúng định dạng URL Google Maps để quét QR không bị 404 */}
                                         {addr.latitude && (
-                                            <img src={`https://api.qrserver.com/v1/create-qr-code/?size=85x85&data=${encodeURIComponent(`https://www.google.com/maps?q=${addr.latitude},${addr.longitude}`)}`} alt="QR" />
+                                            <img src={`https://api.qrserver.com/v1/create-qr-code/?size=85x85&data=${encodeURIComponent(`http://googleusercontent.com/maps.google.com/${addr.latitude},${addr.longitude}`)}`} alt="QR" />
                                         )}
                                     </div>
                                 </div>
@@ -390,6 +486,67 @@ const SellerSettings = () => {
                             {isSaving ? "Đang xử lý..." : shopData.hasPendingUpdate ? "HỒ SƠ ĐANG CHỜ DUYỆT" : "Lưu thiết lập"}
                         </button>
                     </div>
+                </div>
+            )}
+
+            {/* 🚀 ADDRESS MODAL FOR EDITING LOCATION EXACTLY LIKE REGISTER */}
+            {showAddressModal && (
+                <div className="ainetsoft-modal-overlay">
+                <div className="ainetsoft-modal-card">
+                    <div className="modal-header">
+                        <h3>Cập nhật vị trí Kho</h3>
+                        <FaTimes className="close-icon" onClick={() => setShowAddressModal(false)} />
+                    </div>
+                    <div className="modal-body">
+                    <div className="modal-field-full">
+                        <label><span className="req">*</span> Tỉnh/Thành phố</label>
+                        <select className={addressErrors.province ? "error-border supreme-input-full" : "supreme-input-full"} value={selectedProvId || ""} onChange={(e) => {
+                            const id = parseInt(e.target.value);
+                            const name = e.target.options[e.target.selectedIndex].text;
+                            setSelectedProvId(id);
+                            setAddressForm({...addressForm, province: id > 0 ? name : '', districtId: 0, district: '', wardCode: '', ward: ''});
+                        }}>
+                            <option value="">-- Chọn Tỉnh/Thành phố --</option>
+                            {ghnProvinces.map((p: any) => <option key={p.ProvinceID} value={p.ProvinceID}>{p.ProvinceName}</option>)}
+                        </select>
+                        {addressErrors.province && <p className="red-msg-inline">{addressErrors.province}</p>}
+                    </div>
+
+                    <div className="modal-field-full">
+                        <label><span className="req">*</span> Quận/Huyện</label>
+                        <select className={addressErrors.province ? "error-border supreme-input-full" : "supreme-input-full"} value={addressForm.districtId || ""} disabled={!selectedProvId} onChange={(e) => {
+                            const id = parseInt(e.target.value);
+                            const name = e.target.options[e.target.selectedIndex].text;
+                            setAddressForm({...addressForm, districtId: id, district: id > 0 ? name : '', wardCode: '', ward: ''});
+                        }}>
+                            <option value="">-- Chọn Quận/Huyện --</option>
+                            {ghnDistricts.map((d: any) => <option key={d.DistrictID} value={d.DistrictID}>{d.DistrictName}</option>)}
+                        </select>
+                    </div>
+
+                    <div className="modal-field-full">
+                        <label><span className="req">*</span> Phường/Xã</label>
+                        <select className={addressErrors.province ? "error-border supreme-input-full" : "supreme-input-full"} value={addressForm.wardCode || ""} disabled={!addressForm.districtId} onChange={(e) => {
+                            const code = e.target.value;
+                            const name = e.target.options[e.target.selectedIndex].text;
+                            setAddressForm({...addressForm, wardCode: code, ward: code ? name : ''});
+                        }}>
+                            <option value="">-- Chọn Phường/Xã --</option>
+                            {ghnWards.map((w: any) => <option key={w.WardCode} value={w.WardCode}>{w.WardName}</option>)}
+                        </select>
+                    </div>
+
+                    <div className="modal-field-full">
+                        <label><span className="req">*</span> Địa chỉ chi tiết</label>
+                        <textarea className={addressErrors.detail ? "error-border" : ""} value={addressForm.detail} onChange={e => setAddressForm({...addressForm, detail: e.target.value})} placeholder="Số nhà, tên đường..." />
+                        {addressErrors.detail && <p className="red-msg-inline">{addressErrors.detail}</p>}
+                    </div>
+                    </div>
+                    <div className="modal-footer-ainetsoft">
+                        <button className="btn-cancel-ainetsoft" onClick={() => setShowAddressModal(false)}>Hủy</button>
+                        <button className="btn-save-ainetsoft" onClick={saveAddressModal}>Xác nhận</button>
+                    </div>
+                </div>
                 </div>
             )}
         </main>

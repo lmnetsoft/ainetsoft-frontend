@@ -1,7 +1,6 @@
 package com.ainetsoft.service;
 
 import com.ainetsoft.config.JwtUtils;
-import com.ainetsoft.config.VietnamProvinceConfig;
 import com.ainetsoft.dto.*;
 import com.ainetsoft.model.User;
 import com.ainetsoft.model.CartItem;
@@ -452,17 +451,20 @@ public class AuthService {
 
                 for (AddressDTO addrDto : dto.getStockAddresses()) {
                     if (!isValidPhone(addrDto.getPhoneNumber())) throw new RuntimeException("SĐT không hợp lệ.");
-                    if (addrDto.getProvince() != null && !VietnamProvinceConfig.isValid(addrDto.getProvince())) throw new RuntimeException("Tỉnh không hợp lệ.");
                     
+                    // 🚀 ĐÃ SỬA: Loại bỏ kiểm tra VietnamProvinceConfig cứng nhắc và Map đầy đủ dữ liệu GHN
                     addressInfos.add(User.AddressInfo.builder()
                             .receiverName(addrDto.getFullName())
                             .phone(normalizePhone(addrDto.getPhoneNumber()))
-                            .province(null)
-                            .ward(null)
-                            .hamlet(null)
+                            .province(addrDto.getProvince())
+                            .district(addrDto.getDistrict())
+                            .ward(addrDto.getWard())
+                            .hamlet(addrDto.getHamlet())
                             .detail(addrDto.getDetailAddress())
                             .latitude(addrDto.getLatitude())
                             .longitude(addrDto.getLongitude())
+                            .districtId(addrDto.getDistrictId())
+                            .wardCode(addrDto.getWardCode())
                             .isDefault(addrDto.isDefault())
                             .build());
                 }
@@ -558,7 +560,6 @@ public class AuthService {
         currentProfile.setLowStockThreshold(request.getLowStockThreshold());
         currentProfile.setHolidayMode(request.isHolidayMode());
 
-        // 🚀 PHASE 1: Direct update for Shipping Settings, Express Pause & Thermal Print
         if (request.getEnabledShippingMethodIds() != null) {
             currentProfile.setEnabledShippingMethodIds(new ArrayList<>(request.getEnabledShippingMethodIds()));
         }
@@ -567,7 +568,6 @@ public class AuthService {
         }
         currentProfile.setExpressPausedUntil(request.getExpressPausedUntil());
         
-        // 🚀 NEW: Update thermal printing
         currentProfile.setThermalPrintingEnabled(request.isThermalPrintingEnabled());
 
         boolean nameChanged = request.getShopName() != null && !request.getShopName().trim().equals(currentProfile.getShopName());
@@ -627,7 +627,7 @@ public class AuthService {
                 .enabledShippingMethodIds(new ArrayList<>(currentProfile.getEnabledShippingMethodIds()))
                 .customShippingMethods(new ArrayList<>(currentProfile.getCustomShippingMethods()))
                 .expressPausedUntil(currentProfile.getExpressPausedUntil())
-                .thermalPrintingEnabled(currentProfile.isThermalPrintingEnabled()) // 🚀 Maintain state
+                .thermalPrintingEnabled(currentProfile.isThermalPrintingEnabled()) 
                 .lowStockThreshold(currentProfile.getLowStockThreshold())
                 .holidayMode(currentProfile.isHolidayMode())
                 .lastShopNameChange(nameChanged ? LocalDateTime.now() : currentProfile.getLastShopNameChange())
@@ -641,10 +641,18 @@ public class AuthService {
                 for (AddressDTO aDto : request.getStockAddresses()) {
                     String p = normalizePhone(aDto.getPhoneNumber());
                     if (p != null && !phones.add(p)) throw new RuntimeException("Số điện thoại các kho hàng phải khác nhau.");
+                    
+                    // 🚀 ĐÃ SỬA: Map đầy đủ dữ liệu GHN
                     pendingAddrs.add(User.AddressInfo.builder()
                             .receiverName(aDto.getFullName()).phone(p)
+                            .province(aDto.getProvince())
+                            .district(aDto.getDistrict())
+                            .ward(aDto.getWard())
+                            .hamlet(aDto.getHamlet())
                             .detail(aDto.getDetailAddress())
-                            .latitude(aDto.getLatitude()).longitude(aDto.getLongitude()).isDefault(aDto.isDefault())
+                            .latitude(aDto.getLatitude()).longitude(aDto.getLongitude())
+                            .districtId(aDto.getDistrictId()).wardCode(aDto.getWardCode())
+                            .isDefault(aDto.isDefault())
                             .build());
                 }
                 user.setPendingAddresses(pendingAddrs);
@@ -675,10 +683,18 @@ public class AuthService {
                 for (AddressDTO aDto : request.getStockAddresses()) {
                     String p = normalizePhone(aDto.getPhoneNumber());
                     if (p != null && !phones.add(p)) throw new RuntimeException("Số điện thoại các kho hàng phải khác nhau.");
+                    
+                    // 🚀 ĐÃ SỬA: Map đầy đủ dữ liệu GHN
                     liveAddrs.add(User.AddressInfo.builder()
                             .receiverName(aDto.getFullName()).phone(p)
+                            .province(aDto.getProvince())
+                            .district(aDto.getDistrict())
+                            .ward(aDto.getWard())
+                            .hamlet(aDto.getHamlet())
                             .detail(aDto.getDetailAddress())
-                            .latitude(aDto.getLatitude()).longitude(aDto.getLongitude()).isDefault(aDto.isDefault())
+                            .latitude(aDto.getLatitude()).longitude(aDto.getLongitude())
+                            .districtId(aDto.getDistrictId()).wardCode(aDto.getWardCode())
+                            .isDefault(aDto.isDefault())
                             .build());
                 }
                 user.setAddresses(liveAddrs);

@@ -84,7 +84,8 @@ public class SecurityConfig {
                     "/api/footer-icons/**",
                     "/api/vouchers/public/**",
                     "/api/orders/webhook/**",
-                    "/api/shipping/webhook/**" // 🚀 BỔ SUNG ĐƯỜNG DẪN MỚI CHO GHN/GHTK WEBHOOK
+                    "/api/shipping/webhook/**", // 🚀 BỔ SUNG ĐƯỜNG DẪN MỚI CHO GHN/GHTK WEBHOOK
+                    "/api/v1/shipping-test/**"  // 🚀 MỞ CỔNG CHO API TEST LOGISTICS
                 ).permitAll() 
 
                 .requestMatchers("/api/chat/history/**").permitAll()

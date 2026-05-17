@@ -3,6 +3,7 @@ import PhoneInput from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css'; 
 import ToastNotification from '../../components/Toast/ToastNotification';
 import { getUserProfile, updateProfile, sendOtp } from '../../services/authService';
+import { getProvinces, getDistricts, getWards } from '../../services/shippingService';
 import './Profile.css'; 
 import OtpVerification from '../../components/OtpVerification/OtpVerification';
 
@@ -11,11 +12,13 @@ const Address = () => {
     receiverName: '', 
     phone: '84', 
     province: '',
+    district: '',
     ward: '',
-    detail: ''
+    detail: '',
+    districtId: 0,
+    wardCode: ''
   });
 
-  // 🚀 BẢN VÁ: Thêm State để lưu trữ Email gốc của tài khoản
   const [userEmail, setUserEmail] = useState('');
   const [originalPhone, setOriginalPhone] = useState('84');
 
@@ -27,13 +30,18 @@ const Address = () => {
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
 
+  // 🚀 LOGISTICS DATA STATES
+  const [provinces, setProvinces] = useState<any[]>([]);
+  const [districts, setDistricts] = useState<any[]>([]);
+  const [wards, setWards] = useState<any[]>([]);
+  const [selectedProvId, setSelectedProvId] = useState<number>(0);
+
   useEffect(() => {
     const fetchAddressInfo = async () => {
       try {
         setLoading(true);
         const data = await getUserProfile();
         
-        // 🚀 BẢN VÁ: Ghi nhớ Email để gửi lại cho Backend khi update
         if (data.email) {
             setUserEmail(data.email);
         }
@@ -55,9 +63,16 @@ const Address = () => {
         }
 
         if (data.addresses && data.addresses.length > 0) {
+          const addr = data.addresses[0];
           setAddressData({
-            ...data.addresses[0],
-            phone: normalizedPhone
+            receiverName: addr.receiverName || '',
+            phone: normalizedPhone,
+            province: addr.province || '',
+            district: addr.district || '',
+            ward: addr.ward || '',
+            detail: addr.detail || '',
+            districtId: addr.districtId || 0,
+            wardCode: addr.wardCode || ''
           });
         } else {
           setAddressData(prev => ({
@@ -69,6 +84,10 @@ const Address = () => {
         
         setOriginalPhone(normalizedPhone);
         
+        // Fetch Provinces initial
+        const provs = await getProvinces();
+        setProvinces(provs || []);
+        
       } catch (error: any) {
         console.error("Lỗi tải địa chỉ:", error);
       } finally {
@@ -79,6 +98,25 @@ const Address = () => {
     document.title = "ĐỊA CHỈ CỦA TÔI | AiNetsoft";
   }, []);
 
+  // Fetch Districts when Province changes
+  useEffect(() => {
+    if (selectedProvId > 0) {
+        getDistricts(selectedProvId).then(res => setDistricts(res || []));
+    } else {
+        setDistricts([]);
+        setWards([]);
+    }
+  }, [selectedProvId]);
+
+  // Fetch Wards when District changes
+  useEffect(() => {
+    if (addressData.districtId > 0) {
+        getWards(addressData.districtId).then(res => setWards(res || []));
+    } else {
+        setWards([]);
+    }
+  }, [addressData.districtId]);
+
   const validateVNPhone = (phone: string) => {
     const cleanPhone = phone.replace(/\D/g, '');
     const regex = /^(84|0)(3|5|7|8|9)\d{8}$/;
@@ -86,8 +124,8 @@ const Address = () => {
   };
 
   const handleSave = async () => {
-    if (!addressData.receiverName || !addressData.province || !addressData.ward || !addressData.detail) {
-      setToastMessage("Vui lòng điền đầy đủ thông tin.");
+    if (!addressData.receiverName || !addressData.province || !addressData.districtId || !addressData.wardCode || !addressData.detail) {
+      setToastMessage("Vui lòng điền đầy đủ thông tin Tỉnh, Quận, Phường và Địa chỉ chi tiết.");
       setShowToast(true);
       return;
     }
@@ -123,7 +161,6 @@ const Address = () => {
   const performFinalUpdate = async (otpCode?: string) => {
     const finalPhone = addressData.phone.startsWith('+') ? addressData.phone : `+${addressData.phone}`;
 
-    // 🚀 BẢN VÁ: Khởi tạo payload động
     const payload: any = {
       fullName: addressData.receiverName,
       phone: finalPhone,
@@ -131,7 +168,6 @@ const Address = () => {
       addresses: [{ ...addressData, phone: finalPhone, isDefault: true }]
     };
     
-    // 🚀 BẢN VÁ: Nếu tài khoản này có dùng Email, bắt buộc phải đính kèm vào gói dữ liệu để Backend khỏi bắt bẻ
     if (userEmail) {
         payload.email = userEmail;
     }
@@ -154,6 +190,25 @@ const Address = () => {
     } finally {
       setIsVerifyingOtp(false);
     }
+  };
+
+  const handleProvinceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const pId = parseInt(e.target.value);
+      const pName = e.target.options[e.target.selectedIndex].text;
+      setSelectedProvId(pId);
+      setAddressData({ ...addressData, province: pId > 0 ? pName : '', districtId: 0, district: '', wardCode: '', ward: '' });
+  };
+
+  const handleDistrictChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const dId = parseInt(e.target.value);
+      const dName = e.target.options[e.target.selectedIndex].text;
+      setAddressData({ ...addressData, districtId: dId, district: dId > 0 ? dName : '', wardCode: '', ward: '' });
+  };
+
+  const handleWardChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const wCode = e.target.value;
+      const wName = e.target.options[e.target.selectedIndex].text;
+      setAddressData({ ...addressData, wardCode: wCode, ward: wCode ? wName : '' });
   };
 
   return (
@@ -221,24 +276,50 @@ const Address = () => {
               <div className="supreme-form-row">
                 <label>Tỉnh / Thành phố <span className="req">*</span></label>
                 <div className="input-group-container">
-                  <input 
-                    type="text" 
-                    value={addressData.province} 
-                    onChange={(e) => setAddressData({...addressData, province: e.target.value})} 
-                    placeholder="Tỉnh / Thành phố"
-                  />
+                  <select 
+                    className="supreme-input-full" 
+                    value={selectedProvId || ""} 
+                    onChange={handleProvinceChange}
+                  >
+                    <option value="">-- Chọn Tỉnh/Thành phố --</option>
+                    {provinces.map((p: any) => (
+                        <option key={p.ProvinceID} value={p.ProvinceID}>{p.ProvinceName}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="supreme-form-row">
+                <label>Quận / Huyện <span className="req">*</span></label>
+                <div className="input-group-container">
+                  <select 
+                    className="supreme-input-full" 
+                    value={addressData.districtId || ""} 
+                    onChange={handleDistrictChange}
+                    disabled={!selectedProvId}
+                  >
+                    <option value="">-- Chọn Quận/Huyện --</option>
+                    {districts.map((d: any) => (
+                        <option key={d.DistrictID} value={d.DistrictID}>{d.DistrictName}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
               <div className="supreme-form-row">
                 <label>Phường / Xã <span className="req">*</span></label>
                 <div className="input-group-container">
-                  <input 
-                    type="text" 
-                    value={addressData.ward} 
-                    onChange={(e) => setAddressData({...addressData, ward: e.target.value})} 
-                    placeholder="Phường / Xã"
-                  />
+                  <select 
+                    className="supreme-input-full" 
+                    value={addressData.wardCode || ""} 
+                    onChange={handleWardChange}
+                    disabled={!addressData.districtId}
+                  >
+                    <option value="">-- Chọn Phường/Xã --</option>
+                    {wards.map((w: any) => (
+                        <option key={w.WardCode} value={w.WardCode}>{w.WardName}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 

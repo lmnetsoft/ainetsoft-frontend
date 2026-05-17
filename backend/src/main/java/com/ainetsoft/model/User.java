@@ -106,11 +106,9 @@ public class User {
     @Builder.Default
     private List<CartItem> cart = new ArrayList<>();
 
-    // 🚀 BẢN VÁ: VÍ VOUCHER - Lưu ID của các mã mà khách đã bấm "Lưu"
     @Builder.Default
     private Set<String> savedVoucherIds = new HashSet<>();
 
-    // 🚀 BẢN VÁ: VÍ XU - Lưu số dư AiNetsoft Xu của khách hàng
     @Builder.Default
     private int coinBalance = 0;
 
@@ -160,14 +158,14 @@ public class User {
         private String taxCode;           
         private String businessLicenseUrl; 
         
-        // 🚀 SHIPPING SETTINGS
+        private String ghnShopId;
+        
         @Builder.Default
         private List<String> enabledShippingMethodIds = new ArrayList<>();
         @Builder.Default
         private List<String> customShippingMethods = new ArrayList<>(); 
         private LocalDateTime expressPausedUntil; 
         
-        // 🚀 NEW: Thermal Printing Config
         @Builder.Default
         private boolean thermalPrintingEnabled = false;
         
@@ -197,9 +195,15 @@ public class User {
         private String receiverName;
         private String phone;
         private String province; 
+        private String district; 
         private String ward;     
         private String hamlet;   
         private String detail;   
+        
+        // 🚀 MASTER DATA LOGISTICS
+        private Integer districtId;
+        private String wardCode;
+        
         private boolean isDefault;
         private String latitude;  
         private String longitude; 

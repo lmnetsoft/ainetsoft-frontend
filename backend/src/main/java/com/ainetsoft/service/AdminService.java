@@ -4,6 +4,8 @@ import com.ainetsoft.dto.AdminStatsSummary;
 import com.ainetsoft.dto.SellerApprovalRequest;
 import com.ainetsoft.model.*;
 import com.ainetsoft.repository.*;
+import com.ainetsoft.service.shipping.ShippingProvider;
+import com.ainetsoft.service.shipping.ShippingProviderFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page; 
@@ -34,6 +36,9 @@ public class AdminService {
     private final SystemContentRepository systemContentRepository;
     private final BankAccountRepository bankAccountRepository;
     private final EncryptionService encryptionService;
+    
+    // 🚀 INJECT HỆ THỐNG LOGISTICS
+    private final ShippingProviderFactory shippingFactory;
 
     // --- 🚀 NEW: QUICK SEARCH FOR ADMIN SEARCH-AND-PICK ---
     public List<Map<String, Object>> searchUsersQuick(String query) {
@@ -301,6 +306,34 @@ public class AdminService {
             if (roles == null) roles = new HashSet<>();
             roles.add("SELLER");
             user.setRoles(roles);
+
+            // ==========================================
+            // 🚀 BƠM ENGINE AUTO-PROVISIONING GHN VÀO ĐÂY 
+            // ==========================================
+            if (user.getAddresses() != null && !user.getAddresses().isEmpty()) {
+                try {
+                    ShippingProvider ghnProvider = shippingFactory.getProvider("GHN");
+                    
+                    // Lấy địa chỉ lấy hàng mặc định
+                    User.AddressInfo pickupAddress = user.getAddresses().stream()
+                            .filter(User.AddressInfo::isDefault)
+                            .findFirst()
+                            .orElse(user.getAddresses().get(0));
+                            
+                    String ghnShopId = ghnProvider.registerShop(user, user.getShopProfile(), pickupAddress);
+                    
+                    if (ghnShopId != null) {
+                        user.getShopProfile().setGhnShopId(ghnShopId);
+                        log.info("✅ Kích hoạt GHN thành công! Gắn Shop ID: {} cho Seller: {}", ghnShopId, user.getEmail());
+                    } else {
+                        log.warn("❌ GHN API không trả về Shop ID cho Seller: {}", user.getEmail());
+                    }
+                } catch (Exception e) {
+                    log.error("❌ Lỗi ngoại lệ khi khởi tạo kho GHN: {}", e.getMessage());
+                }
+            }
+            // ==========================================
+
             user.setUpdatedAt(LocalDateTime.now());
             userRepository.save(user);
 
