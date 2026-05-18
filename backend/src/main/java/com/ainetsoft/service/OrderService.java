@@ -8,6 +8,7 @@ import com.ainetsoft.repository.ProductRepository;
 import com.ainetsoft.repository.UserRepository;
 import com.ainetsoft.repository.VoucherRepository; 
 import com.ainetsoft.repository.WalletRepository;   
+import com.ainetsoft.service.shipping.WarehouseRouter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,6 +34,9 @@ public class OrderService {
     private final VoucherRepository voucherRepository; 
     private final WalletRepository walletRepository;   
     private final PlatformConfigRepository platformConfigRepository; 
+    
+    // 🚀 BỔ SUNG: INJECT THUẬT TOÁN ĐỊNH TUYẾN ĐA KHO
+    private final WarehouseRouter warehouseRouter;
 
     // Lấy config động
     private PlatformConfig getConfig() {
@@ -55,13 +59,12 @@ public class OrderService {
 
         boolean hasBankAccount = !bankAccountRepository.findByUserId(sellerId).isEmpty();
 
-        // 🚀 ĐỒNG BỘ NGUỒN CHÂN LÝ: Đọc Doanh thu trực tiếp từ bảng Wallets để khớp 100% với trang Rút tiền
         Wallet wallet = walletRepository.findByUserId(sellerId).orElse(new Wallet());
         double availableRevenue = wallet.getBalance() != null ? wallet.getBalance() : 0.0;
 
         Map<String, Object> stats = new HashMap<>();
         stats.put("totalOrders", totalOrders);
-        stats.put("totalRevenue", availableRevenue); // Giờ đây Dashboard sẽ hiển thị số dư thực tế có thể rút
+        stats.put("totalRevenue", availableRevenue);
         stats.put("pendingOrders", pendingOrders);
         stats.put("isWithdrawalReady", hasBankAccount); 
         return stats;
@@ -78,6 +81,7 @@ public class OrderService {
 
         double baseTotalAmount = 0;
         List<OrderItem> orderItems = new ArrayList<>();
+        String routingNotes = ""; // 🚀 BỔ SUNG BIẾN CHỨA GHI CHÚ ĐỊNH TUYẾN
 
         for (CartItem cartItem : user.getCart()) {
             Product product = productRepository.findById(cartItem.getProductId())
@@ -102,6 +106,17 @@ public class OrderService {
 
             baseTotalAmount += (cartItem.getPrice() * cartItem.getQuantity());
 
+            // 🚀 PHASE 2: TÌM KHO XUẤT HÀNG GẦN NHẤT CHO SẢN PHẨM NÀY
+            if (orderRequest.getShippingAddress() != null) {
+                 User seller = userRepository.findById(product.getSellerId()).orElse(null);
+                 if (seller != null) {
+                     User.AddressInfo optimalWarehouse = warehouseRouter.findOptimalWarehouse(seller.getAddresses(), orderRequest.getShippingAddress());
+                     if (optimalWarehouse != null) {
+                         routingNotes += "Xuất kho " + cartItem.getShopName() + ": " + optimalWarehouse.getDetail() + " (ShopID: " + optimalWarehouse.getGhnShopId() + ") | ";
+                     }
+                 }
+            }
+
             notificationService.createNotification(
                 product.getSellerId(),
                 "Đơn hàng mới từ " + user.getFullName(),
@@ -109,6 +124,11 @@ public class OrderService {
                 "ORDER",
                 null
             );
+        }
+
+        // Lưu ghi chú định tuyến vào Order
+        if (!routingNotes.isEmpty()) {
+            orderRequest.setNote((orderRequest.getNote() == null ? "" : orderRequest.getNote() + "\n") + routingNotes);
         }
 
         double finalTotalAmount = baseTotalAmount;
@@ -264,13 +284,11 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Đơn hàng không tồn tại!"));
 
-        // Chỉ xử lý nếu đơn đang ở trạng thái chờ thanh toán để chống request lặp
         if ("PENDING_PAYMENT".equals(order.getStatus())) {
             if ("00".equals(responseCode)) {
-                order.setStatus("PENDING"); // Tiền đã vào, chuyển trạng thái cho Shop chuẩn bị hàng
+                order.setStatus("PENDING"); 
                 order.setUpdatedAt(LocalDateTime.now());
                 
-                // Báo cho người mua
                 notificationService.createNotification(
                     order.getUserId(),
                     "Thanh toán thành công 🎉",
@@ -279,7 +297,6 @@ public class OrderService {
                     orderId
                 );
                 
-                // Báo cho người bán
                 notificationService.createNotification(
                     order.getItems().get(0).getSellerId(),
                     "Đơn hàng mới đã thanh toán 💰",
@@ -325,6 +342,7 @@ public class OrderService {
 
         double totalAmount = 0;
         List<OrderItem> orderItems = new ArrayList<>();
+        String routingNotes = ""; // 🚀 BỔ SUNG BIẾN CHỨA GHI CHÚ ĐỊNH TUYẾN
 
         for (CartItem cartItem : user.getCart()) {
             Product product = productRepository.findById(cartItem.getProductId())
@@ -368,6 +386,17 @@ public class OrderService {
                 .findFirst()
                 .orElse(user.getAddresses().get(0));
 
+        // 🚀 PHASE 2: TÌM KHO GẦN NHẤT ĐỂ XUẤT HÀNG CHO PLACE ORDER
+        for (OrderItem item : orderItems) {
+            User seller = userRepository.findById(item.getSellerId()).orElse(null);
+            if (seller != null) {
+                User.AddressInfo optimalWarehouse = warehouseRouter.findOptimalWarehouse(seller.getAddresses(), shippingAddr);
+                if (optimalWarehouse != null) {
+                    routingNotes += "Xuất kho " + item.getShopName() + ": " + optimalWarehouse.getDetail() + " (ShopID: " + optimalWarehouse.getGhnShopId() + ") | ";
+                }
+            }
+        }
+
         String pm = paymentMethod != null ? paymentMethod.toUpperCase() : "COD";
         String orderStatus = ("COD".equals(pm) || "WALLET_PAID".equals(pm)) ? "PENDING" : "PENDING_PAYMENT";
 
@@ -379,6 +408,7 @@ public class OrderService {
                 .shippingAddress(shippingAddr)
                 .paymentMethod(pm)
                 .status(orderStatus)
+                .note(routingNotes)
                 .returnStatus("NONE")
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -442,7 +472,6 @@ public class OrderService {
                 notificationService.createNotification(order.getUserId(), "🎉 Chúc mừng bạn nhận được Xu!", "Bạn đã được cộng " + earnedCoins + " AiNetsoft Xu từ đơn hàng " + order.getId(), "WALLET", null);
             }
             
-            // 🚀 BƠM TIỀN VÀO ESCROW CHO SELLER (Ngay khi đơn chuyển sang COMPLETED)
             double netRevenue = order.getFinalTotalAmount() * (1 - config.getCommissionRate());
             walletRepository.findByUserId(order.getItems().get(0).getSellerId()).ifPresentOrElse(wallet -> {
                 double currentEscrow = wallet.getEscrowBalance() != null ? wallet.getEscrowBalance() : 0.0;
@@ -491,7 +520,6 @@ public class OrderService {
         
         String message = "Kiện hàng " + trackingCode + " đang được cập nhật: " + carrierStatus;
         
-        // 🚀 CATCH LUÔN TRƯỜNG HỢP POSTMAN BẮN "COMPLETED" HOẶC "DELIVERED"
         if ("DELIVERED".equalsIgnoreCase(carrierStatus) || "COMPLETED".equalsIgnoreCase(carrierStatus)) {
             order.setReturnDeadline(LocalDateTime.now().plusDays(config.getEscrowWindowDays())); 
             message = "🎉 Gói hàng đã giao thành công. Bạn có " + config.getEscrowWindowDays() + " ngày để kiểm tra và Yêu cầu Trả hàng nếu có lỗi!";
@@ -614,7 +642,6 @@ public class OrderService {
                 }
             }
             
-            // 🚀 BỔ SUNG QUAN TRỌNG: TRỪ TIỀN KHỎI ESCROW CỦA SELLER VÌ ĐÃ HOÀN TIỀN CHO KHÁCH
             double netRevenue = order.getFinalTotalAmount() * (1 - config.getCommissionRate());
             walletRepository.findByUserId(order.getItems().get(0).getSellerId()).ifPresent(wallet -> {
                 double currentEscrow = wallet.getEscrowBalance() != null ? wallet.getEscrowBalance() : 0.0;
@@ -622,7 +649,7 @@ public class OrderService {
                 wallet.setUpdatedAt(LocalDateTime.now());
                 walletRepository.save(wallet);
             });
-            order.setReturnDeadline(null); // Xóa lịch để CronJob không xử lý đơn này nữa
+            order.setReturnDeadline(null); 
             
             notificationService.createNotification(order.getUserId(), "✅ Trả hàng thành công", "Người bán đã chấp nhận hoàn tiền cho đơn #" + orderId.substring(orderId.length() - 8).toUpperCase(), "RETURN", orderId);
         } else {
@@ -765,7 +792,6 @@ public class OrderService {
                 .collect(Collectors.toList());
     }
 
-    // 🚀 LẤY CẤU HÌNH TỪ FILE PROPERTIES
     @org.springframework.scheduling.annotation.Scheduled(cron = "${app.cron.auto-payout}") 
     @Transactional
     public void autoProcessExpiredReturns() {
@@ -773,7 +799,6 @@ public class OrderService {
         LocalDateTime now = LocalDateTime.now();
         PlatformConfig config = getConfig();
         
-        // 🚀 CẬP NHẬT: Quét cả đơn SHIPPING (chờ Auto-Complete) VÀ COMPLETED (chờ nhả tiền Escrow)
         List<Order> expiredOrders = orderRepository.findAll().stream()
                 .filter(o -> o.getReturnDeadline() != null && now.isAfter(o.getReturnDeadline()))
                 .filter(o -> "COMPLETED".equals(o.getStatus()) || ("SHIPPING".equals(o.getStatus()) && ("DELIVERED".equals(o.getCarrierStatus()) || "COMPLETED".equals(o.getCarrierStatus()))))
@@ -801,7 +826,6 @@ public class OrderService {
                 notificationService.createNotification(order.getUserId(), "Đơn hàng tự động hoàn thành", "Đã hết " + config.getEscrowWindowDays() + " ngày khiếu nại. Đơn hàng #" + order.getId().substring(order.getId().length() - 8).toUpperCase() + " đã hoàn tất.", "ORDER", order.getId());
             }
 
-            // 🚀 BƯỚC QUYẾT ĐỊNH: RÚT TIỀN TỪ ESCROW -> CHUYỂN VÀO BALANCE KHẢ DỤNG CHO SELLER
             double netRevenue = order.getFinalTotalAmount() * (1 - config.getCommissionRate());
             walletRepository.findByUserId(order.getItems().get(0).getSellerId()).ifPresentOrElse(wallet -> {
                 double currentEscrow = wallet.getEscrowBalance() != null ? wallet.getEscrowBalance() : 0.0;
@@ -823,7 +847,6 @@ public class OrderService {
                 walletRepository.save(newWallet);
             });
 
-            // Xóa deadline để tránh CronJob quét đi quét lại đơn này vào ngày mai
             order.setReturnDeadline(null); 
             orderRepository.save(order);
             

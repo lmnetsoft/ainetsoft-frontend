@@ -42,6 +42,9 @@ public class Order {
     private String paymentMethod;
     private String status; 
     
+    // 🚀 BỔ SUNG PHASE 2: Lưu ghi chú định tuyến kho hàng (Xuất kho từ đâu)
+    private String note;
+    
     @Builder.Default
     private boolean isReviewed = false;
     

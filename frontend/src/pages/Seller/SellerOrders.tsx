@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaBox, FaUser, FaPhoneAlt, FaClipboardList, FaTimes, FaExclamationTriangle, FaCheck, FaBan, FaSync, FaPlay, FaChevronRight, FaTruckLoading, FaBarcode } from 'react-icons/fa';
+import { FaBox, FaUser, FaPhoneAlt, FaClipboardList, FaTimes, FaExclamationTriangle, FaCheck, FaBan, FaSync, FaPlay, FaChevronRight, FaTruckLoading, FaBarcode, FaMapMarkerAlt } from 'react-icons/fa';
 import api from '../../services/api'; 
 import { processReturnOrder } from '../../services/orderService';
 import ToastNotification from '../../components/Toast/ToastNotification';
@@ -212,6 +212,16 @@ const SellerOrders = () => {
             </div>
             
             <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: '5px' }}>
+
+              {/* 🚀 ĐỊNH TUYẾN ĐA KHO - BÁO CHO SELLER BIẾT LẤY HÀNG TỪ ĐÂU */}
+              {selectedOrder.note && selectedOrder.note.includes("Xuất kho") && (
+                  <div style={{ marginBottom: '20px', background: '#fff7e6', padding: '15px', borderRadius: '8px', border: '1px solid #ffd8bf' }}>
+                      <h4 style={{ margin: '0 0 10px 0', fontSize: '15px', color: '#d4380d', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <FaMapMarkerAlt /> Điểm Lấy Hàng (Định tuyến hệ thống)
+                      </h4>
+                      <p style={{ margin: '5px 0', fontSize: '14px', color: '#ad2102', fontWeight: 'bold' }}>{selectedOrder.note}</p>
+                  </div>
+              )}
               
               {/* Cảnh báo Trả hàng */}
               {(selectedOrder.status === 'RETURNING' || selectedOrder.status === 'RETURNED') && (
@@ -256,7 +266,7 @@ const SellerOrders = () => {
                   </div>
               )}
 
-              {/* 🚀 THÔNG TIN VẬN CHUYỂN (Chỉ hiện khi đã có mã) */}
+              {/* THÔNG TIN VẬN CHUYỂN */}
               {selectedOrder.trackingCode && (
                   <div style={{ marginBottom: '20px', background: '#f0fdf4', padding: '15px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
                     <h4 style={{ margin: '0 0 10px 0', fontSize: '15px', color: '#166534', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -396,8 +406,6 @@ const SellerOrders = () => {
               <div key={order.id} className="seller-order-item-card" style={{ border: order.status === 'RETURNING' ? '1px solid #ffa39e' : '' }}>
                 <div className="order-item-header">
                   <span className="order-id">Mã đơn: #{order.id.slice(-8).toUpperCase()}</span>
-                  
-                  {/* 🚀 Đã áp dụng hàm dịch trạng thái */}
                   <span className={`status-pill ${order.status.toLowerCase()}`}>
                      {getStatusLabel(order.status)}
                   </span>
@@ -407,6 +415,13 @@ const SellerOrders = () => {
                   <span><FaUser /> {order.shippingAddress?.receiverName}</span>
                   <span><FaPhoneAlt /> {order.shippingAddress?.phone}</span>
                 </div>
+
+                {/* 🚀 ĐỊNH TUYẾN ĐA KHO - HIGHLIGHT NGOÀI CARD */}
+                {order.note && order.note.includes("Xuất kho") && (
+                    <div style={{ background: '#fff7e6', borderLeft: '4px solid #ff7a45', padding: '8px 12px', margin: '10px 0', fontSize: '13px', color: '#d4380d', borderRadius: '4px' }}>
+                        <strong><FaMapMarkerAlt /> Định tuyến Đa kho:</strong> {order.note}
+                    </div>
+                )}
 
                 <div className="order-product-list">
                   {order.items.map((item: any, idx: number) => (
@@ -442,7 +457,6 @@ const SellerOrders = () => {
                   </div>
                   <div className="action-buttons">
                     
-                    {/* 🚀 Nút CHUẨN BỊ HÀNG cực xịn */}
                     {order.status === 'PENDING' && (
                       <button 
                         className="confirm-btn-seller" 

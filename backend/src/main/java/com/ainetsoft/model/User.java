@@ -199,6 +199,7 @@ public class User {
         private String ward;     
         private String hamlet;   
         private String detail;   
+        private String ghnShopId;
         
         // 🚀 MASTER DATA LOGISTICS
         private Integer districtId;

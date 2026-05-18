@@ -37,7 +37,7 @@ public class AdminService {
     private final BankAccountRepository bankAccountRepository;
     private final EncryptionService encryptionService;
     
-    // 🚀 INJECT HỆ THỐNG LOGISTICS
+    // 🚀 BỔ SUNG: INJECT HỆ THỐNG LOGISTICS
     private final ShippingProviderFactory shippingFactory;
 
     // --- 🚀 NEW: QUICK SEARCH FOR ADMIN SEARCH-AND-PICK ---
@@ -308,28 +308,27 @@ public class AdminService {
             user.setRoles(roles);
 
             // ==========================================
-            // 🚀 BƠM ENGINE AUTO-PROVISIONING GHN VÀO ĐÂY 
+            // 🚀 PHASE 2: AUTO-PROVISIONING ĐA KHO GHN
             // ==========================================
             if (user.getAddresses() != null && !user.getAddresses().isEmpty()) {
                 try {
                     ShippingProvider ghnProvider = shippingFactory.getProvider("GHN");
                     
-                    // Lấy địa chỉ lấy hàng mặc định
-                    User.AddressInfo pickupAddress = user.getAddresses().stream()
-                            .filter(User.AddressInfo::isDefault)
-                            .findFirst()
-                            .orElse(user.getAddresses().get(0));
+                    // Lặp qua TẤT CẢ kho của Seller và tạo riêng lẻ trên hệ thống đối tác
+                    for (User.AddressInfo addr : user.getAddresses()) {
+                        String ghnShopId = ghnProvider.registerShop(user, user.getShopProfile(), addr);
+                        if (ghnShopId != null) {
+                            addr.setGhnShopId(ghnShopId); // Lưu ID riêng cho từng kho
+                            log.info("✅ Kích hoạt GHN Multi-Warehouse: Kho [{}] -> ID: {}", addr.getDetail(), ghnShopId);
                             
-                    String ghnShopId = ghnProvider.registerShop(user, user.getShopProfile(), pickupAddress);
-                    
-                    if (ghnShopId != null) {
-                        user.getShopProfile().setGhnShopId(ghnShopId);
-                        log.info("✅ Kích hoạt GHN thành công! Gắn Shop ID: {} cho Seller: {}", ghnShopId, user.getEmail());
-                    } else {
-                        log.warn("❌ GHN API không trả về Shop ID cho Seller: {}", user.getEmail());
+                            // Gắn ID kho mặc định vào Shop Profile (Tương thích ngược)
+                            if (addr.isDefault() && user.getShopProfile() != null) {
+                                user.getShopProfile().setGhnShopId(ghnShopId);
+                            }
+                        }
                     }
                 } catch (Exception e) {
-                    log.error("❌ Lỗi ngoại lệ khi khởi tạo kho GHN: {}", e.getMessage());
+                    log.error("❌ Lỗi ngoại lệ khi khởi tạo Multi-Warehouse GHN: {}", e.getMessage());
                 }
             }
             // ==========================================
@@ -381,6 +380,19 @@ public class AdminService {
             }
             
             if (user.getPendingAddresses() != null && !user.getPendingAddresses().isEmpty()) {
+                // 🚀 BỔ SUNG PHASE 2: NẾU THÊM KHO MỚI TRONG LÚC UPDATE THÌ TẠO LÊN GHN
+                try {
+                    ShippingProvider ghnProvider = shippingFactory.getProvider("GHN");
+                    for (User.AddressInfo addr : user.getPendingAddresses()) {
+                        if (addr.getGhnShopId() == null) { // Chỉ đăng ký kho chưa có ID
+                             String newGhnId = ghnProvider.registerShop(user, user.getShopProfile(), addr);
+                             addr.setGhnShopId(newGhnId);
+                        }
+                    }
+                } catch(Exception e) {
+                    log.error("Lỗi cập nhật kho mới lên GHN: {}", e.getMessage());
+                }
+
                 user.setAddresses(new ArrayList<>(user.getPendingAddresses()));
             }
 

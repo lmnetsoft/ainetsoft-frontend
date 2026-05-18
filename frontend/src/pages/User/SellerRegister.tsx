@@ -673,7 +673,9 @@ const SellerRegister = () => {
     
     if (Object.keys(errors).length > 0) { setAddressErrors(errors); return; }
     
-    setFormData(prev => ({ ...prev, stockAddresses: [...prev.stockAddresses, { ...addressForm, phoneNumber: phone }] }));
+    // 🚀 ĐÃ SỬA: Tự động set isDefault=false cho kho thứ 2
+    setFormData(prev => ({ ...prev, stockAddresses: [...prev.stockAddresses, { ...addressForm, phoneNumber: phone, isDefault: prev.stockAddresses.length === 0 }] }));
+    
     setShowAddressModal(false); setAddressErrors({}); 
     setAddressForm({ fullName: '', phoneNumber: '', province: '', district: '', ward: '', hamlet: '', detailAddress: '', latitude: '', longitude: '', isDefault: true, districtId: 0, wardCode: '' });
     setSelectedProvId(0);

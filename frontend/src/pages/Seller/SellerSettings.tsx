@@ -1,22 +1,45 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import ToastNotification from '../../components/Toast/ToastNotification';
 import { getUserProfile, updateShopSettings } from '../../services/authService';
 import { getProvinces, getDistricts, getWards } from '../../services/shippingService';
+import goongjs from '@goongmaps/goong-js';
+import '@goongmaps/goong-js/dist/goong-js.css'; 
 import { 
     FaStore, FaMapMarkerAlt, FaShieldAlt, FaInfoCircle, 
     FaExternalLinkAlt, FaPhoneAlt, FaUserEdit, FaMap, FaHourglassHalf,
-    FaBriefcase, FaImage, FaHistory, FaCloudUploadAlt, FaTimes
+    FaBriefcase, FaImage, FaHistory, FaCloudUploadAlt, FaTimes, FaSearch
 } from 'react-icons/fa';
 import './SellerSettings.css';
 
 import ainetsoftLogo from '../../assets/images/logo.png';
 
-// HELPER: Real-time Slug Preview (100% PRESERVED)
+const GOONG_API_KEY = import.meta.env.VITE_GOONG_API_KEY; 
+const GOONG_MAPTILES_KEY = import.meta.env.VITE_GOONG_MAPTILES_KEY;
+
+// 🚀 BỔ SUNG: CSS CỨU CÁNH CHO BẢN ĐỒ GOONG BỊ ẨN
+const inlineStyles = `
+  .map-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 20000 !important; }
+  .map-modal-card { background: white; width: 90%; max-width: 800px; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; height: 85vh; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+  .map-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid #eee; }
+  .map-search-container { padding: 15px; background: #f8f9fa; border-bottom: 1px solid #eee; position: relative; }
+  .map-search-input-group { display: flex; gap: 10px; }
+  .map-search-input-group input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+  .map-canvas-area { flex: 1; background: #eee; position: relative; min-height: 300px; }
+  #goong-map-canvas { width: 100%; height: 100%; }
+  .map-modal-footer { padding: 15px 20px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 15px; }
+  .btn-confirm-map { background: #ee4d2d; color: white; border: none; padding: 10px 30px; border-radius: 4px; font-weight: 600; cursor: pointer; }
+  .btn-cancel-map { background: #f0f0f0; color: #555; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+  .map-suggestions { position: absolute; top: 100%; left: 15px; right: 15px; background: white; border: 1px solid #ddd; z-index: 21000; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.15); list-style: none; padding: 0; margin: 0; }
+  .map-suggestions li { padding: 12px 15px; cursor: pointer; border-bottom: 1px solid #f5f5f5; font-size: 14px; }
+  .map-suggestions li:hover { background: #fdf2f0; color: #ee4d2d; }
+`;
+
+// HELPER: Real-time Slug Preview
 const slugify = (text: string) => {
     return text.toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim();
 };
 
-// HELPERS: Input Display Formatters (100% PRESERVED)
+// HELPERS: Input Display Formatters
 const formatPhoneDisplay = (val: string) => {
     if (!val) return ""; 
     const s = val.replace(/\D/g, '');
@@ -62,7 +85,7 @@ const SellerSettings = () => {
     const [newLicenseFile, setNewLicenseFile] = useState<File | null>(null);
     const [daysUntilChange, setDaysUntilChange] = useState(0);
 
-    // 🚀 LOGISTICS DROPDOWN STATES
+    // LOGISTICS DROPDOWN STATES
     const [showAddressModal, setShowAddressModal] = useState(false);
     const [editingAddressIndex, setEditingAddressIndex] = useState<number | null>(null);
     const [ghnProvinces, setGhnProvinces] = useState<any[]>([]);
@@ -76,6 +99,13 @@ const SellerSettings = () => {
         detail: '', latitude: '', longitude: '', isDefault: true,
         districtId: 0, wardCode: ''
     });
+
+    // MAP STATES
+    const [showMapModal, setShowMapModal] = useState(false);
+    const [mapSearch, setMapSearch] = useState("");
+    const [mapSuggestions, setMapSuggestions] = useState<any[]>([]);
+    const mapInstance = useRef<any>(null);
+    const markerInstance = useRef<any>(null);
 
     const API_BASE_URL = "http://localhost:8080";
 
@@ -155,7 +185,6 @@ const SellerSettings = () => {
         document.title = "Thiết lập Shop | AiNetsoft";
     }, []);
 
-    // Fetch Districts
     useEffect(() => {
         if (selectedProvId > 0) {
             getDistricts(selectedProvId).then(res => setGhnDistricts(res || []));
@@ -165,7 +194,6 @@ const SellerSettings = () => {
         }
     }, [selectedProvId]);
 
-    // Fetch Wards
     useEffect(() => {
         if (addressForm.districtId > 0) {
             getWards(addressForm.districtId).then(res => setGhnWards(res || []));
@@ -174,11 +202,108 @@ const SellerSettings = () => {
         }
     }, [addressForm.districtId]);
 
+    // BẢN ĐỒ GOONG
+    useEffect(() => {
+        if (showMapModal && !mapInstance.current) {
+            goongjs.accessToken = GOONG_MAPTILES_KEY;
+            const map = new goongjs.Map({
+                container: 'goong-map-canvas',
+                style: 'https://tiles.goong.io/assets/navigation_day.json',
+                center: [106.660172, 10.762622], 
+                zoom: 14
+            });
+            map.addControl(new goongjs.NavigationControl(), 'top-right');
+            
+            const initialLat = addressForm.latitude ? parseFloat(addressForm.latitude) : 10.762622;
+            const initialLng = addressForm.longitude ? parseFloat(addressForm.longitude) : 106.660172;
+            
+            const marker = new goongjs.Marker({ color: '#ee4d2d' }).setLngLat([initialLng, initialLat]).addTo(map);
+            map.flyTo({ center: [initialLng, initialLat], zoom: 16 });
+            
+            mapInstance.current = map;
+            markerInstance.current = marker;
+
+            map.on('click', (e: any) => {
+                const { lng, lat } = e.lngLat;
+                marker.setLngLat([lng, lat]);
+                setAddressForm(prev => ({ ...prev, latitude: lat.toFixed(6), longitude: lng.toFixed(6) }));
+            });
+        }
+        return () => { 
+            if (mapInstance.current) {
+                mapInstance.current.remove();
+                mapInstance.current = null;
+                markerInstance.current = null;
+            }
+        };
+    }, [showMapModal]);
+
+    const handleMapSearch = async (val: string) => {
+        setMapSearch(val);
+        if (val.length < 3) { setMapSuggestions([]); return; }
+        try {
+            const res = await fetch(`https://rsapi.goong.io/Place/AutoComplete?api_key=${GOONG_API_KEY}&input=${encodeURIComponent(val)}`);
+            const data = await res.json();
+            if (data.predictions) setMapSuggestions(data.predictions);
+        } catch (e) {}
+    };
+
+    const handleDirectSearch = async () => {
+        if (mapSearch.length < 3) return;
+        try {
+            const res = await fetch(`https://rsapi.goong.io/geocode?address=${encodeURIComponent(mapSearch)}&api_key=${GOONG_API_KEY}`);
+            const data = await res.json();
+            if (data.results && data.results.length > 0) {
+                const { lat, lng } = data.results[0].geometry.location;
+                mapInstance.current?.flyTo({ center: [lng, lat], zoom: 16 });
+                markerInstance.current?.setLngLat([lng, lat]);
+                setAddressForm(prev => ({ ...prev, latitude: lat.toFixed(6), longitude: lng.toFixed(6), detail: mapSearch }));
+            }
+        } catch (e) {
+            setToastMessage("Không tìm thấy địa chỉ này.");
+            setShowToast(true);
+        }
+    };
+
+    const selectMapSuggestion = async (p: any) => {
+        setMapSearch(p.description);
+        setMapSuggestions([]);
+        try {
+            const res = await fetch(`https://rsapi.goong.io/Place/Detail?api_key=${GOONG_API_KEY}&place_id=${p.place_id}`);
+            const data = await res.json();
+            if (data.result && mapInstance.current) {
+                const { lat, lng } = data.result.geometry.location;
+                mapInstance.current.flyTo({ center: [lng, lat], zoom: 16 });
+                markerInstance.current.setLngLat([lng, lat]);
+                setAddressForm(prev => ({ ...prev, latitude: lat.toFixed(6), longitude: lng.toFixed(6), detail: p.description }));
+            }
+        } catch (e) {}
+    };
+
     const handleAddressUpdate = (index: number, field: string, value: string) => {
         const updated = [...addresses];
         const cleanValue = (field === 'phone') ? value.replace(/\s/g, '') : value;
         updated[index] = { ...updated[index], [field]: cleanValue };
         setAddresses(updated);
+    };
+
+    const addNewAddressModal = () => {
+        setEditingAddressIndex(addresses.length);
+        setAddressForm({
+            receiverName: '', phone: '', province: '', district: '', ward: '', hamlet: '',
+            detail: '', latitude: '', longitude: '', isDefault: addresses.length === 0,
+            districtId: 0, wardCode: ''
+        });
+        setSelectedProvId(0);
+        setShowAddressModal(true);
+    };
+
+    const handleDeleteAddress = (index: number) => {
+        if(window.confirm('Bạn có chắc muốn xóa kho hàng này? Hệ thống sẽ mất dữ liệu định tuyến cho khu vực này.')) {
+            const updated = addresses.filter((_, i) => i !== index);
+            if (updated.length > 0 && !updated.some(a => a.isDefault)) updated[0].isDefault = true;
+            setAddresses(updated);
+        }
     };
 
     const openAddressModal = async (index: number) => {
@@ -193,7 +318,6 @@ const SellerSettings = () => {
             districtId: addr.districtId || 0, wardCode: addr.wardCode || ''
         });
         
-        // Match Province ID by Name to set initial dropdown
         if (addr.province && ghnProvinces.length > 0) {
             const prov = ghnProvinces.find((p: any) => p.ProvinceName === addr.province);
             if (prov) setSelectedProvId(prov.ProvinceID);
@@ -210,16 +334,19 @@ const SellerSettings = () => {
         const phone = addressForm.phone.replace(/\D/g, '');
         if (!phone || !VN_PHONE_REGEX.test(phone)) errors.phone = "SĐT không đúng định dạng";
         if (!addressForm.province || !addressForm.districtId || !addressForm.wardCode) errors.province = "Vui lòng chọn đầy đủ Tỉnh/Quận/Phường";
+        if (!addressForm.ward.toLowerCase().includes("phường") && !addressForm.hamlet.trim()) errors.hamlet = "Bắt buộc nhập Ấp/Thôn cho khu vực xã";
         if (!addressForm.detail.trim()) errors.detail = "Vui lòng nhập số nhà, tên đường";
         
         if (Object.keys(errors).length > 0) { setAddressErrors(errors); return; }
 
-        if (editingAddressIndex !== null) {
-            const updated = [...addresses];
+        const updated = [...addresses];
+        if (editingAddressIndex !== null && editingAddressIndex < addresses.length) {
             updated[editingAddressIndex] = { ...addressForm, phone: phone };
-            setAddresses(updated);
+        } else {
+            updated.push({ ...addressForm, phone: phone, isDefault: updated.length === 0 });
         }
         
+        setAddresses(updated);
         setShowAddressModal(false);
         setAddressErrors({});
     };
@@ -241,7 +368,6 @@ const SellerSettings = () => {
                 businessType: shopData.businessType,
                 lowStockThreshold: shopData.lowStockThreshold,
                 holidayMode: shopData.holidayMode,
-                // 🚀 BẮT ĐÚNG FORMAT MASTER DATA CHO BACKEND
                 stockAddresses: addresses.map(addr => ({
                     fullName: addr.receiverName,
                     phoneNumber: addr.phone,
@@ -291,6 +417,7 @@ const SellerSettings = () => {
 
     return (
         <main className="seller-settings-supreme-layout">
+            <style>{inlineStyles}</style>
             <ToastNotification message={toastMessage} isVisible={showToast} onClose={() => setShowToast(false)} />
 
             <div className="header-with-icon">
@@ -380,10 +507,29 @@ const SellerSettings = () => {
                     </section>
 
                     <section className="settings-section mt-30">
-                        <h3 className="section-subtitle"><FaMapMarkerAlt /> Kho hàng ({addresses.length}/2)</h3>
+                        <h3 className="section-subtitle" style={{ display: 'flex', alignItems: 'center' }}>
+                            <FaMapMarkerAlt style={{ marginRight: '8px' }}/> Kho hàng ({addresses.length}/2)
+                            {!shopData.hasPendingUpdate && addresses.length < 2 && (
+                                <button 
+                                    onClick={addNewAddressModal} 
+                                    style={{ marginLeft: '15px', padding: '4px 12px', fontSize: '13px', background: '#ee4d2d', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                                >
+                                    + Thêm kho
+                                </button>
+                            )}
+                        </h3>
                         <div className="warehouse-grid-layout">
                             {addresses.map((addr, idx) => (
-                                <div key={idx} className="pro-warehouse-card">
+                                <div key={idx} className="pro-warehouse-card" style={{ position: 'relative' }}>
+                                    {!shopData.hasPendingUpdate && addresses.length > 1 && (
+                                        <button 
+                                            onClick={() => handleDeleteAddress(idx)} 
+                                            style={{ position: 'absolute', top: '10px', right: '10px', background: '#ffe4e6', color: '#e11d48', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                            title="Xóa kho hàng này"
+                                        >
+                                            <FaTimes />
+                                        </button>
+                                    )}
                                     <div className="card-side-info">
                                         <div className="input-group-mini">
                                             <FaUserEdit className="mini-icon" />
@@ -405,7 +551,6 @@ const SellerSettings = () => {
                                         </div>
                                     </div>
                                     <div className="card-side-qr">
-                                        {/* 🚀 FIXED: Đúng định dạng URL Google Maps để quét QR không bị 404 */}
                                         {addr.latitude && (
                                             <img src={`https://api.qrserver.com/v1/create-qr-code/?size=85x85&data=${encodeURIComponent(`http://googleusercontent.com/maps.google.com/${addr.latitude},${addr.longitude}`)}`} alt="QR" />
                                         )}
@@ -489,16 +634,29 @@ const SellerSettings = () => {
                 </div>
             )}
 
-            {/* 🚀 ADDRESS MODAL FOR EDITING LOCATION EXACTLY LIKE REGISTER */}
+            {/* 🚀 MODAL XỊN TÍCH HỢP BẢN ĐỒ GOONG NHƯ TRANG ĐĂNG KÝ */}
             {showAddressModal && (
-                <div className="ainetsoft-modal-overlay">
-                <div className="ainetsoft-modal-card">
+                <div className="ainetsoft-modal-overlay no-print">
+                  <div className="ainetsoft-modal-card">
                     <div className="modal-header">
-                        <h3>Cập nhật vị trí Kho</h3>
+                        <h3>{editingAddressIndex !== null && editingAddressIndex < addresses.length ? "Cập Nhật Kho Hàng" : "Thêm Kho Mới"}</h3>
                         <FaTimes className="close-icon" onClick={() => setShowAddressModal(false)} />
                     </div>
                     <div className="modal-body">
-                    <div className="modal-field-full">
+                      <div className="row-split">
+                        <div className="input-with-label">
+                            <label><span className="req">*</span> Tên người nhận (Kho)</label>
+                            <input className={addressErrors.receiverName ? "error-border" : ""} value={addressForm.receiverName} onChange={e => setAddressForm({...addressForm, receiverName: e.target.value})} />
+                            {addressErrors.receiverName && <p className="red-msg-inline">{addressErrors.receiverName}</p>}
+                        </div>
+                        <div className="input-with-label">
+                            <label><span className="req">*</span> SĐT liên hệ</label>
+                            <input className={addressErrors.phone ? "error-border" : ""} value={addressForm.phone} onChange={e => setAddressForm({...addressForm, phone: formatPhoneDisplay(e.target.value)})} maxLength={12} placeholder="098 776 7688" />
+                            {addressErrors.phone && <p className="red-msg-inline">{addressErrors.phone}</p>}
+                        </div>
+                      </div>
+                      
+                      <div className="modal-field-full">
                         <label><span className="req">*</span> Tỉnh/Thành phố</label>
                         <select className={addressErrors.province ? "error-border supreme-input-full" : "supreme-input-full"} value={selectedProvId || ""} onChange={(e) => {
                             const id = parseInt(e.target.value);
@@ -510,9 +668,9 @@ const SellerSettings = () => {
                             {ghnProvinces.map((p: any) => <option key={p.ProvinceID} value={p.ProvinceID}>{p.ProvinceName}</option>)}
                         </select>
                         {addressErrors.province && <p className="red-msg-inline">{addressErrors.province}</p>}
-                    </div>
+                      </div>
 
-                    <div className="modal-field-full">
+                      <div className="modal-field-full">
                         <label><span className="req">*</span> Quận/Huyện</label>
                         <select className={addressErrors.province ? "error-border supreme-input-full" : "supreme-input-full"} value={addressForm.districtId || ""} disabled={!selectedProvId} onChange={(e) => {
                             const id = parseInt(e.target.value);
@@ -522,9 +680,9 @@ const SellerSettings = () => {
                             <option value="">-- Chọn Quận/Huyện --</option>
                             {ghnDistricts.map((d: any) => <option key={d.DistrictID} value={d.DistrictID}>{d.DistrictName}</option>)}
                         </select>
-                    </div>
+                      </div>
 
-                    <div className="modal-field-full">
+                      <div className="modal-field-full">
                         <label><span className="req">*</span> Phường/Xã</label>
                         <select className={addressErrors.province ? "error-border supreme-input-full" : "supreme-input-full"} value={addressForm.wardCode || ""} disabled={!addressForm.districtId} onChange={(e) => {
                             const code = e.target.value;
@@ -534,19 +692,62 @@ const SellerSettings = () => {
                             <option value="">-- Chọn Phường/Xã --</option>
                             {ghnWards.map((w: any) => <option key={w.WardCode} value={w.WardCode}>{w.WardName}</option>)}
                         </select>
-                    </div>
+                      </div>
 
-                    <div className="modal-field-full">
-                        <label><span className="req">*</span> Địa chỉ chi tiết</label>
-                        <textarea className={addressErrors.detail ? "error-border" : ""} value={addressForm.detail} onChange={e => setAddressForm({...addressForm, detail: e.target.value})} placeholder="Số nhà, tên đường..." />
-                        {addressErrors.detail && <p className="red-msg-inline">{addressErrors.detail}</p>}
-                    </div>
+                      <div className="modal-field-full">
+                          <label>{!addressForm.ward.toLowerCase().includes("phường") && <span className="req">*</span>}Ấp/Thôn/Tổ</label>
+                          <input className={addressErrors.hamlet ? "error-border" : ""} value={addressForm.hamlet} onChange={e => setAddressForm({...addressForm, hamlet: e.target.value})} />
+                          {addressErrors.hamlet && <p className="red-msg-inline">{addressErrors.hamlet}</p>}
+                      </div>
+                      
+                      <div className="modal-field-full">
+                          <label><span className="req">*</span> Địa chỉ chi tiết</label>
+                          <textarea className={addressErrors.detail ? "error-border" : ""} value={addressForm.detail} onChange={e => setAddressForm({...addressForm, detail: e.target.value})} placeholder="Số nhà, tên đường..." />
+                          {addressErrors.detail && <p className="red-msg-inline">{addressErrors.detail}</p>}
+                      </div>
+                      
+                      <div className="gps-box-ainetsoft clickable" onClick={() => setShowMapModal(true)}>
+                        <FaMapMarkerAlt className="gps-red" />
+                        <div className="gps-text">
+                          <strong>Tọa độ GPS (Tự động)</strong>
+                          <span>{addressForm.latitude ? `${addressForm.latitude}, ${addressForm.longitude}` : 'Nhấn vào đây để chọn trên bản đồ'}</span>
+                          <p className="gps-hint-text">* Sử dụng thanh tìm kiếm trong bản đồ để lấy vị trí chính xác cho Shipper.</p>
+                        </div>
+                      </div>
                     </div>
                     <div className="modal-footer-ainetsoft">
                         <button className="btn-cancel-ainetsoft" onClick={() => setShowAddressModal(false)}>Hủy</button>
-                        <button className="btn-save-ainetsoft" onClick={saveAddressModal}>Xác nhận</button>
+                        <button className="btn-save-ainetsoft" onClick={saveAddressModal}>Lưu Kho</button>
                     </div>
+                  </div>
                 </div>
+            )}
+
+            {/* 🚀 MODAL BẢN ĐỒ GOONG */}
+            {showMapModal && (
+                <div className="map-modal-overlay">
+                  <div className="map-modal-card">
+                    <div className="map-modal-header">
+                        <h3>Chọn địa điểm lấy hàng</h3>
+                        <FaTimes onClick={() => setShowMapModal(false)} style={{cursor: 'pointer'}} />
+                    </div>
+                    <div className="map-search-container">
+                      <div className="map-search-input-group">
+                        <input type="text" placeholder="Nhập tên đường, tòa nhà hoặc khu vực..." value={mapSearch} onChange={e => handleMapSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleDirectSearch()} />
+                        <button className="btn-confirm-map" type="button" onClick={handleDirectSearch}><FaSearch /></button>
+                      </div>
+                      {mapSuggestions.length > 0 && (
+                          <ul className="map-suggestions">
+                              {mapSuggestions.map(p => (<li key={p.place_id} onMouseDown={() => selectMapSuggestion(p)}>{p.description}</li>))}
+                          </ul>
+                      )}
+                    </div>
+                    <div className="map-canvas-area"><div id="goong-map-canvas"></div></div>
+                    <div className="map-modal-footer">
+                        <button className="btn-cancel-map" onClick={() => setShowMapModal(false)}>Hủy bỏ</button>
+                        <button className="btn-confirm-map" onClick={() => { setShowMapModal(false); setMapSearch(""); }}>Xác nhận vị trí</button>
+                    </div>
+                  </div>
                 </div>
             )}
         </main>
